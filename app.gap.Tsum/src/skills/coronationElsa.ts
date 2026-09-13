@@ -125,8 +125,10 @@ var CoronationElsaConfig = {
   leadInMs: 1500,
   // Waited out after each chain before the next look, so the look reads the
   // band the chain just froze: the slash follows the release by ~100ms and the
-  // crystals have settled by 250-300ms (`coronation_elsa_2.mp4`, 60fps).
-  iceFormMs: 350,
+  // crystals have settled by 250-300ms (`coronation_elsa_2.mp4`, 60fps). The
+  // capture lands ~60ms after this, so the read is at ~335ms. How fast the
+  // chains come has no bearing on the ice (the user), so this is the floor.
+  iceFormMs: 275,
   // The slice of the window kept for the closing break: the last band forming,
   // the read it is aimed off, and the taps. No chain goes out with less than
   // this left.
