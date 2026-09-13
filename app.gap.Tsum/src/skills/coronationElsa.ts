@@ -9,44 +9,59 @@
 // tsums stay where they are (the board does not move inside the window), and
 // one tap on any of them sets the whole pile off at once.
 //
-// ## The band thickens with time, and at the end it is the whole board
+// ## The freeze is a charge: it grows while no chain spends it
 //
-// How much a chain freezes depends on when in the window it is drawn. Read
-// off three recordings: at 1-2s in, a band one to two tsums thick
-// (`coronation_elsa_2.mp4`, chains A and P); at 5-6s, three to five thick
-// (chains C and B, the latter an L-shape that took the left two-thirds); and
-// at ~10s -- the play loop's first chains after the choreography handed back
-// in `coronation_elsa_3.mp4`, twice -- a single 3-chain froze **every tsum on
-// the board** (59, broken for 422,942; 36 for 239,117). Whether that charge
-// runs from the activation or from the previous chain is not settled; both
-// readings fit every chain seen so far. Either way the window is spent
-// waiting, and the chain that matters is the last one.
+// How much a chain freezes depends on how long it has been since the last
+// freeze. Read off four recordings: ~1s between chains, bands of 3 tsums
+// (the play loop's own chains inside a window, `coronation_elsa_5.mp4`
+// 12-17s); 1-2s, one to two tsums thick (`coronation_elsa_2.mp4`, chains A
+// and P); 4-5s, 7-20 tsums (chains C and B there, the scheduled 5s chains of
+// recordings 4 and 5); and a first chain 10-12s after the activation froze
+// **every tsum on the board** (59 for 422,942 in recording 3; 34 for 235,206
+// in recording 5). Whether the charge counts from the activation or from the
+// previous freeze is not settled -- both fit every chain seen -- but either
+// way the whole board is a ~10s charge, and the growth is faster than
+// linear, so one long charge beats the same time split in two.
+//
+// The window is far longer than the 10s the level table used to say: in
+// recording 5, chains 17s after a level-6 activation still froze. Nothing
+// recorded has run past that, so `durationMs` is a floor, not a measurement.
 //
 // A frozen tsum that a *second* band runs through counts double at the break,
 // with a coin bonus on top (a player's write-up of the skill, and its
-// screenshots: overlapped ice is shaded pink). So the choreography draws its
-// chains at fixed points of the window (`chainAt`): a mid-window chain whose
-// band the final one will overlap, and a final chain as late as the window
-// allows, for the whole-board freeze. Then one break, and the bomb it leaves
-// is popped. If the charge turns out to run from the activation alone, more
-// slots before the last are free doubling; if it runs from the previous
-// chain, every extra slot thins the final band -- which is why the slot list
-// is a config entry and not a rule.
+// screenshots: overlapped ice is shaded pink). So the choreography draws two
+// chains at fixed points of the window (`chainAt`): an early one whose band
+// the final one will overlap, and a final one ten seconds later, for the
+// whole-board freeze. Then one break, and the bomb it leaves is popped.
 //
-// Each chain is the flattest chain the lowest free row offers
+// Each chain is the flattest chain the lowest free rows offer
 // (`elsaRowChain`): both ends in one row makes the band horizontal, and short
 // beats long -- the band reaches the edges whatever the chain's length, and a
 // wandering chain only thickens it. Every chain is planned off a capture taken
 // right before it (`elsaLook`), so the ice it keeps clear of is read, never
 // modelled.
 //
-// The two earlier versions of this skill, for the record: the first drew
-// dozens of quick chains off one capture per pass, bands modelled and chosen
-// to avoid each other, and spent the pile mid-window whenever the model ran
-// dry; the second swept the board a row at a time with a capture per chain,
-// and treated a chain that froze nothing as the window closing -- which on
-// `coronation_elsa_3.mp4` fired on the very first chain, drawn under the
-// activation animation, and parked the choreography for seven seconds.
+// ## A chain the game does not link freezes nothing
+//
+// The scheduled chains of recordings 4 and 5 registered as a touch on one
+// tsum, or a link of two: the game took the first tsum and refused the hop to
+// the next. They were planned over one row of the board at a time, and a row
+// holds a colour's tsums two apart with another colour between -- a hop of
+// nearly two tsum widths, the search's full reach, which the game does not
+// link. The play loop's chains register because a dense same-colour component
+// has adjacent tsums to hop between. So the plan now spans three rows and
+// keeps every hop under `maxHop`, about a tsum and a third: the ends still sit
+// in one row, and the tsums between them may step into the row above.
+//
+// The earlier versions of this skill, for the record: the first drew dozens
+// of quick chains off one capture per pass, bands modelled and chosen to
+// avoid each other, and spent the pile mid-window whenever the model ran dry
+// -- every chain spent the charge at ~1s; the second swept the board a row at
+// a time with a capture per chain, and treated a chain that froze nothing as
+// the window closing -- which on `coronation_elsa_3.mp4` fired on the very
+// first chain, drawn under the activation animation, and parked the
+// choreography for seven seconds; the third scheduled two chains at half and
+// 95% of a 10s window, both planned over single rows that the game refused.
 //
 // ## One tap sets the pile off, so nothing may touch ice until the end
 //
@@ -112,17 +127,18 @@
 // throughout, so saturation is the margin that holds: 105 clears the palest
 // blue by 5 and the most saturated ice by 7.
 var CoronationElsaConfig = {
-  // How long the freeze window stays open, by skill level 1-6, in ms. On
-  // `coronation_elsa_3.mp4` chains drawn 10.0-10.1s after a level-6 tap still
-  // froze, so the table is if anything short.
-  durationMs: [5000, 6000, 7000, 8000, 9000, 10000],
+  // How long the freeze window stays open, by skill level 1-6, in ms. Level 6
+  // is a floor read off `coronation_elsa_5.mp4`: the play loop's chains were
+  // still freezing 17s after the activation, and no recording runs past that.
+  // The lower levels are the old 5-10s guesses scaled by the same factor and
+  // have never been seen; the skill's own info page would settle all six.
+  durationMs: [8000, 9700, 11500, 13200, 14800, 16500],
   // When the chains go out, as fractions of the window, in order. See the
-  // header: the band thickens with time and is the whole board at the end, so
-  // the last slot is as late as the window allows and the ones before it are
-  // bands for the last one to overlap. Two slots until a recording says
-  // whether the charge runs from the activation (add slots) or from the
-  // previous chain (keep two, or one).
-  chainAt: [0.5, 0.95],
+  // header: the freeze is a charge that a chain spends, the whole board is a
+  // ~10s charge, and the growth is faster than linear -- so the final chain
+  // sits ten seconds after the first, and the first is the band it doubles.
+  // At level 6 these are 5.0s and 14.9s.
+  chainAt: [0.3, 0.9],
   // The activation animation: no look before this. Seen at ~1.4s on
   // `coronation_elsa_3.mp4`, which is why the first slot is not earlier.
   leadInMs: 1500,
@@ -138,6 +154,15 @@ var CoronationElsaConfig = {
   // the band reaches both edges whatever the length, and a long chain wanders
   // off its own line and thickens it.
   rowMaxChain: 5,
+  // How many rows a chain may be planned over: its ends in the lowest, the
+  // tsums between them anywhere in these. One row alone holds a colour's
+  // tsums two apart, which is a hop the game refuses (see the header).
+  rowSpan: 3,
+  // The longest hop a planned chain may take, in the 200px play square. The
+  // search's own reach (`linkReach`, 1.9 widths) is what the play loop
+  // gambles on; a chain that must register gets adjacent tsums only, which sit
+  // 24-26px apart on a settled board.
+  maxHop: 34,
   // How close a drag may pass to a frozen tsum or a bubble, same units --
   // about one tsum radius. A linkable hop is `tsumWidth * linkReach` = 47.5px,
   // so two free tsums can sit one hop apart with ice between them.
@@ -363,42 +388,85 @@ function elsaSlant(path: TsumPath): number {
 }
 
 /**
- * The next chain of the sweep: the flattest chain the lowest chainable row
- * offers, with the rows above it as fallbacks.
- *
- * A row is tried alone first. If it has no trio of its own, it is tried joined
- * to the row above, keeping only chains whose two *ends* still sit within one
- * row of each other -- the end line is the band, and the tsums between the
- * ends only thicken it. `obstacles` is the read ice plus any bubbles, and a
- * chain whose drag would touch one is not a candidate.
- *
- * Returns the chain and the index of the row it stands on, or null when no
- * row can be chained -- the board is played out.
+ * Every same-colour chain of 3 to `maxLen` tsums in `strip` whose hops are all
+ * `maxHop` or shorter -- a plain bounded DFS, since a strip is ~20 tsums and
+ * the game's own adjacency keeps the branching small. Not `calculatePaths`:
+ * that returns one longest chain per colour component, with its hops at the
+ * search's full reach, and the ends wherever the DFS left them.
  */
-function elsaRowChain(ts: Tsum, free: BoardPoint[], obstacles: ElsaObstacle[]):
+function elsaStripChains(strip: BoardPoint[], maxHop: number, maxLen: number): TsumPath[] {
+  const out: TsumPath[] = [];
+  const neighbors = buildTsumNeighbors(strip, maxHop * maxHop);
+  const inPath: boolean[] = [];
+  for (let i = 0; i < strip.length; i++) { inPath.push(false); }
+  const path: number[] = [];
+  const grow = function(at: number): void {
+    path.push(at);
+    inPath[at] = true;
+    if (path.length >= 3) {
+      const chain: TsumPath = [];
+      for (let i = 0; i < path.length; i++) { chain.push(strip[path[i]]); }
+      chain.tsumIdx = +strip[at].tsumIdx;
+      out.push(chain);
+    }
+    if (path.length < maxLen) {
+      const next = neighbors[at];
+      for (let i = 0; i < next.length; i++) {
+        const n = next[i];
+        if (!inPath[n] && strip[n].tsumIdx === strip[at].tsumIdx) { grow(n); }
+      }
+    }
+    path.pop();
+    inPath[at] = false;
+  };
+  for (let s = 0; s < strip.length; s++) { grow(s); }
+  return out;
+}
+
+/**
+ * The next chain: the flattest chain anchored in the lowest row that has one,
+ * planned over that row and the `rowSpan - 1` above it.
+ *
+ * The ends are what matter -- the end line is the band -- and the tsums
+ * between them may step into the rows above, which is what gives the chain
+ * adjacent tsums to hop between (see the header). `obstacles` is the read ice
+ * plus any bubbles, and a chain whose drag would touch one is not a candidate.
+ *
+ * Returns the chain and the index of the row it is anchored in, or null when
+ * no row can be chained -- the board is played out.
+ */
+function elsaRowChain(free: BoardPoint[], obstacles: ElsaObstacle[]):
     { path: TsumPath, row: number } | null {
   const cfg = CoronationElsaConfig;
   const rows = elsaRows(free);
   for (let r = 0; r < rows.length; r++) {
-    for (let join = 0; join < 2 && r + join < rows.length; join++) {
-      const strip = join === 0 ? rows[r] : rows[r].concat(rows[r + 1]);
-      if (strip.length < 3) { continue; }
-      const paths = calculatePaths(strip, ts.myTsumIdx, skillMyTsumPriority(ts), cfg.rowMaxChain);
-      let best: TsumPath | null = null;
-      let bestSlant = Infinity;
-      for (let i = 0; i < paths.length; i++) {
-        const p = paths[i];
-        if (Math.abs(p[0].y - p[p.length - 1].y) > cfg.rowTolerance) { continue; }
-        if (!elsaPathIsClear(p, obstacles, cfg.dragClearance)) { continue; }
-        const slant = elsaSlant(p);
-        // Flattest wins; between equals, the shorter chain wanders less.
-        if (best === null || slant < bestSlant || (slant === bestSlant && p.length < best.length)) {
-          best = p;
-          bestSlant = slant;
-        }
-      }
-      if (best !== null) { return {path: best, row: r}; }
+    let strip: BoardPoint[] = [];
+    for (let k = 0; k < cfg.rowSpan && r + k < rows.length; k++) {
+      strip = strip.concat(rows[r + k]);
     }
+    if (strip.length < 3) { continue; }
+    // The row's own floor: one end at least must stand in this row, so the
+    // band is anchored this low. Both ends in it would be flatter, but a
+    // four-colour board rarely has an adjacent same-colour pair in one row,
+    // and a band a little slanted is only a little thicker -- which, for the
+    // band the final chain doubles, is no loss at all.
+    const floor = rows[r][0].y - cfg.rowTolerance;
+    const paths = elsaStripChains(strip, cfg.maxHop, cfg.rowMaxChain);
+    let best: TsumPath | null = null;
+    let bestSlant = Infinity;
+    for (let i = 0; i < paths.length; i++) {
+      const p = paths[i];
+      const a = p[0], b = p[p.length - 1];
+      if (a.y < floor && b.y < floor) { continue; }
+      if (!elsaPathIsClear(p, obstacles, cfg.dragClearance)) { continue; }
+      const slant = elsaSlant(p);
+      // Flattest wins; between equals, the shorter chain wanders less.
+      if (best === null || slant < bestSlant || (slant === bestSlant && p.length < best.length)) {
+        best = p;
+        bestSlant = slant;
+      }
+    }
+    if (best !== null) { return {path: best, row: r}; }
   }
   return null;
 }
@@ -562,7 +630,7 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
       const read = look.free.length + look.iced.length;
       if (read > expected) { expected = read; }
       if (look.iced.length > 0) { iced = look.iced; }
-      const pick = elsaRowChain(this, look.free, look.obstacles);
+      const pick = elsaRowChain(look.free, look.obstacles);
       logDebug(Log.Skill.ElsaPass, {
         slot: s,
         atMs: Date.now() - t0,

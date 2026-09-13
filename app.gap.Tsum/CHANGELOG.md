@@ -61,6 +61,16 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   (`chainAt`), each off a fresh capture; one break; the bomb popped aimed. The
   band model, the quarantine ring, the narrowest-band rule and the early burst
   are gone with it.
+- **Elsa's scheduled chains are planned over three rows with adjacent hops.**
+  Planned over one row, a colour's tsums sat two apart and the game refused the
+  hop -- every scheduled chain of `coronation_elsa_4/5.mp4` registered as one
+  or two tsums and froze nothing. `elsaStripChains` now enumerates chains with
+  hops under `maxHop` (34px) across `rowSpan` rows, anchored in the lowest.
+- **Elsa's window is treated as 16.5s at level 6, chains at 5s and 15s.** The
+  play loop's chains were still freezing 17s after an activation, and the
+  freeze is a charge spent by each chain -- ~3 tsums at 1s, 7-20 at 4-5s, the
+  whole board at 10s -- so the final chain sits ten seconds after the first.
+  Lower levels are scaled guesses (`durationMs`).
 - **Ice-alikes match per axis, with room on value, and only count once seen
   scan after scan.** The same live blue read value 185 between windows and 208
   under the fever tint, so the plain distance of 15 called it ice and every
