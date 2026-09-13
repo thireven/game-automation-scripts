@@ -39,6 +39,25 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 ### Summary
 
 - Version bump from 0.13 to 1.0
+- Coronation Day Elsa skill improved: the freeze window no longer sets its own pile off early, and the next activation follows the burst without a two-second pause.
+
+### Fixed
+
+- **Coronation Elsa's frozen box missed real ice.** Replaying `coronation_elsa_1.mp4`
+  through the scan showed standing piles at value 185-192, under the box's
+  floor of 195, so chains were drawn onto them (four piles of 16-32 lost in one
+  window) and the ice-free branches ran with a pile standing. Floor 170,
+  saturation cap 105; the board's live blue sat at 110+ throughout.
+
+### Changed
+
+- **No blind bubble sweeps in Elsa's choreography.** The one after the closing
+  burst held the next activation ~2s per window with the gauge already full;
+  the mid-window one spent ~2s of freeze time. Bubbles are popped aimed by
+  `beforeActivate` and each pass instead.
+- **Leftover ice between Elsa windows gets the blind grid only at pile size**
+  (`earlyBurst.minIced`): a pale flash reads as two or three frozen tsums often
+  enough that ~28 taps a scan was most of what the grid did.
 
 ## [0.13]
 

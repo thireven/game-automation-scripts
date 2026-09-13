@@ -57,6 +57,13 @@
 //     last chain had just frozen (16.9s: one 10-chain, popped ~half a second
 //     later). See "Reading the board through the ice" for the whitelist that
 //     answers it, and note the blind grid now backs the *closing* burst only.
+//   - **the ice read too dark for the frozen box, so it was chained over.**
+//     `coronation_elsa_1.mp4`, replayed through the scan offline: standing
+//     piles clustered at (h 104, s 67, v 192) and (h 105, s 86, v 185) --
+//     under the box's old value floor of 195 -- so the model called them
+//     free and the next drag set them off. One 10s window lost four piles of
+//     16-32 tsums that way, and every ice-free branch (the settle gate, the
+//     aimed bubble pops) ran with a pile standing. The floor is 170 now.
 //
 // Three margins on top of that, for a live device rather than the model:
 //
@@ -67,10 +74,12 @@
 //     hop (47.5px) is wider than a narrow band, so a chain can straddle one
 //     that a rescan has read back by colour with the line geometry forgotten,
 //     and a bubble touched mid-drag pops and ends the chain there;
-//   - after the burst the choreography keeps the board for `postBurstSettleMs`
-//     (sweeping the bubbles a clear that size earns), then waits out the
-//     window's tail, so the play loop's first chain cannot freeze a stray band
-//     in the dying moments.
+//   - after the burst the choreography keeps the board for `postBurstSettleMs`,
+//     then waits out the window's tail, so the play loop's first chain cannot
+//     freeze a stray band in the dying moments. No blind sweep in there any
+//     more: it cost ~2s per window (a 10s window closed at 12.2-12.6s in
+//     `coronation_elsa_1.mp4`, with the gauge already full), and the bubbles a
+//     burst earns are popped aimed by `beforeActivate` and the next pass.
 //
 // ## The board does not move, which is what makes this cheap
 //
@@ -176,10 +185,10 @@
 // planned off pre-pop positions (see `elsaFreezePass`); a bubble that survives
 // to the chaining -- unpoppable under standing ice, or missed -- becomes a
 // *drag obstacle*, kept clear of by the same `elsaPathIsClear` check that
-// keeps drags off the ice; and the post-burst blind sweep stays behind all of
-// it, for bubbles `findGameBubbles` misses -- its radius range is reasoned,
-// not yet calibrated. Aimed pops only ever happen with no ice read, because a
-// tap is what sets a pile off.
+// keeps drags off the ice; and a bubble `findGameBubbles` misses altogether
+// stays until a later scan reads it -- the blind sweeps that used to back this
+// up cost more window than the bubbles did. Aimed pops only ever happen with
+// no ice read, because a tap is what sets a pile off.
 //
 // ## Reading the board through the ice
 //
@@ -262,10 +271,14 @@
 // (h 142, s 73, v 216). Saturation is what separates the first pair and hue the
 // second, and both margins are wide.
 //
-// NOT MEASURED ON A DEVICE. The sampling above is a grid over the play square
-// rather than the circle centres `findTsums` reads, because the offline host
-// shim has no houghCircles -- so treat these as the box the *colours* sit in,
-// which is what they are, rather than as a device calibration.
+// Then re-measured off `coronation_elsa_1.mp4` (MuMu, a four-colour board:
+// sky blue, brown, black-and-white, cream) by replaying the scan's own Hough
+// and colour path over frames at 2fps. Standing ice clustered at hue 96-130,
+// saturation 5-98 and value 177-250 -- darker than the corpus said when it
+// sits over dark tsums, and two big piles read at value 185-192, under the old
+// floor of 195. The board's live blue sat at (h 101-102, s 110-145, v 200-220)
+// throughout, so saturation is the margin that holds: 105 clears the palest
+// blue by 5 and the most saturated ice by 7.
 var CoronationElsaConfig = {
   // How long the freeze window stays open, by skill level 1-6, in ms.
   durationMs: [5000, 6000, 7000, 8000, 9000, 10000],
@@ -372,7 +385,7 @@ var CoronationElsaConfig = {
   // A live tsum colour can sit inside this box too (a pale ice-blue tsum on
   // the coronation_elsa_debug2.mp4 board reads h~99 s~95-100 v~214), which is
   // why the box alone is not the test any more -- see `elsaIceAlikes`.
-  frozen: {hueMin: 95, hueMax: 135, satMax: 100, valMin: 195},
+  frozen: {hueMin: 95, hueMax: 135, satMax: 105, valMin: 170},
   // How close (plain Euclidean in cluster HSV) a centre must be to a
   // remembered ice-alike to be exonerated. A colour re-reads within ~5 of
   // itself scan to scan; the nearest measured real ice sits ~24 from the
@@ -383,16 +396,15 @@ var CoronationElsaConfig = {
   burstTaps: 3,
   burstTapDuring: 10,
   // Waited out after every chain drawn inside the window, before the next drag
-  // goes out, so the chain registers and its band forms first.
+  // goes out, so the chain registers before the next one starts.
   //
-  // This was 0 for the whole of the skill's history, which made the margin the
-  // header claims a no-op. Read off coronation_elsa_debug1.mp4 at 60fps: a
-  // 15-chain registered at 13.61s and its ice was still visibly spreading at
-  // 13.68s, when the next drag went out 33ms later and set the pile off at 16
-  // tsums (94,680, against 106 and 1,626,542 for the clean window at 1.9s).
-  // 150 clears the spread with margin; at ~7 chains a pass it costs about a
-  // fifth of a level-1 window, which is the trade -- a pile lost to an early
-  // pop costs all of it.
+  // Read off coronation_elsa_debug1.mp4 at 60fps: a 15-chain registered at
+  // 13.61s and its ice was still spreading at 13.68s, when the next drag went
+  // out and set the pile off. Waiting the spread out (150) was the first
+  // answer; what actually keeps the next drag off that ice is the path
+  // quarantine (`elsaPathBandCover`, `elsaPathIsClear`), so the wait is down
+  // to a gesture gap -- at ~7 chains a pass, 150 cost a fifth of a level-1
+  // window.
   chainSettleMs: 10,
   // Waited out after a pass pops bubbles at its start, before the board is
   // re-captured: tsums slide into the space a popped bubble leaves, so the
@@ -416,8 +428,7 @@ var CoronationElsaConfig = {
   // count cannot overrun the burst -- it just lets the gate hold out.
   settleMaxWaits: 5,
   // Waited out after a burst before anything else works the board: the pile
-  // going off is a large clear, and the refill scales with it. The closing
-  // bubble sweep runs inside this pause -- a clear that size earns bubbles.
+  // going off is a large clear, and the refill scales with it.
   //
   // Flat 250 was sized for a small pile and far too short for a big one, which
   // is what put a chain on a still-falling board at 2.72s. Now base plus
@@ -1006,10 +1017,11 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
         bursts++;
         dryPasses = 0;
         // Taken before `iced` is cleared: the wait is sized on what just went off.
+        // The bubbles this burst earns are popped aimed by the next pass, off
+        // its own capture -- a blind sweep here spent ~2s of the window.
         const settle = elsaPostBurstSettleMs(pass.iced.length);
         iced = [];
         this.sleep(settle);
-        this.clearAllBubbles(0, 0, (Button.gameBubblesFrom.y + Button.gameBubblesTo.y) / 2);
       } else {
         playedOut = true;
         break;
@@ -1022,11 +1034,11 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     aimedTaps += this.elsaBurstFrozen(iced, true);
     bursts++;
     // The pile going off is a large clear; give it a moment before anything
-    // else works the board, scaled to how large. The sweep runs inside the
-    // pause: a clear that size earns bubbles, and they are spent here rather
-    // than left to the hoard -- the bottom half, on the play loop's own trade.
+    // else works the board, scaled to how large. The bubbles it earns are
+    // left to `beforeActivate`, which pops them aimed off the play loop's next
+    // scan: the burst refills the gauge, so that scan is seconds away, and the
+    // blind sweep that used to run here held the next activation ~2s.
     this.sleep(elsaPostBurstSettleMs(iced.length));
-    this.clearAllBubbles(0, 0, (Button.gameBubblesFrom.y + Button.gameBubblesTo.y) / 2);
     // Whatever is left of the window is waited out too, so the play loop's
     // first chain cannot freeze a stray band in its dying moments -- leftover
     // ice the next scan would have to fence off.
@@ -1055,13 +1067,13 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
 
 registerSkill({
   types: [SkillType.CoronationElsa],
-  // She sweeps, and the declaration is what says so -- the choreography spends
-  // bubbles on the way in (`beforeActivate`, aimed) and calls `clearAllBubbles`
-  // on the way out (after each burst, the bottom half), which is the deliberate
-  // override of the Bubble Strategy setting. The consequence is the one the
-  // flag exists for: an activation that emptied the board must not count
-  // towards the play loop's own sweep -- and the play loop goes further for a
-  // skill that declares this, resetting its pending sweep when one fires.
+  // She spends every bubble she sees, and the declaration is what says so --
+  // aimed on the way in (`beforeActivate`) and inside each pass, whatever the
+  // Bubble Strategy setting says, which is the deliberate override. The
+  // consequence is the one the flag exists for: an activation that emptied
+  // the board must not count towards the play loop's own sweep -- and the play
+  // loop goes further for a skill that declares this, resetting its pending
+  // sweep when one fires.
   // Uncapped chains in ordinary play, whatever "Maximum Chain Number" says.
   // Between windows the only job is refilling the gauge, which counts tsums
   // cleared and not chains linked -- so a scan that links three ten-chains
@@ -1090,14 +1102,17 @@ registerSkill({
     // the choreography waits out its own window before handing back. A burst
     // that missed, or a band frozen in the window's dying moments, would
     // otherwise stand forever -- no chain can be made over ice, and nothing
-    // else in the play loop ever taps it -- so it is spent on sight, grid and
-    // all: out here there is no fresh pile for a stray tap to cost.
+    // else in the play loop ever taps it -- so it is spent on sight: out here
+    // there is no fresh pile for a stray tap to cost. The blind grid backs
+    // the aimed taps only for a pile-sized leftover; a pale flash or a coin
+    // shower reads as two or three "frozen" tsums often enough that ~28 taps
+    // a scan for those would be most of what the grid ever did.
     const leftover: BoardPoint[] = [];
     for (let i = 0; i < board.length; i++) {
       if (frozen[+board[i].tsumIdx]) { leftover.push(board[i]); }
     }
     if (leftover.length > 0) {
-      ts.elsaBurstFrozen(leftover, true);
+      ts.elsaBurstFrozen(leftover, leftover.length >= CoronationElsaConfig.earlyBurst.minIced);
     }
     // Beyond that, only ever a filter: the ordering `calculatePaths` produced
     // is already longest-first, which is what this skill wants too.
