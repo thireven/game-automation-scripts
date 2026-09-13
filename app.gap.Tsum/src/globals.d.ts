@@ -1495,12 +1495,16 @@ interface Tsum {
    * mid-window burst must not, or the grid taps ice the read never claimed.
    */
   elsaBurstFrozen(frozen: BoardPoint[], grid: boolean): number;
+  /** Blind taps down the middle of the board, where a break's bomb lands. */
+  elsaTapBombColumn(): void;
   /**
    * One settled capture (a mid-fall or bubbled ice-free look is retaken, a
    * bounded number of times), split into free tsums and ice, plus what a drag
-   * must keep away from. `expected` is the settle gate's board population.
+   * must keep away from. `expected` is the settle gate's board population;
+   * `popIcedMax` is how much read ice a bubble pop may go out over (0 unless
+   * the look follows a break).
    */
-  elsaLook(closesAt: number, expected?: number):
+  elsaLook(closesAt: number, expected?: number, popIcedMax?: number):
     { free: BoardPoint[], iced: BoardPoint[], obstacles: {x: number, y: number, pad?: number}[],
       waits: number, pops: number };
   /**
