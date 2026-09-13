@@ -9,34 +9,44 @@
 // tsums stay where they are (the board does not move inside the window), and
 // one tap on any of them sets the whole pile off at once.
 //
-// ## What the pile is worth is the overlap, not the coverage
+// ## The band thickens with time, and at the end it is the whole board
+//
+// How much a chain freezes depends on when in the window it is drawn. Read
+// off three recordings: at 1-2s in, a band one to two tsums thick
+// (`coronation_elsa_2.mp4`, chains A and P); at 5-6s, three to five thick
+// (chains C and B, the latter an L-shape that took the left two-thirds); and
+// at ~10s -- the play loop's first chains after the choreography handed back
+// in `coronation_elsa_3.mp4`, twice -- a single 3-chain froze **every tsum on
+// the board** (59, broken for 422,942; 36 for 239,117). Whether that charge
+// runs from the activation or from the previous chain is not settled; both
+// readings fit every chain seen so far. Either way the window is spent
+// waiting, and the chain that matters is the last one.
 //
 // A frozen tsum that a *second* band runs through counts double at the break,
-// with a coin bonus on top. Measured off `coronation_elsa_2.mp4`: a whole-board
-// pile of 57 broke for 391,480 where a 32-tsum pile broke for 140,040, and a
-// player's write-up of the skill reports 150-count clears off a 57-tsum board.
-// So the window is not about covering the board, it is about laying as many
-// bands as it will take before one break -- bands parallel, close together,
-// swept from one edge to the other so each new chain has a free row to stand
-// on and each band overlaps the last.
+// with a coin bonus on top (a player's write-up of the skill, and its
+// screenshots: overlapped ice is shaded pink). So the choreography draws its
+// chains at fixed points of the window (`chainAt`): a mid-window chain whose
+// band the final one will overlap, and a final chain as late as the window
+// allows, for the whole-board freeze. Then one break, and the bomb it leaves
+// is popped. If the charge turns out to run from the activation alone, more
+// slots before the last are free doubling; if it runs from the previous
+// chain, every extra slot thins the final band -- which is why the slot list
+// is a config entry and not a rule.
 //
-// The choreography is that sweep, bottom-up:
+// Each chain is the flattest chain the lowest free row offers
+// (`elsaRowChain`): both ends in one row makes the band horizontal, and short
+// beats long -- the band reaches the edges whatever the chain's length, and a
+// wandering chain only thickens it. Every chain is planned off a capture taken
+// right before it (`elsaLook`), so the ice it keeps clear of is read, never
+// modelled.
 //
-//   1. capture the board and read which tsums are ice (`elsaLook`);
-//   2. take the lowest row that still has a linkable same-colour trio in it,
-//      and draw the flattest chain that row offers (`elsaRowChain`) -- both
-//      ends in one row makes the band horizontal, and short beats long: the
-//      band reaches the edges whatever the chain's length, and a wandering
-//      chain only thickens it;
-//   3. wait `iceFormMs` for the band to form, then capture again: the read
-//      says which rows the band took, the next free row up is the next chain,
-//      and a chain that froze nothing is the window having closed.
-//
-// One capture per chain is affordable here because a window is six to eight
-// chains, not fifty. The first version of this skill was the opposite -- one
-// capture per pass, dozens of quick chains, bands modelled rather than read,
-// chosen to *avoid* each other, and the pile spent mid-window whenever the
-// model ran dry. Every one of those choices worked against the doubling.
+// The two earlier versions of this skill, for the record: the first drew
+// dozens of quick chains off one capture per pass, bands modelled and chosen
+// to avoid each other, and spent the pile mid-window whenever the model ran
+// dry; the second swept the board a row at a time with a capture per chain,
+// and treated a chain that froze nothing as the window closing -- which on
+// `coronation_elsa_3.mp4` fired on the very first chain, drawn under the
+// activation animation, and parked the choreography for seven seconds.
 //
 // ## One tap sets the pile off, so nothing may touch ice until the end
 //
@@ -51,10 +61,10 @@
 // The premature pops this skill has had, kept for the record: it burst after
 // every pass (a reflex, now a decision); a drag landed on ice the model called
 // free (the model is gone -- ice is read); the next drag went out before the
-// ice had formed (`iceFormMs` now waits for it); a live tsum colour read as ice
-// (the `elsaIceAlikes` whitelist); and the ice read too dark for the frozen box
-// on a board with dark tsums under it (`frozen.valMin` re-measured, see the
-// tuning data).
+// ice had formed (`finalIceMs` now waits for it); a live tsum colour read as
+// ice (the `elsaIceAlikes` whitelist); and the ice read too dark for the
+// frozen box on a board with dark tsums under it (`frozen.valMin`
+// re-measured, see the tuning data).
 //
 // ## After the break
 //
@@ -72,7 +82,11 @@
 // ice-blue fluffy tsum did, and every scan read a dozen-tsum phantom pile). The
 // answer is a whitelist read when ice is impossible: until the round's first
 // window opens no ice can exist, so any cluster the box matches on those scans
-// is a live colour, remembered for the round (`elsaIceAlikes`).
+// is a live colour, remembered for the round (`elsaIceAlikes`). The match is
+// loose on value and tight on hue and saturation: the same live blue read
+// (102, 88, 185) between windows and (99, 84, 208) under the fever tint on
+// `coronation_elsa_3.mp4`, and a plain distance of 15 called the second one
+// ice -- which cost every window of that run.
 //
 // The ice also eats colour slots: the board scan keeps its biggest
 // `uniqueTsumCount - 1` clusters and each ice shade takes one, so
@@ -98,20 +112,23 @@
 // throughout, so saturation is the margin that holds: 105 clears the palest
 // blue by 5 and the most saturated ice by 7.
 var CoronationElsaConfig = {
-  // How long the freeze window stays open, by skill level 1-6, in ms. The
-  // sweep does not trust this alone: a chain that freezes nothing is the
-  // window having closed, whatever the table says (`minNewIce`).
+  // How long the freeze window stays open, by skill level 1-6, in ms. On
+  // `coronation_elsa_3.mp4` chains drawn 10.0-10.1s after a level-6 tap still
+  // froze, so the table is if anything short.
   durationMs: [5000, 6000, 7000, 8000, 9000, 10000],
-  // The activation animation, waited out before the first look. Whether the
-  // game starts the window at the tap or when the animation ends is unknown;
-  // this assumes the tap, which costs a look rather than a missed burst.
-  leadInMs: 600,
-  // The slice of the window the closing burst's taps need -- aimed taps plus
-  // the blind grid. The sweep keeps going until just this much is left.
-  burstTailMs: 600,
-  // The least room before the burst deadline worth another look-and-chain: a
-  // capture, a drag and the band forming.
-  passMinMs: 600,
+  // When the chains go out, as fractions of the window, in order. See the
+  // header: the band thickens with time and is the whole board at the end, so
+  // the last slot is as late as the window allows and the ones before it are
+  // bands for the last one to overlap. Two slots until a recording says
+  // whether the charge runs from the activation (add slots) or from the
+  // previous chain (keep two, or one).
+  chainAt: [0.5, 0.95],
+  // The activation animation: no look before this. Seen at ~1.4s on
+  // `coronation_elsa_3.mp4`, which is why the first slot is not earlier.
+  leadInMs: 1500,
+  // Waited out after the final chain before the look the burst aims off: the
+  // whole-board freeze had settled 300ms after the release on that recording.
+  finalIceMs: 600,
   // How far a tsum may sit above the lowest tsum of a row and still be in that
   // row, in the 200px play square (a tsum is 25, rows pitch about 22). A chain
   // whose ends are both inside one row has a band that is horizontal to within
@@ -121,28 +138,19 @@ var CoronationElsaConfig = {
   // the band reaches both edges whatever the length, and a long chain wanders
   // off its own line and thickens it.
   rowMaxChain: 5,
-  // Waited out after a chain before the look that reads its band. Measured at
-  // 60fps on `coronation_elsa_2.mp4`: the slash follows the release by ~100ms
-  // and the crystals have settled by 250-300ms.
-  iceFormMs: 350,
-  // One more wait when a look after a chain shows no new ice, before that is
-  // taken as the window having closed.
-  iceRetryMs: 250,
-  // Fewer new frozen tsums than this after a chain, on two looks, means the
-  // chain froze nothing: the window is over and the pile is spent now. A real
-  // band is five or more.
-  minNewIce: 2,
   // How close a drag may pass to a frozen tsum or a bubble, same units --
   // about one tsum radius. A linkable hop is `tsumWidth * linkReach` = 47.5px,
   // so two free tsums can sit one hop apart with ice between them.
   dragClearance: 13,
   // What a frozen tsum's cluster centre looks like. See the note above.
   frozen: {hueMin: 95, hueMax: 135, satMax: 105, valMin: 170},
-  // How close (plain Euclidean in cluster HSV) a centre must be to a
-  // remembered ice-alike to be exonerated. A colour re-reads within ~5 of
-  // itself scan to scan; the nearest measured real ice sits ~24 from the
-  // known ice-alike. 15 splits the gap.
-  iceAlikeMatchDist: 15,
+  // How far a centre may sit from a remembered ice-alike on each axis and
+  // still be that live colour. Hue and saturation re-read within ~5 of
+  // themselves scan to scan, and the nearest measured real ice sits 8 in hue
+  // and 18 in saturation from a known ice-alike, so 12 and 15 keep it out.
+  // Value moves with the fever tint -- one live blue read 185 and 208 in the
+  // same round -- so it gets the room it needs.
+  iceAlikeMatch: {hue: 12, sat: 15, val: 40},
   // Taps spent on the pile. One is enough to set it off; the rest insure
   // against a position the read had slightly wrong.
   burstTaps: 3,
@@ -167,10 +175,6 @@ var CoronationElsaConfig = {
   postBurstSettleMaxMs: 900,
   // Waited out when a look offers no chain at all before looking again.
   rescanIdleMs: 300,
-  // A board with no row left to chain, and at least this much window still
-  // open, is burst on the spot and the refill swept -- a second pile beats
-  // idling on a finished one. With less left, the closing burst fires instead.
-  refreezeMinWindowLeftMs: 3000,
   // Leftover ice read between windows this big or bigger is a burst that
   // missed, and is spent (grid and all). Smaller is a band left standing on
   // purpose: it doubles under the next window's bands.
@@ -191,17 +195,18 @@ var elsaIceAlikeRound = 0;
 var elsaWindowRound = 0;
 
 /**
- * Whether a cluster centre matches a colour known to be alive, not ice.
- *
- * Plain Euclidean, not `distance3D`: its near-match discounts are tuned for
- * merging clusters, and they collapse exactly the margin this check lives on.
+ * Whether a cluster centre matches a colour known to be alive, not ice: within
+ * `iceAlikeMatch` of a remembered one on every axis. Per axis and not a
+ * distance, because value drifts far more than hue or saturation do.
  */
 function elsaIsIceAlike(c: Color): boolean {
+  const m = CoronationElsaConfig.iceAlikeMatch;
   for (let i = 0; i < elsaIceAlikes.length; i++) {
     const a = elsaIceAlikes[i];
-    const d = Math.sqrt((a.b - c.b) * (a.b - c.b) + (a.g - c.g) * (a.g - c.g)
-      + (a.r - c.r) * (a.r - c.r));
-    if (d < CoronationElsaConfig.iceAlikeMatchDist) { return true; }
+    if (Math.abs(a.b - c.b) <= m.hue && Math.abs(a.g - c.g) <= m.sat
+        && Math.abs(a.r - c.r) <= m.val) {
+      return true;
+    }
   }
   return false;
 }
@@ -488,8 +493,8 @@ Tsum.prototype.elsaLook = function(closesAt, expected) {
 };
 
 /**
- * Play the freeze window as the row sweep the header describes, then break
- * the pile once and pop the bomb it leaves.
+ * Play the freeze window: a chain at each of `chainAt`, the last as late as
+ * the window allows, then one break and the bomb it leaves popped.
  *
  * Anchored to `activatedAt` rather than to when this was entered, so the window
  * is the game's and not the script's. `expectTsums` is the population of the
@@ -499,120 +504,83 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
   const cfg = CoronationElsaConfig;
   const t0 = activatedAt || Date.now();
   const level = Math.min(Math.max(this.skillLevel, 1), cfg.durationMs.length);
-  const closesAt = t0 + cfg.durationMs[level - 1];
-  // The last moment the closing burst may start with its taps still landing
-  // inside the window.
-  const burstBy = closesAt - cfg.burstTailMs;
-
-  this.sleepUntil(t0 + cfg.leadInMs);
+  const windowMs = cfg.durationMs[level - 1];
+  const closesAt = t0 + windowMs;
 
   // How many tsums the board is believed to hold: seeded from the play loop's
   // scan and raised to the best count any look reads.
   let expected = expectTsums || 0;
   let looks = 0;
   let chains = 0;
-  let bursts = 0;
+  let missed = 0;
   let aimedTaps = 0;
-  let blocked = 0;
-  // The last read that saw ice: what the closing burst aims at.
+  // The last read that saw ice: what the break aims at.
   let iced: BoardPoint[] = [];
-  // The pile as the previous look read it, and whether a chain has gone out
-  // since -- the pair that says whether that chain froze anything.
-  let pileBefore = 0;
-  let pending = false;
-  let dryLooks = 0;
-  let closedEarlyMs = 0;
-  let playedOut = false;
-  while (this.isRunning && burstBy - Date.now() > cfg.passMinMs) {
-    const look = this.elsaLook(burstBy, expected);
-    looks++;
-    const read = look.free.length + look.iced.length;
-    if (read > expected) { expected = read; }
-    if (look.iced.length > 0) { iced = look.iced; }
-    if (pending) {
-      if (look.iced.length - pileBefore < cfg.minNewIce) {
-        dryLooks++;
-        // Once: the band may still be forming. Twice: nothing froze, so the
-        // window has closed under the table's duration -- spend the pile now.
-        if (dryLooks < 2 && Date.now() + cfg.iceRetryMs < burstBy) {
-          this.sleep(cfg.iceRetryMs);
-          continue;
-        }
-        closedEarlyMs = closesAt - Date.now();
+  for (let s = 0; s < cfg.chainAt.length && this.isRunning; s++) {
+    const slotAt = t0 + Math.max(cfg.leadInMs, cfg.chainAt[s] * windowMs);
+    // A slot keeps looking until it has drawn its chain or the next slot is
+    // due; the last one has until the window closes.
+    const slotEnds = s + 1 < cfg.chainAt.length
+      ? t0 + cfg.chainAt[s + 1] * windowMs : closesAt;
+    this.sleepUntil(slotAt);
+    let drawn = false;
+    while (this.isRunning && !drawn) {
+      const look = this.elsaLook(slotEnds, expected);
+      looks++;
+      const read = look.free.length + look.iced.length;
+      if (read > expected) { expected = read; }
+      if (look.iced.length > 0) { iced = look.iced; }
+      const pick = elsaRowChain(this, look.free, look.obstacles);
+      logDebug(Log.Skill.ElsaPass, {
+        slot: s,
+        atMs: Date.now() - t0,
+        free: look.free.length,
+        iced: look.iced.length,
+        waits: look.waits,
+        pops: look.pops,
+        row: pick === null ? -1 : pick.row,
+        chainLen: pick === null ? 0 : pick.path.length,
+      });
+      if (pick !== null) {
+        // `linkTsums` and not `link`: its bubble pop and its skill check both
+        // belong to the play loop, and the second would nest a window in
+        // this one.
+        this.linkTsums(pick.path);
+        chains++;
+        drawn = true;
         break;
       }
-      dryLooks = 0;
-      pending = false;
+      if (Date.now() + cfg.rescanIdleMs >= slotEnds) { break; }
+      this.sleep(cfg.rescanIdleMs);
     }
-    pileBefore = look.iced.length;
-    const pick = elsaRowChain(this, look.free, look.obstacles);
-    logDebug(Log.Skill.ElsaPass, {
-      look: looks,
-      free: look.free.length,
-      iced: look.iced.length,
-      waits: look.waits,
-      pops: look.pops,
-      row: pick === null ? -1 : pick.row,
-      chainLen: pick === null ? 0 : pick.path.length,
-      leftMs: closesAt - Date.now(),
-    });
-    if (pick === null) {
-      // No row left to chain. With window enough to refreeze the refill, spend
-      // the pile now -- aimed only, no grid inside the window -- and sweep
-      // again; the next look's bubble pop takes the bomb. Otherwise this is
-      // the closing burst, just not waited for.
-      if (look.iced.length >= 3 && burstBy - Date.now() > cfg.refreezeMinWindowLeftMs) {
-        aimedTaps += this.elsaBurstFrozen(look.iced, false);
-        bursts++;
-        this.sleep(elsaPostBurstSettleMs(look.iced.length));
-        iced = [];
-        pileBefore = 0;
-        continue;
-      }
-      if (look.iced.length > 0) {
-        playedOut = true;
-        break;
-      }
-      // Nothing frozen and nothing to chain: a starved read. Look again.
-      blocked++;
-      this.sleepUntil(Math.min(Date.now() + cfg.rescanIdleMs, burstBy));
-      continue;
-    }
-    // `linkTsums` and not `link`: its bubble pop and its skill check both
-    // belong to the play loop, and the second would nest a window in this one.
-    this.linkTsums(pick.path);
-    chains++;
-    pending = true;
-    this.sleep(cfg.iceFormMs);
+    if (!drawn) { missed++; }
   }
   if (this.isRunning) {
+    // Let the last band form, read the pile once more, and break it. The look
+    // is bounded to now, so it neither waits on a fall nor pops anything.
+    this.sleep(cfg.finalIceMs);
+    const last = this.elsaLook(Date.now(), expected);
+    looks++;
+    if (last.iced.length > 0) { iced = last.iced; }
     aimedTaps += this.elsaBurstFrozen(iced, true);
-    bursts++;
     // The break is a large clear; let it settle, then one look for the bomb it
     // spawned (where the clear count was shown) and pop it aimed. The play
     // loop's own scan follows the moment this hands back.
     this.sleep(elsaPostBurstSettleMs(iced.length));
     this.scanBoardQuick();
     this.popGameBubbles(this.gameBubbles.length);
-    // Whatever is left of the window is waited out too, so the play loop's
-    // first chain cannot freeze a stray band in its dying moments.
     this.sleepUntil(closesAt);
   }
 
   logInfo(Log.Skill.ElsaDone, {
     skillLevel: level,
-    windowMs: cfg.durationMs[level - 1],
+    windowMs: windowMs,
     looks: looks,
     chains: chains,
-    bursts: bursts,
-    // Whether the sweep ran the board out of rows before the clock did.
-    playedOut: playedOut,
-    // Window left on the table when a chain froze nothing -- non-zero says the
-    // real window is shorter than `durationMs` claims.
-    closedEarlyMs: closedEarlyMs,
-    starvedLooks: blocked,
-    // The pile as last read going into the burst. Near zero with several
-    // chains drawn means something touched ice mid-window.
+    // Slots that found no chain to draw before their time ran out.
+    missed: missed,
+    // The pile as last read going into the break. Near zero with the chains
+    // drawn means something touched ice, or the final chain froze nothing.
     icedLast: iced.length,
     aimedTaps: aimedTaps,
     totalMs: Date.now() - t0,

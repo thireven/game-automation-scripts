@@ -1491,9 +1491,9 @@ interface Tsum {
     { free: BoardPoint[], iced: BoardPoint[], obstacles: {x: number, y: number, pad?: number}[],
       waits: number, pops: number };
   /**
-   * Play the freeze window as a bottom-up row sweep -- one look per chain --
-   * then break the pile once and pop the bomb it leaves. `expectTsums` seeds
-   * the settle gate with the pre-activation board's size.
+   * Play the freeze window: a chain at each of `chainAt`, the last as late as
+   * the window allows, then one break and the bomb it leaves popped.
+   * `expectTsums` seeds the settle gate with the pre-activation board's size.
    */
   useCoronationElsaSkill(activatedAt?: number, expectTsums?: number): void;
 

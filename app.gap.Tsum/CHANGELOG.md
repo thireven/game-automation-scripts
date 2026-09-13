@@ -39,7 +39,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 ### Summary
 
 - Version bump from 0.13 to 1.0
-- Coronation Day Elsa skill improved: the freeze window is now played for one big break, sweeping the board in close parallel bands from the bottom up, instead of many scattered chains and early pops.
+- Coronation Day Elsa skill improved: the freeze window is now played for one big break, with the last chain drawn as late as possible so it freezes the whole board, instead of many scattered chains and early pops.
 
 ### Fixed
 
@@ -51,17 +51,20 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 
 ### Changed
 
-- **Elsa's window is a row sweep now.** A frozen tsum under a second band counts
-  double at the break (a 57-tsum pile broke for 391k against 140k for 32), so
-  the old aim -- many quick chains whose bands avoid each other, spent
-  mid-window -- was the wrong one. Now: capture, read the ice, draw the
-  flattest chain on the lowest free row, wait `iceFormMs` for the band, look
-  again; one break when the rows run out or the window closes; the bomb it
-  leaves is popped aimed. The band model, the quarantine ring, the
-  narrowest-band rule and the early burst are gone with it.
-- **A chain that freezes nothing ends the window** (`minNewIce`), and
-  `skill.elsa.done` reports it as `closedEarlyMs` -- the fast recording's late
-  chains froze nothing at ~7s into a level-6 window that the table says is 10s.
+- **Elsa's window is two scheduled chains and one break.** The band a chain
+  freezes thickens with time -- one to two tsums at 1-2s, the whole board at
+  ~10s (`coronation_elsa_3.mp4`: a single 3-chain froze 59 for 422,942) -- and
+  a frozen tsum under a second band counts double at the break. So the old aim
+  (many quick chains whose bands avoid each other, spent mid-window) was the
+  wrong one, and so was the row sweep that briefly replaced it. Now: a flat
+  chain on the lowest free row at half the window and another at 95% of it
+  (`chainAt`), each off a fresh capture; one break; the bomb popped aimed. The
+  band model, the quarantine ring, the narrowest-band rule and the early burst
+  are gone with it.
+- **Ice-alikes match per axis, with room on value.** The same live blue read
+  value 185 between windows and 208 under the fever tint, so the plain distance
+  of 15 called it ice and every window of that run chained around a phantom
+  pile. Now hue within 12, saturation within 15, value within 40.
 - **No blind bubble sweeps in Elsa's choreography.** The one after the closing
   burst held the next activation ~2s per window with the gauge already full;
   the mid-window one spent ~2s of freeze time.
