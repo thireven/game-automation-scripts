@@ -67,7 +67,11 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   taps miss is spent as leftover by the next scan. The wait for a band to
   form before the next look is 275ms, down from 350: the crystals settle by
   250-300ms and the capture adds ~60ms, and the ice does not care how fast
-  the chains come. The band model, the
+  the chains come. The hop limit is tiered (`maxHops`, 34 then 44px) on one
+  capture: adjacent tsums wherever they are, else the scattered islands a
+  frozen-out board leaves, whose 35-43px hops the tight limit refused right
+  before three of four mid-window breaks on `coronation_elsa_8.mp4` -- the
+  chains a player sees left standing. The band model, the
   quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the

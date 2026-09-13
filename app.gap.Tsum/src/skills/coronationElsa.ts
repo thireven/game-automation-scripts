@@ -39,9 +39,10 @@
 // A chain planned over one row of the board registers as a touch on one tsum:
 // a row holds a colour's tsums two apart with another colour between, a hop
 // of nearly two tsum widths, which the game does not link. So the plan spans
-// `rowSpan` rows and keeps every hop under `maxHop`, about a tsum and a
-// third: at least one end sits in the anchor row, and the tsums between may
-// step into the rows above. Verified linking on `coronation_elsa_6.mp4`.
+// `rowSpan` rows and keeps every hop under `maxHops` -- adjacent tsums
+// first, and a wider tier only when no row has a chain of those: at least
+// one end sits in the anchor row, and the tsums between may step into the
+// rows above. Verified linking on `coronation_elsa_6.mp4`.
 //
 // What has been observed about how much a chain freezes, kept for whoever
 // tunes this next: the band grows with the time since the last freeze -- ~3
@@ -146,11 +147,16 @@ var CoronationElsaConfig = {
   // tsums between them anywhere in these. One row alone holds a colour's
   // tsums two apart, which is a hop the game refuses (see the header).
   rowSpan: 3,
-  // The longest hop a planned chain may take, in the 200px play square. The
-  // search's own reach (`linkReach`, 1.9 widths) is what the play loop
-  // gambles on; a chain that must register gets adjacent tsums only, which sit
-  // 24-26px apart on a settled board.
-  maxHop: 34,
+  // The longest hop a planned chain may take, in the 200px play square, as
+  // tiers tried in order on one capture: the whole board at the first, then
+  // at the next only if that found nothing. Adjacent tsums sit 24-26px apart
+  // on a settled board and are the surest to register, so a chain of them
+  // wins wherever it is. On a board frozen nearly out the free tsums are
+  // scattered islands and every chain left needs 35-43px hops
+  // (`coronation_elsa_8.mp4`, four pre-break frames replayed) -- inside the
+  // 47.5px (`linkReach`) every ordinary chain gambles on, and clear of the
+  // ~50px single-row hops the game refused.
+  maxHops: [34, 44],
   // How close a drag may pass to a frozen tsum or a bubble, same units --
   // about one tsum radius. A linkable hop is `tsumWidth * linkReach` = 47.5px,
   // so two free tsums can sit one hop apart with ice between them.
@@ -432,41 +438,49 @@ function elsaStripChains(strip: BoardPoint[], maxHop: number, maxLen: number): T
  * adjacent tsums to hop between (see the header). `obstacles` is the read ice
  * plus any bubbles, and a chain whose drag would touch one is not a candidate.
  *
- * Returns the chain and the index of the row it is anchored in, or null when
- * no row can be chained -- the board is played out.
+ * The hop limit is tiered (`maxHops`): every row at the tight limit first,
+ * and the wider one only when no row has a chain at all. The planner is
+ * microseconds, so the widening happens on one capture, not across looks.
+ *
+ * Returns the chain, the index of the row it is anchored in and the hop limit
+ * that found it, or null when no row can be chained -- the board is played
+ * out.
  */
 function elsaRowChain(free: BoardPoint[], obstacles: ElsaObstacle[]):
-    { path: TsumPath, row: number } | null {
+    { path: TsumPath, row: number, hop: number } | null {
   const cfg = CoronationElsaConfig;
   const rows = elsaRows(free);
-  for (let r = 0; r < rows.length; r++) {
-    let strip: BoardPoint[] = [];
-    for (let k = 0; k < cfg.rowSpan && r + k < rows.length; k++) {
-      strip = strip.concat(rows[r + k]);
-    }
-    if (strip.length < 3) { continue; }
-    // The row's own floor: one end at least must stand in this row, so the
-    // band is anchored this low. Both ends in it would be flatter, but a
-    // four-colour board rarely has an adjacent same-colour pair in one row,
-    // and a band a little slanted is only a little thicker -- which, for the
-    // band the final chain doubles, is no loss at all.
-    const floor = rows[r][0].y - cfg.rowTolerance;
-    const paths = elsaStripChains(strip, cfg.maxHop, cfg.rowMaxChain);
-    let best: TsumPath | null = null;
-    let bestSlant = Infinity;
-    for (let i = 0; i < paths.length; i++) {
-      const p = paths[i];
-      const a = p[0], b = p[p.length - 1];
-      if (a.y < floor && b.y < floor) { continue; }
-      if (!elsaPathIsClear(p, obstacles, cfg.dragClearance)) { continue; }
-      const slant = elsaSlant(p);
-      // Flattest wins; between equals, the shorter chain wanders less.
-      if (best === null || slant < bestSlant || (slant === bestSlant && p.length < best.length)) {
-        best = p;
-        bestSlant = slant;
+  for (let t = 0; t < cfg.maxHops.length; t++) {
+    const maxHop = cfg.maxHops[t];
+    for (let r = 0; r < rows.length; r++) {
+      let strip: BoardPoint[] = [];
+      for (let k = 0; k < cfg.rowSpan && r + k < rows.length; k++) {
+        strip = strip.concat(rows[r + k]);
       }
+      if (strip.length < 3) { continue; }
+      // The row's own floor: one end at least must stand in this row, so the
+      // band is anchored this low. Both ends in it would be flatter, but a
+      // four-colour board rarely has an adjacent same-colour pair in one row,
+      // and a band a little slanted is only a little thicker -- which, for
+      // the band the final chain doubles, is no loss at all.
+      const floor = rows[r][0].y - cfg.rowTolerance;
+      const paths = elsaStripChains(strip, maxHop, cfg.rowMaxChain);
+      let best: TsumPath | null = null;
+      let bestSlant = Infinity;
+      for (let i = 0; i < paths.length; i++) {
+        const p = paths[i];
+        const a = p[0], b = p[p.length - 1];
+        if (a.y < floor && b.y < floor) { continue; }
+        if (!elsaPathIsClear(p, obstacles, cfg.dragClearance)) { continue; }
+        const slant = elsaSlant(p);
+        // Flattest wins; between equals, the shorter chain wanders less.
+        if (best === null || slant < bestSlant || (slant === bestSlant && p.length < best.length)) {
+          best = p;
+          bestSlant = slant;
+        }
+      }
+      if (best !== null) { return {path: best, row: r, hop: maxHop}; }
     }
-    if (best !== null) { return {path: best, row: r}; }
   }
   return null;
 }
@@ -642,6 +656,8 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
       pops: look.pops,
       row: pick === null ? -1 : pick.row,
       chainLen: pick === null ? 0 : pick.path.length,
+      // The hop tier that found it: the wide one on a board frozen nearly out.
+      hop: pick === null ? 0 : pick.hop,
     });
     if (pick === null) {
       // Nothing chainable this look -- ice everywhere a row could stand, or a
@@ -760,7 +776,7 @@ registerSkill({
     // the window opens: a bubble holes every band drawn through it and breaks
     // any chain dragged over it, and there is no chain in the window worth
     // saving one for.
-    ts.popGameBubbles(ts.gameBubbles.length);
+    // ts.popGameBubbles(ts.gameBubbles.length);
   },
   afterActivate: function(ts, board, activatedAt) {
     // Ice exists in this round from here on, so the ice-alike learning stops.
