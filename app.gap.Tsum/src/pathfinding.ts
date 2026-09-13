@@ -250,10 +250,10 @@ function findLongestTsumPath(
 // at whatever it had set.
 // `lowFirst` grows each chain from the lowest tsum the search can start on
 // rather than from any equally good one, and tags what comes back with the
-// `startY` it grew from. Elsa's freeze window is the one caller: it freezes
-// rather than clears, so its chains can be worked bottom-up, and `startY` is
-// what the window orders them by. Everything else wants the longest chain
-// wherever on the board it happens to sit.
+// `startY` it grew from. Elsa's freeze window used to be the one caller; it
+// now sweeps the board a row at a time and hands this a row's tsums instead,
+// so nothing passes it today. Kept because it costs nothing and the
+// development toolkit's coverage harness still drives it.
 function calculatePaths(
     board: BoardPoint[],
     myTsumIdx: number, prioritizeMyTsum: boolean, maxChain?: number,
