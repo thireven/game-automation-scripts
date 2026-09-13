@@ -39,7 +39,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 ### Summary
 
 - Version bump from 0.13 to 1.0
-- Coronation Day Elsa skill improved: the freeze window is now played for one big break, with the last chain drawn as late as possible so it freezes the whole board, instead of many scattered chains and early pops.
+- Coronation Day Elsa skill improved: the freeze window is swept a row at a time from the bottom, the pile is broken as soon as the board has frozen over and again at the close, and the bomb is popped each time.
 
 ### Fixed
 
@@ -60,8 +60,12 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   seconds or more of window left is broken on the spot and the refill swept
   again -- the sweep fills a board in three to four seconds, and one window
   on `coronation_elsa_7.mp4` took 391,274 and 599,936 that way against
-  ~250,000 for a pile left standing. The band model, the quarantine ring and
-  the narrowest-band rule are gone.
+  ~250,000 for a pile left standing. A break inside the window is aimed taps
+  only: the blind grid behind them was 25 taps at ~50ms each, 1.4s a break
+  and three breaks a window on `coronation_elsa_8.mp4`. The closing break
+  keeps the grid only when it has no pile read to aim at; a pile the aimed
+  taps miss is spent as leftover by the next scan. The band model, the
+  quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the
   same day: both made about one chain a window.)

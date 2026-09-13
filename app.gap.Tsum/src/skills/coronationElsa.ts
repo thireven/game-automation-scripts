@@ -485,10 +485,11 @@ function elsaPostBurstSettleMs(pile: number): number {
  *
  * Aimed taps first, top of the board down and spread evenly down the pile, so
  * a pile the read has slightly wrong is still covered. Then, only when `grid`
- * says so, the blind sweep: the closing burst gets it, because after the
- * window a missed pile is lost for good and the ~25 taps cost round time only.
- * A mid-window burst does not -- its pile came off a fresh capture, and a grid
- * inside the window taps ice the read never claimed.
+ * says so, the blind sweep -- ~25 taps at ~50ms each, so 1.3s: a closing
+ * burst with no pile read to aim at, and a leftover pile between windows,
+ * where the time is the round's. Never inside the window: a mid-window
+ * pile came off a fresh capture, and the grid would spend a quarter of the
+ * time left.
  *
  * A tap is not a drag, so one that lands on an ordinary tsum links nothing and
  * the game ignores it.
@@ -648,9 +649,11 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
       if (starvedRun >= cfg.refreezeStarvedLooks && look.iced.length >= cfg.refreezeMinIced
           && chainBy - Date.now() > cfg.refreezeMinWindowLeftMs) {
         // The board is frozen out with window to spare: spend the pile now
-        // and sweep the refill. The next look pops the bomb the break leaves
-        // (no ice stands, so its bubble pop runs) before chaining.
-        aimedTaps += this.elsaBurstFrozen(look.iced, true);
+        // and sweep the refill. Aimed taps only -- the grid's 25 taps cost
+        // ~1.3s of window (`coronation_elsa_8.mp4`: 1.4s a break, three a
+        // window). The next look pops the bomb the break leaves (no ice
+        // stands, so its bubble pop runs) before chaining.
+        aimedTaps += this.elsaBurstFrozen(look.iced, false);
         bursts++;
         this.sleep(elsaPostBurstSettleMs(look.iced.length));
         iced = [];
@@ -676,7 +679,11 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     const last = this.elsaLook(Date.now(), expected);
     looks++;
     if (last.iced.length > 0) { iced = last.iced; }
-    aimedTaps += this.elsaBurstFrozen(iced, true);
+    // The grid only when there is no pile read to aim at: a pile the aimed
+    // taps miss is read as leftover by the next scan and spent, grid and all
+    // (`leftoverBurstMin`), while the grid here holds the bomb pop and the
+    // play loop ~1.3s every window.
+    aimedTaps += this.elsaBurstFrozen(iced, iced.length < cfg.leftoverBurstMin);
     bursts++;
     // The break is a large clear; let it settle, then one look for the bomb it
     // spawned (where the clear count was shown) and pop it aimed. The play
