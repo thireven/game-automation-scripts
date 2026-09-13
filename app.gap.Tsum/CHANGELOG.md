@@ -112,7 +112,14 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   cube's centre is, most ice-alike tsums are not, and it is what holds when
   the clustering merges a learned colour with a fresh band. The toolkit's
   `ice_alikes.py` runs every tsum's board art through the read: 70 of 769
-  depend on the whitelist, 41 more sit within 12 of a box wall. The band
+  depend on the whitelist, 41 more sit within 12 of a box wall. A break
+  taps the bubbles its capture found after the ice, and the look after a
+  break pops what it finds over a read of up to four ice: bubbles survive
+  a break (`coronation_elsa_10.mp4` at 0:10) and the post-break look read
+  shards as ice 127 times in 131, so nearly every bubble was frozen over
+  again and only spent after the window. (A blind column of taps for the
+  bomb was tried the same day and withdrawn: it cost about a second a
+  break and coins with it.) The band
   model, the
   quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
