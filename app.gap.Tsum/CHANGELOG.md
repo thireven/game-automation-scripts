@@ -91,7 +91,11 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   every pile in recordings 8-10: the cube dominates the centre whatever is
   under it (hue 88-165, saturation 25-150, value 175+), and the doubled cube
   and the shards read near-white, taken as ice unless the face contrast says
-  a white-patched face. The band model, the
+  a white-patched face. The ice-alike whitelist learns by the same per-tsum
+  read: a grey-blue cat on `coronation_elsa_11.mp4` read as ice tsum by
+  tsum but its cluster centre never entered the old box, so it was never
+  learned -- every scan between windows fired a leftover break at it and no
+  chain through it was ever drawn. The band model, the
   quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the

@@ -87,9 +87,10 @@
 // the box (an event board's pale ice-blue fluffy tsum did, and every scan
 // read a dozen-tsum phantom pile). The answer is a whitelist read when ice
 // is impossible: until the round's first window opens no ice can exist, so
-// any colour cluster the `frozen` box matches on those scans is a live
-// colour, remembered for the round (`elsaIceAlikes`), and its tsums are
-// never ice. The match is loose on value and tight on hue and saturation:
+// any colour cluster whose tsums read as ice on those scans is a live
+// colour, remembered by its cluster centre for the round (`elsaIceAlikes`),
+// and its tsums are never ice. The match is loose on value and tight on hue
+// and saturation:
 // the same live blue read (102, 88, 185) between windows and (99, 84, 208)
 // under the fever tint on `coronation_elsa_3.mp4`, and a plain distance of
 // 15 called the second one ice -- which cost every window of that run.
@@ -125,10 +126,11 @@
 // clustering samples is a different thing: it reads a tsum ringed by ice as
 // pale itself (four black Mickeys in a glow read as a pile; two faces one
 // pink, one peach merged into a chain that never linked), which is why ice
-// is not read from the cluster centres any more. `frozen` is the older box
-// on those centres, kept for one job: learning, before the round's first
-// window, which live colours would pass it (`elsaIceAlikes`) -- an event
-// board's pale ice-blue tsum did, and read as a phantom pile all round.
+// is not read from the cluster centres any more. The cluster centre has one
+// job left: it is the key the ice-alike whitelist remembers a live colour
+// by (`elsaIceAlikes`) -- a grey-blue cat on `coronation_elsa_11.mp4` reads
+// as ice tsum by tsum, and an event board's pale ice-blue tsum did before
+// it; learned before the first window, their clusters are never ice.
 var CoronationElsaConfig = {
   // How long the freeze window stays open, by skill level 1-6, in ms, counted
   // from the end of the activation animation (`leadInMs`). Level 6 is the
@@ -182,8 +184,6 @@ var CoronationElsaConfig = {
     paleSatMax: 25, paleValMin: 235, paleHueMin: 90, paleHueMax: 175,
     paleContrastMax: 35,
   },
-  // The older box on the cluster centres, for the ice-alike whitelist only.
-  frozen: {hueMin: 95, hueMax: 135, satMax: 105, valMin: 170},
   // How far a centre may sit from a remembered ice-alike on each axis and
   // still be that live colour. Hue and saturation re-read within ~5 of
   // themselves scan to scan, and the nearest measured real ice sits 8 in hue
@@ -307,25 +307,32 @@ function elsaIsIceAlike(c: Color): boolean {
 /**
  * Learn this round's ice-alikes off a scan that cannot be looking at ice:
  * called from `orderPaths`, and a no-op once the round's first window has
- * opened. Any cluster of `iceAlikeMinTsums` or more that the frozen box
- * matches before then is a live-colour candidate; it counts once the scans
- * keep agreeing.
+ * opened. Any cluster with `iceAlikeMinTsums` or more of its tsums reading
+ * as ice before then is a live-colour candidate; it counts once the scans
+ * keep agreeing. The same per-tsum read as the window's, so what it learns
+ * is exactly what would have been called ice: a grey-blue cat's centre reads
+ * (95, 40, 210), inside the ice box, on `coronation_elsa_11.mp4`, and a box
+ * on the cluster centre (value 155-187 there) had never learned it.
  */
-function elsaNoteIceAlikes(ts: Tsum): void {
+function elsaNoteIceAlikes(ts: Tsum, board: BoardPoint[]): void {
   if (elsaIceAlikeRound !== gLogRoundId) {
     elsaIceAlikes = [];
     elsaIceAlikeRound = gLogRoundId;
   }
   if (elsaWindowRound === gLogRoundId) { return; }
   const cfg = CoronationElsaConfig;
-  const box = cfg.frozen;
   const clusters = ts.boardClusters;
   const sizes = ts.boardClusterSizes;
+  const icy: number[] = [];
+  for (let i = 0; i < clusters.length; i++) { icy.push(0); }
+  const none: boolean[] = [];
+  for (let i = 0; i < board.length; i++) {
+    const idx = +board[i].tsumIdx;
+    if (idx < icy.length && elsaPointIsIce(board[i], none)) { icy[idx]++; }
+  }
   for (let i = 0; i < clusters.length; i++) {
     const c = clusters[i];
-    if (sizes[i] < cfg.iceAlikeMinTsums) { continue; }
-    if (!(c.b >= box.hueMin && c.b <= box.hueMax
-        && c.g <= box.satMax && c.r >= box.valMin)) { continue; }
+    if (icy[i] < cfg.iceAlikeMinTsums) { continue; }
     const known = elsaIceAlikeMatch(c);
     if (known !== null) {
       known.seen++;
@@ -883,9 +890,9 @@ registerSkill({
   extraClusterSlots: 4,
   sweepsBubbles: true,
   orderPaths: function(ts, paths, board) {
-    // Before the round's first window, a cluster the frozen box matches is a
-    // live colour -- learn it now, or it plays as a phantom pile all round.
-    elsaNoteIceAlikes(ts);
+    // Before the round's first window, a cluster whose tsums read as ice is
+    // a live colour -- learn it now, or it plays as a phantom pile all round.
+    elsaNoteIceAlikes(ts, board);
     // Ice read here is *leftover*. A pile-sized leftover is a closing burst
     // that missed, and is spent -- out here there is no fresh pile for a
     // stray tap to cost. A smaller one is a band left standing on purpose:
