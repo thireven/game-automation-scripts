@@ -61,10 +61,14 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   (`chainAt`), each off a fresh capture; one break; the bomb popped aimed. The
   band model, the quarantine ring, the narrowest-band rule and the early burst
   are gone with it.
-- **Ice-alikes match per axis, with room on value.** The same live blue read
-  value 185 between windows and 208 under the fever tint, so the plain distance
-  of 15 called it ice and every window of that run chained around a phantom
-  pile. Now hue within 12, saturation within 15, value within 40.
+- **Ice-alikes match per axis, with room on value, and only count once seen
+  scan after scan.** The same live blue read value 185 between windows and 208
+  under the fever tint, so the plain distance of 15 called it ice and every
+  window of that run chained around a phantom pile. Loosened to hue 12,
+  saturation 15, value 40 -- which then let a four-tsum pale transient on one
+  pre-window scan exonerate every real band of the next run
+  (`coronation_elsa_4.mp4`). A colour now needs four tsums on five scans
+  before it is believed; `boardClusterSizes` carries the sizes for it.
 - **No blind bubble sweeps in Elsa's choreography.** The one after the closing
   burst held the next activation ~2s per window with the gauge already full;
   the mid-window one spent ~2s of freeze time.

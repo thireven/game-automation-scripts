@@ -351,6 +351,7 @@ Tsum.prototype.scanBoardQuick = function() {
     // that has to tell two of them apart needs (`SkillHandler.orderPaths`).
     // Three numbers per cluster, off numbers the scan has already computed.
     this.boardClusters = [];
+    this.boardClusterSizes = [];
     for(const i in tcs) {
       if (+i >= clusterSlots) {
         break;
@@ -360,6 +361,9 @@ Tsum.prototype.scanBoardQuick = function() {
       // grouped on -- the skills that read these (Elsa's frozen box, Formal
       // Beast's two families) are written in those terms and stay that way.
       this.boardClusters.push(chromaToHsv({b: tc.b, g: tc.g, r: tc.r}));
+      // The size beside the colour: a colour that is a handful of tsums on one
+      // scan is a transient, and Elsa's ice-alike whitelist must not learn it.
+      this.boardClusterSizes.push(tc.points.length);
       // The debug palette is five long and a skill may ask for more slots than
       // that, so it wraps -- two clusters sharing an overlay colour is a
       // cosmetic collision, reading past the end is a crash.

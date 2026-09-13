@@ -1194,6 +1194,8 @@ interface Tsum {
    * to tell two colours apart do so (`SkillHandler.orderPaths`).
    */
   boardClusters: Color[];
+  /** How many tsums each of `boardClusters` holds, same order. */
+  boardClusterSizes: number[];
   scanBoardQuick(): BoardPoint[];
 
   // --- play.ts ---------------------------------------------------------

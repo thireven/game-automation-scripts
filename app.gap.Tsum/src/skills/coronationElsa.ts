@@ -151,6 +151,13 @@ var CoronationElsaConfig = {
   // Value moves with the fever tint -- one live blue read 185 and 208 in the
   // same round -- so it gets the room it needs.
   iceAlikeMatch: {hue: 12, sat: 15, val: 40},
+  // What it takes for a colour in the box to count as live rather than a
+  // transient: a cluster this big, on this many scans of the round before its
+  // first window. A live colour is 7-16 tsums on every one of the ~50 scans
+  // before a first activation; the pale flashes and refills that poisoned the
+  // whitelist were 1-4 tsums on one or two.
+  iceAlikeMinTsums: 4,
+  iceAlikeMinScans: 5,
   // Taps spent on the pile. One is enough to set it off; the rest insure
   // against a position the read had slightly wrong.
   burstTaps: 3,
@@ -186,35 +193,51 @@ var CoronationElsaConfig = {
 };
 
 // Live colours seen inside the frozen box on scans where ice was impossible,
-// in cluster HSV (`b`/`g`/`r` = hue/saturation/value). Per round: the colour
-// lineup changes between rounds. `elsaWindowRound` is the last round a freeze
-// window ran in -- while it differs from the current round, no ice can exist,
-// which is what makes a scan safe to learn from.
-var elsaIceAlikes: Color[] = [];
+// in cluster HSV (`b`/`g`/`r` = hue/saturation/value), with how many scans
+// each has been seen on. Per round: the colour lineup changes between rounds.
+// `elsaWindowRound` is the last round a freeze window ran in -- while it
+// differs from the current round, no ice can exist, which is what makes a
+// scan safe to learn from.
+interface ElsaIceAlike extends Color {
+  seen: number;
+}
+var elsaIceAlikes: ElsaIceAlike[] = [];
 var elsaIceAlikeRound = 0;
 var elsaWindowRound = 0;
 
-/**
- * Whether a cluster centre matches a colour known to be alive, not ice: within
- * `iceAlikeMatch` of a remembered one on every axis. Per axis and not a
- * distance, because value drifts far more than hue or saturation do.
- */
-function elsaIsIceAlike(c: Color): boolean {
+/** The remembered ice-alike `c` is a re-read of, if any. */
+function elsaIceAlikeMatch(c: Color): ElsaIceAlike | null {
   const m = CoronationElsaConfig.iceAlikeMatch;
   for (let i = 0; i < elsaIceAlikes.length; i++) {
     const a = elsaIceAlikes[i];
     if (Math.abs(a.b - c.b) <= m.hue && Math.abs(a.g - c.g) <= m.sat
         && Math.abs(a.r - c.r) <= m.val) {
-      return true;
+      return a;
     }
   }
-  return false;
+  return null;
+}
+
+/**
+ * Whether a cluster centre is a colour known to be alive, not ice: a re-read
+ * of a remembered one (per axis, because value drifts far more than hue or
+ * saturation do) that has been on the board scan after scan. A colour seen
+ * only once or twice is a transient -- a flash, a coin shower, a refill mid
+ * fall -- and one of those was enough to exonerate real ice for a whole run
+ * (`coronation_elsa_4.mp4`: a four-tsum pale cluster on one scan, then every
+ * band read as free and the final chain dragged through it).
+ */
+function elsaIsIceAlike(c: Color): boolean {
+  const a = elsaIceAlikeMatch(c);
+  return a !== null && a.seen >= CoronationElsaConfig.iceAlikeMinScans;
 }
 
 /**
  * Learn this round's ice-alikes off a scan that cannot be looking at ice:
  * called from `orderPaths`, and a no-op once the round's first window has
- * opened. Any cluster the frozen box matches before then is a live colour.
+ * opened. Any cluster of `iceAlikeMinTsums` or more that the frozen box
+ * matches before then is a live-colour candidate; it counts once the scans
+ * keep agreeing.
  */
 function elsaNoteIceAlikes(ts: Tsum): void {
   if (elsaIceAlikeRound !== gLogRoundId) {
@@ -222,14 +245,23 @@ function elsaNoteIceAlikes(ts: Tsum): void {
     elsaIceAlikeRound = gLogRoundId;
   }
   if (elsaWindowRound === gLogRoundId) { return; }
-  const box = CoronationElsaConfig.frozen;
+  const cfg = CoronationElsaConfig;
+  const box = cfg.frozen;
   const clusters = ts.boardClusters;
+  const sizes = ts.boardClusterSizes;
   for (let i = 0; i < clusters.length; i++) {
     const c = clusters[i];
-    if (c.b >= box.hueMin && c.b <= box.hueMax
-        && c.g <= box.satMax && c.r >= box.valMin && !elsaIsIceAlike(c)) {
-      elsaIceAlikes.push({b: c.b, g: c.g, r: c.r});
-      logDebug(Log.Skill.ElsaIceAlike, {hue: c.b, sat: c.g, val: c.r});
+    if (sizes[i] < cfg.iceAlikeMinTsums) { continue; }
+    if (!(c.b >= box.hueMin && c.b <= box.hueMax
+        && c.g <= box.satMax && c.r >= box.valMin)) { continue; }
+    const known = elsaIceAlikeMatch(c);
+    if (known !== null) {
+      known.seen++;
+      if (known.seen === cfg.iceAlikeMinScans) {
+        logDebug(Log.Skill.ElsaIceAlike, {hue: known.b, sat: known.g, val: known.r, tsums: sizes[i]});
+      }
+    } else {
+      elsaIceAlikes.push({b: c.b, g: c.g, r: c.r, seen: 1});
     }
   }
 }
