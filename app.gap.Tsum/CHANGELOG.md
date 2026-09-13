@@ -34,6 +34,12 @@ changed, and the one fact that explains why. Measurements, rejected designs and
 long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 `DRIVING_SCREENS.md`, `PAGE_DISPATCH.md`, `DEVELOPMENT.md`).
 
+## [1.0]
+
+### Summary
+
+- Version bump from 0.13 to 1.0
+
 ## [0.13]
 
 ### Summary
