@@ -183,6 +183,13 @@ var CoronationElsaConfig = {
     hueMin: 88, hueMax: 165, satMin: 25, satMax: 150, valMin: 175,
     paleSatMax: 25, paleValMin: 235, paleHueMin: 90, paleHueMax: 175,
     paleContrastMax: 35,
+    // A tsum in a whitelisted cluster is still ice when its centre reads this
+    // bright: the cube's centre reads 235-255 on most of a pile, and the
+    // ice-alike tsums that pass the box read 200-235 (Dumbo on recording 11).
+    // Against the one hole in the whitelist: the clustering merging a
+    // learned colour with real ice, mid-window, so that the whole cluster
+    // matches the remembered live colour. Ice this bright stays ice.
+    sureValMin: 235,
   },
   // How far a centre may sit from a remembered ice-alike on each axis and
   // still be that live colour. Hue and saturation re-read within ~5 of
@@ -353,12 +360,14 @@ function elsaNoteIceAlikes(ts: Tsum, board: BoardPoint[]): void {
  */
 function elsaPointIsIce(p: BoardPoint, alike: boolean[]): boolean {
   const c = p.local;
-  if (c === undefined || alike[+p.tsumIdx]) { return false; }
+  if (c === undefined) { return false; }
   const box = CoronationElsaConfig.ice;
   if (c.r >= box.valMin && c.b >= box.hueMin && c.b <= box.hueMax
       && c.g >= box.satMin && c.g <= box.satMax) {
-    return true;
+    // A live colour, unless the centre is too bright for one (`sureValMin`).
+    return !alike[+p.tsumIdx] || c.r >= box.sureValMin;
   }
+  if (alike[+p.tsumIdx]) { return false; }
   const contrast = p.contrast === undefined ? 0 : p.contrast;
   return c.r >= box.paleValMin && c.g <= box.paleSatMax
     && c.b >= box.paleHueMin && c.b <= box.paleHueMax

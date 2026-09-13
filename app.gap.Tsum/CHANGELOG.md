@@ -99,7 +99,13 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   read: a grey-blue cat on `coronation_elsa_11.mp4` read as ice tsum by
   tsum but its cluster centre never entered the old box, so it was never
   learned -- every scan between windows fired a leftover break at it and no
-  chain through it was ever drawn. The band model, the
+  chain through it was ever drawn. A tsum in a whitelisted cluster still
+  reads as ice when its centre is 235 or brighter (`sureValMin`): the cube's
+  centre is, the ice-alike tsums are not, and it is what holds when the
+  clustering merges a learned colour with a fresh band. The toolkit's
+  `ice_alikes.py` runs every tsum's board art through the read: 70 of 769
+  depend on the whitelist, 41 more sit within 12 of a box wall. The band
+  model, the
   quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the
