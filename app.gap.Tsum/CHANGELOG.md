@@ -66,11 +66,12 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   hop -- every scheduled chain of `coronation_elsa_4/5.mp4` registered as one
   or two tsums and froze nothing. `elsaStripChains` now enumerates chains with
   hops under `maxHop` (34px) across `rowSpan` rows, anchored in the lowest.
-- **Elsa's window is treated as 16.5s at level 6, chains at 5s and 15s.** The
-  play loop's chains were still freezing 17s after an activation, and the
-  freeze is a charge spent by each chain -- ~3 tsums at 1s, 7-20 at 4-5s, the
-  whole board at 10s -- so the final chain sits ten seconds after the first.
-  Lower levels are scaled guesses (`durationMs`).
+- **Elsa's window clock starts when the activation animation ends, chains at
+  2s and 11s.** Chains 12s after a tap still froze, and the window is 10s at
+  level 6, so it runs from the ~1.5s lead-in. The freeze is a charge spent by
+  each chain -- ~3 tsums at 1s, 7-20 at 4-5s, the whole board at 10s -- so
+  the final chain goes out as late as the window allows and the first as
+  early as the animation allows.
 - **Ice-alikes match per axis, with room on value, and only count once seen
   scan after scan.** The same live blue read value 185 between windows and 208
   under the fever tint, so the plain distance of 15 called it ice and every

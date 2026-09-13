@@ -14,7 +14,7 @@
 // How much a chain freezes depends on how long it has been since the last
 // freeze. Read off four recordings: ~1s between chains, bands of 3 tsums
 // (the play loop's own chains inside a window, `coronation_elsa_5.mp4`
-// 12-17s); 1-2s, one to two tsums thick (`coronation_elsa_2.mp4`, chains A
+// 12-13s); 1-2s, one to two tsums thick (`coronation_elsa_2.mp4`, chains A
 // and P); 4-5s, 7-20 tsums (chains C and B there, the scheduled 5s chains of
 // recordings 4 and 5); and a first chain 10-12s after the activation froze
 // **every tsum on the board** (59 for 422,942 in recording 3; 34 for 235,206
@@ -23,9 +23,12 @@
 // way the whole board is a ~10s charge, and the growth is faster than
 // linear, so one long charge beats the same time split in two.
 //
-// The window is far longer than the 10s the level table used to say: in
-// recording 5, chains 17s after a level-6 activation still froze. Nothing
-// recorded has run past that, so `durationMs` is a floor, not a measurement.
+// The window is the 10s the level table says at level 6 (the user has it
+// from the skill's own page), but it runs from the end of the activation
+// animation, not the tap: chains 12.0s after a tap still froze in recording
+// 5, and the animation covers the board for ~1.5s. So every time in here is
+// measured from `t0 + leadInMs`. (A first reading of that recording had
+// freezes at 15-17s; those were refused drags and fever-tinted tsums.)
 //
 // A frozen tsum that a *second* band runs through counts double at the break,
 // with a coin bonus on top (a player's write-up of the skill, and its
@@ -127,20 +130,20 @@
 // throughout, so saturation is the margin that holds: 105 clears the palest
 // blue by 5 and the most saturated ice by 7.
 var CoronationElsaConfig = {
-  // How long the freeze window stays open, by skill level 1-6, in ms. Level 6
-  // is a floor read off `coronation_elsa_5.mp4`: the play loop's chains were
-  // still freezing 17s after the activation, and no recording runs past that.
-  // The lower levels are the old 5-10s guesses scaled by the same factor and
-  // have never been seen; the skill's own info page would settle all six.
-  durationMs: [8000, 9700, 11500, 13200, 14800, 16500],
-  // When the chains go out, as fractions of the window, in order. See the
-  // header: the freeze is a charge that a chain spends, the whole board is a
-  // ~10s charge, and the growth is faster than linear -- so the final chain
-  // sits ten seconds after the first, and the first is the band it doubles.
-  // At level 6 these are 5.0s and 14.9s.
-  chainAt: [0.3, 0.9],
-  // The activation animation: no look before this. Seen at ~1.4s on
-  // `coronation_elsa_3.mp4`, which is why the first slot is not earlier.
+  // How long the freeze window stays open, by skill level 1-6, in ms, counted
+  // from the end of the activation animation (`leadInMs`). Level 6 is the
+  // user's own figure for the skill; the lower levels are the usual one
+  // second a level and have not been seen.
+  durationMs: [5000, 6000, 7000, 8000, 9000, 10000],
+  // When the chains go out, as fractions of the window past the lead-in, in
+  // order. See the header: the freeze is a charge that a chain spends, the
+  // whole board is a ~10s charge, and the growth is faster than linear -- so
+  // the final chain goes out as late as the window allows and the first as
+  // early as the animation allows, a cheap band for the final one to double.
+  // At level 6 these are 2.0s and 11.0s after the tap.
+  chainAt: [0.05, 0.95],
+  // The activation animation, and where the window's clock starts: no look
+  // before this. Seen at ~1.4s on `coronation_elsa_3.mp4`.
   leadInMs: 1500,
   // Waited out after the final chain before the look the burst aims off: the
   // whole-board freeze had settled 300ms after the release on that recording.
@@ -605,7 +608,9 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
   const t0 = activatedAt || Date.now();
   const level = Math.min(Math.max(this.skillLevel, 1), cfg.durationMs.length);
   const windowMs = cfg.durationMs[level - 1];
-  const closesAt = t0 + windowMs;
+  // The window's own clock starts when the animation ends, not at the tap.
+  const opensAt = t0 + cfg.leadInMs;
+  const closesAt = opensAt + windowMs;
 
   // How many tsums the board is believed to hold: seeded from the play loop's
   // scan and raised to the best count any look reads.
@@ -617,11 +622,11 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
   // The last read that saw ice: what the break aims at.
   let iced: BoardPoint[] = [];
   for (let s = 0; s < cfg.chainAt.length && this.isRunning; s++) {
-    const slotAt = t0 + Math.max(cfg.leadInMs, cfg.chainAt[s] * windowMs);
+    const slotAt = opensAt + cfg.chainAt[s] * windowMs;
     // A slot keeps looking until it has drawn its chain or the next slot is
     // due; the last one has until the window closes.
     const slotEnds = s + 1 < cfg.chainAt.length
-      ? t0 + cfg.chainAt[s + 1] * windowMs : closesAt;
+      ? opensAt + cfg.chainAt[s + 1] * windowMs : closesAt;
     this.sleepUntil(slotAt);
     let drawn = false;
     while (this.isRunning && !drawn) {
