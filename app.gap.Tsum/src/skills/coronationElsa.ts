@@ -184,12 +184,18 @@ var CoronationElsaConfig = {
     paleSatMax: 25, paleValMin: 235, paleHueMin: 90, paleHueMax: 175,
     paleContrastMax: 35,
     // A tsum in a whitelisted cluster is still ice when its centre reads this
-    // bright: the cube's centre reads 235-255 on most of a pile, and the
-    // ice-alike tsums that pass the box read 200-235 (Dumbo on recording 11).
-    // Against the one hole in the whitelist: the clustering merging a
+    // bright -- or brighter than that colour's own tsums ever read before the
+    // first window, plus `sureValMargin`, whichever is higher. The cube's
+    // centre reads 235-255 on most of a pile and Dumbo (recording 11) read
+    // 200-235, so 235 split them; but Stitch's centre reads 236-253 live
+    // (`elsa_stitch_issue.mp4`), and a flat 235 made 13 of his 17 tsums ice
+    // all round -- never chained, and a leftover break fired at him every
+    // scan. Against the one hole in the whitelist: the clustering merging a
     // learned colour with real ice, mid-window, so that the whole cluster
-    // matches the remembered live colour. Ice this bright stays ice.
+    // matches the remembered live colour. A colour that reads as bright as
+    // the cube gives that guard up rather than the colour.
     sureValMin: 235,
+    sureValMargin: 5,
   },
   // How far a centre may sit from a remembered ice-alike on each axis and
   // still be that live colour. Hue and saturation re-read within ~5 of
@@ -273,12 +279,14 @@ var CoronationElsaConfig = {
 
 // Live colours seen inside the frozen box on scans where ice was impossible,
 // in cluster HSV (`b`/`g`/`r` = hue/saturation/value), with how many scans
-// each has been seen on. Per round: the colour lineup changes between rounds.
-// `elsaWindowRound` is the last round a freeze window ran in -- while it
-// differs from the current round, no ice can exist, which is what makes a
+// each has been seen on and the brightest centre any of its tsums read
+// (`sureValMin`'s ceiling). Per round: the colour lineup changes between
+// rounds. `elsaWindowRound` is the last round a freeze window ran in -- while
+// it differs from the current round, no ice can exist, which is what makes a
 // scan safe to learn from.
 interface ElsaIceAlike extends Color {
   seen: number;
+  brightest: number;
 }
 var elsaIceAlikes: ElsaIceAlike[] = [];
 var elsaIceAlikeRound = 0;
@@ -306,9 +314,15 @@ function elsaIceAlikeMatch(c: Color): ElsaIceAlike | null {
  * (`coronation_elsa_4.mp4`: a four-tsum pale cluster on one scan, then every
  * band read as free and the final chain dragged through it).
  */
-function elsaIsIceAlike(c: Color): boolean {
+function elsaIceAlike(c: Color): ElsaIceAlike | null {
   const a = elsaIceAlikeMatch(c);
-  return a !== null && a.seen >= CoronationElsaConfig.iceAlikeMinScans;
+  return a !== null && a.seen >= CoronationElsaConfig.iceAlikeMinScans ? a : null;
+}
+
+/** The centre value from which a tsum of this live colour is ice after all. */
+function elsaSureVal(a: ElsaIceAlike): number {
+  const box = CoronationElsaConfig.ice;
+  return Math.max(box.sureValMin, a.brightest + box.sureValMargin);
 }
 
 /**
@@ -330,12 +344,19 @@ function elsaNoteIceAlikes(ts: Tsum, board: BoardPoint[]): void {
   const cfg = CoronationElsaConfig;
   const clusters = ts.boardClusters;
   const sizes = ts.boardClusterSizes;
+  // Per cluster: how many of its tsums read as ice, and the brightest centre
+  // among them.
   const icy: number[] = [];
-  for (let i = 0; i < clusters.length; i++) { icy.push(0); }
-  const none: boolean[] = [];
+  const bright: number[] = [];
+  for (let i = 0; i < clusters.length; i++) { icy.push(0); bright.push(0); }
+  const none: (ElsaIceAlike | null)[] = [];
   for (let i = 0; i < board.length; i++) {
-    const idx = +board[i].tsumIdx;
-    if (idx < icy.length && elsaPointIsIce(board[i], none)) { icy[idx]++; }
+    const p = board[i];
+    const idx = +p.tsumIdx;
+    if (idx < icy.length && elsaPointIsIce(p, none)) {
+      icy[idx]++;
+      if (p.local !== undefined && p.local.r > bright[idx]) { bright[idx] = p.local.r; }
+    }
   }
   for (let i = 0; i < clusters.length; i++) {
     const c = clusters[i];
@@ -343,11 +364,14 @@ function elsaNoteIceAlikes(ts: Tsum, board: BoardPoint[]): void {
     const known = elsaIceAlikeMatch(c);
     if (known !== null) {
       known.seen++;
+      if (bright[i] > known.brightest) { known.brightest = bright[i]; }
       if (known.seen === cfg.iceAlikeMinScans) {
-        logDebug(Log.Skill.ElsaIceAlike, {hue: known.b, sat: known.g, val: known.r, tsums: sizes[i]});
+        logDebug(Log.Skill.ElsaIceAlike, {
+          hue: known.b, sat: known.g, val: known.r, tsums: sizes[i], brightest: known.brightest,
+        });
       }
     } else {
-      elsaIceAlikes.push({b: c.b, g: c.g, r: c.r, seen: 1});
+      elsaIceAlikes.push({b: c.b, g: c.g, r: c.r, seen: 1, brightest: bright[i]});
     }
   }
 }
@@ -356,29 +380,30 @@ function elsaNoteIceAlikes(ts: Tsum, board: BoardPoint[]): void {
  * Whether one tsum reads as ice: its own centre colour in the ice box or
  * the pale one (see the tuning note), unless its colour cluster is a
  * remembered ice-alike -- a live colour, however icy it reads. `alike` is
- * that verdict per cluster index, from `elsaIceAlikeClusters`.
+ * that colour per cluster index, or null, from `elsaIceAlikeClusters`.
  */
-function elsaPointIsIce(p: BoardPoint, alike: boolean[]): boolean {
+function elsaPointIsIce(p: BoardPoint, alike: (ElsaIceAlike | null)[]): boolean {
   const c = p.local;
   if (c === undefined) { return false; }
   const box = CoronationElsaConfig.ice;
+  const a = alike[+p.tsumIdx] || null;
   if (c.r >= box.valMin && c.b >= box.hueMin && c.b <= box.hueMax
       && c.g >= box.satMin && c.g <= box.satMax) {
-    // A live colour, unless the centre is too bright for one (`sureValMin`).
-    return !alike[+p.tsumIdx] || c.r >= box.sureValMin;
+    // A live colour, unless the centre is too bright for one (`elsaSureVal`).
+    return a === null || c.r >= elsaSureVal(a);
   }
-  if (alike[+p.tsumIdx]) { return false; }
+  if (a !== null) { return false; }
   const contrast = p.contrast === undefined ? 0 : p.contrast;
   return c.r >= box.paleValMin && c.g <= box.paleSatMax
     && c.b >= box.paleHueMin && c.b <= box.paleHueMax
     && contrast < box.paleContrastMax;
 }
 
-/** Which of the last scan's clusters are remembered live colours, by index. */
-function elsaIceAlikeClusters(ts: Tsum): boolean[] {
+/** The remembered live colour each of the last scan's clusters is, by index, or null. */
+function elsaIceAlikeClusters(ts: Tsum): (ElsaIceAlike | null)[] {
   const clusters = ts.boardClusters;
-  const alike: boolean[] = [];
-  for (let i = 0; i < clusters.length; i++) { alike.push(elsaIsIceAlike(clusters[i])); }
+  const alike: (ElsaIceAlike | null)[] = [];
+  for (let i = 0; i < clusters.length; i++) { alike.push(elsaIceAlike(clusters[i])); }
   return alike;
 }
 

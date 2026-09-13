@@ -43,6 +43,13 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 
 ### Fixed
 
+- **Stitch was never chained on a Coronation Elsa board.** His centre reads
+  inside the frozen box at value 236-253 (`elsa_stitch_issue.mp4`), so the
+  flat "235 or brighter is ice" rule overrode his whitelist entry on 13 of
+  17 tsums: no chain through him all round, and a leftover break fired at
+  him on every scan between windows. Each ice-alike now remembers the
+  brightest centre its tsums read before the first window, and the rule
+  only fires above that (`sureValMargin`).
 - **Coronation Elsa's frozen box missed real ice.** Replaying `coronation_elsa_1.mp4`
   through the scan showed standing piles at value 185-192, under the box's
   floor of 195, so chains were drawn onto them (four piles of 16-32 lost in one
@@ -100,9 +107,10 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   tsum but its cluster centre never entered the old box, so it was never
   learned -- every scan between windows fired a leftover break at it and no
   chain through it was ever drawn. A tsum in a whitelisted cluster still
-  reads as ice when its centre is 235 or brighter (`sureValMin`): the cube's
-  centre is, the ice-alike tsums are not, and it is what holds when the
-  clustering merges a learned colour with a fresh band. The toolkit's
+  reads as ice when its centre is 235 or brighter (`sureValMin`), and
+  brighter than that colour's own tsums read before the first window: the
+  cube's centre is, most ice-alike tsums are not, and it is what holds when
+  the clustering merges a learned colour with a fresh band. The toolkit's
   `ice_alikes.py` runs every tsum's board art through the read: 70 of 769
   depend on the whitelist, 41 more sit within 12 of a box wall. The band
   model, the
