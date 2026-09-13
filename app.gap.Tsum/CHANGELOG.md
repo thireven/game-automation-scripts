@@ -56,8 +56,12 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   whose bands avoid each other, spent mid-window -- was the wrong one. Now:
   capture, read the ice, draw the flattest short chain anchored in the lowest
   free row, wait `iceFormMs` for the band, look again, until the window is
-  nearly out; one break; the bomb popped aimed. The band model, the
-  quarantine ring, the narrowest-band rule and the early burst are gone.
+  nearly out; one break; the bomb popped aimed. A board frozen out with two
+  seconds or more of window left is broken on the spot and the refill swept
+  again -- the sweep fills a board in three to four seconds, and one window
+  on `coronation_elsa_7.mp4` took 391,274 and 599,936 that way against
+  ~250,000 for a pile left standing. The band model, the quarantine ring and
+  the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the
   same day: both made about one chain a window.)

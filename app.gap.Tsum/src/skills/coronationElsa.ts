@@ -16,8 +16,11 @@
 // screenshots: overlapped ice is shaded pink). So the window is a sweep: short
 // flat chains, one after another, each on the lowest row still free, so that
 // each new band lies just above the last and overlaps it; the pile is broken
-// once, when the window is nearly out; and the bomb the break spawns is
-// popped. Nothing else is tapped while ice stands.
+// when the window is nearly out; and the bomb the break spawns is popped.
+// Nothing else is tapped while ice stands -- with one exception: a board
+// frozen out with window to spare is broken on the spot and the refill swept
+// again (`refreezeStarvedLooks`), because the sweep freezes a whole board in
+// three to four seconds and a 10s window has room for two piles.
 //
 // The loop is: capture and read which tsums are ice (`elsaLook`); draw the
 // flattest chain anchored in the lowest free row (`elsaRowChain`); wait
@@ -190,6 +193,18 @@ var CoronationElsaConfig = {
   postBurstSettleMaxMs: 900,
   // Waited out when a look offers no chain at all before looking again.
   rescanIdleMs: 300,
+  // The mid-window break: a board with no row left to chain is a pile ready
+  // to spend, and the refill can be frozen again in the window left. It
+  // fires when this many consecutive looks read no chain (one starved read
+  // can be a band still forming), the pile is at least `refreezeMinIced`
+  // (a real pile, not a stray band), and at least `refreezeMinWindowLeftMs`
+  // remains -- a break with less left buys nothing over the closing one.
+  // `coronation_elsa_7.mp4`: a board frozen out by 3.5s and broken at 4.7s
+  // took 391,274, then refroze for 599,936 at the close -- against ~250,000
+  // for a board frozen out at 4s and left standing until 12s.
+  refreezeStarvedLooks: 2,
+  refreezeMinIced: 8,
+  refreezeMinWindowLeftMs: 2000,
   // Leftover ice read between windows this big or bigger is a burst that
   // missed, and is spent (grid and all). Smaller is a band left standing on
   // purpose: it doubles under the next window's bands.
@@ -604,6 +619,8 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
   let looks = 0;
   let chains = 0;
   let starved = 0;
+  let starvedRun = 0;
+  let bursts = 0;
   let aimedTaps = 0;
   // The last read that saw ice: what the break aims at.
   let iced: BoardPoint[] = [];
@@ -625,12 +642,27 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     });
     if (pick === null) {
       // Nothing chainable this look -- ice everywhere a row could stand, or a
-      // starved read. Give the board a moment and look again; the clock ends
-      // the window, not this.
+      // starved read.
       starved++;
+      starvedRun++;
+      if (starvedRun >= cfg.refreezeStarvedLooks && look.iced.length >= cfg.refreezeMinIced
+          && chainBy - Date.now() > cfg.refreezeMinWindowLeftMs) {
+        // The board is frozen out with window to spare: spend the pile now
+        // and sweep the refill. The next look pops the bomb the break leaves
+        // (no ice stands, so its bubble pop runs) before chaining.
+        aimedTaps += this.elsaBurstFrozen(look.iced, true);
+        bursts++;
+        this.sleep(elsaPostBurstSettleMs(look.iced.length));
+        iced = [];
+        starvedRun = 0;
+        continue;
+      }
+      // Give the board a moment and look again; the clock ends the window,
+      // not this.
       this.sleepUntil(Math.min(Date.now() + cfg.rescanIdleMs, chainBy));
       continue;
     }
+    starvedRun = 0;
     // `linkTsums` and not `link`: its bubble pop and its skill check both
     // belong to the play loop, and the second would nest a window in this one.
     this.linkTsums(pick.path);
@@ -645,6 +677,7 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     looks++;
     if (last.iced.length > 0) { iced = last.iced; }
     aimedTaps += this.elsaBurstFrozen(iced, true);
+    bursts++;
     // The break is a large clear; let it settle, then one look for the bomb it
     // spawned (where the clear count was shown) and pop it aimed. The play
     // loop's own scan follows the moment this hands back.
@@ -661,6 +694,8 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     chains: chains,
     // Looks that found no chain to draw.
     starvedLooks: starved,
+    // Breaks inside the window plus the closing one.
+    bursts: bursts,
     // The pile as last read going into the break. Near zero with several
     // chains drawn means something touched ice mid-window.
     icedLast: iced.length,
