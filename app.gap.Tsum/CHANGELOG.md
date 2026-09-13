@@ -76,7 +76,15 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   rest of the pile and counts as a starved look, so the board is broken
   instead of the chain redrawn: on `coronation_elsa_9.mp4` one chain of two
   colours the read had merged was drawn for 8s, and a chain of circles on
-  bare floor held another break for 4s. The band model, the
+  bare floor held another break for 4s. From `coronation_elsa_10.mp4`: a
+  frozen-out board is broken with as little as 600ms of window left, not
+  2s (it stood 2-3s until the closing break, three windows in a row); two
+  chains in a row that freeze under two new tsums break the pile like two
+  starved looks (ice above the refill held the board at 13 frozen through
+  five chains); the leftover break between windows is aimed taps only (its
+  grid was 1.3s, three times in one gap); and a cluster with a face contrast
+  over 35 is not ice, whatever its colour (four black Mickeys in an ice glow
+  read as ice and were planned around). The band model, the
   quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the

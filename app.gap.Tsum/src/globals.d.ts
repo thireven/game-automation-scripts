@@ -1196,6 +1196,8 @@ interface Tsum {
   boardClusters: Color[];
   /** How many tsums each of `boardClusters` holds, same order. */
   boardClusterSizes: number[];
+  /** Each cluster's mean face contrast (`TsumTexture.contrast`), same order. */
+  boardClusterContrasts: number[];
   scanBoardQuick(): BoardPoint[];
 
   // --- play.ts ---------------------------------------------------------

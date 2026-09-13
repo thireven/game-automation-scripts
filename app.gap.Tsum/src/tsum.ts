@@ -64,6 +64,7 @@ class Tsum {
   myTsumIdx: number;
   boardClusters: Color[];
   boardClusterSizes: number[];
+  boardClusterContrasts: number[];
   storagePath: string;
   originScreenWidth: number;
   originScreenHeight: number;
@@ -278,6 +279,7 @@ class Tsum {
     this.myTsumIdx = -1;
     this.boardClusters = [];
     this.boardClusterSizes = [];
+    this.boardClusterContrasts = [];
     this.storagePath = getStoragePath();
     // screen size config
     /** @type {{width: number, height: number}}  */

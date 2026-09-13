@@ -162,7 +162,12 @@ var CoronationElsaConfig = {
   // so two free tsums can sit one hop apart with ice between them.
   dragClearance: 13,
   // What a frozen tsum's cluster centre looks like. See the note above.
-  frozen: {hueMin: 95, hueMax: 135, satMax: 105, valMin: 170},
+  // `contrastMax` is the face texture (`TsumTexture.contrast`): ice is flat,
+  // 18-27 on every pile replayed from recordings 8-10, while a black Mickey
+  // in an ice glow read (h 115, s 22, v 171) -- inside the box -- at 46, and
+  // four of them were kept out of the plan as ice (`coronation_elsa_10.mp4`
+  // at 0:48). One frame's evidence; widen if real ice ever reads darker.
+  frozen: {hueMin: 95, hueMax: 135, satMax: 105, valMin: 170, contrastMax: 35},
   // How far a centre may sit from a remembered ice-alike on each axis and
   // still be that live colour. Hue and saturation re-read within ~5 of
   // themselves scan to scan, and the nearest measured real ice sits 8 in hue
@@ -212,7 +217,17 @@ var CoronationElsaConfig = {
   // for a board frozen out at 4s and left standing until 12s.
   refreezeStarvedLooks: 2,
   refreezeMinIced: 8,
-  refreezeMinWindowLeftMs: 2000,
+  // Was 2000: with less than that left a frozen-out board stood 2-3s until
+  // the closing break (`coronation_elsa_10.mp4`, three windows), and standing
+  // ice buys nothing. The break itself is ~550ms of taps and settle.
+  refreezeMinWindowLeftMs: 600,
+  // A chain the game took (its tsums gone) that froze fewer new tsums than
+  // this is fruitless: the board is one the bands cannot reach any more --
+  // ice above holding the refill off, the free tsums left in a corner the
+  // bands already cover. Two in a row, like two starved looks, break the
+  // pile. `coronation_elsa_10.mp4` at 1:00: five chains, the ice count flat
+  // at 13-14, the pile standing 2s longer than it needed to.
+  chainFreezeMin: 2,
   // Leftover ice read between windows this big or bigger is a burst that
   // missed, and is spent (grid and all). Smaller is a band left standing on
   // purpose: it doubles under the next window's bands.
@@ -318,11 +333,13 @@ function elsaNoteIceAlikes(ts: Tsum): void {
 function elsaFrozenClusters(ts: Tsum): boolean[] {
   const box = CoronationElsaConfig.frozen;
   const clusters = ts.boardClusters;
+  const contrasts = ts.boardClusterContrasts;
   const frozen: boolean[] = [];
   for (let i = 0; i < clusters.length; i++) {
     const c = clusters[i];
     frozen.push(c.b >= box.hueMin && c.b <= box.hueMax
-      && c.g <= box.satMax && c.r >= box.valMin && !elsaIsIceAlike(c));
+      && c.g <= box.satMax && c.r >= box.valMin
+      && contrasts[i] <= box.contrastMax && !elsaIsIceAlike(c));
   }
   return frozen;
 }
@@ -689,6 +706,7 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
   let drawnOverIced = 0;
   let dead: BoardPoint[] = [];
   let deadChains = 0;
+  let fruitlessChains = 0;
   while (this.isRunning && Date.now() < chainBy) {
     const look = this.elsaLook(chainBy, expected);
     looks++;
@@ -697,15 +715,22 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     if (look.iced.length > 0) { iced = look.iced; }
     let failed = false;
     if (drawn !== null) {
-      // The chain went nowhere: same ice, its tsums still standing. Its
-      // points are out of the plan, and the look counts as starved so a board
-      // with nothing else on it is broken rather than redrawn.
-      failed = look.iced.length <= drawnOverIced
-        && elsaChainStays(drawn, look.free) >= cfg.chainStaysMin;
+      // Judge the chain just drawn. Dead: same ice, its tsums still standing
+      // -- its points are out of the plan. Fruitless: taken, but it froze
+      // next to nothing. Either counts as a starved look, so a board with
+      // nothing left for the bands is broken rather than worked; a chain
+      // that froze a band resets the count.
+      const froze = look.iced.length - drawnOverIced;
+      failed = froze <= 0 && elsaChainStays(drawn, look.free) >= cfg.chainStaysMin;
       if (failed) {
         dead = dead.concat(drawn);
         deadChains++;
         starvedRun++;
+      } else if (froze < cfg.chainFreezeMin) {
+        fruitlessChains++;
+        starvedRun++;
+      } else {
+        starvedRun = 0;
       }
       drawn = null;
     }
@@ -749,7 +774,7 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
       this.sleepUntil(Math.min(Date.now() + cfg.rescanIdleMs, chainBy));
       continue;
     }
-    starvedRun = 0;
+    // `starvedRun` is settled by the next look's judgement of this chain.
     // `linkTsums` and not `link`: its bubble pop and its skill check both
     // belong to the play loop, and the second would nest a window in this one.
     this.linkTsums(pick.path);
@@ -790,6 +815,9 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     // Chains drawn that left their tsums standing: a colour the read merged,
     // or circles on bare floor.
     deadChains: deadChains,
+    // Chains taken that froze under `chainFreezeMin`: a board the bands
+    // could not reach any more.
+    fruitlessChains: fruitlessChains,
     // Breaks inside the window plus the closing one.
     bursts: bursts,
     // The pile as last read going into the break. Near zero with several
@@ -836,7 +864,10 @@ registerSkill({
       if (frozen[+board[i].tsumIdx]) { leftover.push(board[i]); }
     }
     if (leftover.length >= CoronationElsaConfig.leftoverBurstMin) {
-      ts.elsaBurstFrozen(leftover, true);
+      // Aimed only. A leftover read is as often a pale colour or crystal
+      // debris as ice, and the grid behind the aimed taps was 1.3s of the
+      // gap between windows, three times over on `coronation_elsa_10.mp4`.
+      ts.elsaBurstFrozen(leftover, false);
     }
     // Beyond that, only ever a filter: the ordering `calculatePaths` produced
     // is already longest-first, which is what this skill wants too.

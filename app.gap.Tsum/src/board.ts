@@ -352,6 +352,7 @@ Tsum.prototype.scanBoardQuick = function() {
     // Three numbers per cluster, off numbers the scan has already computed.
     this.boardClusters = [];
     this.boardClusterSizes = [];
+    this.boardClusterContrasts = [];
     for(const i in tcs) {
       if (+i >= clusterSlots) {
         break;
@@ -364,6 +365,9 @@ Tsum.prototype.scanBoardQuick = function() {
       // The size beside the colour: a colour that is a handful of tsums on one
       // scan is a transient, and Elsa's ice-alike whitelist must not learn it.
       this.boardClusterSizes.push(tc.points.length);
+      // And the face texture: ice is flat, a dark face with bright features
+      // is not, whatever colour the ice glow around it lends its centre.
+      this.boardClusterContrasts.push(tc.contrast);
       // The debug palette is five long and a skill may ask for more slots than
       // that, so it wraps -- two clusters sharing an overlay colour is a
       // cosmetic collision, reading past the end is a crash.
