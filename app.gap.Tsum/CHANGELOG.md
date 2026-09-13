@@ -82,9 +82,16 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   chains in a row that freeze under two new tsums break the pile like two
   starved looks (ice above the refill held the board at 13 frozen through
   five chains); the leftover break between windows is aimed taps only (its
-  grid was 1.3s, three times in one gap); and a cluster with a face contrast
-  over 35 is not ice, whatever its colour (four black Mickeys in an ice glow
-  read as ice and were planned around). The band model, the
+  grid was 1.3s, three times in one gap). Ice is read per tsum now, off
+  the tsum's own centre colour (`BoardPoint.local`, a 5px blur `findTsums`
+  samples beside its 22px one), not off the colour cluster: the cluster
+  smear read a tsum ringed by ice as ice (four black Mickeys planned around
+  as a pile) and merged a pink and a peach face into a chain that never
+  linked. The boxes were calibrated against the game's own ice sprites and
+  every pile in recordings 8-10: the cube dominates the centre whatever is
+  under it (hue 88-165, saturation 25-150, value 175+), and the doubled cube
+  and the shards read near-white, taken as ice unless the face contrast says
+  a white-patched face. The band model, the
   quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the

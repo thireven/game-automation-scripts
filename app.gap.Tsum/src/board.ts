@@ -352,7 +352,6 @@ Tsum.prototype.scanBoardQuick = function() {
     // Three numbers per cluster, off numbers the scan has already computed.
     this.boardClusters = [];
     this.boardClusterSizes = [];
-    this.boardClusterContrasts = [];
     for(const i in tcs) {
       if (+i >= clusterSlots) {
         break;
@@ -365,16 +364,20 @@ Tsum.prototype.scanBoardQuick = function() {
       // The size beside the colour: a colour that is a handful of tsums on one
       // scan is a transient, and Elsa's ice-alike whitelist must not learn it.
       this.boardClusterSizes.push(tc.points.length);
-      // And the face texture: ice is flat, a dark face with bright features
-      // is not, whatever colour the ice glow around it lends its centre.
-      this.boardClusterContrasts.push(tc.contrast);
       // The debug palette is five long and a skill may ask for more slots than
       // that, so it wraps -- two clusters sharing an overlay colour is a
       // cosmetic collision, reading past the end is a crash.
       const dbg = Config.colors[+i % Config.colors.length];
       for (const j in tc.points) {
         const p = tc.points[j];
-        board.push({tsumIdx: i, x: p.x - (Config.tsumWidth / 2), y: p.y - (Config.tsumWidth / 2)});
+        // The tsum's own colour and texture ride along for per-tsum reads.
+        board.push({
+          tsumIdx: i,
+          x: p.x - (Config.tsumWidth / 2),
+          y: p.y - (Config.tsumWidth / 2),
+          local: p.local,
+          contrast: p.contrast,
+        });
         if (this.debug) {
           drawCircle(srcImg, p.x, p.y, 4, dbg[0], dbg[1], dbg[2], 0);
         }

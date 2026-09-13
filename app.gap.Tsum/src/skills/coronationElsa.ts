@@ -79,22 +79,25 @@
 //
 // ## Reading the board through the ice
 //
-// A frozen tsum still detects as a circle and still gets a colour, so it becomes
-// an ordinary colour cluster. Every cluster inside the frozen colour box is
-// treated as ice -- never planned over, kept clear of by every drag. The box has
-// a converse hazard: a live tsum can sit inside it (an event board's pale
-// ice-blue fluffy tsum did, and every scan read a dozen-tsum phantom pile). The
-// answer is a whitelist read when ice is impossible: until the round's first
-// window opens no ice can exist, so any cluster the box matches on those scans
-// is a live colour, remembered for the round (`elsaIceAlikes`). The match is
-// loose on value and tight on hue and saturation: the same live blue read
-// (102, 88, 185) between windows and (99, 84, 208) under the fever tint on
-// `coronation_elsa_3.mp4`, and a plain distance of 15 called the second one
-// ice -- which cost every window of that run.
+// A frozen tsum still detects as a circle. Whether it is ice is read per
+// tsum off its own centre colour (`BoardPoint.local`, a light blur that
+// keeps the neighbours out) against the `ice` boxes -- the cube dominates
+// the centre whatever tsum is under it -- never planned over, kept clear of
+// by every drag. The read has a converse hazard: a live tsum can sit inside
+// the box (an event board's pale ice-blue fluffy tsum did, and every scan
+// read a dozen-tsum phantom pile). The answer is a whitelist read when ice
+// is impossible: until the round's first window opens no ice can exist, so
+// any colour cluster the `frozen` box matches on those scans is a live
+// colour, remembered for the round (`elsaIceAlikes`), and its tsums are
+// never ice. The match is loose on value and tight on hue and saturation:
+// the same live blue read (102, 88, 185) between windows and (99, 84, 208)
+// under the fever tint on `coronation_elsa_3.mp4`, and a plain distance of
+// 15 called the second one ice -- which cost every window of that run.
 //
 // The ice also eats colour slots: the board scan keeps its biggest
 // `uniqueTsumCount - 1` clusters and each ice shade takes one, so
-// `extraClusterSlots` on the declaration makes room for them. See the
+// `extraClusterSlots` on the declaration makes room for them -- a tsum in a
+// dropped cluster is not in the board array for any look to read. See the
 // declaration's comment.
 // ---------------------------------------------------------------------------
 
@@ -102,19 +105,30 @@
 //
 // ## Reading a frozen tsum
 //
-// A frozen tsum is drawn as pale blue ice over whatever it was: bright, barely
-// saturated, blue-ish. `frozen` is that box in the HSV `findTsums` samples and
-// `classifyTsums` averages into a cluster centre (hue 0..179, OpenCV's range).
+// The game draws a translucent ice cube over a frozen tsum (its sprite: a
+// pale blue-white hexagon, more opaque at the edges) and white shards around
+// it; a tsum under two bands gets a second cube in blue-violet, which lands
+// on screen as a pale pink-lavender. On screen the cube dominates the centre
+// whatever is under it: frozen centres read hue 88-135, saturation 25-150
+// and value 175-255 off a light blur, on every pile replayed from
+// `coronation_elsa_8..10.mp4`, and the doubled ones read near-white (s < 25,
+// v > 235, hue 90-175 -- what hue a near-white has). Live colours that come
+// near: blue and cyan tsums (saturation 175-230, so `satMax` 150), peach and
+// pink faces (hue 5-20 or 170+ at low saturation, so the pale box keeps a hue
+// range), a black-and-white face whose centre is its white patch (contrast
+// 41-58 against 3-30 for ice and shards, so `paleContrastMax`). Shards on
+// bare floor read as pale too; they are taken as ice, which costs nothing --
+// a drag avoids them and a tap on them does nothing -- where taking them as
+// tsums drew chains of them.
 //
-// First measured off four phone captures (frozen clusters at (h 103, s 74,
-// v 222), (107, 79, 222), (116, 62, 229)), then re-measured off
-// `coronation_elsa_1.mp4` (MuMu, a four-colour board with dark tsums) by
-// replaying the scan's own Hough and colour path over frames at 2fps: standing
-// ice clustered at hue 96-130, saturation 5-98 and value 177-250 -- two big
-// piles at value 185-192, under the old floor of 195, which is how they got
-// chained over. The board's live blue sat at (h 101-102, s 110-145, v 200-220)
-// throughout, so saturation is the margin that holds: 105 clears the palest
-// blue by 5 and the most saturated ice by 7.
+// That per-tsum read is `ice`, off `BoardPoint.local`. The 22px smear the
+// clustering samples is a different thing: it reads a tsum ringed by ice as
+// pale itself (four black Mickeys in a glow read as a pile; two faces one
+// pink, one peach merged into a chain that never linked), which is why ice
+// is not read from the cluster centres any more. `frozen` is the older box
+// on those centres, kept for one job: learning, before the round's first
+// window, which live colours would pass it (`elsaIceAlikes`) -- an event
+// board's pale ice-blue tsum did, and read as a phantom pile all round.
 var CoronationElsaConfig = {
   // How long the freeze window stays open, by skill level 1-6, in ms, counted
   // from the end of the activation animation (`leadInMs`). Level 6 is the
@@ -161,13 +175,15 @@ var CoronationElsaConfig = {
   // about one tsum radius. A linkable hop is `tsumWidth * linkReach` = 47.5px,
   // so two free tsums can sit one hop apart with ice between them.
   dragClearance: 13,
-  // What a frozen tsum's cluster centre looks like. See the note above.
-  // `contrastMax` is the face texture (`TsumTexture.contrast`): ice is flat,
-  // 18-27 on every pile replayed from recordings 8-10, while a black Mickey
-  // in an ice glow read (h 115, s 22, v 171) -- inside the box -- at 46, and
-  // four of them were kept out of the plan as ice (`coronation_elsa_10.mp4`
-  // at 0:48). One frame's evidence; widen if real ice ever reads darker.
-  frozen: {hueMin: 95, hueMax: 135, satMax: 105, valMin: 170, contrastMax: 35},
+  // What a frozen tsum reads at its own centre (`BoardPoint.local`, HSV).
+  // See the note above. The pale box is the doubled cube and the shards.
+  ice: {
+    hueMin: 88, hueMax: 165, satMin: 25, satMax: 150, valMin: 175,
+    paleSatMax: 25, paleValMin: 235, paleHueMin: 90, paleHueMax: 175,
+    paleContrastMax: 35,
+  },
+  // The older box on the cluster centres, for the ice-alike whitelist only.
+  frozen: {hueMin: 95, hueMax: 135, satMax: 105, valMin: 170},
   // How far a centre may sit from a remembered ice-alike on each axis and
   // still be that live colour. Hue and saturation re-read within ~5 of
   // themselves scan to scan, and the nearest measured real ice sits 8 in hue
@@ -323,33 +339,54 @@ function elsaNoteIceAlikes(ts: Tsum): void {
 }
 
 /**
- * Which of the last scan's colour clusters read as ice, flagged by cluster
- * index. Read off `ts.boardClusters` (`b`/`g`/`r` = hue/saturation/value).
- *
- * All matches, not the best one: a board part-way through freezing carries ice
- * at more than one shade. The one exception is a cluster matching a remembered
- * ice-alike: a live colour, however icy it reads.
+ * Whether one tsum reads as ice: its own centre colour in the ice box or
+ * the pale one (see the tuning note), unless its colour cluster is a
+ * remembered ice-alike -- a live colour, however icy it reads. `alike` is
+ * that verdict per cluster index, from `elsaIceAlikeClusters`.
  */
-function elsaFrozenClusters(ts: Tsum): boolean[] {
-  const box = CoronationElsaConfig.frozen;
-  const clusters = ts.boardClusters;
-  const contrasts = ts.boardClusterContrasts;
-  const frozen: boolean[] = [];
-  for (let i = 0; i < clusters.length; i++) {
-    const c = clusters[i];
-    frozen.push(c.b >= box.hueMin && c.b <= box.hueMax
-      && c.g <= box.satMax && c.r >= box.valMin
-      && contrasts[i] <= box.contrastMax && !elsaIsIceAlike(c));
+function elsaPointIsIce(p: BoardPoint, alike: boolean[]): boolean {
+  const c = p.local;
+  if (c === undefined || alike[+p.tsumIdx]) { return false; }
+  const box = CoronationElsaConfig.ice;
+  if (c.r >= box.valMin && c.b >= box.hueMin && c.b <= box.hueMax
+      && c.g >= box.satMin && c.g <= box.satMax) {
+    return true;
   }
-  return frozen;
+  const contrast = p.contrast === undefined ? 0 : p.contrast;
+  return c.r >= box.paleValMin && c.g <= box.paleSatMax
+    && c.b >= box.paleHueMin && c.b <= box.paleHueMax
+    && contrast < box.paleContrastMax;
 }
 
-/** The paths that are not over ice. */
-function elsaLiveChains(paths: TsumPath[], frozen: boolean[]): TsumPath[] {
+/** Which of the last scan's clusters are remembered live colours, by index. */
+function elsaIceAlikeClusters(ts: Tsum): boolean[] {
+  const clusters = ts.boardClusters;
+  const alike: boolean[] = [];
+  for (let i = 0; i < clusters.length; i++) { alike.push(elsaIsIceAlike(clusters[i])); }
+  return alike;
+}
+
+/** The board split into what reads as ice and what does not. */
+function elsaSplitIce(ts: Tsum, board: BoardPoint[]): { free: BoardPoint[], iced: BoardPoint[] } {
+  const alike = elsaIceAlikeClusters(ts);
+  const free: BoardPoint[] = [];
+  const iced: BoardPoint[] = [];
+  for (let i = 0; i < board.length; i++) {
+    if (elsaPointIsIce(board[i], alike)) { iced.push(board[i]); } else { free.push(board[i]); }
+  }
+  return { free: free, iced: iced };
+}
+
+/** The paths with no tsum in `iced`. */
+function elsaLiveChains(paths: TsumPath[], iced: BoardPoint[]): TsumPath[] {
   const out: TsumPath[] = [];
   for (let i = 0; i < paths.length; i++) {
-    const idx = paths[i].tsumIdx;
-    if (idx === undefined || !frozen[idx]) { out.push(paths[i]); }
+    const p = paths[i];
+    let live = true;
+    for (let j = 0; j < p.length && live; j++) {
+      live = iced.indexOf(p[j]) < 0;
+    }
+    if (live) { out.push(p); }
   }
   return out;
 }
@@ -630,13 +667,9 @@ Tsum.prototype.elsaLook = function(closesAt, expected) {
   let waits = 0;
   let pops = 0;
   for (;;) {
-    const board = this.scanBoardQuick();
-    const frozenCluster = elsaFrozenClusters(this);
-    free = [];
-    iced = [];
-    for (let i = 0; i < board.length; i++) {
-      if (frozenCluster[+board[i].tsumIdx]) { iced.push(board[i]); } else { free.push(board[i]); }
-    }
+    const split = elsaSplitIce(this, this.scanBoardQuick());
+    free = split.free;
+    iced = split.iced;
     if (iced.length === 0) {
       if (waits < cfg.settleMaxWaits && free.length < cfg.settledFraction * expect
           && Date.now() + cfg.settleRetryMs < closesAt) {
@@ -853,16 +886,12 @@ registerSkill({
     // Before the round's first window, a cluster the frozen box matches is a
     // live colour -- learn it now, or it plays as a phantom pile all round.
     elsaNoteIceAlikes(ts);
-    const frozen = elsaFrozenClusters(ts);
     // Ice read here is *leftover*. A pile-sized leftover is a closing burst
-    // that missed, and is spent, grid and all -- out here there is no fresh
-    // pile for a stray tap to cost. A smaller one is a band left standing on
-    // purpose: it doubles under the next window's bands, so it is kept and
-    // only chained around.
-    const leftover: BoardPoint[] = [];
-    for (let i = 0; i < board.length; i++) {
-      if (frozen[+board[i].tsumIdx]) { leftover.push(board[i]); }
-    }
+    // that missed, and is spent -- out here there is no fresh pile for a
+    // stray tap to cost. A smaller one is a band left standing on purpose:
+    // it doubles under the next window's bands, so it is kept and only
+    // chained around.
+    const leftover = elsaSplitIce(ts, board).iced;
     if (leftover.length >= CoronationElsaConfig.leftoverBurstMin) {
       // Aimed only. A leftover read is as often a pale colour or crystal
       // debris as ice, and the grid behind the aimed taps was 1.3s of the
@@ -871,7 +900,7 @@ registerSkill({
     }
     // Beyond that, only ever a filter: the ordering `calculatePaths` produced
     // is already longest-first, which is what this skill wants too.
-    return elsaLiveChains(paths, frozen);
+    return elsaLiveChains(paths, leftover);
   },
   beforeActivate: function(ts) {
     // Spend whatever bubbles the cycle's own scan still holds, aimed, before

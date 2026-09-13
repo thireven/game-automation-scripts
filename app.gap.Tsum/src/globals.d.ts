@@ -675,6 +675,13 @@ interface TsumPoint extends TsumTexture {
   b: number;
   g: number;
   r: number;
+  /**
+   * The centre's own colour, HSV off a light blur: what this tsum looks like
+   * with its neighbours kept out, where `b`/`g`/`r` above is the board-wide
+   * smear the clustering wants. Read per tsum by whatever must tell an
+   * overlay on one tsum from the tsum beside it (Elsa's ice).
+   */
+  local: Color;
 }
 
 /** One colour cluster from `classifyTsums`: a running mean plus its members. */
@@ -699,6 +706,10 @@ interface BoardPoint {
   tsumIdx: string;
   x: number;
   y: number;
+  /** `TsumPoint.local`, carried for per-tsum reads; absent on synthetic points. */
+  local?: Color;
+  /** `TsumTexture.contrast`, likewise. */
+  contrast?: number;
 }
 
 /**
@@ -1196,8 +1207,6 @@ interface Tsum {
   boardClusters: Color[];
   /** How many tsums each of `boardClusters` holds, same order. */
   boardClusterSizes: number[];
-  /** Each cluster's mean face contrast (`TsumTexture.contrast`), same order. */
-  boardClusterContrasts: number[];
   scanBoardQuick(): BoardPoint[];
 
   // --- play.ts ---------------------------------------------------------

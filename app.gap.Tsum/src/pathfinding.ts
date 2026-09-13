@@ -485,6 +485,11 @@ function findGameBubbles(grayImg: NativeImage): GameBubble[] {
 // A tsum's circle in the 200px play square `findTsums` works in. Hoisted out of
 // it because `findTsumCount` runs the same pass for the count alone, and two
 // copies of these would drift the first time one was retuned.
+// The box blur behind `TsumPoint.local`: wide enough to flatten a face's
+// features at the centre cross, narrow enough (a fifth of a tsum) to keep the
+// neighbours out. The 22px smear the clustering samples is the other extreme.
+const LocalSampleBlur = 5;
+
 var TsumCircle = {
   dp: 1,           // accumulator resolution (lower = finer)
   minDist: 22,     // min gap between circle centers
@@ -526,6 +531,7 @@ function findTsums(img: NativeImage, grayImg: NativeImage): TsumPoint[] {
   // retries, so a leak on this hot path would silently recur on every scan.
   // `grayImg` is deliberately not on that list -- the caller allocated it.
   const hsvImg = clone(img);
+  let localImg: NativeImage | null = null;
   let debugImg: NativeImage | null = null;
   try {
     const minRadius = TsumCircle.minRadius;
@@ -577,6 +583,14 @@ function findTsums(img: NativeImage, grayImg: NativeImage): TsumPoint[] {
       pts.push({x: p.x, y: p.y + 1 < Config.screenResize ? p.y + 1 : p.y});
     }
     const samples = pts.length > 0 ? getImageColors(hsvImg, pts) : [];
+    // The same cross off a light blur: the tsum's own centre colour, with
+    // its neighbours kept out of it. The heavy blur above spans a whole tsum
+    // and reads a tsum ringed by pale ice as pale itself; this read does not,
+    // which is what tells an overlay on one tsum from the tsum next to it.
+    localImg = clone(img);
+    smooth(localImg, 1, LocalSampleBlur);
+    convertColor(localImg, 40);
+    const locals = pts.length > 0 ? getImageColors(localImg, pts) : [];
     // The texture read, off the gray the Hough pass already has.
     const textures = readTextures(grayImg, points);
 
@@ -585,9 +599,12 @@ function findTsums(img: NativeImage, grayImg: NativeImage): TsumPoint[] {
       const p = points[k];
       const base = k * CrossPoints;
       let sumb = 0, sumg = 0, sumr = 0;
+      let lb = 0, lg = 0, lr = 0;
       for (let s = 0; s < CrossPoints; s++) {
         const c = samples[base + s];
         sumb += c.b; sumg += c.g; sumr += c.r;
+        const l = locals[base + s];
+        lb += l.b; lg += l.g; lr += l.r;
       }
       const c = chromaFeature({
         b: sumb / CrossPoints,
@@ -601,6 +618,7 @@ function findTsums(img: NativeImage, grayImg: NativeImage): TsumPoint[] {
         x: p.x, y: p.y, z: p.radius,
         b: c.b, g: c.g, r: c.r,
         contrast: textures[k].contrast, peak: textures[k].peak,
+        local: {b: lb / CrossPoints, g: lg / CrossPoints, r: lr / CrossPoints},
       });
     }
 
@@ -611,6 +629,7 @@ function findTsums(img: NativeImage, grayImg: NativeImage): TsumPoint[] {
     return results;
   } finally {
     if (debugImg != null) { releaseImage(debugImg); }
+    if (localImg != null) { releaseImage(localImg); }
     releaseImage(hsvImg);
   }
 }
