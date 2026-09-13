@@ -86,7 +86,7 @@ In bundle order.
 | `lightningMcQueenPlus.ts` | `LightningMcQueenPlus` | |
 | `formalBeast.ts` | `FormalBeast` | Steers the play loop: reads his twin gauge and picks chains by colour. |
 | `tiaraMinniePlus.ts` | `TiaraMinniePlus` | The largest: board signature, cloud sampling, candidate scoring. |
-| `coronationElsa.ts` | `CoronationElsa` | The only choreography that plays: a timed freeze window with a chain mid-way and one at the very end, each off a fresh read of the ice, then one break. |
+| `coronationElsa.ts` | `CoronationElsa` | The only choreography that plays: a timed freeze window swept a row at a time, one capture per chain, then one break. |
 | `lorcanaAurora.ts` | `LorcanaAurora` | Two skills with one gauge; after the card, the bubbles become a standing claim. |
 | `gaston.ts` | `Gaston` | One snake down the pile from a top corner; ignores the chain settings. |
 | `rapunzelPlus.ts` | `RapunzelPlus` | The one chain that ignores colour, with its own paced drag. |

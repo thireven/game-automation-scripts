@@ -51,27 +51,25 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 
 ### Changed
 
-- **Elsa's window is two scheduled chains and one break.** The band a chain
-  freezes thickens with time -- one to two tsums at 1-2s, the whole board at
-  ~10s (`coronation_elsa_3.mp4`: a single 3-chain froze 59 for 422,942) -- and
-  a frozen tsum under a second band counts double at the break. So the old aim
-  (many quick chains whose bands avoid each other, spent mid-window) was the
-  wrong one, and so was the row sweep that briefly replaced it. Now: a flat
-  chain on the lowest free row at half the window and another at 95% of it
-  (`chainAt`), each off a fresh capture; one break; the bomb popped aimed. The
-  band model, the quarantine ring, the narrowest-band rule and the early burst
-  are gone with it.
-- **Elsa's scheduled chains are planned over three rows with adjacent hops.**
-  Planned over one row, a colour's tsums sat two apart and the game refused the
-  hop -- every scheduled chain of `coronation_elsa_4/5.mp4` registered as one
-  or two tsums and froze nothing. `elsaStripChains` now enumerates chains with
-  hops under `maxHop` (34px) across `rowSpan` rows, anchored in the lowest.
-- **Elsa's window clock starts when the activation animation ends, chains at
-  2s and 11s.** Chains 12s after a tap still froze, and the window is 10s at
-  level 6, so it runs from the ~1.5s lead-in. The freeze is a charge spent by
-  each chain -- ~3 tsums at 1s, 7-20 at 4-5s, the whole board at 10s -- so
-  the final chain goes out as late as the window allows and the first as
-  early as the animation allows.
+- **Elsa's window is a row sweep for one break.** A frozen tsum under a
+  second band counts double at the break, so the old aim -- many quick chains
+  whose bands avoid each other, spent mid-window -- was the wrong one. Now:
+  capture, read the ice, draw the flattest short chain anchored in the lowest
+  free row, wait `iceFormMs` for the band, look again, until the window is
+  nearly out; one break; the bomb popped aimed. The band model, the
+  quarantine ring, the narrowest-band rule and the early burst are gone.
+  (Two intermediate versions -- a scheduled pair of chains, and a sweep that
+  read "no new ice" as the window closing -- shipped and were withdrawn the
+  same day: both made about one chain a window.)
+- **Elsa's chains are planned over three rows with adjacent hops.** Planned
+  over one row, a colour's tsums sat two apart and the game refused the hop --
+  every chain of `coronation_elsa_4/5.mp4` registered as one or two tsums and
+  froze nothing. `elsaStripChains` now enumerates chains with hops under
+  `maxHop` (34px) across `rowSpan` rows, anchored in the lowest. Verified
+  linking on `coronation_elsa_6.mp4`.
+- **Elsa's window clock starts when the activation animation ends.** Chains
+  12s after a tap still froze, and the window is 10s at level 6, so it runs
+  from the ~1.5s lead-in, and no chain goes out under the animation.
 - **Ice-alikes match per axis, with room on value, and only count once seen
   scan after scan.** The same live blue read value 185 between windows and 208
   under the fever tint, so the plain distance of 15 called it ice and every
