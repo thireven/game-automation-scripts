@@ -51,6 +51,10 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 
 ### Changed
 
+- **Log sentences shortened.** Every `message` is written to the log file
+  verbatim and the `event` id already names what happened, so the English and
+  zh-TW catalogues now carry short phrases; the explanations moved out of the
+  log line.
 - **Elsa's window is a row sweep for one break.** A frozen tsum under a
   second band counts double at the break, so the old aim -- many quick chains
   whose bands avoid each other, spent mid-window -- was the wrong one. Now:
