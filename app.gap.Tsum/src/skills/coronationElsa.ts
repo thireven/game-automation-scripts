@@ -258,20 +258,6 @@ var CoronationElsaConfig = {
   // (`coronation_elsa_9.mp4`: 8s on one three-tsum chain).
   chainStayPx: 8,
   chainStaysMin: 2,
-  // The bomb a break spawns appears around the middle of the board and falls
-  // onto whatever is left (the user, over many rounds; `coronation_elsa_10.mp4`
-  // at 0:47 shows one landing on the floor of an emptied board). So after
-  // the settle a column of blind taps runs down the middle, `bombColumnTaps`
-  // of them from `bombColumnFrom` to `bombColumnTo` of the play area's
-  // height, ~50ms each. No ice stands right after a break, so they are
-  // safe; on a tsum a tap is nothing.
-  bombColumnTaps: 6,
-  bombColumnFrom: 0.4,
-  bombColumnTo: 0.95,
-  // The look after a break may pop what the scan finds with this much ice
-  // read: none is real then, only shards in flight, which read pale.
-  postBurstPopMaxIced: 4,
-  postBurstPopLooks: 2,
   // The fallback when the closing burst has no ice read to aim at: a blind
   // grid over the play area, in logical px. A tap on an ordinary tsum is not a
   // drag, so the game ignores it.
@@ -660,19 +646,6 @@ Tsum.prototype.elsaBurstFrozen = function(frozen, grid) {
   return taps;
 };
 
-/** The blind column for the bomb; see `bombColumnTaps`. Logical px. */
-Tsum.prototype.elsaTapBombColumn = function() {
-  const cfg = CoronationElsaConfig;
-  const from = Button.gameBubblesFrom, to = Button.gameBubblesTo;
-  const x = (from.x + to.x) / 2;
-  const y0 = from.y + (to.y - from.y) * cfg.bombColumnFrom;
-  const y1 = from.y + (to.y - from.y) * cfg.bombColumnTo;
-  for (let i = 0; i < cfg.bombColumnTaps; i++) {
-    const y = y0 + (y1 - y0) * i / Math.max(1, cfg.bombColumnTaps - 1);
-    this.tap({x: x, y: y}, cfg.burstTapDuring);
-  }
-};
-
 /**
  * One settled look at the board: capture, split the tsums into free and ice,
  * and hand back what a drag must keep away from.
@@ -691,14 +664,11 @@ Tsum.prototype.elsaTapBombColumn = function() {
  *     looked at again after the fall.
  *
  * Ice-free only, both: a tap is what sets a pile off, so while ice stands the
- * bubbles stay and become drag obstacles instead. The one exception is the
- * look after a break (`popIcedMax`): no real ice stands then, and the few
- * tsums read as ice are shards in flight.
+ * bubbles stay and become drag obstacles instead.
  */
-Tsum.prototype.elsaLook = function(closesAt, expected, popIcedMax) {
+Tsum.prototype.elsaLook = function(closesAt, expected) {
   const cfg = CoronationElsaConfig;
   const expect = expected || 0;
-  const popOver = popIcedMax || 0;
   let free: BoardPoint[] = [];
   let iced: BoardPoint[] = [];
   let waits = 0;
@@ -707,19 +677,20 @@ Tsum.prototype.elsaLook = function(closesAt, expected, popIcedMax) {
     const split = elsaSplitIce(this, this.scanBoardQuick());
     free = split.free;
     iced = split.iced;
-    if (iced.length === 0 && waits < cfg.settleMaxWaits
-        && free.length < cfg.settledFraction * expect
-        && Date.now() + cfg.settleRetryMs < closesAt) {
-      waits++;
-      this.sleep(cfg.settleRetryMs);
-      continue;
-    }
-    if (iced.length <= popOver && pops < 2 && this.gameBubbles.length > 0
-        && Date.now() + cfg.bubbleSettleMs < closesAt) {
-      pops++;
-      this.popGameBubbles(this.gameBubbles.length);
-      this.sleep(cfg.bubbleSettleMs);
-      continue;
+    if (iced.length === 0) {
+      if (waits < cfg.settleMaxWaits && free.length < cfg.settledFraction * expect
+          && Date.now() + cfg.settleRetryMs < closesAt) {
+        waits++;
+        this.sleep(cfg.settleRetryMs);
+        continue;
+      }
+      if (pops < 2 && this.gameBubbles.length > 0
+          && Date.now() + cfg.bubbleSettleMs < closesAt) {
+        pops++;
+        this.popGameBubbles(this.gameBubbles.length);
+        this.sleep(cfg.bubbleSettleMs);
+        continue;
+      }
     }
     break;
   }
@@ -776,12 +747,8 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
   let dead: BoardPoint[] = [];
   let deadChains = 0;
   let fruitlessChains = 0;
-  // Looks left that may pop the bomb over a shard-only ice read.
-  let postBurstLooks = 0;
   while (this.isRunning && Date.now() < chainBy) {
-    const look = this.elsaLook(chainBy, expected,
-      postBurstLooks > 0 ? cfg.postBurstPopMaxIced : 0);
-    if (postBurstLooks > 0) { postBurstLooks--; }
+    const look = this.elsaLook(chainBy, expected);
     looks++;
     const read = look.free.length + look.iced.length;
     if (read > expected) { expected = read; }
@@ -831,13 +798,11 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
         // The board is frozen out with window to spare: spend the pile now
         // and sweep the refill. Aimed taps only -- the grid's 25 taps cost
         // ~1.3s of window (`coronation_elsa_8.mp4`: 1.4s a break, three a
-        // window). Then the bomb: the blind column down the middle once the
-        // clear has settled, and the next looks pop what the scan finds.
+        // window). The next look pops the bomb the break leaves (no ice
+        // stands, so its bubble pop runs) before chaining.
         aimedTaps += this.elsaBurstFrozen(look.iced, false);
         bursts++;
         this.sleep(elsaPostBurstSettleMs(look.iced.length));
-        this.elsaTapBombColumn();
-        postBurstLooks = cfg.postBurstPopLooks;
         iced = [];
         starvedRun = 0;
         // The refill is a new board; a dead chain's tsums are gone with it.
@@ -871,11 +836,10 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     // play loop ~1.3s every window.
     aimedTaps += this.elsaBurstFrozen(iced, iced.length < cfg.leftoverBurstMin);
     bursts++;
-    // The break is a large clear; let it settle, then the bomb: the blind
-    // column down the middle, and one look to pop aimed whatever it missed.
-    // The play loop's own scan follows the moment this hands back.
+    // The break is a large clear; let it settle, then one look for the bomb it
+    // spawned (where the clear count was shown) and pop it aimed. The play
+    // loop's own scan follows the moment this hands back.
     this.sleep(elsaPostBurstSettleMs(iced.length));
-    this.elsaTapBombColumn();
     this.scanBoardQuick();
     this.popGameBubbles(this.gameBubbles.length);
     this.sleepUntil(closesAt);

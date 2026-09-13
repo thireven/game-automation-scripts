@@ -99,10 +99,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   read: a grey-blue cat on `coronation_elsa_11.mp4` read as ice tsum by
   tsum but its cluster centre never entered the old box, so it was never
   learned -- every scan between windows fired a leftover break at it and no
-  chain through it was ever drawn. After every break, six blind taps run
-  down the middle of the board for the bomb, which spawns there and falls,
-  and the next two looks pop what the scan finds even over a few tsums read
-  as ice (shards in flight; no real ice stands then). The band model, the
+  chain through it was ever drawn. The band model, the
   quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the
