@@ -217,6 +217,16 @@ var CoronationElsaConfig = {
   // missed, and is spent (grid and all). Smaller is a band left standing on
   // purpose: it doubles under the next window's bands.
   leftoverBurstMin: 8,
+  // A chain the game took clears its tsums; one it did not leaves them where
+  // they were, and drawing it again changes nothing. So after each chain the
+  // next look checks: no more ice than before, and at least `chainStaysMin`
+  // of its tsums still read as free within `chainStayPx` -- a dead chain,
+  // its tsums left out of the planning until the next break. Without this a
+  // chain of two colours the read merged, or of phantom circles on bare
+  // floor, was drawn look after look while a frozen board stood
+  // (`coronation_elsa_9.mp4`: 8s on one three-tsum chain).
+  chainStayPx: 8,
+  chainStaysMin: 2,
   // The fallback when the closing burst has no ice read to aim at: a blind
   // grid over the play area, in logical px. A tap on an ordinary tsum is not a
   // drag, so the game ignores it.
@@ -486,6 +496,38 @@ function elsaRowChain(free: BoardPoint[], obstacles: ElsaObstacle[]):
 }
 
 /**
+ * How many of `path`'s tsums still stand: points with a free tsum within
+ * `chainStayPx` on the look after the drag.
+ */
+function elsaChainStays(path: TsumPath, free: BoardPoint[]): number {
+  const px = CoronationElsaConfig.chainStayPx;
+  let stays = 0;
+  for (let i = 0; i < path.length; i++) {
+    for (let j = 0; j < free.length; j++) {
+      const dx = free[j].x - path[i].x, dy = free[j].y - path[i].y;
+      if (dx * dx + dy * dy <= px * px) { stays++; break; }
+    }
+  }
+  return stays;
+}
+
+/** `free` without any tsum standing on a dead chain's point. */
+function elsaWithoutDead(free: BoardPoint[], dead: BoardPoint[]): BoardPoint[] {
+  if (dead.length === 0) { return free; }
+  const px = CoronationElsaConfig.chainStayPx;
+  const out: BoardPoint[] = [];
+  for (let i = 0; i < free.length; i++) {
+    let on = false;
+    for (let j = 0; j < dead.length && !on; j++) {
+      const dx = free[i].x - dead[j].x, dy = free[i].y - dead[j].y;
+      on = dx * dx + dy * dy <= px * px;
+    }
+    if (!on) { out.push(free[i]); }
+  }
+  return out;
+}
+
+/**
  * How long to keep the board after a burst of `pile` tsums. The refill scales
  * with the clear, so a flat wait cannot serve both a 16-tsum pop and a
  * whole-board one. Capped, because the wait comes out of the window.
@@ -641,19 +683,41 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
   let aimedTaps = 0;
   // The last read that saw ice: what the break aims at.
   let iced: BoardPoint[] = [];
+  // The chain just drawn and the ice count it was drawn over, judged by the
+  // next look; the points of every chain this pile did not take.
+  let drawn: TsumPath | null = null;
+  let drawnOverIced = 0;
+  let dead: BoardPoint[] = [];
+  let deadChains = 0;
   while (this.isRunning && Date.now() < chainBy) {
     const look = this.elsaLook(chainBy, expected);
     looks++;
     const read = look.free.length + look.iced.length;
     if (read > expected) { expected = read; }
     if (look.iced.length > 0) { iced = look.iced; }
-    const pick = elsaRowChain(look.free, look.obstacles);
+    let failed = false;
+    if (drawn !== null) {
+      // The chain went nowhere: same ice, its tsums still standing. Its
+      // points are out of the plan, and the look counts as starved so a board
+      // with nothing else on it is broken rather than redrawn.
+      failed = look.iced.length <= drawnOverIced
+        && elsaChainStays(drawn, look.free) >= cfg.chainStaysMin;
+      if (failed) {
+        dead = dead.concat(drawn);
+        deadChains++;
+        starvedRun++;
+      }
+      drawn = null;
+    }
+    const pick = elsaRowChain(elsaWithoutDead(look.free, dead), look.obstacles);
     logDebug(Log.Skill.ElsaPass, {
       atMs: Date.now() - t0,
       free: look.free.length,
       iced: look.iced.length,
       waits: look.waits,
       pops: look.pops,
+      // The previous chain left its tsums standing.
+      failed: failed,
       row: pick === null ? -1 : pick.row,
       chainLen: pick === null ? 0 : pick.path.length,
       // The hop tier that found it: the wide one on a board frozen nearly out.
@@ -676,6 +740,8 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
         this.sleep(elsaPostBurstSettleMs(look.iced.length));
         iced = [];
         starvedRun = 0;
+        // The refill is a new board; a dead chain's tsums are gone with it.
+        dead = [];
         continue;
       }
       // Give the board a moment and look again; the clock ends the window,
@@ -688,6 +754,8 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     // belong to the play loop, and the second would nest a window in this one.
     this.linkTsums(pick.path);
     chains++;
+    drawn = pick.path;
+    drawnOverIced = look.iced.length;
     // Let the band form before the next look reads it.
     this.sleep(cfg.iceFormMs);
   }
@@ -719,6 +787,9 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     chains: chains,
     // Looks that found no chain to draw.
     starvedLooks: starved,
+    // Chains drawn that left their tsums standing: a colour the read merged,
+    // or circles on bare floor.
+    deadChains: deadChains,
     // Breaks inside the window plus the closing one.
     bursts: bursts,
     // The pile as last read going into the break. Near zero with several

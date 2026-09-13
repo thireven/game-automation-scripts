@@ -71,7 +71,12 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   capture: adjacent tsums wherever they are, else the scattered islands a
   frozen-out board leaves, whose 35-43px hops the tight limit refused right
   before three of four mid-window breaks on `coronation_elsa_8.mp4` -- the
-  chains a player sees left standing. The band model, the
+  chains a player sees left standing. A chain the game did not take -- no
+  new ice and its tsums still standing on the next look -- is dead for the
+  rest of the pile and counts as a starved look, so the board is broken
+  instead of the chain redrawn: on `coronation_elsa_9.mp4` one chain of two
+  colours the read had merged was drawn for 8s, and a chain of circles on
+  bare floor held another break for 4s. The band model, the
   quarantine ring and the narrowest-band rule are gone.
   (Two intermediate versions -- a scheduled pair of chains, and a sweep that
   read "no new ice" as the window closing -- shipped and were withdrawn the
