@@ -130,7 +130,10 @@ var SkillsDeclared: SkillOption[] = [
 
     // --- Unique: the play loop plays differently while these are up ----------
     {key: SkillType.CoronationElsa, share: 'e', title: UiText.SkillCoronationElsa,
-     status: ReleaseStatus.Alpha, group: UiText.SkillGroupUnique},
+     status: ReleaseStatus.Beta, group: UiText.SkillGroupUnique},
+    // The 1.0 choreography, offered beside the reworked one for comparison.
+    {key: SkillType.CoronationElsaLegacy, share: 'E', title: UiText.SkillCoronationElsaLegacy,
+     status: ReleaseStatus.Beta, group: UiText.SkillGroupUnique},
     {key: SkillType.FormalBeast, share: 'f', title: UiText.SkillFormalBeast,
      status: ReleaseStatus.Production, group: UiText.SkillGroupUnique},
     {key: SkillType.Gaston, share: 'G', title: UiText.SkillGaston,

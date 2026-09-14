@@ -34,6 +34,27 @@ changed, and the one fact that explains why. Measurements, rejected designs and
 long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 `DRIVING_SCREENS.md`, `PAGE_DISPATCH.md`, `DEVELOPMENT.md`).
 
+## [2.0]
+
+### Summary
+
+- Version bump from 1.0 to 2.0
+- Coronation Day Elsa skill promoted to Beta.
+- Coronation Elsa Legacy skill added: the 1.0 version of the freeze window, offered beside the current one on Beta builds so the two can be compared.
+
+### Added
+
+- **`src/skills/coronationElsaLegacy.ts`.** The 1.0 Elsa file as it was at
+  the version bump, every symbol suffixed `Legacy` so the two share one
+  bundle, registered as `SkillType.CoronationElsaLegacy` (share code `E`)
+  with its own `skill.elsaLegacy.*` log events. Its own id so the stats
+  and the log tell the two apart. Never tuned -- findings go in the
+  current file.
+
+### Changed
+
+- **Both Coronation Elsa entries are `ReleaseStatus.Beta`.**
+
 ## [1.0]
 
 ### Summary

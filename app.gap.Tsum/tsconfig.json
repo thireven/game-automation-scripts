@@ -111,6 +111,7 @@
     "src/skills/formalBeast.ts",
     "src/skills/tiaraMinniePlus.ts",
     "src/skills/coronationElsa.ts",
+    "src/skills/coronationElsaLegacy.ts",
     "src/skills/rapunzelPlus.ts",
     "src/skills/lorcanaAurora.ts",
     "src/skills/gaston.ts",

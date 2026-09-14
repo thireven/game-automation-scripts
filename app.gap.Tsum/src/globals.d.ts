@@ -1511,6 +1511,24 @@ interface Tsum {
    */
   useCoronationElsaSkill(activatedAt?: number, expectTsums?: number): void;
 
+  // --- skills/coronationElsaLegacy.ts ----------------------------------
+  // The 1.0 choreography, kept for comparison; the file's header says why.
+  /** As `elsaBurstFrozen`, over the pile the model believes is standing. */
+  elsaLegacyBurstFrozen(frozen: BoardPoint[], grid: boolean): number;
+  /**
+   * One settled capture, then chains chosen for coverage off a model of what
+   * each one froze, until the board offers none or `closesAt` passes. Returns
+   * the points the model believes are now ice, how many chains the pass drew,
+   * and the whole population it read.
+   */
+  elsaLegacyFreezePass(closesAt: number, expected?: number):
+    { iced: BoardPoint[], chains: number, read: number };
+  /**
+   * Play out the freeze window: freeze until no more chains can be made, then
+   * burst -- the clock forces the burst only at `burstTailMs` before close.
+   */
+  useCoronationElsaLegacySkill(activatedAt?: number, expectTsums?: number): void;
+
   // --- skills/formalBeast.ts -------------------------------------------
   /**
    * One reading of the twin gauge, off a native-resolution crop of the arc.

@@ -32,6 +32,7 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Skill.FormalBeastModeStart]: '[禮服野獸] 雙量表出現，維持平衡',
   [Log.Skill.FormalBeastModeEnd]: '[禮服野獸] 雙量表結束',
   [Log.Skill.ElsaDone]: '[加冕日艾莎] 冰凍時間結束',
+  [Log.Skill.ElsaLegacyDone]: '[加冕日艾莎 舊版] 冰凍時間結束',
   [Log.Skill.GastonDone]: '[加斯頓] 時間結束',
   [Log.Skill.GastonPass]: '[加斯頓] 已連線',
   [Log.Skill.RapunzelDone]: '[樂佩+] 已連出混色連線',

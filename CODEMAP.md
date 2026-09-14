@@ -182,6 +182,7 @@ hundred lines and more.
 | `src/skills/formalBeast.ts` | `SkillType.FormalBeast` | The only skill that steers the play loop rather than choreographing an activation: it reads the twin gauge his mode draws and picks chains by colour. Nothing is refused — the leading colour is *throttled* to the headroom left under the rose |
 | `src/skills/tiaraMinniePlus.ts` | `SkillType.TiaraMinniePlus` | The largest: board signature, cloud sampling, candidate scoring |
 | `src/skills/coronationElsa.ts` | `SkillType.CoronationElsa` | The only choreography that *plays*: her activation opens a timed freeze window swept a row at a time -- capture, read the ice, chain the lowest free row, wait for the band -- then one break, because a tsum under two bands counts double |
+| `src/skills/coronationElsaLegacy.ts` | `SkillType.CoronationElsaLegacy` | The same window as 1.0 played it, kept beside the rework for side-by-side testing: one capture per pass, every chain planned off a model of what the last one froze, the pile spent as soon as the board is played out. Every symbol suffixed `Legacy`; never tuned -- a finding goes in the file above |
 | `src/skills/lorcanaAurora.ts` | `SkillType.LorcanaAurora` | Two skills with one gauge between them, chosen by `gLorcana.transformed` (`src/lorcana.ts`, which plays the transformation). After the card any bubble links to any other at any distance, so the *order* is the thing worth solving, and the bubbles become a standing claim nothing else may spend |
 | `src/skills/gaston.ts` | `SkillType.Gaston` | **One snake down the pile from a top corner, and nothing here consults the chain settings.** His activation changes nothing already on the board, so the window is worth however much board gets cleared while it is open. Gated on the tsum count rather than on stillness, and over his tsums only |
 | `src/skills/rapunzelPlus.ts` | `SkillType.RapunzelPlus` | The one chain that ignores colour, capped at what the skill level allows. Owns both ends of *drawing* it too: a planning reach below the game's own, its own paced drag, and a light gate that waits out the activation veil rather than scanning under it |
@@ -217,7 +218,7 @@ enforces every row below, so these are true rather than approximate.
 
 | Name | Defined in |
 |:--|:--|
-| `Tsum#*` — any `ts.foo()` / `this.foo()` method | `src/tsum.ts`, `src/waits.ts`, `src/appLifecycle.ts`, `src/board.ts`, `src/play.ts`, `src/mail.ts`, `src/hearts.ts`, `src/levelCap.ts`, `src/boxes.ts`, `src/dialogs.ts`, `src/roundStats.ts`, `src/corpus.ts`, `src/report.ts`, `src/clickAssist.ts`, `src/walkthrough.ts`, `src/fever.ts`, `src/skills/skillCore.ts`, `src/skills/tiaraMinniePlus.ts`, `src/skills/cinderella.ts`, `src/skills/cptLy.ts`, `src/skills/formalBeast.ts`, `src/skills/coronationElsa.ts`, `src/lorcana.ts` — every signature also in `src/globals.d.ts` |
+| `Tsum#*` — any `ts.foo()` / `this.foo()` method | `src/tsum.ts`, `src/waits.ts`, `src/appLifecycle.ts`, `src/board.ts`, `src/play.ts`, `src/mail.ts`, `src/hearts.ts`, `src/levelCap.ts`, `src/boxes.ts`, `src/dialogs.ts`, `src/roundStats.ts`, `src/corpus.ts`, `src/report.ts`, `src/clickAssist.ts`, `src/walkthrough.ts`, `src/fever.ts`, `src/skills/skillCore.ts`, `src/skills/tiaraMinniePlus.ts`, `src/skills/cinderella.ts`, `src/skills/cptLy.ts`, `src/skills/formalBeast.ts`, `src/skills/coronationElsa.ts`, `src/skills/coronationElsaLegacy.ts`, `src/lorcana.ts` — every signature also in `src/globals.d.ts` |
 | `Tsum#task*` — the scheduled jobs | `src/play.ts`, `src/mail.ts`, `src/hearts.ts`, `src/levelCap.ts`, `src/boxes.ts`, `src/appLifecycle.ts`, `src/clickAssist.ts`, `src/walkthrough.ts` |
 | `TaskName`, `JobPriority`, `TaskSpec`, `RunSettings`, `runTaskTable` — the task table | `src/runPlan.ts` |
 | `ScriptVersion`, `Config`, `Button`, `Page`, `PageName`, `PageProfiles`, `NavPlans`, `PageAnchor`, `RouteSource`, `AnchorRoutes`, `PageRoutes` | `src/data.ts` |
@@ -234,7 +235,7 @@ enforces every row below, so these are true rather than approximate.
 | `onGapMessage` — the page-to-page nudge's handler, one per page | `src/settings.ts`, `src/quickbarPage.ts` |
 | `tiara*`, `Tiara*` | `src/skills/tiaraMinniePlus.ts` (tables included), `src/globals.d.ts` |
 | `formalBeast*`, `FormalBeast*` | `src/skills/formalBeast.ts` (tables included), `src/globals.d.ts` |
-| `elsa*`, `CoronationElsa*` | `src/skills/coronationElsa.ts` (tables included), `src/globals.d.ts` |
+| `elsa*`, `CoronationElsa*` | `src/skills/coronationElsa.ts` (tables included), `src/skills/coronationElsaLegacy.ts` (the `elsaLegacy*` / `CoronationElsaLegacy*` half, and only that), `src/globals.d.ts` |
 | `lorcana*`, `Lorcana*`, `gLorcana` | `src/lorcana.ts` (tables included), `src/skills/lorcanaAurora.ts`, `src/globals.d.ts`, `src/shared.d.ts` (`SkillType.LorcanaAurora`, `SettingKey.LorcanaCard`), `src/tsum.ts` (the `lorcanaCard` field) |
 | `rapunzel*`, `RapunzelPlus*` | `src/skills/rapunzelPlus.ts` (tables included) — plain functions, no `Tsum` method |
 | `gaston*`, `Gaston*` | `src/skills/gaston.ts` (tables included) — plain functions, no `Tsum` method |

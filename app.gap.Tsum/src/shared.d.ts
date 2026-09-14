@@ -68,6 +68,12 @@ declare const enum SkillType {
    */
   CoronationElsa = 'elsa_coronation',
   /**
+   * The same skill as it was played in 1.0, kept for side-by-side testing --
+   * see `src/skills/coronationElsaLegacy.ts`. Its own id so the round stats
+   * and the log tell the two apart.
+   */
+  CoronationElsaLegacy = 'elsa_coronation_legacy',
+  /**
    * Rapunzel+. Her activation makes the board colour-blind for a moment: one
    * chain may take tsums of any colour, up to a length her skill level sets --
    * see `src/skills/rapunzelPlus.ts`.
