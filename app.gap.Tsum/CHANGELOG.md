@@ -43,10 +43,24 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - Coronation Elsa Legacy skill added: the 1.0 version of the freeze window, offered beside the current one on Beta builds so the two can be compared.
 - The JP game's Magical Time offer is now recognised and cancelled like the EN one.
 - Box Buying no longer stalls on the "You got a Patch!" popup a purchase can come with: it is closed like the reveal card and the sweep goes on.
+- Box Buying handles the store refusing a 10-Time purchase on a nearly empty box ("You can't use 10-Time Purchases"): the sweep ends there instead of retrying into it, and the new "Ten, then one until sold out" size carries on singly to empty the box. "Buy ten at a time" became the "Boxes per purchase" dropdown.
 - Rounds turn over faster: the score tally's count-up is tapped through instead of waited out.
 
 ### Added
 
+- **`BoxTenTimeRefused` (`src/data.ts`).** The "You can't use 10-Time
+  Purchases" toast, `targeted` like `LevelCapRaised` because it is the
+  `HeartSent` sprite -- a sweep over it answers `HeartSent` -- with one probe
+  in the gap between its two lines of wording that refuses both twins.
+  Authored on two frames cut from `no_more_10box.mp4`. `Tsum.awaitBoxDialog`
+  (`src/boxes.ts`) watches for it beside the purchase confirmation after a
+  10-Time press, taps it away, and `buyOneBox` reports `tenRefused`.
+- **`BoxPurchaseSize` and `SettingKey.BuyBoxSize` (`src/shared.d.ts`).** One,
+  Ten, or TenThenOne, replacing the `buyBoxTenTimes` switch; `loadSettings`
+  carries a stored `true` over to Ten once. `buyBoxes` reads it into the
+  `tenTimes` it already ran on, which the refusal clears under TenThenOne.
+  `Log.Box.TenRefused` records the refusal; `Log.Box.End` reports
+  `10-time refused` when it ended the sweep.
 - **`BoxPatchPurchasedPage` (`src/data.ts`).** The "You got a Patch!" popup,
   a `patch` configuration of `BoxPurchasedPage`, so `clearBoxReveals` taps
   its Close. The reveal card's entries missed it on the two probes that read

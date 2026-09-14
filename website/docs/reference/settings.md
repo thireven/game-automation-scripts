@@ -64,7 +64,7 @@ settings". Close the panel instead and the run carries on where it left off.
 | Unlock Level every hours | Every N hours, sort the collection by Level Lock, raise the cap on each capped tsum (spends coins), and restore the order. 0 disables. **Now** runs one sweep immediately, ahead of everything but a round in progress. |
 | Buy boxes every hours | Every N hours, go to the store and buy the chosen box until it sells out or coins run out. 0 disables. **Now** works like the one above; the three box rows are read at each sweep. Rubies are never spent. |
 | Box to buy | Premium Box+, Premium Box, Select Box or Happiness Box. Only ever this one. |
-| Buy ten at a time | Take the 10-Time Purchase button where offered; buy singly otherwise. |
+| Boxes per purchase | One at a time; ten at a time, ending the sweep once the store refuses ten because the box is almost sold out; or ten, then one until the box sells out. A box that only sells single ones is bought singly whichever is picked. |
 | Purchases per sweep | The safety limit (1–50) on a chore that spends coins. |
 | Auto Send Hearts | Send hearts to the friends list on a schedule. |
 | Send to 0 score | Send even to friends without a score. |

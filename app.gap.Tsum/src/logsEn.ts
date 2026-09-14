@@ -113,6 +113,8 @@ var LogsEn = {
   [Log.Box.Bought]: 'Bought a box',
   [Log.Box.SoldOut]: 'Box sold out',
   [Log.Box.NoCoins]: 'Not enough Coins; cancelled, no Rubies spent',
+  [Log.Box.TenRefused]: 'Store refused a 10-Time purchase; box almost sold out',
+  [Log.Box.ToastStuck]: '10-Time refusal would not close',
   [Log.Box.DialogMissing]: 'Purchase confirmation missing',
   [Log.Box.Retrying]: 'Purchase failed; retaking store page',
   [Log.Box.RevealsStuck]: 'Box reveals stuck',

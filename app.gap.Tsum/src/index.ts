@@ -158,7 +158,8 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // sweep buy nothing at all rather than the wrong thing, but naming one is
   // still the friendlier failure.
   ts.buyBoxType = settings.buyBoxType || BoxType.Premium;
-  ts.buyBoxTenTimes = settings.buyBoxTenTimes;
+  // Missing means singles: the one size that can never spend ten boxes' worth.
+  ts.buyBoxSize = settings.buyBoxSize || BoxPurchaseSize.One;
   // Checked rather than taken, because this one is what stops a chore that
   // spends the player's coins: a hand-written start() command has no range.
   ts.buyBoxMaxPurchases = typeof settings.buyBoxMaxPurchases === 'number'

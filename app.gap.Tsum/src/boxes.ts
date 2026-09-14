@@ -3,10 +3,17 @@
 //
 // Navigate to the store, open the box the settings name, press its 1-Time or
 // 10-Time purchase, confirm, tap through the reveals, and go round again. It
-// ends on the game's own two signals -- the purchase buttons turning blue
-// ("Sold Out"), or "Not enough Coins!" -- and on its own purchase limit, which
-// is there because neither of those is something a chore that spends the
-// player's coins may rely on arriving (DRIVING_SCREENS.md § 8).
+// ends on the game's own signals -- the purchase buttons turning blue ("Sold
+// Out"), "Not enough Coins!", or the 10-Time button refused because the box is
+// almost sold out -- and on its own purchase limit, which is there because none
+// of those is something a chore that spends the player's coins may rely on
+// arriving (DRIVING_SCREENS.md § 8).
+//
+// The refusal is a toast, not a blue button: the store keeps the 10-Time button
+// gold once the box holds fewer than ten and answers a press with "You can't
+// use 10-Time Purchases" (`Page.BoxTenTimeRefused`). What the sweep does then is
+// the size setting's call (`BoxPurchaseSize`): `Ten` ends it there, and
+// `TenThenOne` drops to the 1-Time button for the rest of the box.
 //
 // **Rubies are never spent.** The "Not enough Coins!" dialog offers to trade
 // them, and this sweep presses Cancel and stops. So does `dismiss.notEnoughCoins`
@@ -44,7 +51,7 @@ const BuyBoxReturnWaitMs = 10 * 1000;
  * itself instead (`awaitBoxTabs`), measured at ~1.5s on the reference device.
  */
 const BuyBoxLoadWaitMs = 8000;
-/** Between two looks while the store is still loading. */
+/** Between two looks while waiting on the store: its contents loading, or a dialog opening. */
 const BuyBoxLoadPollMs = 250;
 /** Captures per look inside the reveal loop, and their budget. One is enough to name a screen. */
 const BuyBoxPeekMs = 500;
@@ -359,6 +366,76 @@ Tsum.prototype.clearBoxReveals = function(deadline) {
 }
 
 /**
+ * Wait for what a purchase button's tap puts up.
+ *
+ * `awaitPage` with a second page to watch for: only a 10-Time press can raise
+ * the refusal toast, so it is looked for only then, and the confirmation is
+ * looked for first because it is the answer the flow wants. Both are asked by
+ * name -- the toast's entry is `targeted`, being the sprite `HeartSent` is drawn
+ * with, and a sweep over it answers that page instead.
+ *
+ * The toast is tapped away here, so a `refused` reading means the store is
+ * back in front -- or the loop's own re-grounding takes over, if it would not
+ * go. Like `HeartSent` it takes a tap anywhere, and `back` is the toast itself
+ * so the tap cannot reach the store behind it.
+ */
+Tsum.prototype.awaitBoxDialog = function(tenTimes, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    if (gPages.matches(PageName.ConfirmPurchasePage)) {
+      this.settleScreen(BuyBoxDialogSettleMs);
+      return 'confirm';
+    }
+    if (tenTimes && gPages.matches(PageName.BoxTenTimeRefused)) {
+      logInfo(Log.Box.TenRefused);
+      this.leaveBoxTenTimeToast();
+      return 'refused';
+    }
+    if (!this.isRunning) {
+      return 'missed';
+    }
+    if (Date.now() >= deadline) {
+      // Say what the screen actually was -- `awaitPage`'s line, for the same
+      // reason. `peek` rather than `detect`: nothing may act on it.
+      const seen = gPages.peek(1, BuyBoxPeekMs);
+      logWarn(Log.Box.PageMissed, 'Waited for a screen that did not come',
+        {want: PageName.ConfirmPurchasePage, saw: seen === null ? 'nothing' : seen.name,
+          waitedMs: timeoutMs});
+      return 'missed';
+    }
+    this.sleep(BuyBoxLoadPollMs);
+  }
+}
+
+/**
+ * Tap the 10-Time refusal toast away, back onto the store.
+ *
+ * `leaveLevelCapToast`'s shape (src/levelCap.ts), for its reason: a tap that
+ * lands while the toast is still arriving is swallowed by the animation, so
+ * tap for as long as it is still there, checking for the store before each
+ * one so no tap is spent on the store itself. False when it would not go; the
+ * loop's own re-grounding (`awaitPage`, then `navigate`) is what gets back
+ * from there, and a sweep on this toast answers `HeartSent`, whose `back` is
+ * the same tap.
+ */
+Tsum.prototype.leaveBoxTenTimeToast = function() {
+  const deadline = Date.now() + BuyBoxReturnWaitMs;
+  let taps = 0;
+  while (this.isRunning && Date.now() < deadline) {
+    if (gPages.matches(PageName.TsumTsumStorePage)) {
+      return true;
+    }
+    if (taps === 0 || gPages.matches(PageName.BoxTenTimeRefused)) {
+      this.tap(Page.BoxTenTimeRefused.back);
+      taps++;
+    }
+    this.settleScreen(BuyBoxPanelSettleMs);
+  }
+  logWarn(Log.Box.ToastStuck, 'The 10-Time refusal would not go', {taps: taps});
+  return false;
+}
+
+/**
  * Buy one box, and say how it went.
  *
  * The button is read rather than assumed, because reading it is also the
@@ -367,6 +444,9 @@ Tsum.prototype.clearBoxReveals = function(deadline) {
  * purchase falls back to the 1-Time button when the box only draws one -- never
  * the other way round, so a player who asked for single boxes can never be
  * charged for ten.
+ *
+ * A 10-Time button that is drawn but refused -- the box holds fewer than ten --
+ * is `tenRefused`, and the loop decides what that means; nothing was bought.
  *
  * `purchase` and `limit` are this purchase's place in the sweep. They are log
  * fields and nothing else -- the loop is what counts and what stops.
@@ -393,7 +473,11 @@ Tsum.prototype.buyOneBox = function(tenTimes, purchase, limit) {
 
   logInfo(Log.Box.Buying, {boxes: size});
   this.tap(wanted);
-  if (!this.awaitPage(PageName.ConfirmPurchasePage, BuyBoxDialogWaitMs, Log.Box.PageMissed)) {
+  const opened = this.awaitBoxDialog(size === 10, BuyBoxDialogWaitMs);
+  if (opened === 'refused') {
+    return 'tenRefused';
+  }
+  if (opened === 'missed') {
     logWarn(Log.Box.DialogMissing, 'The purchase confirmation did not open', {boxes: size});
     return 'missed';
   }
@@ -425,13 +509,20 @@ Tsum.prototype.buyOneBox = function(tenTimes, purchase, limit) {
 /**
  * Buy boxes until the store, the player's purse or the purchase limit says stop.
  *
+ * `size` is read once into `tenTimes`, which is what the store's refusal moves:
+ * under `TenThenOne` the sweep carries on with the 1-Time button, and nothing
+ * else in the loop needs to know it changed.
+ *
  * Returns the fields for `Log.Box.End` -- how many were bought and why it
  * stopped -- or null when the run ended under it, which is not an ending to
  * report.
  */
-Tsum.prototype.buyBoxes = function(box, tenTimes, maxPurchases) {
+Tsum.prototype.buyBoxes = function(box, size, maxPurchases) {
   const limit = Math.min(
     maxPurchases > 0 ? maxPurchases : BuyBoxDefaultMax, BuyBoxMaxPurchases);
+  // Anything that is not one of the two ten-sized settings buys singly: the
+  // one reading a value nothing recognises may safely take.
+  let tenTimes = size === BoxPurchaseSize.Ten || size === BoxPurchaseSize.TenThenOne;
   let bought = 0;
   let misses = 0;
 
@@ -466,6 +557,16 @@ Tsum.prototype.buyBoxes = function(box, tenTimes, maxPurchases) {
     }
     if (outcome === 'noCoins') {
       return {bought: bought, reason: 'not enough coins'};
+    }
+    if (outcome === 'tenRefused') {
+      // The box holds fewer than ten. Nothing was bought and nothing went
+      // wrong, so neither counter moves; the size setting says whether the
+      // rest of the box is worth buying singly.
+      if (size !== BoxPurchaseSize.TenThenOne) {
+        return {bought: bought, reason: '10-time refused'};
+      }
+      tenTimes = false;
+      continue;
     }
     if (outcome === 'stuck') {
       // Paid for, and the screens it opened would not clear. It counts against
@@ -508,13 +609,13 @@ Tsum.prototype.taskBuyBoxes = function() {
   }
   logInfo(Log.Box.Start, {
     box: this.buyBoxType,
-    boxes: this.buyBoxTenTimes ? 10 : 1,
+    size: this.buyBoxSize,
     limit: this.buyBoxMaxPurchases
   });
   gPages.navigate(PageName.TsumTsumStorePage);
 
   const outcome = this.buyBoxes(
-    this.buyBoxType, this.buyBoxTenTimes, this.buyBoxMaxPurchases);
+    this.buyBoxType, this.buyBoxSize, this.buyBoxMaxPurchases);
   if (outcome !== null) {
     logInfo(Log.Box.End, outcome);
   }

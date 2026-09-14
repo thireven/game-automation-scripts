@@ -596,10 +596,20 @@ var tabs: TabSpec[] = [
                         ] satisfies { key: BoxType; share: string; title: UiText }[])
                     },
                     {
-                        key: SettingKey.BuyBoxTenTimes,
-                        title: UiText.SettingBuyBoxTenTimes,
-                        help: UiText.SettingBuyBoxTenTimesHelp,
-                        default: false
+                        key: SettingKey.BuyBoxSize,
+                        title: UiText.SettingBuyBoxSize,
+                        help: UiText.SettingBuyBoxSizeHelp,
+                        default: BoxPurchaseSize.One as BoxPurchaseSize,
+                        // No `share` ids: a Chores row, so no code or preset
+                        // carries it. `satisfies` for the reason the box
+                        // dropdown above has it -- a key that is not a
+                        // BoxPurchaseSize would compile and buy singly without
+                        // saying why.
+                        dropdown: ([
+                            {key: BoxPurchaseSize.One, title: UiText.BoxSizeOne},
+                            {key: BoxPurchaseSize.Ten, title: UiText.BoxSizeTen},
+                            {key: BoxPurchaseSize.TenThenOne, title: UiText.BoxSizeTenThenOne}
+                        ] satisfies { key: BoxPurchaseSize; title: UiText }[])
                     },
                     {
                         key: SettingKey.BuyBoxMaxPurchases,
@@ -852,11 +862,30 @@ function loadSettings(settings: SettingSpec[][]) {
                 }
             }
         })();
+        carryBuyBoxTenTimes(recordSettings);
     } else {
         logInfo(Log.Settings.NoneFound, i18nText(UiText.LogNoSettings));
         return;
     }
     logInfo(Log.Settings.Loaded, i18nText(UiText.LogLoadSettings));
+}
+
+/** The switch the Boxes per purchase dropdown replaced. Read here once; nothing writes it. */
+var RETIRED_BUY_BOX_TEN_TIMES = 'buyBoxTenTimes';
+
+/**
+ * A stored "Buy ten at a time" becomes Ten, once: only while the dropdown that
+ * replaced it has no value of its own. The next save writes the new key and
+ * drops the old one with the rest of what the form no longer has.
+ */
+function carryBuyBoxTenTimes(stored: { [key: string]: SettingValue }) {
+    if (stored[SettingKey.BuyBoxSize] !== undefined || stored[RETIRED_BUY_BOX_TEN_TIMES] !== true) {
+        return;
+    }
+    var row = rowByKey(SettingKey.BuyBoxSize);
+    if (row !== undefined) {
+        row.default = BoxPurchaseSize.Ten;
+    }
 }
 
 // --- Saving ----------------------------------------------------------------
@@ -3022,7 +3051,7 @@ function taskDetail(name: TaskName, values: { [key: string]: SettingValue }): st
         case TaskName.BuyBoxes:
             return i18nFormat(UiText.RunBuyBoxesDetail, {
                 box: optionLabelOf(SettingKey.BuyBoxType, values[SettingKey.BuyBoxType]),
-                boxes: values[SettingKey.BuyBoxTenTimes] === true ? 10 : 1,
+                size: optionLabelOf(SettingKey.BuyBoxSize, values[SettingKey.BuyBoxSize]),
                 max: num(SettingKey.BuyBoxMaxPurchases)
             });
         case TaskName.PlayRound: {

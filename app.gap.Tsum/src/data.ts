@@ -479,6 +479,13 @@ const enum PageName {
    * Rubies, and this script only ever presses Cancel -- see the entry in `Page`.
    */
   NotEnoughCoins = 'NotEnoughCoins',
+  /**
+   * "You can't use 10-Time Purchases -- Please use 1-Time Purchases as this is
+   * almost sold out". The toast the 10-Time button raises once the box holds
+   * fewer than ten; a tap anywhere clears it. `targeted`, like the two other
+   * toasts drawn with this sprite -- see the entry in `Page`.
+   */
+  BoxTenTimeRefused = 'BoxTenTimeRefused',
   OutOfMedals = 'OutOfMedals',
   RubyResetDifficulty = 'RubyResetDifficulty',
   // Mail / hearts
@@ -1345,6 +1352,46 @@ var Page = {
     back: {x: 315, y: 1072},  // Cancel
     next: {x: 315, y: 1072}   // Cancel as well -- see above
   },
+  // "You can't use 10-Time Purchases", thrown over the store by the 10-Time
+  // button once the box holds fewer than ten. The same toast sprite as
+  // `HeartSent` and `LevelCapRaised` -- cyan band, message band, cyan band with
+  // the logo -- so it is `targeted` for the reason those are: outside the
+  // wording every pixel is theirs too, and a sweep over this toast answers
+  // `HeartSent`, whose centre probe lands between this toast's two lines. Only
+  // `awaitBoxDialog` asks for it, by name, right after pressing the button that
+  // raises it, which is all `matches()` needs.
+  //
+  // What is this toast's own is the wording: two lines where the others centre
+  // one. The (540, 884) probe sits in the gap between them, which reads the
+  // panel here and a glyph on both twins (per-channel misses of 200 and 85), so
+  // `matches()` refuses those. The rest is the chrome, for the device's benefit
+  // -- eight probes on flat cyan and panel that say the toast is fully drawn.
+  //
+  // Authored on two 540x960 frames cut from a screen recording (H.264), with
+  // the colours written between what those read and what the two twins' device
+  // captures read at the same pixel -- never more than 8 per channel from
+  // either, against the 20 `matches()` allows. Every other corpus page fails on
+  // the five cyan probes at least; the purchase confirmation and Not enough
+  // Coins share only the panel probes, their own panel covering those points.
+  BoxTenTimeRefused: {
+    name: PageName.BoxTenTimeRefused,
+    targeted: true,
+    colors: [
+      {x: 170, y:  725, r:  33, g: 200, b: 240, match: true, threshold: 40},  // stability 10, cyan band above the message, left
+      {x: 540, y:  725, r:  32, g: 198, b: 235, match: true, threshold: 40},  // stability 12, ... centre
+      {x: 910, y:  725, r:  33, g: 200, b: 240, match: true, threshold: 40},  // stability 12, ... right
+      {x: 200, y:  790, r:  40, g:  72, b: 116, match: true, threshold: 40},  // stability 3,  message band, left gutter above the wording
+      {x: 880, y:  790, r:  40, g:  74, b: 119, match: true, threshold: 40},  // stability 4,  ... right gutter
+      {x: 540, y:  884, r:  55, g:  93, b: 145, match: true, threshold: 40},  // stability 6,  between the two lines -- text on the twins
+      {x: 200, y:  960, r:  41, g:  74, b: 119, match: true, threshold: 40},  // stability 5,  message band, left gutter below the wording
+      {x: 880, y:  960, r:  40, g:  71, b: 115, match: true, threshold: 40},  // stability 2,  ... right gutter
+      {x: 359, y: 1025, r:  32, g: 195, b: 234, match: true, threshold: 40},  // stability 5,  cyan band below, left of the logo
+      {x: 780, y: 1025, r:  32, g: 197, b: 234, match: true, threshold: 40}   // stability 9,  ... right of the logo
+    ],
+    // No button; a tap anywhere clears it, so both anchors aim at the toast.
+    back: {x: 540, y: 880},
+    next: {x: 540, y: 880}
+  },
   GamePause: {
     name: PageName.GamePause,
     colors: [
@@ -2178,6 +2225,13 @@ var PageProfiles: PageProfileMap = {
     note: 'Cancel / Buy with Rubies, over whatever asked for the coins. Both '
         + 'anchors are Cancel -- see the `Page` entry.'
   },
+  BoxTenTimeRefused: {
+    kind: PageKind.Permanent,
+    note: 'The "You can\'t use 10-Time Purchases" toast: the box holds fewer '
+        + 'than ten. Like `HeartSent`, whose sprite it is, it carries no button '
+        + 'and waits for a tap anywhere. Targeted -- only the Box Buying sweep '
+        + 'asks for it, right after pressing 10-Time Purchase.'
+  },
   OutOfMedals: {kind: PageKind.Permanent, note: 'Two buttons; neither times out.'},
   RubyResetDifficulty: {kind: PageKind.Permanent, note: 'OK / Cancel.'},
 
@@ -2914,6 +2968,10 @@ var PageRoutes: PageRouteMap = {
     { via: PageAnchor.Back, to: PageName.TsumTsumStorePage, source: RouteSource.Declared }
   ],
   BoxPurchaseResult: [
+    { via: PageAnchor.Back, to: PageName.TsumTsumStorePage, source: RouteSource.Declared }
+  ],
+  // The 10-Time refusal toast: a tap anywhere drops it back onto the store.
+  BoxTenTimeRefused: [
     { via: PageAnchor.Back, to: PageName.TsumTsumStorePage, source: RouteSource.Declared }
   ],
 

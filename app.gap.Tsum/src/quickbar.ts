@@ -120,7 +120,7 @@ function quickBarState(): string {
     // the reason above: the panel is the only thing that changes them, and it
     // reads this back.
     state[SettingKey.BuyBoxType] = ts.buyBoxType;
-    state[SettingKey.BuyBoxTenTimes] = ts.buyBoxTenTimes;
+    state[SettingKey.BuyBoxSize] = ts.buyBoxSize;
     // The limit as the sweep would read it. 0 is "no usable setting", which
     // `buyBoxes` turns into BuyBoxDefaultMax; the form's row has no 0, so
     // reporting the raw value would move it to the row's minimum instead.
@@ -321,9 +321,8 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
     case SettingKey.BuyBoxType:
       tsum.buyBoxType = value as BoxType;
       break;
-    case SettingKey.BuyBoxTenTimes:
-      applied = !!value;
-      tsum.buyBoxTenTimes = applied;
+    case SettingKey.BuyBoxSize:
+      tsum.buyBoxSize = value as BoxPurchaseSize;
       break;
     case SettingKey.BuyBoxMaxPurchases:
       applied = quickBarClamp(value, 1, BuyBoxMaxPurchases);
@@ -480,7 +479,7 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   // round is played -- and live because the sweep re-reads them when it runs,
   // which is between rounds by definition.
   [SettingKey.BuyBoxType]: LiveWhen.Now,
-  [SettingKey.BuyBoxTenTimes]: LiveWhen.Now,
+  [SettingKey.BuyBoxSize]: LiveWhen.Now,
   [SettingKey.BuyBoxMaxPurchases]: LiveWhen.Now,
 
   // --- The round in front of the loop was set up under the old value -------

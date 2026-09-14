@@ -178,15 +178,26 @@ interface BoxPurchaseOffer {
 }
 
 /**
+ * What pressing a purchase button put on screen.
+ *
+ * `refused` is the store's "You can't use 10-Time Purchases" toast -- the box
+ * holds fewer than ten -- which only a 10-Time press can raise, and which was
+ * tapped away by the time it is reported. `missed` is neither dialog in time.
+ */
+type BoxDialog = 'confirm' | 'refused' | 'missed';
+
+/**
  * How one attempt at buying a box ended.
  *
- * `soldOut` and `noCoins` end the sweep and are not faults -- they are the
- * game's two ways of saying there is nothing more to buy. `missed` is the one
- * worth retrying. `stuck` is both at once: OK was pressed, so the coins are
- * gone and the purchase counts, but the screens it opened would not clear, so
- * it counts as a failure too.
+ * `soldOut`, `noCoins` and `tenRefused` are not faults -- they are the game's
+ * ways of saying there is nothing more to buy at this size. The first two end
+ * the sweep; the third ends it or drops it to singles, as the size setting
+ * says. `missed` is the one worth retrying. `stuck` is both at once: OK was
+ * pressed, so the coins are gone and the purchase counts, but the screens it
+ * opened would not clear, so it counts as a failure too.
  */
-type BoxPurchaseOutcome = 'bought' | 'stuck' | 'soldOut' | 'noCoins' | 'unavailable' | 'missed';
+type BoxPurchaseOutcome = 'bought' | 'stuck' | 'soldOut' | 'noCoins' | 'tenRefused'
+  | 'unavailable' | 'missed';
 
 /** One reference pixel used to fingerprint a page. */
 interface PageColor {
@@ -1356,6 +1367,10 @@ interface Tsum {
   awaitBoxPurchase(timeoutMs: number): BoxPurchaseOffer;
   /** Tap through everything one purchase opened, until the store is back or `deadline` passes. */
   clearBoxReveals(deadline: number): BoxReveals;
+  /** Tap the 10-Time refusal toast away. True once the store is back; false when it would not go. */
+  leaveBoxTenTimeToast(): boolean;
+  /** What a purchase button's tap put up: the confirmation, the 10-Time refusal, or nothing in time. */
+  awaitBoxDialog(tenTimes: boolean, timeoutMs: number): BoxDialog;
   /**
    * Buy one box at the size asked for, falling back to 1-Time where that is all
    * there is. `purchase` / `limit` are where this one sits in the sweep, for the
@@ -1363,7 +1378,7 @@ interface Tsum {
    */
   buyOneBox(tenTimes: boolean, purchase: number, limit: number): BoxPurchaseOutcome;
   /** The purchase loop. The fields for `Log.Box.End`, or null when the run stopped under it. */
-  buyBoxes(box: BoxType, tenTimes: boolean, maxPurchases: number): LogFields | null;
+  buyBoxes(box: BoxType, size: BoxPurchaseSize, maxPurchases: number): LogFields | null;
   /** True once the sweep has run; false when it stood aside for a paused round. */
   taskBuyBoxes(): boolean;
 

@@ -187,6 +187,22 @@ declare const enum BoxType {
   Happiness = 'happiness',
 }
 
+/**
+ * How many boxes one purchase takes, as the Box Buying chore is told to buy.
+ *
+ * The store refuses a 10-Time purchase once the box holds fewer than ten
+ * ("You can't use 10-Time Purchases", `PageName.BoxTenTimeRefused`), and the
+ * two ten-sized settings differ only in what the sweep does then: `Ten` ends
+ * it, `TenThenOne` carries on singly until the box sells out. Neither ever
+ * buys ten on a box that only draws a 1-Time button -- Happiness always -- and
+ * `One` never buys ten at all.
+ */
+declare const enum BoxPurchaseSize {
+  One = 'one',
+  Ten = 'ten',
+  TenThenOne = 'tenThenOne',
+}
+
 /** The keys of record.txt that are not sender-portrait filenames. */
 declare const enum RecordKey {
   HeartsCount = 'hearts_count',
@@ -274,7 +290,8 @@ declare const enum SettingKey {
   UnlockLevelsFirst = 'unlockLevelsFirst',
   BuyBoxHoursWait = 'buyBoxHoursWait',
   BuyBoxType = 'buyBoxType',
-  BuyBoxTenTimes = 'buyBoxTenTimes',
+  /** Replaced the `buyBoxTenTimes` switch; `loadSettings` carries a stored `true` over once. */
+  BuyBoxSize = 'buyBoxSize',
   BuyBoxMaxPurchases = 'buyBoxMaxPurchases',
   BuyBoxesFirst = 'buyBoxesFirst',
   ReceiveAllHearts = 'receiveAllHearts',
@@ -389,11 +406,12 @@ interface Settings {
   /** Which box the sweep buys. Only ever this one -- it never falls back to another. */
   [SettingKey.BuyBoxType]: BoxType;
   /**
-   * Buy ten at a time where the box offers it. A box drawn with only a 1-Time
-   * button -- Happiness always is -- is bought singly instead; the reverse never
-   * happens, so a 1-Time setting can never spend ten boxes' worth.
+   * How many boxes a purchase takes, and what to do once the store refuses ten
+   * -- see `BoxPurchaseSize`. A box drawn with only a 1-Time button is bought
+   * singly whatever this says; the reverse never happens, so `One` can never
+   * spend ten boxes' worth.
    */
-  [SettingKey.BuyBoxTenTimes]: boolean;
+  [SettingKey.BuyBoxSize]: BoxPurchaseSize;
   /**
    * Purchases one sweep may make, where a 10-Time purchase counts as one. The
    * runaway guard on a chore that spends the player's coins: the game running

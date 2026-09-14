@@ -37,7 +37,7 @@
     "unlockLevelHoursWait": 6,
     "buyBoxHoursWait": 0,
     "buyBoxType": "premium",
-    "buyBoxTenTimes": false,
+    "buyBoxSize": "one",
     "buyBoxMaxPurchases": 5,
     "receiveAllHearts": true,
     "receiveAllHeartsMinWait": 60,

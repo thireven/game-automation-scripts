@@ -310,6 +310,8 @@ namespace Log {
     TabPicked        = 'box.tabPicked',
     TabNotTaken      = 'box.tabNotTaken',
     TabRead          = 'box.tabRead',
+    TenRefused       = 'box.tenRefused',
+    ToastStuck       = 'box.toastStuck',
   }
 
   /** The per-round CSV. */
