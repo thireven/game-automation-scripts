@@ -176,7 +176,7 @@ roles put it in and in no other.
 | `LevelCapRaised` | permanent | — | — | — | — | The "level cap has been raised" toast. Like `HeartSent` -- whose sprite it is -- it carries no button and does not clear itself; a tap anywhere is the only way past it. |
 | `TsumTsumStorePage` | permanent | `gameUp` | — | — | — |  |
 | `ConfirmPurchasePage` | permanent | — | — | — | — | OK / Cancel. |
-| `BoxPurchasedPage` | permanent | — | — | — | — | One box's reveal card, with Close. What a 1-Time purchase ends on; a 10-Time one shows ten of these without the Close and then `BoxPurchaseResult`. |
+| `BoxPurchasedPage` | permanent | — | — | — | — | One box's reveal card, with Close. What a 1-Time purchase ends on; a 10-Time one shows ten of these without the Close and then `BoxPurchaseResult`. Also the "You got a Patch!" popup (the `patch` configuration), which a purchase carrying a patch shows after its reveals, with a Close of its own. |
 | `BoxPurchaseResult` | permanent | — | — | — | — | The 10-box tally: all ten in a grid, and Close. Only a 10-Time purchase reaches it. |
 | `NotEnoughCoins` | permanent | — | — | — | — | Cancel / Buy with Rubies, over whatever asked for the coins. Both anchors are Cancel -- see the `Page` entry. |
 | `OutOfMedals` | permanent | — | — | — | — | Two buttons; neither times out. |

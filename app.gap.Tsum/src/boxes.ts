@@ -302,8 +302,11 @@ Tsum.prototype.awaitBoxPurchase = function(timeoutMs) {
  *
  * A 1-Time purchase opens the box, reveals one tsum and ends on that card's
  * Close; a 10-Time one shows ten reveals and then the tally, which has its own
- * Close. Both are dismissed here, and so is "Not enough Coins!" -- which is what
- * OK raises when the price could not be paid, and which ends the whole sweep.
+ * Close. A purchase carrying a patch puts a "You got a Patch!" popup between
+ * the reveals and the rest, with a Close of its own (`Page.BoxPatchPurchasedPage`,
+ * under the reveal card's name). All are dismissed here, and so is "Not enough
+ * Coins!" -- which is what OK raises when the price could not be paid, and
+ * which ends the whole sweep.
  *
  * One `peek` a pass rather than a `matches` per page: it is one capture against
  * four, it must not broadcast (a `dismiss` handler acting here would be tapping

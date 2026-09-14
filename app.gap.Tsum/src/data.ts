@@ -1242,6 +1242,41 @@ var Page = {
     back: {x: 550, y: 1630},  // Close button
     next: {x: 550, y: 1630}   // Close button
   },
+  // "You got a Patch!" -- the popup a purchase carrying a patch ends its reveals
+  // on: the patch over a pulsing star burst, a cyan panel naming its effect,
+  // and its own Close. The reveal card's entries miss it on two probes, which
+  // read that card's lit backdrop at the left edge and beside Close; here both
+  // are near-black, and those two are what keep this entry off that card.
+  //
+  // Probes are the panel's furniture, the dark surround either side of it and
+  // of Close, and the flat ends of Close -- never the burst, the patch or the
+  // wording, which change with the patch. Authored on a 540x960 frame cut from
+  // a screen recording (H.264, so a little noisier than a device capture) and
+  // held on four more frames of the same popup; the reveal cards before it fail
+  // on seven probes and more, the 10-box tally on five. A frame caught while
+  // Close is still fading in fails on its two end probes alone, which is the
+  // point: the entry means "the popup, ready to be dismissed".
+  BoxPatchPurchasedPage: {
+    name: PageName.BoxPurchasedPage,
+    variant: 'patch',
+    colors: [
+      {x:  400, y: 1050, r:  32, g: 196, b: 232, match: true, threshold: 50},  // stability 12, cyan frame top, left of centre
+      {x:  700, y: 1050, r:  27, g: 190, b: 226, match: true, threshold: 50},  // stability 10, cyan frame top, right of centre
+      {x:  900, y: 1240, r:  37, g:  68, b: 111, match: true, threshold: 50},  // stability 9,  panel interior, right of the wording
+      {x:  130, y: 1310, r:  33, g:  63, b: 103, match: true, threshold: 50},  // stability 3,  panel interior, below the embossed stars
+      {x:  300, y: 1410, r:  33, g: 196, b: 232, match: true, threshold: 50},  // stability 9,  cyan frame bottom
+      {x:  780, y: 1410, r:  33, g: 197, b: 233, match: true, threshold: 50},  // stability 7,  cyan frame bottom
+      {x:   30, y: 1240, r:   0, g:   6, b:  13, match: true, threshold: 50},  // stability 7,  surround left of the panel
+      {x: 1050, y: 1180, r:   0, g:   4, b:   7, match: true, threshold: 50},  // stability 0,  surround right of the panel
+      {x:  180, y: 1640, r:   0, g:   4, b:   7, match: true, threshold: 50},  // stability 0,  surround left of Close -- lit on the reveal card
+      {x:  900, y: 1640, r:   0, g:   4, b:   7, match: true, threshold: 50},  // stability 0,  surround right of Close
+      {x:  390, y: 1630, r: 240, g: 178, b:  12, match: true, threshold: 50},  // stability 8,  Close left end
+      {x:  690, y: 1630, r: 236, g: 174, b:   6, match: true, threshold: 50},  // stability 3,  Close right end
+      {x:  540, y: 1870, r:  33, g: 197, b: 233, match: true, threshold: 50}   // stability 9,  cyan foot of the screen
+    ],
+    back: {x: 540, y: 1635},  // Close -- measured centre of a button spanning y 1535..1735
+    next: {x: 540, y: 1635}   // Close
+  },
   // The tally a 10-Time box purchase ends on: all ten tsums in a 4/4/2 grid
   // inside a cyan-framed panel, under a white "Box Purchase Result" band, over
   // the dimmed reveal scene.
@@ -2128,7 +2163,9 @@ var PageProfiles: PageProfileMap = {
     kind: PageKind.Permanent,
     note: 'One box\'s reveal card, with Close. What a 1-Time purchase ends on; a '
         + '10-Time one shows ten of these without the Close and then '
-        + '`BoxPurchaseResult`.'
+        + '`BoxPurchaseResult`. Also the "You got a Patch!" popup (the `patch` '
+        + 'configuration), which a purchase carrying a patch shows after its '
+        + 'reveals, with a Close of its own.'
   },
   BoxPurchaseResult: {
     kind: PageKind.Permanent,
@@ -2869,7 +2906,9 @@ var PageRoutes: PageRouteMap = {
   ],
   // Both end on the store, and both by their Close. The ten reveals in between
   // have no entry at all: they are tapped through blind, being one screen the
-  // sweep never has to tell apart from another (`BoxStore.revealAdvance`).
+  // sweep never has to tell apart from another (`BoxStore.revealAdvance`). The
+  // patch popup's Close (the `patch` configuration) leads on to whatever the
+  // purchase still has to show -- the tally after ten boxes -- before the store.
   BoxPurchasedPage: [
     { via: PageAnchor.Back, to: PageName.TsumTsumStorePage, source: RouteSource.Declared }
   ],

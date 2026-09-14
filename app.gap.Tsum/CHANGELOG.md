@@ -42,9 +42,16 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - Coronation Day Elsa skill promoted to Beta.
 - Coronation Elsa Legacy skill added: the 1.0 version of the freeze window, offered beside the current one on Beta builds so the two can be compared.
 - The JP game's Magical Time offer is now recognised and cancelled like the EN one.
+- Box Buying no longer stalls on the "You got a Patch!" popup a purchase can come with: it is closed like the reveal card and the sweep goes on.
 
 ### Added
 
+- **`BoxPatchPurchasedPage` (`src/data.ts`).** The "You got a Patch!" popup,
+  a `patch` configuration of `BoxPurchasedPage`, so `clearBoxReveals` taps
+  its Close. The reveal card's entries missed it on the two probes that read
+  that card's lit backdrop, which is near-black here; the loop then tapped
+  its blind advance point for the whole reveal budget. Authored on a frame
+  cut from `premium_plus_badge.mp4`.
 - **`MagicalTimeJp` (`src/data.ts`).** The JP build draws the dialog at the
   pre-2025 position with three footnote lines under the buttons; the pre-2025
   entry missed it on its Cancel probe, which reads the wider キャンセル glyphs.
