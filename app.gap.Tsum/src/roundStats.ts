@@ -387,14 +387,23 @@ const StatsSettleMissLimit = 6;
 // panel the game leaves up.
 const StatsScorePageMaxWaitMs = 60 * 1000;
 
-// Where `waitForScorePage` taps a screen it cannot name once the tally has
-// been seen, and how often. The spot has to be inert on everything that can be
+// Where `waitForScorePage` taps blind, and how often for each of the two things
+// it taps: the tally while it is still counting up, and a screen it cannot name
+// once the tally has been seen. One spot for both, so a re-measurement cannot
+// leave them on different pixels. It has to be inert on everything that can be
 // in front of it then: on the tally it is the panel's number rows, on the event
-// page the map art, on the new-record and rank-up panels their body, and all of
-// them keep their buttons well below it. On what it is aimed at -- an event's
-// result overlay, its card reveal -- any tap counts. The interval leaves an
-// overlay's exit animation time to finish before the next look.
-const StatsUnknownTapSpot = {x: 540, y: 1000};
+// page the map art, on the new-record, rank-up and Magical Time panels their
+// body, and all of them keep their buttons well below it. On what it is aimed
+// at -- a tally mid-count, an event's result overlay, its card reveal -- any
+// tap counts.
+//
+// The skip is retried a look or two apart: the game draws the final figures on
+// the tap itself, so the next look says whether it landed, and one that went
+// out while the panel was still sliding in is simply lost. The overlay interval
+// is longer because it has to leave an exit animation time to finish before the
+// next look.
+const StatsBlindTapSpot = {x: 540, y: 1000};
+const StatsSkipTapMs = 1000;
 const StatsUnknownTapMs = 1500;
 
 // How many failed reads of the coin counter it takes, with none having
@@ -1711,6 +1720,15 @@ function statsPageTally(seen: {[page: string]: number}): string {
  * and only puts its buttons out when that finishes -- so "the score page is on
  * screen" is not yet "the score page is showing the round's score".
  *
+ * The count-up is not sat through: a tap on the tally skips it, and the game
+ * draws the final figures with the button row at once. So a look that finds the
+ * tally still counting taps it (`StatsBlindTapSpot`, inert once the row is out)
+ * and looks again, retrying every `StatsSkipTapMs` while the row stays away.
+ * Only when *this* look named the tally, never on the panels that stand over
+ * it: the new-record, rank-up and event screens are cleared by their own
+ * dismiss handlers inside `detect`, and a tally uncovered still counting is
+ * simply seen and tapped on the look after.
+ *
  * One window at a time rather than one budget for the lot. Arriving and counting
  * up are two waits for two different things, and a round whose post-round panels
  * ran long used to hand the count-up whatever the arrival had left -- often
@@ -1724,14 +1742,15 @@ function statsPageTally(seen: {[page: string]: number}): string {
  * a dismiss handler of its own, or this loop just watches it until the budget
  * runs out. The failure log below is what says which screen that was.
  *
- * The one thing tapped blind is an unreadable screen *after* the tally has been
- * seen -- something standing in front of a tally that already arrived. That is
- * an event's result overlay, drawn in the event's own colours, so there is no
- * fingerprint to keep current from one event to the next; what holds is that
- * every one so far advances on any tap. `StatsUnknownTapSpot` is inert on the
+ * The other thing tapped blind is an unreadable screen *after* the tally has
+ * been seen -- something standing in front of a tally that already arrived.
+ * That is an event's result overlay, drawn in the event's own colours, so there
+ * is no fingerprint to keep current from one event to the next; what holds is
+ * that every one so far advances on any tap. The same spot is inert on the
  * tally and on the panels that share its moment, and the window is renewed
  * while the tapping goes on, since the loop is then acting rather than
- * watching; `StatsScorePageMaxWaitMs` bounds it as before.
+ * watching; `StatsScorePageMaxWaitMs` bounds it as before. The count-up tap
+ * renews nothing: the window it runs in is the count-up's own.
  *
  * The polling also drives `record.baseCoins`, which reads the coin counter off
  * the level-up panel this loop passes through on the way.
@@ -1745,7 +1764,11 @@ Tsum.prototype.waitForScorePage = function() {
   // front of it" and "it came but never finished counting up", and those want
   // three different fixes.
   let sawTally = false;
-  // The blind taps: when the last went out, and how many, for the record.
+  // When the tally was first seen, for the record of how long its count-up ran.
+  let tallyAt = 0;
+  // The blind taps of each kind: when the last went out, and how many.
+  let lastSkipTapAt = 0;
+  let skipTaps = 0;
   let lastTapAt = 0;
   let taps = 0;
   const seen: {[page: string]: number} = {};
@@ -1755,6 +1778,7 @@ Tsum.prototype.waitForScorePage = function() {
     if (page === PageName.ScorePage) {
       if (!sawTally) {
         sawTally = true;
+        tallyAt = Date.now();
         // Arrived, so whatever the arrival cost is spent and the count-up starts
         // its own window here. Set once, not on every look: renewing it while
         // the tally is up would turn "the buttons never came" into the full
@@ -1768,10 +1792,27 @@ Tsum.prototype.waitForScorePage = function() {
       try {
         if (statsScoreButtonsReady(this, img)) {
           this.roundMedalsRow = statsScoreMedalsShown(this, img);
+          if (skipTaps > 0) {
+            // How long the row took from the tally's arrival says whether the
+            // taps cut the count-up short or it ran its course regardless.
+            logInfo(Log.Stats.TallySkipped, 'Tapped the tally through its count-up', {
+              taps: skipTaps,
+              sinceTallyMs: Date.now() - tallyAt,
+            });
+          }
           return true;
         }
       } finally {
         releaseImage(img);
+      }
+      // Still counting up, so tap it on rather than sit through it. Gated on
+      // this look having named the tally: a panel over it was cleared by its
+      // own handler inside `detect`, and the tally underneath gets its tap on
+      // the next look, once it is what the screen shows.
+      if (Date.now() - lastSkipTapAt >= StatsSkipTapMs) {
+        this.tap(StatsBlindTapSpot);
+        lastSkipTapAt = Date.now();
+        skipTaps++;
       }
     } else if (preTallyPages().indexOf(page) !== -1) {
       // The game is still working through the end of the round, so the tally is
@@ -1796,7 +1837,7 @@ Tsum.prototype.waitForScorePage = function() {
           logInfo(Log.Stats.TallyCovered,
             'A screen the table does not know is over the tally; tapping it away');
         }
-        this.tap(StatsUnknownTapSpot);
+        this.tap(StatsBlindTapSpot);
         lastTapAt = Date.now();
         taps++;
       }
@@ -1816,6 +1857,7 @@ Tsum.prototype.waitForScorePage = function() {
       // them. The second means the post-round screens kept renewing it, so the
       // fix is there rather than in the window's length.
       cappedOut: Date.now() >= hardDeadline,
+      skipTaps: skipTaps,
       blindTaps: taps,
       pagesSeen: statsPageTally(seen),
       trail: gPages.trail(8),

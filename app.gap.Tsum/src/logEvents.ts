@@ -326,6 +326,7 @@ namespace Log {
     ScorePageGaveUp = 'stats.scorePageGaveUp',
     ShotSaveFailed  = 'stats.shotSaveFailed',
     TallyCovered    = 'stats.tallyCovered',
+    TallySkipped    = 'stats.tallySkipped',
     TooManyGlyphs   = 'stats.tooManyGlyphs',
     UnreadableGlyph = 'stats.unreadableGlyph',
     UnreadShotSaved = 'stats.unreadShotSaved',

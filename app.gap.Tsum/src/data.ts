@@ -508,7 +508,8 @@ const enum PageName {
 // Its arrival is the game's own signal that the post-round count-up has
 // finished -- it withholds the row until it has -- so `roundStats.ts` scores
 // this list immediately before reading the score and coins
-// (`statsScoreButtonsReady`).
+// (`statsScoreButtonsReady`), and taps the tally on while the row is missing,
+// since a tap skips the count-up (`waitForScorePage`).
 //
 // The tally draws that row two ways, and both points below sit where the two
 // **overlap**. An ordinary round offers Close (x 97..502) beside Play

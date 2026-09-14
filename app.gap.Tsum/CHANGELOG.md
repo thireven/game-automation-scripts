@@ -43,6 +43,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - Coronation Elsa Legacy skill added: the 1.0 version of the freeze window, offered beside the current one on Beta builds so the two can be compared.
 - The JP game's Magical Time offer is now recognised and cancelled like the EN one.
 - Box Buying no longer stalls on the "You got a Patch!" popup a purchase can come with: it is closed like the reveal card and the sweep goes on.
+- Rounds turn over faster: the score tally's count-up is tapped through instead of waited out.
 
 ### Added
 
@@ -67,6 +68,14 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 ### Changed
 
 - **Both Coronation Elsa entries are `ReleaseStatus.Beta`.**
+- **`waitForScorePage` taps the tally through its count-up
+  (`src/roundStats.ts`).** A tap skips the animation and the game draws the
+  final figures with the button row at once; the tap is retried every
+  `StatsSkipTapMs` while the row is missing, at the spot the overlay tap already
+  uses (`StatsBlindTapSpot`, was `StatsUnknownTapSpot`), which is inert on the
+  finished tally and on every panel that can drop over it. Only on a look that
+  named the tally, so a panel in front is still cleared by its own handler
+  first. `stats.tallySkipped` records the taps and how long the row took.
 
 ## [1.0]
 
