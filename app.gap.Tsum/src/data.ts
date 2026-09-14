@@ -1538,6 +1538,28 @@ var Page = {
     back: {x: 320, y: 1355},
     next: {x: 767, y: 1355}
   },
+  // The JP build's dialog: the pre-2025 position and furniture, JP wording,
+  // and three footnote lines that make the panel ~75px taller. The pre-2025
+  // entry misses it on one probe -- its Cancel probe lands on the キャンセル
+  // glyphs, which run wider than "Cancel" -- so this one reads the flat ends
+  // of both buttons instead, either side of the text. The foot probe sits
+  // below where the EN panel ends, which is what keeps this entry off the
+  // pre-2025 frame: the two share every other piece of furniture.
+  MagicalTimeJp: {
+    name: PageName.MagicalTime,
+    variant: 'jp',
+    colors: [
+      {x: 614, y:  412, r:  34, g: 201, b: 236, match: true, threshold: 80},  // stability 14, cyan frame top
+      {x: 306, y:  505, r: 249, g: 249, b: 249, match: true, threshold: 75},  // stability 6,  white title band, left of the text
+      {x: 206, y: 1220, r: 241, g: 174, b:   9, match: true, threshold: 80},  // stability 2,  Cancel left end
+      {x: 426, y: 1220, r: 242, g: 175, b:  10, match: true, threshold: 80},  // stability 7,  Cancel right end
+      {x: 540, y: 1220, r:  61, g:  98, b: 150, match: true, threshold: 80},  // stability 14, gap between buttons
+      {x: 704, y: 1199, r: 242, g: 178, b:  11, match: true, threshold: 80},  // stability 8,  OK left end
+      {x: 809, y: 1436, r:  33, g: 194, b: 230, match: true, threshold: 80}   // stability 10, cyan foot, right of the footnotes
+    ],
+    back: {x: 314, y: 1219},
+    next: {x: 762, y: 1219}
+  },
   OutOfMedals: {
     name: PageName.OutOfMedals,
     colors: [

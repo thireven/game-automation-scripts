@@ -41,9 +41,15 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - Version bump from 1.0 to 2.0
 - Coronation Day Elsa skill promoted to Beta.
 - Coronation Elsa Legacy skill added: the 1.0 version of the freeze window, offered beside the current one on Beta builds so the two can be compared.
+- The JP game's Magical Time offer is now recognised and cancelled like the EN one.
 
 ### Added
 
+- **`MagicalTimeJp` (`src/data.ts`).** The JP build draws the dialog at the
+  pre-2025 position with three footnote lines under the buttons; the pre-2025
+  entry missed it on its Cancel probe, which reads the wider キャンセル glyphs.
+  Probes on the flat button ends either side of the text, and a foot probe
+  below where the EN panel ends so the two entries stay apart.
 - **`src/skills/coronationElsaLegacy.ts`.** The 1.0 Elsa file as it was at
   the version bump, every symbol suffixed `Legacy` so the two share one
   bundle, registered as `SkillType.CoronationElsaLegacy` (share code `E`)
