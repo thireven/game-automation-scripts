@@ -4,7 +4,8 @@
 // `isAppOn` is the reading, cached only when positive; `startApp` and
 // `forceRestartApp` are the two ways the script changes the answer, and the two
 // `await*` waits either side of a restart watch focus and the first fingerprint
-// rather than a clock.
+// rather than a clock. `focusedGameBuild` reads the same focus line for which
+// of the two game packages is up, which is what names a tsum in its language.
 //
 // `taskTsumAppRestart` is the scheduled bounce and navigates to a known screen
 // at both ends. `forceRestartApp` deliberately does not -- it is the recovery
@@ -39,25 +40,55 @@ Tsum.prototype.isAppOn = function() {
   if (this._appOnCheckedAt !== 0 && Date.now() - this._appOnCheckedAt < AppOnCacheMs) {
     return true;
   }
-  // Every early return below leaves `_appOnCheckedAt` alone, which is what
-  // keeps a "cannot tell" from being remembered as an answer.
-  let result = execute('dumpsys window').split('mCurrentFocus');
-  if (result.length < 2) {
+  // A "cannot tell" leaves `_appOnCheckedAt` alone, which is what keeps it
+  // from being remembered as an answer.
+  const packageName = focusedPackage();
+  if (packageName === null) {
     return false;
   }
-  result = result[1].split(" ");
-  if (result.length < 3) {
-    return false;
-  }
-  result = result[2].split("/");
-  if (result.length < 2) {
-    return false;
-  }
-  const packageName = result[0];
   const isOn = packageName.indexOf('LGTMTM') !== -1;
   this._appOnCheckedAt = isOn ? Date.now() : 0;
   return isOn;
 };
+
+/**
+ * The package of the focused window, or null when `dumpsys window` cannot say.
+ * The one place the focus line is parsed: `isAppOn` asks whether it is the
+ * game, `focusedGameBuild` which build of it.
+ */
+function focusedPackage(): string | null {
+  let result = execute('dumpsys window').split('mCurrentFocus');
+  if (result.length < 2) {
+    return null;
+  }
+  result = result[1].split(" ");
+  if (result.length < 3) {
+    return null;
+  }
+  result = result[2].split("/");
+  if (result.length < 2) {
+    return null;
+  }
+  return result[0];
+}
+
+/**
+ * Which build of the game is in front, or null when neither is.
+ *
+ * The two builds are separate packages, so the focused window is what tells
+ * them apart -- nothing on the settings page does. `selectedTsum` names the
+ * tsum in the language of whichever build this answers.
+ */
+function focusedGameBuild(): GameBuild | null {
+  const packageName = focusedPackage();
+  if (packageName === getPackageName(true)) {
+    return GameBuild.Japan;
+  }
+  if (packageName === getPackageName(false)) {
+    return GameBuild.Global;
+  }
+  return null;
+}
 
 /**
  * Forget the cached focus answer.

@@ -790,6 +790,16 @@ interface MyTsumRect {
 }
 
 /**
+ * The two builds of the game: separate packages, and each prints its tsum
+ * names in its own language. `focusedGameBuild` (src/appLifecycle.ts) reads
+ * which one is in front; the library carries a name for each.
+ */
+declare const enum GameBuild {
+  Global = 'global',
+  Japan = 'jp',
+}
+
+/**
  * A library entry with its signature decoded, as `myTsumLibrary` holds it.
  *
  * `short` is the game's own id for the tsum, what goes in the CSV's `tsum`
@@ -799,7 +809,11 @@ interface MyTsumRect {
  */
 interface MyTsumEntry {
   short: string;
-  full: string;
+  /**
+   * The name each build prints for it. A build with no strip for the tsum
+   * borrows the other's, or falls back to `short`, so every key reads.
+   */
+  names: {[build in GameBuild]: string};
   /** The signature through `myTsumPrepare`: centred, unit length, ready to dot. */
   vec: number[];
   /**
@@ -828,7 +842,9 @@ interface RoundOutcome {
 /** The best library entry for a signature, and how far clear of the runner-up. */
 interface MyTsumMatch {
   short: string;
+  /** The name `build` prints for it -- what the banner and the log show. */
   full: string;
+  build: GameBuild;
   score: number;
   /** `score` itself when the library holds one entry: there is no rival to beat. */
   margin: number;

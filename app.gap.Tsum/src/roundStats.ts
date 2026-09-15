@@ -1082,6 +1082,11 @@ Tsum.prototype.readSettledStatsNumber = function(region) {
 // good and clearly ahead. A tsum that matches nothing well enough is written as
 // an empty cell -- guessing which tsum played a round would poison exactly the
 // comparison the column exists for.
+//
+// The library serves both builds of the game and carries a name per build,
+// because each prints its own: English on the global one, kana on the Japanese
+// one. Which to show is read off the focused package (`focusedGameBuild`), not
+// off a setting, so the banner says what the screen says.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1312,20 +1317,26 @@ function myTsumLoadLibrary(): MyTsumEntry[] {
       }
       continue;
     }
-    // Three fields before the board colour was added, four after. Read
-    // leniently in both directions: a row with no colour is a tsum that falls
-    // back to sampling the button, not a row worth throwing away.
+    // Five fields: the id, the name each build prints (either may be blank),
+    // the signature, the board colour. Read leniently past the signature: a
+    // row with no colour is a tsum that falls back to sampling the button, not
+    // a row worth throwing away.
     const parts = line.split('\t');
-    const sig = parts.length >= 3 ? myTsumDecode(parts[2]) : null;
+    const sig = parts.length >= 4 ? myTsumDecode(parts[3]) : null;
     if (sig === null) {
       stale++;
       continue;
     }
+    // A build with no strip for the tsum borrows the other's name, or the id.
+    const en = parts[1] !== '' ? parts[1] : parts[2] !== '' ? parts[2] : parts[0];
+    const jp = parts[2] !== '' ? parts[2] : en;
     // Prepared once, at load: a template's vector never changes, and doing it
     // here is what makes a round's match one dot product per entry.
     lib.push({
-      short: parts[0], full: parts[1], vec: myTsumPrepare(sig),
-      board: boardOk && parts.length >= 4 ? myTsumDecodeColor(parts[3]) : null,
+      short: parts[0],
+      names: { [GameBuild.Global]: en, [GameBuild.Japan]: jp },
+      vec: myTsumPrepare(sig),
+      board: boardOk && parts.length >= 5 ? myTsumDecodeColor(parts[4]) : null,
     });
   }
   if (stale > 0) {
@@ -1425,12 +1436,12 @@ function myTsumSimilarity(a: number[], b: number[]): number {
 }
 
 /**
- * The closest library entry to one signature.
+ * The closest library entry to one signature, named as `build` prints it.
  *
  * With a single entry there is no runner-up and `margin` is the score itself:
  * nothing to beat is not the same as a tie.
  */
-function myTsumMatch(sig: number[]): MyTsumMatch | null {
+function myTsumMatch(sig: number[], build: GameBuild): MyTsumMatch | null {
   const lib = myTsumLibrary();
   const vec = myTsumPrepare(sig);
   let best = -2;
@@ -1451,7 +1462,8 @@ function myTsumMatch(sig: number[]): MyTsumMatch | null {
   }
   return {
     short: lib[winner].short,
-    full: lib[winner].full,
+    full: lib[winner].names[build],
+    build: build,
     score: best,
     // -2 is the sentinel: correlation cannot leave [-1, 1], so anything below
     // that means no second entry was scored at all.
@@ -1543,13 +1555,19 @@ Tsum.prototype.selectedTsum = function() {
     logWarn(Log.Tsums.Unreadable, 'Could not read the pre-round tsum icon');
     return null;
   }
-  const match = myTsumMatch(sig);
+  // Named as the build in front prints it. The focus read fails only when the
+  // game is not up, which the icon read above has already ruled out; the
+  // setting stands in for that case anyway.
+  const focused = focusedGameBuild();
+  const build = focused !== null ? focused : this.isJP ? GameBuild.Japan : GameBuild.Global;
+  const match = myTsumMatch(sig, build);
   if (match === null) {
     return null;
   }
   return {
     short: match.short,
     full: match.full,
+    build: match.build,
     score: match.score,
     margin: match.margin,
     confident: match.score >= MyTsumPortrait.minScore
@@ -1582,6 +1600,7 @@ Tsum.prototype.identifyMyTsum = function() {
     logInfo(Log.Tsums.Identified, {
       tsum: selected.short,
       name: selected.full,
+      build: selected.build,
       score: +selected.score.toFixed(3),
       margin: +selected.margin.toFixed(3),
     });
@@ -1661,6 +1680,7 @@ function detectMyTsum(settings?: Settings): string {
   logInfo(Log.Tsums.Detected, {
     tsum: selected.short,
     name: selected.full,
+    build: selected.build,
     score: +selected.score.toFixed(3),
     margin: +selected.margin.toFixed(3),
     confident: selected.confident,

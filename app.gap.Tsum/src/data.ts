@@ -179,10 +179,11 @@ var MyTsumPortrait = {
   // refuses a file that does not open with both -- a library cut through a
   // different grid scores against the wrong cells, which is a wrong name rather
   // than a missing one. The lexicon writes all three; they are here because
-  // everything else the file's layout depends on already is.
+  // everything else the file's layout depends on already is. `v2` is the row
+  // layout with a name column per game build, in place of v1's single name.
   library: 'tsums.dat',
   magic: 'gap-tsum-portraits',
-  format: 'v1',
+  format: 'v2',
   // Square, and centred on where the game draws the sprite -- the lexicon
   // fitted that transform against the art itself, so this rect is a crop of a
   // known drawing rather than a box someone framed by eye.

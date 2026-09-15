@@ -39,8 +39,23 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 ### Summary
 
 - Debug tab: a Detect MyTsum button reads which tsum the pre-round screen shows selected, without playing a round.
+- The selected tsum is named as the running game prints it: in English on the international game, in Japanese on the Japan game.
 
 ### Added
+
+- **`focusedGameBuild` (`src/appLifecycle.ts`), `GameBuild` (`src/globals.d.ts`).**
+  Which of the two game packages owns the focused window, off the same
+  `dumpsys window` line `isAppOn` reads (now shared as `focusedPackage`).
+  Nothing on the page says which build is installed -- the Japan Version row
+  is commented out -- so this is what tells them apart.
+
+### Changed
+
+- **`src/tsums.dat` is `v2`: a name column per build.** English and Japanese
+  side by side, blank where that build's pack has no strip (84 Japanese-only,
+  38 with neither). `myTsumLoadLibrary` refuses a v1 file; `selectedTsum` names
+  the match by the build in front, falling back to the other column, then the
+  id. `tsums.identified` / `tsums.detected` carry `build`.
 
 - **`detectMyTsum` (`src/roundStats.ts`).** The Debug tab's Detect button,
   reached by name through `runScriptCallback` like `reportIssue`. Refuses a
