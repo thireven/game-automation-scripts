@@ -513,7 +513,8 @@ const StatsSettingColumns: (keyof Settings)[] = [
   SettingKey.SkillWaitingTime,
   SettingKey.SkillAutoTap,
   SettingKey.LorcanaCard,
-  SettingKey.NoSkillLastFeverSec
+  SettingKey.NoSkillLastFeverSec,
+  SettingKey.HoldBubblesLastFeverSec
 ];
 
 /**

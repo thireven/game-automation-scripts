@@ -281,6 +281,7 @@ declare const enum SettingKey {
   MaxRoundMinutes = 'maxRoundMinutes',
   MaxRoundAction = 'maxRoundAction',
   BubbleStrategy = 'bubbleStrategy',
+  HoldBubblesLastFeverSec = 'holdBubblesLastFeverSec',
   UseFan = 'useFan',
   MaxChainsPerScan = 'maxChainsPerScan',
   MaxChain = 'maxChain',
@@ -381,6 +382,12 @@ interface Settings {
   /** What to do when `maxRoundMinutes` runs out. Ignored while that is 0. */
   [SettingKey.MaxRoundAction]: MaxRoundAction;
   [SettingKey.BubbleStrategy]: BubbleStrategy;
+  /**
+   * Pop no bubble while a fever has this many seconds left, so they are still
+   * there for the chains right after it -- a bubble popped into a chain cuts
+   * its clear short, which is what refills the gauge fastest. 0 never holds.
+   */
+  [SettingKey.HoldBubblesLastFeverSec]: number;
   [SettingKey.UseFan]: boolean;
   [SettingKey.MaxChainsPerScan]: number;
   [SettingKey.MaxChain]: number;

@@ -119,6 +119,8 @@ namespace Log {
     Cleared   = 'bubble.cleared',
     Found     = 'bubble.found',
     Generated = 'bubble.generated',
+    /** A pop refused because a fever is about to end -- the fever hold. */
+    Held      = 'bubble.held',
     Popped    = 'bubble.popped',
   }
 

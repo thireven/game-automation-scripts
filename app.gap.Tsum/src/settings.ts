@@ -280,6 +280,18 @@ var tabs: TabSpec[] = [
                         dropdown: BubbleOptions
                     },
                     {
+                        // A hold over the strategy above rather than an entry in
+                        // it, so it combines with all three. The same shape as
+                        // "No skill last fever seconds" on the Skills tab.
+                        key: SettingKey.HoldBubblesLastFeverSec,
+                        title: UiText.SettingHoldBubblesLastFever,
+                        help: UiText.SettingHoldBubblesLastFeverHelp,
+                        default: 0,
+                        step: 1,
+                        max: 10,
+                        min: 0
+                    },
+                    {
                         key: SettingKey.UseFan,
                         title: UiText.SettingUseFan,
                         help: UiText.SettingUseFanHelp,
@@ -1368,6 +1380,7 @@ var SHARE_SLOTS: (SettingKey | '')[] = [
     // statistics were slotted beside it for one 0.12 build and taken out again
     // -- they are about the run, not about the round. See SHARE_TABS.
     SettingKey.BubbleStrategy,
+    SettingKey.HoldBubblesLastFeverSec,
 ];
 
 /**
@@ -3217,6 +3230,10 @@ function roundFlowChips(values: { [key: string]: SettingValue }): string[] {
     chips.push(i18nFormat(UiText.FlowKeep, {count: num(SettingKey.MaxChainsPerScan)}));
     if (on(SettingKey.SkillAutoTap)) {
         chips.push(i18nText(UiText.FlowTapSkill));
+    }
+    if (num(SettingKey.HoldBubblesLastFeverSec) > 0) {
+        chips.push(i18nFormat(UiText.FlowHoldBubblesFever,
+            {sec: num(SettingKey.HoldBubblesLastFeverSec)}));
     }
     chips.push(i18nText(strategy === BubbleStrategy.OneMidChain
         ? UiText.FlowLinkOneBubble

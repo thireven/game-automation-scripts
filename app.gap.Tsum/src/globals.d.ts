@@ -522,6 +522,13 @@ interface FeverEvent {
   ts: Tsum;
 }
 
+/** One frame's fever reading: whether one is running, and how long it has left. */
+interface FeverLook {
+  active: boolean;
+  /** Off the bar's fill; 0 when `active` is false. */
+  remainingMs: number;
+}
+
 /** A registered reaction to a fever starting or ending. */
 interface FeverSubscription {
   /** Unique. A re-registration under the same id replaces the first. */
@@ -1213,6 +1220,11 @@ interface Tsum {
   /** The chain length that earns a bubble pop, bounded by the chain cap in
    * force -- `Config.maxChain`, or the selected skill's `chainLimits`. */
   bubblePopChainLength(): number;
+  /**
+   * Is the Bubble Strategy holding every bubble because a fever is about to
+   * end? The "Hold bubbles last fever seconds" setting, asked per pop.
+   */
+  bubblesHeldForFever(): boolean;
   /** How many bubbles the Bubble Strategy setting allows one pop to spend. */
   bubbleTapBudget(): number;
   /**
@@ -1410,6 +1422,17 @@ interface Tsum {
    * debounce and a broadcast around it.
    */
   isFeverTime(img?: NativeImage): boolean;
+  /**
+   * How long the fever on this frame has left, in ms, off the bar's fill.
+   * Meaningful only when `isFeverTime` holds for the same frame. Same frame
+   * rule: pass one you hold, or one is captured.
+   */
+  feverRemainingMs(img?: NativeImage): number;
+  /**
+   * Both of the above off one frame -- what `gFever.update` samples. A harness
+   * with no screen stubs this one (`tools/dispatchEval/fake.js`).
+   */
+  feverLook(img?: NativeImage): FeverLook;
 
   // --- lorcana.ts ------------------------------------------------------
   /**

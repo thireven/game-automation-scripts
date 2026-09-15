@@ -59,6 +59,20 @@ Tsum.prototype.bubblePopChainLength = function() {
   return Math.min(GameBubbleConfig.minChainForPop, cap);
 };
 
+// Whether the "Hold bubbles last fever seconds" setting is holding every bubble
+// right now: a fever is running and has at most that many seconds left.
+//
+// A bubble popped into a chain cuts the chain's clear animation short, and
+// after a fever the gauge starts from empty -- so a bubble spent on a chain in
+// the fever's last seconds buys fever-bonus score once, where the same bubble
+// spent on the first chains after it gets the next fever sooner. The hold
+// lasts until `gFever` calls the fever over, which its debounce does a few
+// hundred ms after the bar empties; that is at most one chain's cancel late.
+Tsum.prototype.bubblesHeldForFever = function() {
+  return this.holdBubblesLastFeverSec > 0
+    && gFever.endsWithin(this.holdBubblesLastFeverSec * 1000);
+};
+
 // How many of the bubbles the last scan found this strategy will spend at once.
 // The ceilings, and why there are any, are in GameBubbleConfig.
 Tsum.prototype.bubbleTapBudget = function() {
@@ -66,6 +80,16 @@ Tsum.prototype.bubbleTapBudget = function() {
   // on the way past is a link out of that chain, and its chain is worth far more
   // than the bigger clear the pop buys. See `SkillHandler.claimsBubbles`.
   if (skillClaimsBubbles(this)) { return 0; }
+  // The fever hold, for every strategy: the bubbles stay on the board for the
+  // chains after the fever. `popGameBubbles` keeps the list on a 0 budget, and
+  // the next scan re-finds them anyway.
+  if (this.bubblesHeldForFever()) {
+    logDebug(Log.Bubble.Held, {
+      remainingMs: gFever.remainingMs(),
+      bubbles: this.gameBubbles ? this.gameBubbles.length : 0
+    });
+    return 0;
+  }
   switch (this.bubbleStrategy) {
     case BubbleStrategy.AllMidChain: return GameBubbleConfig.maxTapsMidChain;
     case BubbleStrategy.AllAsap: return GameBubbleConfig.maxTapsAsap;

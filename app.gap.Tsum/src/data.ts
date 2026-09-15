@@ -657,6 +657,29 @@ var FeverProbes: PageColor[] = [
   {x: 135, y: 1813, r:   7, g:  37, b:  50, match: true, threshold: 60}   // dimmed chrome, bottom strip -- worst 27
 ];
 
+// The fever bar's fill, which is the fever's clock: pink from the left edge,
+// draining towards it as the fever runs out. Read by `Tsum.feverRemainingMs`
+// (src/fever.ts) and the skill hold-off (`skillWaitOutEndingFever`).
+//
+// Measured on the six corpus fever frames at y=1670: the fill reads a value of
+// 247-255 and the drained bar 24-66 -- the FEVER lettering drawn over it moves
+// saturation, never value, so one floor separates the two on every frame. The
+// fill's left edge is x=350 (the ring's white cap ends at ~345) and its right
+// edge on the just-started frame is x=705; the ring's right cap only brightens
+// past x=733, so nothing here is read there. A burst animation glowing over
+// the drained bar reads up to ~130, still under the floor.
+var FeverBar = {
+  y: 1670,
+  xStart: 350,
+  xEnd: 705,
+  /** How long a fever runs -- what a full fill stands for. */
+  durationMs: 10000,
+  /** Lowest value (max of r, g, b) that counts as fill. */
+  litValue: 150,
+  /** Sample points along the fill, one per `durationMs / samples`. */
+  samples: 20
+};
+
 // The level-up overlay dims the whole screen, and these four points are where
 // that is cheapest to prove: two beside the score capsule, two below the board.
 // All four are constant HUD art rather than board, which is why they read so

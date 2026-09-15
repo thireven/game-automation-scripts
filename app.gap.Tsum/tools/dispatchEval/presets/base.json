@@ -15,6 +15,7 @@
     "clickAssist": false,
     "roundDelayMinutes": 0,
     "bubbleStrategy": "one_mid_chain",
+    "holdBubblesLastFeverSec": 0,
     "useFan": false,
     "maxChainsPerScan": 3,
     "maxChain": 12,

@@ -413,23 +413,26 @@ function skillWaitOutEndingFever(ts: Tsum) {
     if (feverAlmostOver) {
       ts.sleep(100);
     }
-    // Where along the fever ring "nearly over" sits, in logical px. Hoisted
-    // above the read because the probe list has to be complete before it is
-    // sent, and this depends only on the setting, not on the frame.
-    const offsetX = Math.floor((733 - 345) * ts.noSkillLastFeverSec / 10);
+    // Where along the fever bar's fill "nearly over" sits, in logical px --
+    // the fill's geometry is `FeverBar`. Hoisted above the read because the
+    // probe list has to be complete before it is sent, and this depends only
+    // on the setting, not on the frame.
+    const bar = FeverBar;
+    const offsetX = Math.floor((bar.xEnd - bar.xStart) * ts.noSkillLastFeverSec
+      * 1000 / bar.durationMs);
     const img = ts.screenshot();
     try {
       // One crossing for all seven probes rather than seven. This runs in a
       // poll loop that re-reads until the fever stops ending, so the saving is
       // per iteration, not once.
       const p = ts.getColors(img, [
-        {x: 340, y: 310},            // 0 in-fever backdrop
-        {x: 332, y: 1666},           // 1 fever ring, left
-        {x: 746, y: 1666},           // 2 fever ring, right
-        {x: 345, y: 1670},           // 3 ring start
-        {x: 345 + offsetX, y: 1670}, // 4 ring at the "nearly over" mark
-        {x: 155, y: 190},            // 5 remaining time
-        {x: 144, y: 195}             // 6 a few seconds left
+        {x: 340, y: 310},                    // 0 in-fever backdrop
+        {x: 332, y: 1666},                   // 1 fever ring, left
+        {x: 746, y: 1666},                   // 2 fever ring, right
+        {x: bar.xStart, y: bar.y},           // 3 fill start
+        {x: bar.xStart + offsetX, y: bar.y}, // 4 fill at the "nearly over" mark
+        {x: 155, y: 190},                    // 5 remaining time
+        {x: 144, y: 195}                     // 6 a few seconds left
       ]);
       const fever1 = isSameColor(p[0], {r: 0, g: 40, b: 49}, 80);
       const feverRingLeft = rgb2hsv(p[1]);

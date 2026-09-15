@@ -115,6 +115,7 @@ function quickBarState(): string {
     state[SettingKey.PrioritizeMyTsum] = ts.prioritizeMyTsum;
     state[SettingKey.UseFan] = ts.useFan;
     state[SettingKey.BubbleStrategy] = ts.bubbleStrategy;
+    state[SettingKey.HoldBubblesLastFeverSec] = ts.holdBubblesLastFeverSec;
     state[SettingKey.LinkReachPercent] = Math.round(Config.linkReach * 100);
     // The Box Buying rows are the settings panel's, and they are reported for
     // the reason above: the panel is the only thing that changes them, and it
@@ -289,6 +290,10 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
     case SettingKey.BubbleStrategy:
       tsum.bubbleStrategy = value as BubbleStrategy;
       break;
+    case SettingKey.HoldBubblesLastFeverSec:
+      applied = quickBarClamp(value, 0, 10);
+      tsum.holdBubblesLastFeverSec = applied as number;
+      break;
     case SettingKey.SkillWaitingTime:
       applied = quickBarClamp(value, 0, 15);
       tsum.skillInterval = (applied as number) * 1000;
@@ -443,6 +448,7 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   //   prioritizeMyTsum             skillMyTsumPriority, per scan
   //   useFan                       play.ts, twice in the play loop
   //   bubbleStrategy               the bubble sweep, per scan
+  //   holdBubblesLastFeverSec      bubblesHeldForFever, per pop
   //   skillWaitingTime             ts.skillInterval, per activation
   //   skillAutoTap                 maybeAutoTapSkill, inside a link batch
   //   noSkillLastFeverSec          the skill decision, per activation
@@ -457,6 +463,7 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   [SettingKey.PrioritizeMyTsum]: LiveWhen.Now,
   [SettingKey.UseFan]: LiveWhen.Now,
   [SettingKey.BubbleStrategy]: LiveWhen.Now,
+  [SettingKey.HoldBubblesLastFeverSec]: LiveWhen.Now,
   [SettingKey.SkillWaitingTime]: LiveWhen.Now,
   [SettingKey.SkillAutoTap]: LiveWhen.Now,
   [SettingKey.NoSkillLastFeverSec]: LiveWhen.Now,

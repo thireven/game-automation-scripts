@@ -775,9 +775,10 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // stands it owns none: `bubbleTapBudget` already returns 0 for the aimed
     // pops, and a blind sweep that ignored that would spend the hoard the
     // skill's next activation is counting on -- Gaston's cancel bubble, or
-    // Aurora's chain.
+    // Aurora's chain. So does the fever hold, for the same reason: it has
+    // just refused the aimed pops so the bubbles are there after the fever.
     if (this.bubbleStrategy === BubbleStrategy.AllAsap && bubbleEvents >= 2
-        && !skillClaimsBubbles(this)) {
+        && !skillClaimsBubbles(this) && !this.bubblesHeldForFever()) {
       logDebug(Log.Bubble.Cleared);
       bubbleEvents = 0;
       // A popped bubble clears the area around it, which can take the chain

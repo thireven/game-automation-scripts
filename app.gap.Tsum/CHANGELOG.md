@@ -41,8 +41,24 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - Debug tab: a Detect MyTsum button reads which tsum the pre-round screen shows selected, without playing a round.
 - The selected tsum is named as the running game prints it: in English on the international game, in Japanese on the Japan game.
 - Auto launch finds the Japan game on its own: whichever build is installed is the one started, so nothing has to be set for it. The stats CSV gains a `build` column.
+- "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
 
 ### Added
+
+- **`SettingKey.HoldBubblesLastFeverSec`.** A hold over every Bubble Strategy
+  rather than a fourth entry: `bubbleTapBudget` answers 0 while
+  `bubblesHeldForFever` (`src/board.ts`) holds, and the All ASAP blind sweep
+  stands down too; the strategy resumes when `gFever` calls the fever over.
+  Live (`LiveWhen.Now`), shared, a stats column, and a Run order chip.
+  `bubble.held` logs each refused pop with the fever's remaining ms.
+- **`gFever.remainingMs()` / `endsWithin(ms)`, `Tsum.feverRemainingMs`,
+  `Tsum.feverLook` (`src/fever.ts`), `FeverBar` (`src/data.ts`).** How long a
+  fever has left, off the bar's fill on the watcher's own capture -- twenty
+  samples along it at y=1670, lit above a value of 150, each worth 500ms --
+  and run forward by the clock between reads. Read only when `isFeverTime`
+  holds, because an ordinary full gauge is just as bright. Measured on the six
+  corpus fever frames. The dispatch fake stubs `feverLook` in place of
+  `isFeverTime`, which the watcher no longer calls directly.
 
 - **`Tsum.gameBuild` (`src/appLifecycle.ts`), `GameBuild` (`src/globals.d.ts`).**
   Which build this device plays: the one in front (`focusedGameBuild`, off the
@@ -82,6 +98,9 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   panel the way the Now buttons do, sends the form, and words the answer under
   the row (`tpl-detect`) in the page's language, so it is there when the
   panel is reopened.
+- **`skillWaitOutEndingFever` reads its fill geometry off `FeverBar`** instead
+  of its own 345/733 constants; the measured fill runs 350-705, so the
+  "nearly over" mark moves by a few px.
 
 ### Fixed
 

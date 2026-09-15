@@ -136,6 +136,10 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   ts.sentToZero = settings.sendHeartsToZeroScore;
   ts.receiveCheckLimit = settings.mailOpenMax;
   ts.bubbleStrategy = settings.bubbleStrategy;
+  // Defaulted for a hand-written start() command and for a stored form from
+  // before the row existed: 0 is "never hold", which is how it always played.
+  ts.holdBubblesLastFeverSec = typeof settings.holdBubblesLastFeverSec === 'number'
+    ? settings.holdBubblesLastFeverSec : 0;
   ts.skillInterval = settings.skillWaitingTime * 1000;
   ts.skillLevel = settings.skillLevel;
   ts.skillType = settings.skillType;

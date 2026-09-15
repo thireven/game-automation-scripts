@@ -153,6 +153,8 @@ class Tsum {
   bubbleStrategy: BubbleStrategy;
   /** Scans still to go before a mid-chain pop is worth taking again. */
   bubbleSettleScans: number;
+  /** Pop no bubble while a fever has this many seconds left; 0 never holds. */
+  holdBubblesLastFeverSec: number;
   noSkillLastFeverSec: number;
   /** Play a Lorcana tsum's transformation and its ink stones -- see src/lorcana.ts. */
   lorcanaCard: boolean;
@@ -357,6 +359,7 @@ class Tsum {
     this.receiveCheckLimit = 5;
     this.bubbleStrategy = BubbleStrategy.OneMidChain;
     this.bubbleSettleScans = 0;
+    this.holdBubblesLastFeverSec = 0;
     this.noSkillLastFeverSec = 0;
     this.lorcanaCard = false;
     // Nothing is held back until the Quick Bar holds something back.

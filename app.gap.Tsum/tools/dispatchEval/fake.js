@@ -48,7 +48,8 @@ function createFake(ctx, host, trace, clock) {
   fake.screenshot = () => {
     throw new Error('a handler captured the screen; the fake has none');
   };
-  fake.isFeverTime = () => false;
+  // What `gFever.update` samples: no fever, and so no bar to read.
+  fake.feverLook = () => ({ active: false, remainingMs: 0 });
   // The ordinary tally, which draws Play: the layout a point battle ends on
   // draws Close alone, and `nav.move.tallyToGame` then declines. Which of the
   // two is up is a question about a frame, and a row here has none -- so the
