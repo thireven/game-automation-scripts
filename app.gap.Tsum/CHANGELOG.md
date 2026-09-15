@@ -44,6 +44,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
 - Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer spent on the empty space it left.
 - Round stats: a medal count with a 0 in it is no longer left blank.
+- Coronation Day Elsa skill improved: a freeze window that outlives the round no longer taps the score screen, which opened the Options menu and lost the round's stats.
 
 ### Added
 
@@ -135,6 +136,16 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   height the `0` led `9` by 0.029 -- a thousandth under `StatsMinGlyphMargin`
   -- so 401, 380 and 400 all went to the CSV blank. `StatsDigits` recut with
   two of those tallies in the sample; the worst lead over the corpus is 0.036.
+- **Elsa's closing break no longer lands on the score tally.** Windows chain
+  back to back (the break refills the gauge), so one opened in the round's last
+  seconds outlives it, and the choreography checked only its clock. On
+  `option_menu.mp4` the break's grid ran over the tally and the post-burst scan
+  read the tally's gear as a bubble -- the play square reaches that row on the
+  540x960 layout -- so the pop opened Options over the numbers the stats read
+  wanted, and the row went blank. `elsaRoundOver` (the play loop's
+  `inRoundPages()` sweep) is asked on a starved look, at most once a second,
+  and once more before the break; `skill.elsa.roundOver` says when, and
+  `skill.elsa.done` carries `roundOver`.
 
 ## [2.0]
 

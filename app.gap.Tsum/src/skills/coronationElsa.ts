@@ -34,6 +34,13 @@
 // `t0 + leadInMs`, and the first chain is not drawn before that either -- a
 // chain under the animation is ignored.
 //
+// The window can outlive the round: the break refills the gauge, so windows
+// chain back to back and one opened in the round's last seconds runs past the
+// timer. A look that finds nothing to chain checks for a round-over screen
+// (`elsaRoundOver`, rate-limited), and so does the close; from then on nothing
+// is tapped -- the break's grid and its post-burst pops over the score tally
+// are what opened the Options menu on `option_menu.mp4`.
+//
 // ## A chain the game does not link freezes nothing
 //
 // A chain planned over one row of the board registers as a touch on one tsum:
@@ -280,8 +287,22 @@ var CoronationElsaConfig = {
   // The fallback when the closing burst has no ice read to aim at: a blind
   // grid over the play area, in logical px. A tap on an ordinary tsum is not a
   // drag, so the game ignores it.
-  blindStep: 220
+  blindStep: 220,
+  // How often, at most, a starved look checks the round is still on (see the
+  // header: a window opened in the round's last seconds outlives it). One
+  // capture a second, and only on the looks a finished round produces.
+  roundCheckMs: 1000
 };
+
+/**
+ * Whether a round-over screen has replaced the board: the tally, or one of the
+ * panels before it. The play loop's own check (`watchRoundEnd`), same sweep,
+ * so the pause menu and an animation over the HUD do not end the window --
+ * only a screen the round genuinely ends on does.
+ */
+function elsaRoundOver(): boolean {
+  return isRoundOverPage(gPages.detect(1, 0, inRoundPages()));
+}
 
 // Live colours seen inside the frozen box on scans where ice was impossible,
 // in cluster HSV (`b`/`g`/`r` = hue/saturation/value), with how many scans
@@ -795,6 +816,9 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
   let fruitlessChains = 0;
   // Whether this look follows a break, so it may pop over a shard read.
   let afterBurst = false;
+  // The round ending under the window; nothing is tapped once it has.
+  let roundOver = false;
+  let roundCheckedAt = 0;
   while (this.isRunning && Date.now() < chainBy) {
     const look = this.elsaLook(chainBy, expected,
       afterBurst ? cfg.postBurstPopMaxIced : 0);
@@ -838,6 +862,18 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
       // The hop tier that found it: the wide one on a board frozen nearly out.
       hop: pick === null ? 0 : pick.hop,
     });
+    // A finished round reads like a starved board -- few circles, chains that
+    // clear nothing -- so those looks are the ones that ask whether it is one.
+    // Rate-limited: a board genuinely frozen out reads the same way.
+    if ((pick === null || starvedRun > 0)
+        && Date.now() - roundCheckedAt >= cfg.roundCheckMs) {
+      roundCheckedAt = Date.now();
+      if (elsaRoundOver()) {
+        logInfo(Log.Skill.ElsaRoundOver, { atMs: Date.now() - t0, looks: looks });
+        roundOver = true;
+        break;
+      }
+    }
     if (pick === null) {
       // Nothing chainable this look -- ice everywhere a row could stand, or a
       // starved read.
@@ -875,7 +911,14 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     // Let the band form before the next look reads it.
     this.sleep(cfg.iceFormMs);
   }
-  if (this.isRunning) {
+  // One more look at the HUD before the break: the round can end in the last
+  // seconds of the window, past the looks above, and the break's grid and its
+  // post-burst pops are what land on the tally otherwise.
+  if (this.isRunning && !roundOver && elsaRoundOver()) {
+    logInfo(Log.Skill.ElsaRoundOver, { atMs: Date.now() - t0, looks: looks });
+    roundOver = true;
+  }
+  if (this.isRunning && !roundOver) {
     // Read the pile once more and break it. The look is bounded to now, so it
     // neither waits on a fall nor pops anything.
     const last = this.elsaLook(Date.now(), expected);
@@ -915,6 +958,8 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     // chains drawn means something touched ice mid-window.
     icedLast: iced.length,
     aimedTaps: aimedTaps,
+    // The round ended under the window: no closing break, no pops.
+    roundOver: roundOver,
     totalMs: Date.now() - t0,
   });
 };

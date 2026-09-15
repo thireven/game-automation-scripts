@@ -176,6 +176,7 @@ namespace Log {
     ElsaLegacyIceAlike    = 'skill.elsaLegacy.iceAlike',
     ElsaLegacyPass        = 'skill.elsaLegacy.pass',
     ElsaPass              = 'skill.elsa.pass',
+    ElsaRoundOver         = 'skill.elsa.roundOver',
     FeverHoldOff          = 'skill.feverHoldOff',
     FormalBeastModeEnd    = 'skill.formalBeast.modeEnd',
     FormalBeastModeStart  = 'skill.formalBeast.modeStart',

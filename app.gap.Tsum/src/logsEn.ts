@@ -34,6 +34,7 @@ var LogsEn = {
   [Log.Skill.FormalBeastModeStart]: '[Formal Beast] Twin gauge up; levelling halves',
   [Log.Skill.FormalBeastModeEnd]: '[Formal Beast] Twin gauge gone',
   [Log.Skill.ElsaDone]: '[Coronation Elsa] Freeze window closed',
+  [Log.Skill.ElsaRoundOver]: '[Coronation Elsa] Round ended inside the window',
   [Log.Skill.ElsaLegacyDone]: '[Coronation Elsa Legacy] Freeze window closed',
   [Log.Skill.GastonDone]: '[Gaston] Window closed',
   [Log.Skill.GastonPass]: '[Gaston] Chain drawn',
