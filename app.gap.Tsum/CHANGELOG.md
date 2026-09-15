@@ -104,6 +104,16 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 
 ### Fixed
 
+- **A fever is recognised on the 2025 layout.** `FeverProbes`' two
+  dimmed-chrome pixels sat under the gauge, and on MuMu that build ends the
+  game in a black band there, so `isFeverTime` was false on every frame and
+  `gFever` never went active on that device -- the new bubble hold could not
+  engage, and the "No skill last fever seconds" hold-off, whose own backdrop
+  probe at (340,310) lands on that layout's gem icon, had never fired either.
+  Both now read the chrome beside the score capsule, where
+  `LevelUpDimmedChrome` reads; the ring thresholds go to 100 for the same
+  frames. Measured on three of the device's own trail frames, filed in the
+  corpus as `mumu-360x640-fever*`.
 - **`renderPage` now drops `reportPanel` with the other panels.** A language
   change re-renders `#tabPanels`, and the Report row's panel was the one still
   pointing at the detached copy.

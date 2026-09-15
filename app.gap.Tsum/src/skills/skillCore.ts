@@ -425,8 +425,12 @@ function skillWaitOutEndingFever(ts: Tsum) {
       // One crossing for all seven probes rather than seven. This runs in a
       // poll loop that re-reads until the fever stops ending, so the saving is
       // per iteration, not once.
+      // The backdrop probe is `FeverProbes`' dimmed-chrome one, beside the
+      // score capsule: (340,310), where this used to read, is the gem icon on
+      // the 2025 layout, so the hold-off never fired there.
+      const backdrop = FeverProbes[2];
       const p = ts.getColors(img, [
-        {x: 340, y: 310},                    // 0 in-fever backdrop
+        {x: backdrop.x, y: backdrop.y},      // 0 in-fever backdrop
         {x: 332, y: 1666},                   // 1 fever ring, left
         {x: 746, y: 1666},                   // 2 fever ring, right
         {x: bar.xStart, y: bar.y},           // 3 fill start
@@ -434,7 +438,7 @@ function skillWaitOutEndingFever(ts: Tsum) {
         {x: 155, y: 190},                    // 5 remaining time
         {x: 144, y: 195}                     // 6 a few seconds left
       ]);
-      const fever1 = isSameColor(p[0], {r: 0, g: 40, b: 49}, 80);
+      const fever1 = isSameColor(p[0], backdrop, backdrop.threshold);
       const feverRingLeft = rgb2hsv(p[1]);
       const feverRingRight = rgb2hsv(p[2]);
       const hueDifference = Math.min(

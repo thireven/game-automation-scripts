@@ -642,19 +642,24 @@ var GamePlayingHudProbes: PageColor[] = [
 //                        near-black teal. On its own this accepts every dimmed
 //                        overlay the game draws -- the pause menu, the level-up
 //                        panel and the Magical Time offer all darken the same
-//                        pixels (measured 65-78 apart, which is why the
-//                        threshold here is 60 rather than 80).
+//                        pixels -- which is what the ring above is for.
 //
-// Together they take a fever apart from all of those: over the corpus the six
-// fever frames clear every probe with 21/80, 31/60 and 27/60 to spare, and no
-// other frame comes within 336 of the two bright ones. Measured on 1080x1920
-// captures and re-checked at 540x960; a device the plain `GamePlaying` entry
-// needs its own fingerprint for (480x800) has not been measured for fever.
+// The dimmed pair is read beside the score capsule, where `LevelUpDimmedChrome`
+// reads too, and not under the gauge where it used to be: the 2025 layout on
+// MuMu (`mumu-360x640-fever*` in the corpus) ends the game in a black band
+// below the gauge, so the two probes that lived there read (0,0,0) on every
+// screen and no fever was ever recognised on that device. The capsule's
+// flanks are chrome on both layouts. They dim a little less on MuMu --
+// (8,52,74) against the older layout's (0,40,49) -- so the expected colour
+// sits between the two and the threshold covers both: the worst fever frame
+// is 69 away, the pause menu 37 (the ring rejects it by 325+), the level-up
+// panel 95+, a plain board 350+. The ring strokes read up to 68 away on MuMu
+// against 11 on the older captures, hence 100 there.
 var FeverProbes: PageColor[] = [
-  {x: 648, y: 1634, r: 255, g: 255, b: 255, match: true, threshold: 80},  // ring, top stroke -- identical on all six fever frames
-  {x: 462, y: 1697, r: 255, g: 251, b: 248, match: true, threshold: 80},  // ring, bottom stroke -- worst frame 21 away
-  {x: 660, y: 1736, r:   0, g:  35, b:  46, match: true, threshold: 60},  // dimmed chrome just under the gauge -- worst 31
-  {x: 135, y: 1813, r:   7, g:  37, b:  50, match: true, threshold: 60}   // dimmed chrome, bottom strip -- worst 27
+  {x: 648, y: 1634, r: 255, g: 255, b: 255, match: true, threshold: 100},  // ring, top stroke -- worst 58 (MuMu), 0 (older)
+  {x: 462, y: 1697, r: 255, g: 251, b: 248, match: true, threshold: 100},  // ring, bottom stroke -- worst 68 (MuMu), 11 (older)
+  {x: 300, y:  250, r:   4, g:  48, b:  62, match: true, threshold: 90},   // dimmed chrome left of the score capsule -- worst 69
+  {x: 800, y:  250, r:   0, g:  52, b:  62, match: true, threshold: 90}    // dimmed chrome right of the score capsule -- worst 69
 ];
 
 // The fever bar's fill, which is the fever's clock: pink from the left edge,
