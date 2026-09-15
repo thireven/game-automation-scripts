@@ -43,6 +43,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - Auto launch finds the Japan game on its own: whichever build is installed is the one started, so nothing has to be set for it. The stats CSV gains a `build` column.
 - "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
 - Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer spent on the empty space it left.
+- Round stats: a medal count with a 0 in it is no longer left blank.
 
 ### Added
 
@@ -129,6 +130,11 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - **`renderPage` now drops `reportPanel` with the other panels.** A language
   change re-renders `#tabPanels`, and the Report row's panel was the one still
   pointing at the detached copy.
+- **A medal count with a `0` in it reads.** The tally's medals row draws its
+  glyphs 19px tall on the 540 emulator where the coin row's are 20, and at that
+  height the `0` led `9` by 0.029 -- a thousandth under `StatsMinGlyphMargin`
+  -- so 401, 380 and 400 all went to the CSV blank. `StatsDigits` recut with
+  two of those tallies in the sample; the worst lead over the corpus is 0.036.
 
 ## [2.0]
 

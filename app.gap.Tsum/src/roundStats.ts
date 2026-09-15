@@ -78,13 +78,12 @@ const StatsGlyphPoints: Point[] = (function() {
 
 // Digit shapes, normalised to StatsGlyphW x StatsGlyphH. What `pages:stats
 // --digits` prints: the per-pixel majority of every glyph the corpus labels --
-// 275 of them, across the three sizes the game draws a number at (the orange
+// 388 of them, across the three sizes the game draws a number at (the orange
 // score ~50px, the tally rows ~20px, the dimmed level-up counter ~17px), on a
-// 540 emulator and a 1080 phone -- then the one pixel a quarter of its samples
+// 540 emulator and a 1080 phone -- then the two pixels a quarter of its samples
 // disagreed on that a '3' gains a lead by. Over that set the worst genuine
-// digit scores 0.800 with a 0.043 lead over the runner-up, and thirteen device
-// shots the set was not cut from all read. Recut the same way from fresh
-// frames if the game ever changes its typeface.
+// digit scores 0.807 with a 0.036 lead over the runner-up. Recut the same way
+// from fresh frames if the game ever changes its typeface.
 //
 // Cut from tally-size glyphs as much as score-size ones, because that is where
 // a template goes wrong: a stroke is two pixels of this grid there rather than
@@ -96,6 +95,15 @@ const StatsGlyphPoints: Point[] = (function() {
 // written blank. The tally's bonus and high-score rows are in the sample for
 // the same reason: they are the only place the corpus draws a small '6' or
 // '8', and the 1080 phone's halved '8' had read as '3' without them.
+//
+// The medals row is its own size. On the 540 emulator its glyphs come out 19px
+// tall where the coin row's are 20 -- the row sits half a pixel off, so the
+// antialiased top and bottom land at 214, just under the white floor -- and a
+// '0' cut that way has a thinner lower-left stroke than the coin row's. With
+// no such '0' in the sample it led '9' by 0.029, one thousandth under the
+// floor, and every tally with a '0' in its medal count was written blank. Two
+// of those tallies are in the sample now, and the '9' lost the two pixels of
+// its lower loop that a '0' cut short shared with it.
 const StatsDigits: {[digit: string]: string[]} = {
   '0': ['...####...',
         '..##..##..',
@@ -110,7 +118,7 @@ const StatsDigits: {[digit: string]: string[]} = {
         '.##....##.',
         '.##....##.',
         '..##..##..',
-        '...###....'],
+        '...####...'],
   '1': ['.....#####',
         '..########',
         '##########',
@@ -137,10 +145,10 @@ const StatsDigits: {[digit: string]: string[]} = {
         '..####....',
         '.###......',
         '.##.......',
-        '###.......',
+        '####......',
         '##########'],
   '3': ['..######..',
-        '.##...###.',
+        '.###..###.',
         '.##....##.',
         '.#.....##.',
         '.......##.',
@@ -151,27 +159,27 @@ const StatsDigits: {[digit: string]: string[]} = {
         '.......###',
         '##.....###',
         '##.....##.',
-        '.##...###.',
-        '...####...'],
-  '4': ['......##..',
+        '.###..###.',
+        '..#####...'],
+  '4': ['......#...',
         '.....###..',
         '....####..',
         '....####..',
         '...##.##..',
-        '..##..##..',
+        '...#..##..',
         '..##..##..',
         '.##...##..',
         '.#....##..',
-        '##...###..',
+        '##....##..',
         '##########',
-        '.....####.',
+        '.#########',
         '......##..',
         '......##..'],
   '5': ['.########.',
         '.########.',
         '.##.......',
         '.##.......',
-        '###.......',
+        '###..##...',
         '#########.',
         '###...###.',
         '.#.....###',
@@ -183,17 +191,17 @@ const StatsDigits: {[digit: string]: string[]} = {
         '..#####...'],
   '6': ['...#####..',
         '.###...##.',
-        '.##....##.',
+        '.##.....#.',
         '.##.......',
         '###.......',
         '########..',
         '###....##.',
-        '###....##.',
+        '###....###',
         '###....###',
         '###....###',
         '.##....###',
         '.##....##.',
-        '.###..###.',
+        '.###...##.',
         '...####...'],
   '7': ['##########',
         '##########',
@@ -211,7 +219,7 @@ const StatsDigits: {[digit: string]: string[]} = {
         '..##......'],
   '8': ['...####...',
         '.###..###.',
-        '.##....##.',
+        '.##...###.',
         '.##....##.',
         '.##....##.',
         '.###..###.',
@@ -221,7 +229,7 @@ const StatsDigits: {[digit: string]: string[]} = {
         '###....###',
         '###....###',
         '###....###',
-        '.###...##.',
+        '.###..###.',
         '...#####..'],
   '9': ['..######..',
         '.###..###.',
@@ -231,10 +239,10 @@ const StatsDigits: {[digit: string]: string[]} = {
         '###....###',
         '###....###',
         '.##....###',
-        '..####.###',
+        '..########',
         '.......###',
         '.......##.',
-        '.##....##.',
+        '.#.....##.',
         '.##...###.',
         '..#####...']
 };
