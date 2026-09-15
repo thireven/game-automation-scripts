@@ -145,6 +145,7 @@ namespace Log {
 
   /** Which tsum is selected, off the pre-round icon. */
   export const enum Tsums {
+    Detected       = 'tsums.detected',
     Identified     = 'tsums.identified',
     LibraryLoaded  = 'tsums.libraryLoaded',
     NoBoardColors  = 'tsums.noBoardColors',
@@ -408,6 +409,7 @@ namespace Log {
     ClipboardReadFailed        = 'settings.clipboardReadFailed',
     ClipboardSetFailed         = 'settings.clipboardSetFailed',
     ClipboardWriteFailed       = 'settings.clipboardWriteFailed',
+    DetectMyTsumAsked          = 'settings.detectMyTsumAsked',
     Enabled                    = 'settings.enabled',
     EnableUnknown              = 'settings.enableUnknown',
     LiveApplied                = 'settings.liveApplied',

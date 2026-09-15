@@ -711,7 +711,10 @@ the second of two lines inside 10ms, and a preset or the skill sheet writes two.
 The logger no longer sleeps, the host now lets an `Eval` through the gate and
 answers it off that thread, and `npm run live:check` fails on any gated call
 from an entry point (`entry`). `onPause` is the one exception, and it is the
-host that makes it one.
+host that makes it one. `detectMyTsum` (the Debug tab's Detect button) is the
+other, by construction rather than by exemption: it refuses a live run before
+it sleeps, so the one `sleep()` it makes — waiting for the closed panel to
+leave the frame — runs through the opened gate with no Resume behind it.
 
 **That handler has to be in the `dismiss` band, and it was in `navigate` until
 0.5.** The navigate band is silent when nothing set a goal — which is what stops

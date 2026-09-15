@@ -50,6 +50,7 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Play.RoundDelaySkipped]: '休息略過，下一局',
   [Log.Play.RoundTimeUp]: '已達單局時間上限',
   [Log.Play.RoundCoastGaveUp]: '本局未結束，交回排程',
+  [Log.Tsums.Detected]: '從設定頁讀取使用中的 Tsum',
   [Log.Tsums.Identified]: '使用中的 Tsum',
   [Log.Tsums.Unidentified]: '無法辨識 Tsum，本局不記錄',
   [Log.Tsums.Unreadable]: '無法讀取開始畫面的 Tsum 圖示',

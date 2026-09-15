@@ -209,6 +209,20 @@ declare const enum RecordKey {
 }
 
 /**
+ * Why `detectMyTsum` (src/roundStats.ts) read nothing, as its answer carries
+ * it back to the Debug tab's Detect button. A `const enum` because the value
+ * crosses the `runScriptCallback` bridge between two runtimes.
+ */
+declare const enum DetectMyTsumRefusal {
+  /** A run is up; it reads the tsum itself at every pre-round screen. */
+  Run = 'run',
+  /** This build carries no tsum library. */
+  Library = 'library',
+  /** The icon could not be captured -- the game is not on the pre-round screen. */
+  Unreadable = 'unreadable',
+}
+
+/**
  * Every language the project speaks, as BCP-47 tags.
  *
  * One member per registered catalogue -- `src/uiEn.ts` and `src/logsEn.ts` for

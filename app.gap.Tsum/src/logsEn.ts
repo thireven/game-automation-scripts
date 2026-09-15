@@ -52,6 +52,7 @@ var LogsEn = {
   [Log.Play.RoundDelaySkipped]: 'Wait cut short; next round',
   [Log.Play.RoundTimeUp]: 'Round hit Max Round Duration',
   [Log.Play.RoundCoastGaveUp]: 'Round never ended; handing back',
+  [Log.Tsums.Detected]: 'MyTsum read from the settings page',
   [Log.Tsums.Identified]: 'MyTsum identified',
   [Log.Tsums.Unidentified]: 'Selected tsum unknown; round recorded without one',
   [Log.Tsums.Unreadable]: 'Pre-round tsum icon unreadable',

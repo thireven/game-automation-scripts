@@ -182,6 +182,15 @@ declare const enum UiText {
   ReportNotePlaceholder = 'report.notePlaceholder',
   ReportSaved = 'report.saved',
   ReportFailed = 'report.failed',
+  /** The Detect button row on the Debug tab, and how its answer is worded. */
+  SettingDetectMyTsum = 'setting.detectMyTsum',
+  SettingDetectMyTsumHelp = 'setting.detectMyTsum.help',
+  DetectMyTsumFound = 'detectMyTsum.found',
+  DetectMyTsumNearest = 'detectMyTsum.nearest',
+  DetectMyTsumRunUp = 'detectMyTsum.runUp',
+  DetectMyTsumNoLibrary = 'detectMyTsum.noLibrary',
+  DetectMyTsumUnreadable = 'detectMyTsum.unreadable',
+  DetectMyTsumFailed = 'detectMyTsum.failed',
 
   // --- dropdown entries ---------------------------------------------------
   BubbleOneMidChain = 'bubble.oneMidChain',
@@ -241,6 +250,7 @@ declare const enum UiText {
   ButtonSaveFile = 'button.saveFile',
   ButtonReport = 'button.report',
   ButtonSaveReport = 'button.saveReport',
+  ButtonDetect = 'button.detect',
 
   // --- page chrome --------------------------------------------------------
   ChromeReset = 'chrome.reset',

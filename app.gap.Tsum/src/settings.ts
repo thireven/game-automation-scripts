@@ -674,6 +674,17 @@ var tabs: TabSpec[] = [
                         ]
                     },
                     {
+                        // Tries the pre-round tsum read on whatever the game
+                        // shows now, so a template can be checked without a
+                        // round -- see `askDetectMyTsum`.
+                        key: RowKey.DetectMyTsum,
+                        title: UiText.SettingDetectMyTsum,
+                        help: UiText.SettingDetectMyTsumHelp,
+                        buttons: [
+                            {text: i18nThunk(UiText.ButtonDetect), onClick: function () { askDetectMyTsum(); }}
+                        ]
+                    },
+                    {
                         key: SettingKey.DebugLogs,
                         title: UiText.SettingDebugLogs,
                         help: UiText.SettingDebugLogsHelp,
@@ -2162,6 +2173,105 @@ function onReportSaved(answer: string): void {
         return;
     }
     setReportStatus(id + ' — ' + i18nText(UiText.ReportSaved), false);
+}
+
+// --- detecting MyTsum ------------------------------------------------------
+//
+// The pre-round tsum read (`selectedTsum`, src/roundStats.ts) tried on demand,
+// so a template can be checked against the game without playing a round. The
+// engine half is `detectMyTsum`.
+
+/** The status line under the Detect row, built the first time it is needed. */
+var detectPanel: HTMLElement | undefined;
+
+function ensureDetectPanel(): HTMLElement {
+    if (detectPanel !== undefined) {
+        return detectPanel;
+    }
+    var panel = fromTemplate('tpl-detect');
+    var row = document.getElementById(rowElementId(RowKey.DetectMyTsum));
+    if (row !== null && row.parentNode !== null) {
+        row.parentNode.insertBefore(panel, row.nextSibling);
+    } else {
+        document.getElementById('tabPanels')!.appendChild(panel);
+    }
+    detectPanel = panel;
+    return panel;
+}
+
+function setDetectStatus(message: string, isError: boolean): void {
+    var panel = ensureDetectPanel();
+    var status = pick(panel, '.detect-status');
+    status.textContent = message;
+    status.className = isError ? 'share-status detect-status share-error'
+        : 'share-status detect-status';
+    panel.hidden = false;
+}
+
+/**
+ * The Detect button: asks the engine to read the pre-round tsum icon now.
+ *
+ * The panel is closed first, as the two Now buttons close it: the host
+ * captures every window, so a panel left up would be what got read. The
+ * page's settings go with the call because the read needs the screen geometry
+ * `start()` would have set up, and there is no run to have done it. The answer
+ * lands at `onMyTsumDetected` -- on the banner as well, since the panel is
+ * down by then.
+ */
+// noinspection JSUnusedGlobalSymbols
+function askDetectMyTsum(): void {
+    var iface = bridge();
+    if (iface === undefined) {
+        setDetectStatus(i18nText(UiText.DetectMyTsumFailed), true);
+        return;
+    }
+    // A line from the last press must not stand as this one's answer.
+    if (detectPanel !== undefined) {
+        setDetectStatus('', false);
+    }
+    flushSettings();
+    iface.hideMenu();
+    iface.showMenu();
+    logInfo(Log.Settings.DetectMyTsumAsked, 'Asked the engine to read the selected tsum');
+    iface.runScriptCallback('typeof detectMyTsum === "function" ? detectMyTsum('
+        + JSON.stringify(startSettings(settings)) + ') : "no script"',
+        'onMyTsumDetected');
+}
+
+/**
+ * The engine's answer: the selection it read, or the reason it read nothing.
+ *
+ * Not JSON at all is the guarded eval's own "no script", or a host that gave
+ * nothing back -- the same sentence covers both.
+ */
+// noinspection JSUnusedGlobalSymbols
+function onMyTsumDetected(answer: string): void {
+    var read: any;
+    try {
+        read = JSON.parse(String(answer));
+    } catch (e) {
+        read = null;
+    }
+    if (read === null || typeof read !== 'object') {
+        setDetectStatus(i18nText(UiText.DetectMyTsumFailed), true);
+        return;
+    }
+    if (typeof read.reason === 'string') {
+        var reason: DetectMyTsumRefusal = read.reason;
+        setDetectStatus(i18nText(
+            reason === DetectMyTsumRefusal.Run ? UiText.DetectMyTsumRunUp
+                : reason === DetectMyTsumRefusal.Library ? UiText.DetectMyTsumNoLibrary
+                : UiText.DetectMyTsumUnreadable), true);
+        return;
+    }
+    var confident = read.confident === true;
+    setDetectStatus(i18nFormat(
+        confident ? UiText.DetectMyTsumFound : UiText.DetectMyTsumNearest, {
+            name: String(read.full),
+            tsum: String(read.short),
+            score: Number(read.score).toFixed(3),
+            margin: Number(read.margin).toFixed(3),
+        }), !confident);
 }
 
 /**
@@ -3921,9 +4031,11 @@ function renderPage(): void {
 
     bar.textContent = '';
     panels.textContent = '';
-    // Both panels are appended into #tabPanels, so they have just gone with it.
+    // Every panel is appended into #tabPanels, so they have just gone with it.
     sharePanel = undefined;
     presetExportPanel = undefined;
+    reportPanel = undefined;
+    detectPanel = undefined;
 
     renderTabs(bar, panels, tabs);
     selectTab(rememberedTab());

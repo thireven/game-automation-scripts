@@ -1604,6 +1604,73 @@ Tsum.prototype.identifyMyTsum = function() {
 };
 
 /**
+ * How long `detectMyTsum` waits before its capture.
+ *
+ * The host captures every window, the settings panel included. The page closes
+ * the panel before asking, but that close is a post to the UI thread while the
+ * ask comes down its own socket, so the first frame here could still be the
+ * panel. A few frames of grace.
+ */
+const DetectMyTsumSettleMs = 500;
+
+/**
+ * Reads which tsum the pre-round screen shows selected, on demand.
+ *
+ * A global for the same reason `reportIssue` is: the Debug tab's Detect button
+ * reaches it by name through `JavaScriptInterface.runScriptCallback`. It is how
+ * `selectedTsum` is tried without playing a round -- leave the game on the
+ * pre-round screen, press the button, read the banner.
+ *
+ * With no run up, a throwaway `Tsum` built on the page's settings supplies the
+ * screen geometry the capture needs, and nothing else is built. A live run is
+ * refused: closing the panel resumed it, and its loop reads this same screen on
+ * its own at every pre-round arrival (`identifyMyTsum`).
+ *
+ * The page's Eval opens the host's pause gate, so the settle sleep is a real
+ * one rather than a park.
+ *
+ * Returns JSON: the `MyTsumSelection` on a read, `{reason}` otherwise. The page
+ * words both, and the host writes the answer to the log either way.
+ */
+// noinspection JSUnusedGlobalSymbols
+function detectMyTsum(settings?: Settings): string {
+  if (gRunActive || ts !== undefined) {
+    if (ts !== undefined) {
+      ts.banner('Stop the run to test MyTsum detection here', 4000);
+    }
+    return JSON.stringify({ reason: DetectMyTsumRefusal.Run });
+  }
+  const probe = new Tsum(
+    settings !== undefined && settings.jpVersion === true,
+    settings !== undefined && settings.specialScreenRatio === true,
+    logStringsFor(settings !== undefined ? settings.locale : undefined));
+  sleep(DetectMyTsumSettleMs);
+  const selected = probe.selectedTsum();
+  if (selected === null) {
+    // selectedTsum has already logged the unreadable icon; the missing library
+    // was logged when it was first looked for.
+    const noLibrary = myTsumLibrary().length === 0;
+    probe.banner(noLibrary ? 'MyTsum not read: no tsum library'
+      : 'MyTsum icon unreadable: is the game on the pre-round screen?', 4000);
+    return JSON.stringify({
+      reason: noLibrary ? DetectMyTsumRefusal.Library : DetectMyTsumRefusal.Unreadable
+    });
+  }
+  // Its own event rather than `Identified`, so a reader of the log cannot take
+  // a press of the button for a round's own read.
+  logInfo(Log.Tsums.Detected, {
+    tsum: selected.short,
+    name: selected.full,
+    score: +selected.score.toFixed(3),
+    margin: +selected.margin.toFixed(3),
+    confident: selected.confident,
+  });
+  probe.banner((selected.confident ? 'Tsum: ' : 'Tsum? ') + selected.full
+    + ' (' + selected.score.toFixed(2) + ' / +' + selected.margin.toFixed(2) + ')', 6000);
+  return JSON.stringify(selected);
+}
+
+/**
  * The settings a round is played under, frozen at the moment it starts.
  *
  * Shallow, because every field is a string, number or boolean. It exists

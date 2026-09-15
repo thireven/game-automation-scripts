@@ -34,6 +34,34 @@ changed, and the one fact that explains why. Measurements, rejected designs and
 long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 `DRIVING_SCREENS.md`, `PAGE_DISPATCH.md`, `DEVELOPMENT.md`).
 
+## [2.0-beta2]
+
+### Summary
+
+- Debug tab: a Detect MyTsum button reads which tsum the pre-round screen shows selected, without playing a round.
+
+### Added
+
+- **`detectMyTsum` (`src/roundStats.ts`).** The Debug tab's Detect button,
+  reached by name through `runScriptCallback` like `reportIssue`. Refuses a
+  live run (the loop reads the same screen itself), else builds a throwaway
+  `Tsum` on the page's settings for the geometry, sleeps
+  `DetectMyTsumSettleMs` for the closed panel to leave the frame -- the host
+  captures every window -- and answers the `MyTsumSelection` or a
+  `DetectMyTsumRefusal` (`src/shared.d.ts`) as JSON. `tsums.detected` is its
+  own event so a log reader cannot take a press for a round's read; the
+  banner carries the name with score and margin.
+- **`askDetectMyTsum` / `onMyTsumDetected` (`src/settings.ts`).** Closes the
+  panel the way the Now buttons do, sends the form, and words the answer under
+  the row (`tpl-detect`) in the page's language, so it is there when the
+  panel is reopened.
+
+### Fixed
+
+- **`renderPage` now drops `reportPanel` with the other panels.** A language
+  change re-renders `#tabPanels`, and the Report row's panel was the one still
+  pointing at the detached copy.
+
 ## [2.0]
 
 ### Summary

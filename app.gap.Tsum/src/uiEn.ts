@@ -161,6 +161,14 @@ i18nRegister(Locale.English, 'English', {
     [UiText.ReportNotePlaceholder]: 'What went wrong? (optional)',
     [UiText.ReportSaved]: 'Saved. Send it with Share in the app’s Run History.',
     [UiText.ReportFailed]: 'Nothing was saved. Start the script first, then try again.',
+    [UiText.SettingDetectMyTsum]: 'Detect MyTsum',
+    [UiText.SettingDetectMyTsumHelp]: 'Reads which tsum the game’s pre-round screen shows selected, without playing a round. Open that screen, stop the script, then press Detect: the answer goes on the banner and is kept here.',
+    [UiText.DetectMyTsumFound]: '{name} ({tsum}) — score {score}, margin {margin}.',
+    [UiText.DetectMyTsumNearest]: 'No confident match. Nearest: {name} ({tsum}) — score {score}, margin {margin}.',
+    [UiText.DetectMyTsumRunUp]: 'The script is running and reads the tsum itself before every round. Stop it to test here.',
+    [UiText.DetectMyTsumNoLibrary]: 'This build carries no tsum library.',
+    [UiText.DetectMyTsumUnreadable]: 'The tsum icon could not be read. Is the game on the pre-round screen?',
+    [UiText.DetectMyTsumFailed]: 'Nothing was read. Load the script first, then try again.',
 
     [UiText.BubbleOneMidChain]: 'One Bubble Mid Chain',
     [UiText.BubbleAllMidChain]: 'All Bubbles Mid Chain',
@@ -214,6 +222,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.ButtonSaveFile]: 'Save file',
     [UiText.ButtonReport]: 'Report',
     [UiText.ButtonSaveReport]: 'Save report',
+    [UiText.ButtonDetect]: 'Detect',
 
     [UiText.ChromeReset]: 'Reset Settings',
     [UiText.ChromeRestartNow]: 'Restart TsumTsum script now',

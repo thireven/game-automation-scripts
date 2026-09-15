@@ -162,6 +162,14 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.ReportNotePlaceholder]: '發生什麼問題？（可略）',
     [UiText.ReportSaved]: '已儲存。請用 App 執行紀錄裡的分享送出。',
     [UiText.ReportFailed]: '沒有存下任何東西。請先啟動腳本再試一次。',
+    [UiText.SettingDetectMyTsum]: '辨識 MyTsum',
+    [UiText.SettingDetectMyTsumHelp]: '不用玩一局，直接讀取遊戲開始畫面上選用的 Tsum。先開到那個畫面並停止腳本，再按辨識：結果會顯示在橫幅，並留在這裡。',
+    [UiText.DetectMyTsumFound]: '{name}（{tsum}）— 分數 {score}，差距 {margin}。',
+    [UiText.DetectMyTsumNearest]: '沒有可信的結果。最接近：{name}（{tsum}）— 分數 {score}，差距 {margin}。',
+    [UiText.DetectMyTsumRunUp]: '腳本執行中，每局開始前會自己辨識 Tsum。請先停止腳本再測試。',
+    [UiText.DetectMyTsumNoLibrary]: '這個版本沒有 Tsum 樣板。',
+    [UiText.DetectMyTsumUnreadable]: '無法讀取 Tsum 圖示。遊戲在開始畫面嗎？',
+    [UiText.DetectMyTsumFailed]: '沒有讀到任何東西。請先載入腳本再試一次。',
 
     [UiText.BubbleOneMidChain]: '連線時戳一顆',
     [UiText.BubbleAllMidChain]: '連線時全戳',
@@ -213,6 +221,7 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.ButtonSaveFile]: '存成檔案',
     [UiText.ButtonReport]: '回報',
     [UiText.ButtonSaveReport]: '儲存回報',
+    [UiText.ButtonDetect]: '辨識',
 
     [UiText.ChromeReset]: '重設設定',
     [UiText.ChromeRestartNow]: '立即重启TsumTsum脚本',

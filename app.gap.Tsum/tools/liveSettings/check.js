@@ -330,7 +330,9 @@ function main() {
   //    injectors while the run is paused, and the pages evaluate these *only*
   //    while it is paused -- so a gated call here is a call that waits on the
   //    Resume queued behind it. `onPause` is left out: it taps by design, and
-  //    the host lets that one evaluation through the gate.
+  //    the host lets that one evaluation through the gate. So is `detectMyTsum`:
+  //    it sleeps by design, and only after refusing a live run, so no Resume
+  //    can be waiting behind it.
   //
   //    Each is driven twice in one evaluation. The logger's spacing sleep only
   //    fired on a second line inside 10ms, which is exactly what a preset (its

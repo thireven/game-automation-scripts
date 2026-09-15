@@ -149,6 +149,8 @@ declare const enum RowKey {
   BuildDate = 'buildDate',
   /** The Report button; its note box and status are inserted under this row. */
   ReportIssue = 'reportIssue',
+  /** The Detect button; the engine's answer is written under this row. */
+  DetectMyTsum = 'detectMyTsum',
 }
 
 /** One row of the settings schema (a `rows` entry of a `GroupSpec`). */
