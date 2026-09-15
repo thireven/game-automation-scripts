@@ -22,14 +22,13 @@
 //   ts.isFeverTime()      one look, no memory: is a fever running right now.
 //                         Pass a frame you already hold and it costs nothing
 //                         but the probe read.
-//   ts.feverRemainingMs() one look at the fever bar's fill: how long this
-//                         fever has left. Same frame rule as above.
-//   ts.feverLook()        both of those off one frame -- what the watcher
-//                         samples, and what a screenless harness stubs.
+//   ts.feverRemainingMs() how long the fever on screen has left, off a crop
+//                         of the bar's fill taken right then -- cheap enough
+//                         to ask inside a link batch, and never a clock of
+//                         its own, so a fever the game has paused reads as
+//                         paused. Gate it on `gFever.active`.
 //   gFever.active         the debounced answer, as of the last reading, plus
 //                         when it started (`since`, `elapsedMs()`).
-//   gFever.remainingMs()  the bar as last read, run forward by the clock; and
-//                         `endsWithin(ms)`, the question the bubble hold asks.
 //   gFever.subscribe()    a handler called once when a fever starts and once
 //                         when it ends -- the broadcast the rest of the script
 //                         reacts to, in the shape `gPages.subscribe` already
@@ -39,8 +38,6 @@
 // Readings arrive from `record.feverTime` in pageHandlers.ts, which feeds
 // `update()` every time the router looks at the screen. That is what makes the
 // events fire on their own during a round without anything else calling in.
-// The bar is read off that same capture, so knowing how long a fever has left
-// costs no capture of its own.
 // ---------------------------------------------------------------------------
 
 /**
@@ -117,14 +114,6 @@ class FeverWatcher {
   /** When the last reading that cost a capture was taken. */
   private capturedAt: number;
   /**
-   * The fever bar as last read: how long was left, and when that was read.
-   * `barReadAt` is 0 until a running fever's bar has been read, and again once
-   * the fever ends. Kept through the debounce tail rather than cleared on the
-   * first reading that says "no fever", so the hold and `active` agree.
-   */
-  private barRemainingMs: number;
-  private barReadAt: number;
-  /**
    * When a page the router could read was last seen -- the board or anything
    * else. What `FeverUnknownHoldMs` is measured from, so that a screen which
    * stays unreadable stops holding the state up one window after the last
@@ -144,8 +133,6 @@ class FeverWatcher {
     this.pending = false;
     this.pendingCount = 0;
     this.capturedAt = 0;
-    this.barRemainingMs = 0;
-    this.barReadAt = 0;
     this.readableAt = 0;
     this.nextIndex = 0;
     this.notifying = false;
@@ -196,28 +183,6 @@ class FeverWatcher {
   }
 
   /**
-   * How long the running fever has left, in ms: the bar as last read, less the
-   * time since. 0 when no fever is running or its bar has not been read yet,
-   * and never negative -- a fever the debounce has not yet called over reads
-   * as "ending now".
-   */
-  remainingMs(): number {
-    if (!this.active || this.barReadAt === 0) {
-      return 0;
-    }
-    return Math.max(0, this.barRemainingMs - (Date.now() - this.barReadAt));
-  }
-
-  /**
-   * Is a fever running and due to end within `ms`? The bubble hold's
-   * question. False with no fever running, or before its bar has been read --
-   * a fever whose length is unknown is not one to hoard bubbles for.
-   */
-  endsWithin(ms: number): boolean {
-    return this.active && this.barReadAt !== 0 && this.remainingMs() <= ms;
-  }
-
-  /**
    * Feed the router's verdict, taking a reading when one is due.
    *
    * The only entry point that captures anything, and the one
@@ -246,14 +211,7 @@ class FeverWatcher {
       return this.active;
     }
     this.capturedAt = now;
-    // One capture for both reads, owned by the Tsum side so a harness with no
-    // screen can stand in for it (`tools/dispatchEval/fake.js`).
-    const look = tsum.feverLook();
-    if (look.active) {
-      this.barRemainingMs = look.remainingMs;
-      this.barReadAt = now;
-    }
-    return this.observe(tsum, look.active, page);
+    return this.observe(tsum, tsum.isFeverTime(), page);
   }
 
   /**
@@ -288,10 +246,6 @@ class FeverWatcher {
     this.active = active;
     this.since = now;
     this.pendingCount = 0;
-    if (!active) {
-      // The fever is over, so its bar says nothing about the next one.
-      this.barReadAt = 0;
-    }
     this.broadcast(tsum, {
       active: active,
       at: now,
@@ -315,8 +269,6 @@ class FeverWatcher {
     this.seenAt = 0;
     this.pendingCount = 0;
     this.capturedAt = 0;
-    this.barRemainingMs = 0;
-    this.barReadAt = 0;
     this.readableAt = 0;
   }
 
@@ -383,67 +335,53 @@ Tsum.prototype.isFeverTime = function(img) {
 };
 
 /**
- * Where along the fever bar each `FeverBar.samples` reading is taken: the
- * middle of each equal slice of the fill, left to right. Built once, since the
- * table it is built from never changes.
- */
-const FeverBarPoints: Point[] = (function() {
-  const pts: Point[] = [];
-  const step = (FeverBar.xEnd - FeverBar.xStart) / FeverBar.samples;
-  for (let i = 0; i < FeverBar.samples; i++) {
-    pts.push({x: Math.round(FeverBar.xStart + (i + 0.5) * step), y: FeverBar.y});
-  }
-  return pts;
-})();
-
-/**
- * How long the fever on this frame has left, in ms, off the bar's fill.
+ * How long the fever on screen has left, in ms, off the bar's fill.
+ *
+ * A crop of the bar at native resolution, the read `checkSkillReadinessFast`
+ * makes of the gauge: ~2.4ms by the host's stage timings, a quarter of one
+ * tap. That is what lets it be taken at the moment the answer is wanted --
+ * inside a link batch, per pop -- rather than on the watcher's schedule and
+ * run forward by a clock. The game stops its clock under a skill animation,
+ * and a bar read now shows exactly that; an estimate would not.
  *
  * The fill drains from the right, so the answer is the run of lit samples from
- * the left, each worth one slice of `FeverBar.durationMs`. Resolution is one
- * slice (500ms at 20 samples); `gFever.remainingMs()` runs it forward by the
- * clock between reads. Says nothing about whether a fever is running -- ask
- * `isFeverTime` first, since the ordinary gauge fills the same pixels yellow
- * and a full one reads as a full fever. Same frame rule as `isFeverTime`:
- * pass one you hold, or one is captured.
+ * the left along `FeverBar`, each worth one slice of `durationMs` (500ms at 20
+ * samples). Says nothing about whether a fever is running -- gate on
+ * `gFever.active` first, since the ordinary gauge fills the same pixels yellow
+ * and a full one reads as a full fever.
  */
-Tsum.prototype.feverRemainingMs = function(img) {
-  const own = img === undefined;
-  const frame = own ? this.screenshot() : img;
+Tsum.prototype.feverRemainingMs = function() {
+  const bar = FeverBar;
+  // The crop, in capture pixels: the fill's span, `band` rows either side of
+  // the sample row so the row is inside it whatever the rounding.
+  const topLeft = this.toRealXY(bar.xStart, bar.y - bar.band);
+  const bottomRight = this.toRealXY(bar.xEnd, bar.y + bar.band);
+  const x = Math.max(0, topLeft.x);
+  const y = Math.max(0, topLeft.y);
+  const w = Math.max(1, bottomRight.x - x);
+  const h = Math.max(1, bottomRight.y - y);
+  // No resize, so a sample's coordinate is crop-local and cannot drift with
+  // resizeRatio the way getColors' mapping would.
+  const img = getScreenshotModify(x, y, w, h, 0, 0, 100);
   try {
-    const samples = this.getColors(frame, FeverBarPoints);
+    const pts: Point[] = [];
+    const step = (bar.xEnd - bar.xStart) / bar.samples;
+    for (let i = 0; i < bar.samples; i++) {
+      const p = this.toRealXY(bar.xStart + (i + 0.5) * step, bar.y);
+      pts.push({x: p.x - x, y: p.y - y});
+    }
+    const colors = getImageColors(img, pts);
     let lit = 0;
-    while (lit < samples.length) {
-      const c = samples[lit];
-      if (Math.max(c.r, c.g, c.b) < FeverBar.litValue) {
+    while (lit < colors.length) {
+      const c = colors[lit];
+      if (Math.max(c.r, c.g, c.b) < bar.litValue) {
         break;
       }
       lit++;
     }
-    return Math.round(lit * FeverBar.durationMs / FeverBar.samples);
+    return Math.round(lit * bar.durationMs / bar.samples);
   } finally {
-    if (own) {
-      releaseImage(frame);
-    }
-  }
-};
-
-/**
- * Both reads off one frame: is a fever running, and if so how long it has
- * left. What the watcher takes each sample from. The bar is read only when
- * the frame says a fever is on it: off a fever the same pixels are the
- * ordinary gauge, whose fill says nothing about a fever's clock.
- */
-Tsum.prototype.feverLook = function(img) {
-  const own = img === undefined;
-  const frame = own ? this.screenshot() : img;
-  try {
-    const active = this.isFeverTime(frame);
-    return { active: active, remainingMs: active ? this.feverRemainingMs(frame) : 0 };
-  } finally {
-    if (own) {
-      releaseImage(frame);
-    }
+    releaseImage(img);
   }
 };
 

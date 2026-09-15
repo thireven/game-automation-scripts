@@ -1219,7 +1219,7 @@ Two paths onto a device, and they are not the same thing:
 | Script gets stuck on a popup | `dialogs.ts`, and `PAGE_DISPATCH.md` for what was supposed to clear it |
 | React to a screen the script already recognises | `pageHandlers.ts` → a new `gPages.subscribe({...})` |
 | React to a fever starting or ending | `fever.ts` → a new `gFever.subscribe({...})`; `ts.isFeverTime()` for a one-off look |
-| Know how long a fever has left | `gFever.remainingMs()` / `endsWithin(ms)` — the bar as the watcher last read it; `ts.feverRemainingMs()` reads a frame you hold. The bar's geometry is `FeverBar` in `data.ts` |
+| Know how long a fever has left | `ts.feverRemainingMs()` — a crop of the bar's fill, read when asked, so a paused fever reads as paused; gate it on `gFever.active`. The bar's geometry is `FeverBar` in `data.ts` |
 | A screen goes away on its own | `data.ts` → `PageProfiles`, mark it `Transient` with a duration |
 | Wrong/missing log text | `logsEn.ts`, then the same key in `logsZhTw.ts` and any other language |
 | Wrong/missing settings-page or Quick Bar text | `uiEn.ts`, then the same key in `uiZhTw.ts`; a *new* string needs a `UiText` member in `strings.d.ts` first |

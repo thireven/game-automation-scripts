@@ -65,12 +65,24 @@ Tsum.prototype.bubblePopChainLength = function() {
 // A bubble popped into a chain cuts the chain's clear animation short, and
 // after a fever the gauge starts from empty -- so a bubble spent on a chain in
 // the fever's last seconds buys fever-bonus score once, where the same bubble
-// spent on the first chains after it gets the next fever sooner. The hold
-// lasts until `gFever` calls the fever over, which its debounce does a few
-// hundred ms after the bar empties; that is at most one chain's cancel late.
+// spent on the first chains after it gets the next fever sooner.
+//
+// The bar is read right here, per pop, off a ~2.4ms crop: a fever the game
+// has paused for a skill animation then reads as paused, where anything run
+// forward by a clock would not. Asked only with the setting on, a fever
+// running and bubbles to hold, so the crop is a handful of reads per fever.
+// The hold lasts until `gFever` calls the fever over, which its debounce does
+// a few hundred ms after the bar empties; that is at most one chain's cancel
+// late.
 Tsum.prototype.bubblesHeldForFever = function() {
-  return this.holdBubblesLastFeverSec > 0
-    && gFever.endsWithin(this.holdBubblesLastFeverSec * 1000);
+  if (this.holdBubblesLastFeverSec <= 0 || !gFever.active) { return false; }
+  const remainingMs = this.feverRemainingMs();
+  if (remainingMs > this.holdBubblesLastFeverSec * 1000) { return false; }
+  logDebug(Log.Bubble.Held, {
+    remainingMs: remainingMs,
+    bubbles: this.gameBubbles ? this.gameBubbles.length : 0
+  });
+  return true;
 };
 
 // How many of the bubbles the last scan found this strategy will spend at once.
@@ -83,13 +95,7 @@ Tsum.prototype.bubbleTapBudget = function() {
   // The fever hold, for every strategy: the bubbles stay on the board for the
   // chains after the fever. `popGameBubbles` keeps the list on a 0 budget, and
   // the next scan re-finds them anyway.
-  if (this.bubblesHeldForFever()) {
-    logDebug(Log.Bubble.Held, {
-      remainingMs: gFever.remainingMs(),
-      bubbles: this.gameBubbles ? this.gameBubbles.length : 0
-    });
-    return 0;
-  }
+  if (this.bubblesHeldForFever()) { return 0; }
   switch (this.bubbleStrategy) {
     case BubbleStrategy.AllMidChain: return GameBubbleConfig.maxTapsMidChain;
     case BubbleStrategy.AllAsap: return GameBubbleConfig.maxTapsAsap;

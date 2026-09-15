@@ -51,14 +51,14 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   stands down too; the strategy resumes when `gFever` calls the fever over.
   Live (`LiveWhen.Now`), shared, a stats column, and a Run order chip.
   `bubble.held` logs each refused pop with the fever's remaining ms.
-- **`gFever.remainingMs()` / `endsWithin(ms)`, `Tsum.feverRemainingMs`,
-  `Tsum.feverLook` (`src/fever.ts`), `FeverBar` (`src/data.ts`).** How long a
-  fever has left, off the bar's fill on the watcher's own capture -- twenty
-  samples along it at y=1670, lit above a value of 150, each worth 500ms --
-  and run forward by the clock between reads. Read only when `isFeverTime`
-  holds, because an ordinary full gauge is just as bright. Measured on the six
-  corpus fever frames. The dispatch fake stubs `feverLook` in place of
-  `isFeverTime`, which the watcher no longer calls directly.
+- **`Tsum.feverRemainingMs` (`src/fever.ts`), `FeverBar` (`src/data.ts`).**
+  How long a fever has left, off a ~2.4ms crop of the bar's fill taken per
+  pop, the way `checkSkillReadinessFast` reads the gauge -- twenty samples at
+  y=1670, lit above a value of 150, each worth 500ms. Read at the moment it
+  is asked rather than estimated from the watcher's last look, so a fever the
+  game has paused under a skill animation reads as paused. Gated on
+  `gFever.active`, because an ordinary full gauge is just as bright. Measured
+  on the six corpus fever frames.
 
 - **`Tsum.gameBuild` (`src/appLifecycle.ts`), `GameBuild` (`src/globals.d.ts`).**
   Which build this device plays: the one in front (`focusedGameBuild`, off the

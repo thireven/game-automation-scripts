@@ -658,8 +658,9 @@ var FeverProbes: PageColor[] = [
 ];
 
 // The fever bar's fill, which is the fever's clock: pink from the left edge,
-// draining towards it as the fever runs out. Read by `Tsum.feverRemainingMs`
-// (src/fever.ts) and the skill hold-off (`skillWaitOutEndingFever`).
+// draining towards it as the fever runs out. Read off a crop by
+// `Tsum.feverRemainingMs` (src/fever.ts), and off the whole frame by the skill
+// hold-off (`skillWaitOutEndingFever`).
 //
 // Measured on the six corpus fever frames at y=1670: the fill reads a value of
 // 247-255 and the drained bar 24-66 -- the FEVER lettering drawn over it moves
@@ -672,6 +673,8 @@ var FeverBar = {
   y: 1670,
   xStart: 350,
   xEnd: 705,
+  /** Rows either side of `y` the crop takes, so the row is inside it whatever the rounding. */
+  band: 3,
   /** How long a fever runs -- what a full fill stands for. */
   durationMs: 10000,
   /** Lowest value (max of r, g, b) that counts as fill. */
