@@ -25,7 +25,7 @@ flowchart LR
 
 - The **settings page** is `index.html` with `settings.ts` inlined into it.
   When you press Play it reads its controls into one object and evaluates
-  `start({ jpVersion: false, skillType: 'burst', ... })` in the engine.
+  `start({ autoLaunchApp: true, skillType: 'burst', ... })` in the engine.
 - The **Quick Bar** is `quickbar.html` with `quickbarPage.ts`, a strip of live
   controls the host draws along the bottom of the screen during a run.
 - The **game script** is `index.js`, the concatenated bundle. It runs on the

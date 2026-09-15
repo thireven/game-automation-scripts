@@ -138,7 +138,9 @@ Tsum.prototype.corpusSidecar = function(tag) {
     '    ' + num('playOffsetX', this.playOffsetX) + ', ' + num('playOffsetY', this.playOffsetY) + ',',
     '    ' + num('playWidth', this.playWidth) + ', ' + num('playHeight', this.playHeight),
     '  },',
-    '  ' + bool('isJP', this.isJP) + ',',
+    // Was `isJP` before builds had names; load.js still reads that from old
+    // sidecars.
+    '  ' + quote('build') + ': ' + quote(this.gameBuild()) + ',',
     // A literal, not SettingKey: this is the sidecar's own field name, read by
     // tools/runtime/load.js. Renaming the setting must not rename it.
     '  ' + bool('specialScreenRatio', special) + ',',

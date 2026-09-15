@@ -453,10 +453,13 @@ const StatsIdColumn = 'id';
 // produced them, and the app's envelope names the app's version but not this
 // one. 'tsum' is the short name of the tsum that played the round, read off
 // the pre-round screen by identifyMyTsum(). Empty when nothing in the library
-// matched it well enough. 'medals' is the round's medal award off the tally,
-// and 0 -- not empty -- on a tally with no medals row, because that is the game
-// saying none were earned rather than a figure that could not be read.
-const StatsBaseColumns = [StatsIdColumn, 'datetime', 'script_version', 'skill_type', 'tsum', 'duration_seconds', 'score', 'base_coins', 'final_coins', 'medals'];
+// matched it well enough. 'build' is which game played it, a `GameBuild` --
+// the two are separate apps with their own events and economies, so their
+// rounds compare only with each other. 'medals' is the round's medal award off
+// the tally, and 0 -- not empty -- on a tally with no medals row, because that
+// is the game saying none were earned rather than a figure that could not be
+// read.
+const StatsBaseColumns = [StatsIdColumn, 'datetime', 'script_version', 'skill_type', 'tsum', 'build', 'duration_seconds', 'score', 'base_coins', 'final_coins', 'medals'];
 
 // One file per UTC day in tsum_record/, named for the day the round was played:
 // stats_20260825.csv. The engine cannot append, so writing a row rewrites the
@@ -493,7 +496,6 @@ function statsFileName(date: Date): string {
 // is already the second column; and the heart, mailbox and
 // app-restart chores, which do not touch what happens inside a round.
 const StatsSettingColumns: (keyof Settings)[] = [
-  SettingKey.JpVersion,
   SettingKey.BubbleStrategy,
   SettingKey.UseFan,
   SettingKey.MaxChainsPerScan,
@@ -1085,7 +1087,7 @@ Tsum.prototype.readSettledStatsNumber = function(region) {
 //
 // The library serves both builds of the game and carries a name per build,
 // because each prints its own: English on the global one, kana on the Japanese
-// one. Which to show is read off the focused package (`focusedGameBuild`), not
+// one. Which to show is read off the focused package (`Tsum.gameBuild`), not
 // off a setting, so the banner says what the screen says.
 // ---------------------------------------------------------------------------
 
@@ -1555,12 +1557,8 @@ Tsum.prototype.selectedTsum = function() {
     logWarn(Log.Tsums.Unreadable, 'Could not read the pre-round tsum icon');
     return null;
   }
-  // Named as the build in front prints it. The focus read fails only when the
-  // game is not up, which the icon read above has already ruled out; the
-  // setting stands in for that case anyway.
-  const focused = focusedGameBuild();
-  const build = focused !== null ? focused : this.isJP ? GameBuild.Japan : GameBuild.Global;
-  const match = myTsumMatch(sig, build);
+  // Named as the build in front prints it.
+  const match = myTsumMatch(sig, this.gameBuild());
   if (match === null) {
     return null;
   }
@@ -1660,7 +1658,6 @@ function detectMyTsum(settings?: Settings): string {
     return JSON.stringify({ reason: DetectMyTsumRefusal.Run });
   }
   const probe = new Tsum(
-    settings !== undefined && settings.jpVersion === true,
     settings !== undefined && settings.specialScreenRatio === true,
     logStringsFor(settings !== undefined ? settings.locale : undefined));
   sleep(DetectMyTsumSettleMs);
@@ -2486,6 +2483,7 @@ Tsum.prototype.writeRoundStats = function(date, seconds, score, baseCoins, final
     // Read on the pre-round screen, well before this row exists; see
     // identifyMyTsum(). Empty rather than guessed when nothing matched.
     tsum: this.myTsum,
+    build: this.gameBuild(),
     duration_seconds: seconds,
     score: statsCell(score),
     base_coins: statsCell(baseCoins),

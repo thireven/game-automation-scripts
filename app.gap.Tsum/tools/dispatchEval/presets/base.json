@@ -6,7 +6,6 @@
     "debugGame": false,
     "collectUnknownScreens": false,
     "walkthrough": false,
-    "jpVersion": false,
     "specialScreenRatio": false,
     "deviceFps": 60,
     "pageHistoryDepth": 20,

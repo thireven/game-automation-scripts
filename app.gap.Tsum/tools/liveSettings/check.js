@@ -144,7 +144,7 @@ const run = (code) => vm.runInContext(code, ctx);
  */
 function newWorld() {
   run(`
-    ts = new Tsum(false, false, LogsEn);
+    ts = new Tsum(false, LogsEn);
     ts.isRunning = true;
     ts.settings = {};
     ts.bonus5to4 = false;

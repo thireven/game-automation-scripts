@@ -90,7 +90,6 @@ class Tsum {
    * restores exactly what the player chose.
    */
   myTsumPriorityHeld: boolean;
-  isJP: boolean;
   logs: LogCatalogue;
   scoreItem: boolean;
   coinItem: boolean;
@@ -118,6 +117,8 @@ class Tsum {
   _skillCooldownUntil: number;
   /** When the last real `dumpsys window` focus check ran; 0 means never. */
   _appOnCheckedAt: number;
+  /** The build last seen in front or resolved by `gameBuild`; null until one is. */
+  _gameBuild: GameBuild | null;
   overloadPending: boolean;
   unlockLevelHoursWait: number;
   /** Box Buying: which box the sweep buys. */
@@ -265,7 +266,7 @@ class Tsum {
    */
   runCoins: RunCoinTally;
 
-  constructor(isJP: boolean, detect: boolean, logs: LogCatalogue) {
+  constructor(detect: boolean, logs: LogCatalogue) {
     this.debug = false;
     this.autoLaunch = false;
     this.isRunning = true;
@@ -307,7 +308,6 @@ class Tsum {
     // length, and only pays off when the skill is worth more than the tsums.
     this.prioritizeMyTsum = false;
     this.myTsumPriorityHeld = false;
-    this.isJP = isJP;
     this.logs = logs;
     this.scoreItem = false;
     this.coinItem = false;
@@ -328,6 +328,7 @@ class Tsum {
     this._lastSkillAutoTap = 0;
     this._skillCooldownUntil = 0;
     this._appOnCheckedAt = 0;
+    this._gameBuild = null;
     // Burst-skill overload: set after a link batch so the next scan issues one
     // carry-over tap on the skill button (see link / scanBoardQuick).
     this.overloadPending = false;

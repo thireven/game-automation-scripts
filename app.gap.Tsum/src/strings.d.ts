@@ -57,7 +57,6 @@ declare const enum UiText {
   // --- setting rows -------------------------------------------------------
   SettingLanguage = 'setting.language',
   SettingLanguageHelp = 'setting.language.help',
-  SettingJpVersion = 'setting.jpVersion',
   SettingSpecialScreenRatio = 'setting.specialScreenRatio',
   SettingSpecialScreenRatioHelp = 'setting.specialScreenRatio.help',
   SettingDeviceFps = 'setting.deviceFps',

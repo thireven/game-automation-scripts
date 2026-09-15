@@ -154,7 +154,7 @@ The host loads the script folder
         │                      │  onEvent('OnPlayClick') builds a settings object
         │                      │  and calls JavaScriptInterface.runScript(...)
         │                      ▼
-        │              start({ jpVersion: false, skillType: 'burst', ... })
+        │              start({ autoLaunchApp: true, skillType: 'burst', ... })
         │
         └── index.js ──────► start() in index.ts
                                  │

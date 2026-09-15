@@ -40,6 +40,7 @@ namespace Log {
 
   /** The game app process. */
   export const enum App {
+    Build            = 'app.build',
     Off              = 'app.off',
     OffTimeout       = 'app.offTimeout',
     Restarted        = 'app.restarted',

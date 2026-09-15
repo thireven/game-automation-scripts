@@ -4,8 +4,13 @@
 // `isAppOn` is the reading, cached only when positive; `startApp` and
 // `forceRestartApp` are the two ways the script changes the answer, and the two
 // `await*` waits either side of a restart watch focus and the first fingerprint
-// rather than a clock. `focusedGameBuild` reads the same focus line for which
-// of the two game packages is up, which is what names a tsum in its language.
+// rather than a clock.
+//
+// The game is two packages, one per build (`GameBuild`), and nothing on the
+// settings page says which the device has. `gameBuild` works it out: the one
+// in front, else the one last seen in front, else the one installed. That is
+// what `startApp` launches, the restarts stop, and `selectedTsum` names a tsum
+// by.
 //
 // `taskTsumAppRestart` is the scheduled bounce and navigates to a known screen
 // at both ends. `forceRestartApp` deliberately does not -- it is the recovery
@@ -46,6 +51,11 @@ Tsum.prototype.isAppOn = function() {
   if (packageName === null) {
     return false;
   }
+  // The focus line has just been paid for, so `gameBuild` need not read it again.
+  const build = buildOfPackage(packageName);
+  if (build !== null) {
+    this._gameBuild = build;
+  }
   const isOn = packageName.indexOf('LGTMTM') !== -1;
   this._appOnCheckedAt = isOn ? Date.now() : 0;
   return isOn;
@@ -72,22 +82,10 @@ function focusedPackage(): string | null {
   return result[0];
 }
 
-/**
- * Which build of the game is in front, or null when neither is.
- *
- * The two builds are separate packages, so the focused window is what tells
- * them apart -- nothing on the settings page does. `selectedTsum` names the
- * tsum in the language of whichever build this answers.
- */
+/** Which build of the game is in front, or null when neither is. */
 function focusedGameBuild(): GameBuild | null {
   const packageName = focusedPackage();
-  if (packageName === getPackageName(true)) {
-    return GameBuild.Japan;
-  }
-  if (packageName === getPackageName(false)) {
-    return GameBuild.Global;
-  }
-  return null;
+  return packageName === null ? null : buildOfPackage(packageName);
 }
 
 /**
@@ -100,13 +98,63 @@ Tsum.prototype.invalidateAppOn = function() {
   this._appOnCheckedAt = 0;
 };
 
-function getPackageName(isJP: boolean): string {
-    let packageName = 'com.linecorp.LGTMTM';
-    if (!isJP) {
-        packageName += 'G';
-    }
-    return packageName;
+/** The package each build of the game installs as. */
+const GamePackages: {[build in GameBuild]: string} = {
+  [GameBuild.Global]: 'com.linecorp.LGTMTMG',
+  [GameBuild.Japan]: 'com.linecorp.LGTMTM',
+};
+
+function buildOfPackage(packageName: string): GameBuild | null {
+  if (packageName === GamePackages[GameBuild.Japan]) {
+    return GameBuild.Japan;
+  }
+  if (packageName === GamePackages[GameBuild.Global]) {
+    return GameBuild.Global;
+  }
+  return null;
 }
+
+/**
+ * The builds the device has installed. `pm path` prints the APK's `package:`
+ * line for an installed package and nothing for an unknown one.
+ */
+function installedGameBuilds(): GameBuild[] {
+  const builds: GameBuild[] = [GameBuild.Global, GameBuild.Japan];
+  const installed: GameBuild[] = [];
+  for (let i = 0; i < builds.length; i++) {
+    if (execute('pm path ' + GamePackages[builds[i]]).indexOf('package:') !== -1) {
+      installed.push(builds[i]);
+    }
+  }
+  return installed;
+}
+
+/**
+ * Which build of the game this device plays.
+ *
+ * The one in front settles it. With neither in front -- before the first
+ * launch, or after a force-stop -- the build last seen in front stands, and
+ * failing that the one installed. Both installed (a region switcher) or, more
+ * oddly, neither answers global, which is what the script always assumed
+ * before it looked. The answer is remembered, so the installed-package read
+ * happens at most once a run.
+ */
+Tsum.prototype.gameBuild = function() {
+  const focused = focusedGameBuild();
+  if (focused !== null) {
+    this._gameBuild = focused;
+    return focused;
+  }
+  if (this._gameBuild !== null) {
+    return this._gameBuild;
+  }
+  const installed = installedGameBuilds();
+  const build = installed.length === 1 ? installed[0] : GameBuild.Global;
+  logInfo(Log.App.Build, 'Game build read off the installed packages',
+    { build: build, installed: installed });
+  this._gameBuild = build;
+  return build;
+};
 
 // A hardcoded `BOOTCLASSPATH=...` prefix used to sit in front of the java-backed
 // commands here and in `dumpUiXml`, because Robotmon's shell started without one.
@@ -127,9 +175,8 @@ function getPackageName(isJP: boolean): string {
 // pixels alone for the rest of the session. Game Automation Platform runs
 // `sh -c` with the process environment, which already carries the correct
 // BOOTCLASSPATH.
-function startTsumTsumApp(isJP: boolean): void {
-  const packageName = getPackageName(isJP);
-  execute('am start --activity-single-top -n ' + packageName + '/com.linecorp.LGTMTM.TsumTsum');
+function startTsumTsumApp(build: GameBuild): void {
+  execute('am start --activity-single-top -n ' + GamePackages[build] + '/com.linecorp.LGTMTM.TsumTsum');
 }
 
 /** Budget for a launched game to be in front and on a screen the table knows. */
@@ -147,7 +194,7 @@ Tsum.prototype.startApp = function() {
   }
   logInfo(Log.App.Start);
   this.invalidateAppOn();
-  startTsumTsumApp(this.isJP);
+  startTsumTsumApp(this.gameBuild());
   this.awaitAppUp();
   logInfo(Log.App.Started, 'TsumTsum app starting');
 }
@@ -225,7 +272,7 @@ Tsum.prototype.forceRestartApp = function() {
     return false;
   }
   this.invalidateAppOn();
-  execute("am force-stop " + getPackageName(this.isJP));
+  execute('am force-stop ' + GamePackages[this.gameBuild()]);
   this.awaitAppOff();
   this.isStartupPhase = true;
   this.startApp();
@@ -247,7 +294,7 @@ Tsum.prototype.taskTsumAppRestart = function () {
     // `awaitAppOff` clears the focus cache before every check, so the answer
     // below is never one taken while the app was still up.
     this.invalidateAppOn();
-    execute("am force-stop " + getPackageName(this.isJP));
+    execute('am force-stop ' + GamePackages[this.gameBuild()]);
     this.awaitAppOff();
     if (!this.isAppOn()) {
         this.startApp();

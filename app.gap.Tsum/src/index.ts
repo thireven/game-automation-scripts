@@ -112,7 +112,7 @@ function start(settings: Settings) {
  * `endRun()`.
  */
 function buildRun(settings: Settings, logs: LogCatalogue): void {
-  ts = new Tsum(settings.jpVersion, settings.specialScreenRatio, logs);
+  ts = new Tsum(settings.specialScreenRatio, logs);
   // From here on there is a world to dismantle, whether or not the rest of this
   // function gets to finish -- `start()` tears it down in its `finally`.
   gRunActive = true;

@@ -39,7 +39,6 @@ i18nRegister(Locale.English, 'English', {
 
     [UiText.SettingLanguage]: 'Language',
     [UiText.SettingLanguageHelp]: 'The language this page and the Quick Bar are written in.',
-    [UiText.SettingJpVersion]: 'Japan Version?',
     [UiText.SettingSpecialScreenRatio]: 'Special Screen Ratio (Long Screen) (Should start in game)',
     [UiText.SettingSpecialScreenRatioHelp]: 'For a long screen with uneven black bars above and below the game. Start the game yourself first: this does not work with Auto Launch.',
     [UiText.SettingDeviceFps]: 'Device frame rate',

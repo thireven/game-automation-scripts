@@ -297,7 +297,7 @@ function reportManifest(tsum: Tsum, id: string, at: Date,
     script: {
       version: ScriptVersion,
       locale: tsum.settings ? tsum.settings.locale : undefined,
-      jp: tsum.isJP,
+      build: tsum.gameBuild(),
     },
     run: {
       runId: gLogRunId === '' ? undefined : gLogRunId,

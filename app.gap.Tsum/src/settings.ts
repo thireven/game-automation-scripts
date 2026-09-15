@@ -63,11 +63,6 @@ var tabs: TabSpec[] = [
                         // with nothing here to edit.
                         buttons: localeButtons()
                     },
-                    // {
-                    //     key: SettingKey.JpVersion,
-                    //     title: UiText.SettingJpVersion,
-                    //     default: false
-                    // },
                     {
                         key: SettingKey.SpecialScreenRatio,
                         title: UiText.SettingSpecialScreenRatio,

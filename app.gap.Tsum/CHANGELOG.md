@@ -40,14 +40,26 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 
 - Debug tab: a Detect MyTsum button reads which tsum the pre-round screen shows selected, without playing a round.
 - The selected tsum is named as the running game prints it: in English on the international game, in Japanese on the Japan game.
+- Auto launch finds the Japan game on its own: whichever build is installed is the one started, so nothing has to be set for it. The stats CSV gains a `build` column.
 
 ### Added
 
-- **`focusedGameBuild` (`src/appLifecycle.ts`), `GameBuild` (`src/globals.d.ts`).**
-  Which of the two game packages owns the focused window, off the same
-  `dumpsys window` line `isAppOn` reads (now shared as `focusedPackage`).
-  Nothing on the page says which build is installed -- the Japan Version row
-  is commented out -- so this is what tells them apart.
+- **`Tsum.gameBuild` (`src/appLifecycle.ts`), `GameBuild` (`src/globals.d.ts`).**
+  Which build this device plays: the one in front (`focusedGameBuild`, off the
+  same `dumpsys window` line `isAppOn` reads, now shared as `focusedPackage`),
+  else the one last seen in front, else the one installed (`installedGameBuilds`,
+  one `pm path` per package, at most once a run). Both or neither installed
+  answers global. `app.build` logs the installed-package read.
+
+### Removed
+
+- **`SettingKey.JpVersion`.** Its row had been commented out since the public
+  release, so `startApp` always launched the international package and a
+  Japan-only device never came up. Launch, the force-stops, `selectedTsum`, the
+  stats CSV (`build` column, in place of `jpVersion`), the report manifest
+  (`script.build`) and the corpus sidecar (`build`; `load.js` still reads
+  `isJP` off old ones) all take `gameBuild()` instead. `Tsum`'s constructor
+  loses its first argument.
 
 ### Changed
 

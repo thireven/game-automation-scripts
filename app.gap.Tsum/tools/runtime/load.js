@@ -129,7 +129,11 @@ function createTsum(ctx, host, frame, meta) {
   const m = meta || {};
   host.setCapture(frame);
 
-  const ts = new ctx.Tsum(!!m.isJP, !!m.specialScreenRatio, ctx.Logs);
+  const ts = new ctx.Tsum(!!m.specialScreenRatio, ctx.Logs);
+  // Seeded so `gameBuild()` answers from the sidecar: the shim's `execute`
+  // returns nothing, so neither the focus nor the package read could. Older
+  // sidecars wrote `isJP` instead of `build`.
+  ts._gameBuild = m.build || (m.isJP ? 'jp' : 'global');
 
   if (m.geometry) {
     for (const key of GeometryKeys) {

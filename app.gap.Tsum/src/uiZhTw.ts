@@ -45,7 +45,6 @@ i18nRegister(Locale.Taiwan, '中文', {
 
     [UiText.SettingLanguage]: '語言',
     [UiText.SettingLanguageHelp]: '這個頁面與快捷列使用的語言。',
-    [UiText.SettingJpVersion]: '日本版?',
     [UiText.SettingSpecialScreenRatio]: '特殊螢幕比例(長螢幕)(遊戲中啟動)',
     [UiText.SettingSpecialScreenRatioHelp]: '適用於遊戲畫面上下黑邊不對稱的長螢幕。請先自己開好遊戲：這個選項不能搭配自動開啟 App。',
     [UiText.SettingDeviceFps]: '裝置畫面更新率',

@@ -791,8 +791,9 @@ interface MyTsumRect {
 
 /**
  * The two builds of the game: separate packages, and each prints its tsum
- * names in its own language. `focusedGameBuild` (src/appLifecycle.ts) reads
- * which one is in front; the library carries a name for each.
+ * names in its own language. `Tsum.gameBuild` (src/appLifecycle.ts) says which
+ * one this device plays -- launched, stopped and named by; the library carries
+ * a name for each. Also the stats CSV's `build` column.
  */
 declare const enum GameBuild {
   Global = 'global',
@@ -1195,6 +1196,8 @@ interface Tsum {
   isAppOn(): boolean;
   /** Forget the cached `isAppOn` answer; call after moving the game in or out of focus. */
   invalidateAppOn(): void;
+  /** Which build this device plays: in front, else last seen, else installed. */
+  gameBuild(): GameBuild;
   startApp(): void;
   /** Wait for a launched game to be in front on a known screen; false at the budget. */
   awaitAppUp(): boolean;
