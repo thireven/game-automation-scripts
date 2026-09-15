@@ -122,6 +122,8 @@ namespace Log {
     /** A pop refused because a fever is about to end -- the fever hold. */
     Held      = 'bubble.held',
     Popped    = 'bubble.popped',
+    /** A pop refused because every bubble sits in a hole -- too few tsums round it. */
+    Unripe    = 'bubble.unripe',
   }
 
   /** A round, start to finish. */

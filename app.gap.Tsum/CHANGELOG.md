@@ -42,6 +42,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - The selected tsum is named as the running game prints it: in English on the international game, in Japanese on the Japan game.
 - Auto launch finds the Japan game on its own: whichever build is installed is the one started, so nothing has to be set for it. The stats CSV gains a `build` column.
 - "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
+- Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer spent on the empty space it left.
 
 ### Added
 
@@ -78,6 +79,17 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   loses its first argument.
 
 ### Changed
+
+- **The Bubble Strategy pops only bubbles worth popping.** `findGameBubbles`
+  counts each bubble's `near` -- the scan's tsum circles within
+  `GameBubbleConfig.blastReach` past its edge -- and `popGameBubbles`' default
+  path takes only those at `minTsumsInBlast` or more, richest first
+  (`ripeGameBubbles`, `src/board.ts`), leaving the rest for the next scan. A
+  Burst activation is a blind tap that never arms `settleScansAfterSkill`, so
+  the bubble it left was tapped in the hole it sat in. Bounded by
+  `unripeHoldScans` (`bubbleUnripeScans`, counted per scan) so a misread cannot
+  park one; a skill's explicit limit still takes every bubble. `bubble.unripe`
+  logs a refused pop, and `bubble.found` / `bubble.popped` carry `near` / `held`.
 
 - **`src/tsums.dat` is `v2`: a name column per build.** English and Japanese
   side by side, blank where that build's pack has no strip (84 Japanese-only,

@@ -153,6 +153,8 @@ class Tsum {
   bubbleStrategy: BubbleStrategy;
   /** Scans still to go before a mid-chain pop is worth taking again. */
   bubbleSettleScans: number;
+  /** Consecutive scans that saw a bubble with too few tsums in its blast. */
+  bubbleUnripeScans: number;
   /** Pop no bubble while a fever has this many seconds left; 0 never holds. */
   holdBubblesLastFeverSec: number;
   noSkillLastFeverSec: number;
@@ -359,6 +361,7 @@ class Tsum {
     this.receiveCheckLimit = 5;
     this.bubbleStrategy = BubbleStrategy.OneMidChain;
     this.bubbleSettleScans = 0;
+    this.bubbleUnripeScans = 0;
     this.holdBubblesLastFeverSec = 0;
     this.noSkillLastFeverSec = 0;
     this.lorcanaCard = false;

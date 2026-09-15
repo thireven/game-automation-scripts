@@ -107,30 +107,64 @@ Tsum.prototype.bubbleTapBudget = function() {
   }
 };
 
+// The bubbles of the last scan a pop is worth taking now: those with at least
+// `minTsumsInBlast` tsums in the blast, richest first, so a budget of one takes
+// the one that clears most. A bubble in the hole a burst just left has none
+// and is left for the next scan, which re-finds it once the refill has closed
+// round it. Past `unripeHoldScans` scans the count is a misread and every
+// bubble is worth it by fiat -- see GameBubbleConfig.
+Tsum.prototype.ripeGameBubbles = function(bubbles) {
+  const cfg = GameBubbleConfig;
+  const released = this.bubbleUnripeScans >= cfg.unripeHoldScans;
+  const ripe: GameBubble[] = [];
+  for (let i = 0; i < bubbles.length; i++) {
+    const b = bubbles[i];
+    if (released || b.near === undefined || b.near >= cfg.minTsumsInBlast) {
+      ripe.push(b);
+    }
+  }
+  ripe.sort(function(a, b) { return (b.near || 0) - (a.near || 0); });
+  return ripe;
+};
+
 // Tap the bubbles the last board scan found. Taps only -- the positions were
 // worked out at scan time -- so this stays inside the window where the chain is
 // still clearing. A tap that misses costs nothing: it is not a drag, so it
 // links nothing and the game ignores it.
 //
 // `limit` caps how many are taken; the default is whatever the Bubble Strategy
-// setting allows. Pass one explicitly only to override that setting outright,
-// the way a skill choreography does.
+// setting allows, and it spends only bubbles worth spending
+// (`ripeGameBubbles`). Pass one explicitly only to override that setting
+// outright, the way a skill choreography does -- that takes every bubble as
+// read, since a choreography wants them gone rather than spent well.
 Tsum.prototype.popGameBubbles = function(limit) {
-  const bubbles = this.gameBubbles;
-  if (!bubbles || bubbles.length === 0 || !this.isRunning) { return; }
+  const all = this.gameBubbles;
+  if (!all || all.length === 0 || !this.isRunning) { return; }
   const cfg = GameBubbleConfig;
   // An explicit `limit` is an override and stands on its own -- the ceilings in
   // bubbleTapBudget are what the *setting* allows, not a hard cap on callers.
-  const budget = typeof limit === 'number' ? limit : this.bubbleTapBudget();
+  const override = typeof limit === 'number';
+  const budget = override ? limit : this.bubbleTapBudget();
+  if (budget <= 0) { return; }
+  const bubbles = override ? all : this.ripeGameBubbles(all);
+  const held = all.length - bubbles.length;
   const count = Math.min(bubbles.length, budget);
-  if (count <= 0) { return; }
+  if (count <= 0) {
+    // Every bubble is in a hole. The list stays: the next scan replaces it.
+    logDebug(Log.Bubble.Unripe, {
+      held: held,
+      near: all.map(function(b) { return b.near || 0; }),
+      scans: this.bubbleUnripeScans
+    });
+    return;
+  }
   for (let i = 0; i < count; i++) {
     const b = bubbles[i];
     const x = Math.floor(this.playOffsetX + b.x * this.playWidth / this.playResizeWidth);
     const y = Math.floor(this.playOffsetY + b.y * this.playHeight / this.playResizeHeight);
     tap(x, y, cfg.tapDuring);
   }
-  logDebug(Log.Bubble.Popped, { popped: count, seen: bubbles.length });
+  logDebug(Log.Bubble.Popped, { popped: count, seen: all.length, held: held });
   // A bubble only pops once, and one left behind is one this strategy is
   // deliberately saving for the next chain -- either way this list is spent:
   // the board has moved, so the positions in it are no longer where anything
@@ -292,10 +326,23 @@ Tsum.prototype.scanBoardQuick = function() {
     // Read bubble positions off this same capture and remember them, so popping
     // one after a chain is taps only -- no screenshot in the middle of a batch,
     // which would stall the link cadence and the combo timer with it. Bubbles
-    // are big and drift slowly, so a position a second old still lands.
-    this.gameBubbles = findGameBubbles(grayImg);
+    // are big and drift slowly, so a position a second old still lands. Each
+    // carries how many of this scan's tsums its pop would take (`near`).
+    this.gameBubbles = findGameBubbles(grayImg, points);
     if (this.gameBubbles.length > 0) {
-      logDebug(Log.Bubble.Found, { bubbles: this.gameBubbles.length });
+      const near: number[] = [];
+      let unripe = false;
+      for (let i = 0; i < this.gameBubbles.length; i++) {
+        const n = this.gameBubbles[i].near || 0;
+        near.push(n);
+        if (n < GameBubbleConfig.minTsumsInBlast) { unripe = true; }
+      }
+      // Consecutive scans that saw a bubble with too few tsums round it -- the
+      // bound on how long `ripeGameBubbles` may hold one.
+      this.bubbleUnripeScans = unripe ? this.bubbleUnripeScans + 1 : 0;
+      logDebug(Log.Bubble.Found, { bubbles: this.gameBubbles.length, near: near });
+    } else {
+      this.bubbleUnripeScans = 0;
     }
     logDebug(Log.Board.RecognitionStart);
     const tcs = classifyTsums(points);

@@ -467,7 +467,12 @@ function buildBoardGray(img: NativeImage): NativeImage {
 // pass, now: `grayImg` is the board gray the scan already built for findTsums.
 // Locating them therefore costs no screenshot and no second blur, which is the
 // point: the taps have to land while the chain is still going off.
-function findGameBubbles(grayImg: NativeImage): GameBubble[] {
+//
+// `tsums` are that scan's tsum circles (centres, as `findTsums` returns them);
+// each bubble is handed the count of them inside its blast, which is what a pop
+// of it is worth -- see `GameBubbleConfig.blastReach`. A caller without a tsum
+// pass (Gaston's hemmed capture) leaves `near` unset.
+function findGameBubbles(grayImg: NativeImage, tsums?: Point[]): GameBubble[] {
   const cfg = GameBubbleConfig;
   // houghCircles returns centres, unlike the board points findTsums feeds the
   // pathfinder (those are shifted to a tsum's top-left corner).
@@ -475,9 +480,21 @@ function findGameBubbles(grayImg: NativeImage): GameBubble[] {
                              cfg.minRadius, cfg.maxRadius);
   const out: GameBubble[] = [];
   for (const k in found) {
+    const b = found[k];
     // `radius` is the native's own field name -- see `HoughCircle`. This read
     // `found[k].r` and so stored `undefined` until that was declared properly.
-    out.push({x: found[k].x, y: found[k].y, r: found[k].radius});
+    const bubble: GameBubble = {x: b.x, y: b.y, r: b.radius};
+    if (tsums) {
+      const reach = b.radius + cfg.blastReach * Config.tsumWidth;
+      let near = 0;
+      for (let i = 0; i < tsums.length; i++) {
+        const dx = tsums[i].x - b.x;
+        const dy = tsums[i].y - b.y;
+        if (dx * dx + dy * dy <= reach * reach) { near++; }
+      }
+      bubble.near = near;
+    }
+    out.push(bubble);
   }
   return out;
 }

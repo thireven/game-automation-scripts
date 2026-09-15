@@ -1210,7 +1210,7 @@ Two paths onto a device, and they are not the same thing:
 | Chains are poor / short | `pathfinding.ts` → `calculatePaths`, `findLongestTsumPath` |
 | A skill misfires | `src/skills/<name>.ts`, then `useSkill` in `skillCore.ts` |
 | A chore taps the wrong thing in the store, or buys nothing | `BoxStore` in `data.ts` first -- the tab row and the purchase buttons both move, and it says how each is read -- then `taskBuyBoxes` and its helpers in `boxes.ts` |
-| Bubbles are tapped too eagerly, or not at all | `Tsum.bubbleTapBudget` / `bubblePopChainLength` / `popGameBubbles` in `board.ts` and the Bubble Strategy setting; `settleScansAfterSkill` for the hold after a burst; `clearAllBubbles` and `sweepsBubbles` for the skills that override it |
+| Bubbles are tapped too eagerly, or not at all | `Tsum.bubbleTapBudget` / `bubblePopChainLength` / `popGameBubbles` in `board.ts` and the Bubble Strategy setting; `ripeGameBubbles` and `GameBubbleConfig.minTsumsInBlast` for a bubble popped in the hole a burst left (`bubble.unripe` in the log), `settleScansAfterSkill` for the hold after a choreographed one; `clearAllBubbles` and `sweepsBubbles` for the skills that override it |
 | Add a new skill | `src/skills/`, `tsconfig.json`, `settings.ts` dropdown |
 | Add a setting | `settings.ts` (`settings` array) **and** `index.ts` (`start`) |
 | Add a background job | `index.ts` → `gTaskController.newTask` in `buildRun`, task body in its own `src/` file (see `mail.ts`, `boxes.ts`) |

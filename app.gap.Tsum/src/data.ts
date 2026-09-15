@@ -98,6 +98,20 @@ var GameBubbleConfig = {
   // bubbles, so this only ever moves which chain spends them.
   settleScansAfterSkill: 1,
 
+  // What a pop is worth: the tsums within `blastReach` tsum widths past the
+  // bubble's edge, counted off the same scan (`GameBubble.near`). The
+  // strategy's pops leave a bubble under `minTsumsInBlast` for the next scan --
+  // one in the hole a burst just left clears nothing, and the refill closes
+  // round it within a scan or two. A full board puts ~6 in that ring, and the
+  // Hough pass keeps 45-80% of a landed board's circles, so 3 reads as
+  // "surrounded" where a fresh hole reads 0-1. The hold is bounded by
+  // `unripeHoldScans`: a bubble on a settled board always has neighbours, so
+  // past that many consecutive scans the count is a misread and the bubble is
+  // spent regardless. A skill's own pop (an explicit limit) reads none of this.
+  blastReach: 1,
+  minTsumsInBlast: 3,
+  unripeHoldScans: 5,
+
   // How long a row of the quick sweep waits before the next one.
   //
   // Zero: the quick sweep exists because the alternative is a skill sitting

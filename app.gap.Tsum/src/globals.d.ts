@@ -744,6 +744,13 @@ interface GameBubble {
   x: number;
   y: number;
   r: number;
+  /**
+   * Tsums the pop would take: circles of the same scan inside the bubble's
+   * blast (`GameBubbleConfig.blastReach`). What tells a bubble buried in a
+   * refilled board from one sitting in the hole a burst just left. Absent on a
+   * list built without the tsum pass, which pops as it always did.
+   */
+  near?: number;
 }
 
 /**
@@ -1210,9 +1217,13 @@ interface Tsum {
   linkTsums(path: Point[]): void;
   /** Scans still to go before a mid-chain pop is worth taking again. */
   bubbleSettleScans: number;
+  /** Consecutive scans that saw a bubble with too few tsums in its blast. */
+  bubbleUnripeScans: number;
   /** The chain length that earns a bubble pop, bounded by the chain cap in
    * force -- `Config.maxChain`, or the selected skill's `chainLimits`. */
   bubblePopChainLength(): number;
+  /** The last scan's bubbles a pop is worth taking now, richest first. */
+  ripeGameBubbles(bubbles: GameBubble[]): GameBubble[];
   /**
    * Is the Bubble Strategy holding every bubble because a fever is about to
    * end? The "Hold bubbles last fever seconds" setting, asked per pop.
