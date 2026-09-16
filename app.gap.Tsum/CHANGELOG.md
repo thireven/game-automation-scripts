@@ -34,6 +34,22 @@ changed, and the one fact that explains why. Measurements, rejected designs and
 long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 `DRIVING_SCREENS.md`, `PAGE_DISPATCH.md`, `DEVELOPMENT.md`).
 
+## [2.0-beta3]
+
+### Summary
+
+- Skip Ruby now works like Skip Medals: rubies are left in the mailbox and the mail under them is still taken, instead of the chore stopping at the first ruby.
+
+### Changed
+
+- **Skip Ruby** (`receiveHeartsSkipRuby`) goes through the row walk Skip Medals
+  built: `mailRowToOpen` reads every found row at each badge its switch turned
+  on, opens the first row carrying none, and answers `MailAllSkipped` (was
+  `MailAllMedals`) when the screenful is all skipped mail, which scrolls on. The
+  fixed ruby probe and the idle-out it forced are gone from the loop.
+  `gifts.receiveOne.skipRuby` marks each row stepped past;
+  `gifts.receiveOne.medalsOnly` is `gifts.receiveOne.skippedOnly`.
+
 ## [2.0-beta2]
 
 ### Summary

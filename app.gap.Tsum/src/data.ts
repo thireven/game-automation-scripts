@@ -378,8 +378,8 @@ var Button = {
 // The mail list, as the one-by-one flow walks it.
 //
 // Every row is drawn the same, one `rowPitch` below the last, and the flow only
-// ever gets the row a tap lands on -- so stepping past a medal means aiming a
-// row lower, and running out of rows means scrolling.
+// ever gets the row a tap lands on -- so stepping past a medal or a ruby means
+// aiming a row lower, and running out of rows means scrolling.
 //
 // Which is why the rows are *found* rather than assumed. A scrolled list does
 // not come to rest on a row boundary, and the `outReceive*` probes are fixed

@@ -142,6 +142,7 @@ class Tsum {
    */
   nextRoundAt: number;
   sendHearts: boolean;
+  /** Step past the Ruby mails instead of opening them; untick them on Claim All. */
   keepRuby: boolean;
   /** Step past the Mission Clear medal mails instead of opening them. */
   skipMedals: boolean;

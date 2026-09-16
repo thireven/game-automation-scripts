@@ -130,7 +130,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingSkipFirstPerson]: 'Skip first person',
     [UiText.SettingSkipFirstPersonHelp]: 'Leaves the top mail alone, for where it is an advertisement.',
     [UiText.SettingSkipRuby]: 'Skip Ruby',
-    [UiText.SettingSkipRubyHelp]: 'Leaves Ruby gifts in the mailbox instead of claiming them.',
+    [UiText.SettingSkipRubyHelp]: 'Leaves Ruby gifts in the mailbox, taking the first mail under them and scrolling on when a screenful is all rubies.',
     [UiText.SettingSkipMedals]: 'Skip Medals',
     [UiText.SettingSkipMedalsHelp]: 'Leaves Mission Clear medals in the mailbox, taking the first mail under them and scrolling on when a screenful is all medals.',
     [UiText.SettingClaimAllOldMails]: 'Claim All old mails',

@@ -5,13 +5,13 @@
 // instead, which is what a player keeping their rubies -- or skipping the
 // Mission Clear medals -- needs.
 //
-// The list only ever gives up the row a tap lands on, so Skip Medals is
-// `readMailRows` plus `mailRowToOpen`: the rows are *found* on the frame -- each
-// Check button is one unbroken run of gold down a column that misses the
-// lettering -- and reported as the offset every `outReceive*` probe moves by to
-// reach one, so a list that came to rest between rows still reads. A screenful
-// of nothing but medals is scrolled past, and the list refusing to move is the
-// end of the mail.
+// The list only ever gives up the row a tap lands on, so Skip Medals and Skip
+// Ruby are `readMailRows` plus `mailRowToOpen`: the rows are *found* on the
+// frame -- each Check button is one unbroken run of gold down a column that
+// misses the lettering -- and reported as the offset every `outReceive*` probe
+// moves by to reach one, so a list that came to rest between rows still reads.
+// A screenful of nothing but skipped mail is scrolled past, and the list
+// refusing to move is the end of the mail.
 //
 // Every heart taken here is counted into `ts.record`, which hearts.ts owns.
 // ---------------------------------------------------------------------------
@@ -104,8 +104,11 @@ Tsum.prototype.skipAd = function () {
 
 /** `mailRowToOpen`: nothing on screen that a tap could open. */
 const MailNoRow = -100000;
-/** `mailRowToOpen`: rows on screen, every one of them a medal. Scroll. */
-const MailAllMedals = -200000;
+/** `mailRowToOpen`: rows on screen, every one of them skipped. Scroll. */
+const MailAllSkipped = -200000;
+
+/** A badge a row is stepped past for, and the debug line that says so. */
+type MailSkip = { badge: PatchedYColor; event: Log.Gifts };
 
 Tsum.prototype.readMailRows = function(img) {
   const col = MailList.buttonColumn;
@@ -139,6 +142,14 @@ Tsum.prototype.readMailRows = function(img) {
 
 Tsum.prototype.mailRowToOpen = function(img) {
   const rows = this.readMailRows(img);
+  // Each switch adds the badge it steps past; every row is read at all of them.
+  const skips: MailSkip[] = [];
+  if (this.skipMedals) {
+    skips.push({badge: Button.outReceiveOneMedal, event: Log.Gifts.ReceiveOneSkipMedal});
+  }
+  if (this.keepRuby) {
+    skips.push({badge: Button.outReceiveOneRuby, event: Log.Gifts.ReceiveOneSkipRuby});
+  }
   const wanted: number[] = [];
   const points: Coord[] = [];
   for (let i = 0; i < rows.length; i++) {
@@ -146,20 +157,25 @@ Tsum.prototype.mailRowToOpen = function(img) {
     // of slack, because a found centre carries the scan's own step as error.
     if (rows[i] < -MailList.rowPitch / 2) { continue; }
     wanted.push(rows[i]);
-    points.push({x: Button.outReceiveOneMedal.x,
-                 y: Button.outReceiveOneMedal.y + rows[i]});
+    for (let j = 0; j < skips.length; j++) {
+      points.push({x: skips[j].badge.x, y: skips[j].badge.y + rows[i]});
+    }
   }
   if (wanted.length === 0) {
     return MailNoRow;
   }
   const badges = this.getColors(img, points);
   for (let i = 0; i < wanted.length; i++) {
-    if (!isSameColor(Button.outReceiveOneMedal.color, badges[i], 35)) {
+    let skipped = false;
+    for (let j = 0; j < skips.length && !skipped; j++) {
+      skipped = isSameColor(skips[j].badge.color, badges[i * skips.length + j], 35);
+      if (skipped) { logDebug(skips[j].event, {offset: wanted[i]}); }
+    }
+    if (!skipped) {
       return wanted[i];
     }
-    logDebug(Log.Gifts.ReceiveOneSkipMedal, {offset: wanted[i]});
   }
-  return MailAllMedals;
+  return MailAllSkipped;
 }
 
 Tsum.prototype.scrollMailList = function() {
@@ -190,10 +206,11 @@ Tsum.prototype.taskReceiveOneItem = function() {
   let timeoutCounter = 0;
   const maxTimeoutCount = 100;
   let receivedHeartWithoutCoins = 0;
-  // Skip Medals only. `mailScrolled` says the list is no longer at the position
-  // the fixed probes were measured at, so from then on the rows have to be
-  // found; `mailScrolls` is the budget for looking past a run of medals, and it
-  // is refilled by every gift that does get taken.
+  // Skip Medals / Skip Ruby only. `mailScrolled` says the list is no longer at
+  // the position the fixed probes were measured at, so from then on the rows
+  // have to be found; `mailScrolls` is the budget for looking past a run of
+  // skipped mail, and it is refilled by every gift that does get taken.
+  const skipping = this.skipMedals || this.keepRuby;
   let mailScrolled = false;
   let mailScrolls = 0;
   while (this.isRunning && timeoutCounter < maxTimeoutCount) {
@@ -206,66 +223,62 @@ Tsum.prototype.taskReceiveOneItem = function() {
       break;
     }
     let img = this.screenshot();
-    // Declared outside the try so the if-chain below (and the later
-    // `isNonItem = true`) can read them after the screenshot is released.
-    let isItem: boolean, isRuby: boolean, isNonItem: boolean, isAd: boolean,
+    // Declared outside the try so the if-chain below can read them after the
+    // screenshot is released.
+    let isItem: boolean, isNonItem: boolean, isAd: boolean,
         isOk: boolean, isOk2: boolean, isTimeout: boolean, isHeartWithoutCoins: boolean;
     // How far from the first mail row this turn works, in screen pixels. Only
-    // Skip Medals ever moves it, and `MailNoRow` / `MailAllMedals` are the two
-    // answers that are not an offset at all.
+    // the skip switches ever move it, and `MailNoRow` / `MailAllSkipped` are
+    // the two answers that are not an offset at all.
     let rowOffset = 0;
     try {
-      // Six distinct points, one crossing. `outReceiveOne` is compared against
+      // Five distinct points, one crossing. `outReceiveOne` is compared against
       // two different expected colours (an item vs. nothing), so it is sampled
       // once and tested twice rather than read twice.
       const p = this.getColors(img, [
         Button.outReceiveOne,
-        Button.outReceiveOneRuby,
         Button.outReceiveOneAd,
         Button.outReceiveOk,
         Button.outReceiveItemSetOk,
         Button.outReceiveTimeout
       ]);
       isItem = isSameColor(Button.outReceiveOne.color, p[0], 35);
-      isRuby = isSameColor(Button.outReceiveOneRuby.color, p[1], 35);
       isNonItem = isSameColor(Button.outReceiveOne.color2, p[0], 35);
-      isAd = isSameColor(Button.outReceiveOneAd.color, p[2], 35);
-      isOk = isSameColor(Button.outReceiveOk.color, p[3], 35);
-      isOk2 = isSameColor(Button.outReceiveItemSetOk.color, p[4], 35);
-      isTimeout = isSameColor(Button.outReceiveTimeout.color, p[5], 35);
+      isAd = isSameColor(Button.outReceiveOneAd.color, p[1], 35);
+      isOk = isSameColor(Button.outReceiveOk.color, p[2], 35);
+      isOk2 = isSameColor(Button.outReceiveItemSetOk.color, p[3], 35);
+      isTimeout = isSameColor(Button.outReceiveTimeout.color, p[4], 35);
       isHeartWithoutCoins = gPages.matches(PageName.ReceiveHeartWithoutCoins);
       // The scan may only run with the mail list in front of it: a gift dialog
       // has gold buttons of its own, and a row found on one would aim the tap
       // at it. `isItem` is that proof while the list is at home -- a dialog
       // never shows gold there -- and once scrolled it has to be asked for.
-      if (this.skipMedals
+      if (skipping
           && (isItem || (mailScrolled && gPages.matches(PageName.MailBox)))) {
         rowOffset = this.mailRowToOpen(img);
         if (rowOffset === MailNoRow) {
           // Whatever the fixed probe read, there is no row under it to open.
           isItem = false;
-        } else if (rowOffset !== MailAllMedals) {
+        } else if (rowOffset !== MailAllSkipped) {
           isItem = true;
           isNonItem = false;
           const row = this.getColors(img, [
-            {x: Button.outReceiveOneRuby.x, y: Button.outReceiveOneRuby.y + rowOffset},
             {x: Button.outReceiveOneAd.x, y: Button.outReceiveOneAd.y + rowOffset}
           ]);
-          isRuby = isSameColor(Button.outReceiveOneRuby.color, row[0], 35);
-          isAd = isSameColor(Button.outReceiveOneAd.color, row[1], 35);
+          isAd = isSameColor(Button.outReceiveOneAd.color, row[0], 35);
         }
       }
       logDebug(Log.Gifts.ReceiveOneProbe, {
-        isItem: isItem, isRuby: isRuby, isNonItem: isNonItem, isAd: isAd, isOk: isOk,
+        isItem: isItem, isNonItem: isNonItem, isAd: isAd, isOk: isOk,
         isTimeout: isTimeout, rowOffset: rowOffset, timeoutCounter: timeoutCounter,
       });
     } finally {
       releaseImage(img);
     }
-    if (rowOffset === MailAllMedals) {
-      // Skip Medals, and every row on screen is one -- but the hearts under
-      // them are out of sight, not gone. Scroll on and look again; the list
-      // refusing to move is what says the mail has actually run out.
+    if (rowOffset === MailAllSkipped) {
+      // Every row on screen is a medal or a ruby being kept -- but the hearts
+      // under them are out of sight, not gone. Scroll on and look again; the
+      // list refusing to move is what says the mail has actually run out.
       if (mailScrolls < MailList.maxScrolls && this.scrollMailList()) {
         mailScrolls++;
         mailScrolled = true;
@@ -273,7 +286,7 @@ Tsum.prototype.taskReceiveOneItem = function() {
         receiveTime = Date.now();
         continue;
       }
-      logInfo(Log.Gifts.ReceiveOneMedalsOnly,
+      logInfo(Log.Gifts.ReceiveOneSkippedOnly,
         { receivedCount: receivedCount, scrolls: mailScrolls });
       this.tap(Button.outClose);
       gPages.navigate(PageName.FriendPage);
@@ -308,14 +321,12 @@ Tsum.prototype.taskReceiveOneItem = function() {
         this.sleep(500);
         this.tap(Button.outReceive);
         this.sleep(1500);
-      } else if (!this.keepRuby || !isRuby) {
+      } else {
+        // A ruby being kept never gets here: `mailRowToOpen` stepped past it.
         pickedUp = true;
         this.tap({x: Button.outReceiveOne.x, y: Button.outReceiveOne.y + rowOffset});
         this.sleep(200);
         timeoutCounter = 0;
-      } else {
-        isNonItem = true;
-        receiveTime = 0;
       }
     } else if (isTimeout) {
       logDebug(Log.Gifts.ReceiveOneTimeout);

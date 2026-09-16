@@ -132,7 +132,7 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.SettingSkipFirstPerson]: '從第二行開始接收',
     [UiText.SettingSkipFirstPersonHelp]: '不動最上面那一封信，因為那裡常常是廣告。',
     [UiText.SettingSkipRuby]: '跳過紅寶石',
-    [UiText.SettingSkipRubyHelp]: '紅寶石禮物留在信箱裡不領取。',
+    [UiText.SettingSkipRubyHelp]: '紅寶石禮物留在信箱不領取，改領下一封信；整頁都是紅寶石時往下捲動繼續找愛心。',
     [UiText.SettingSkipMedals]: '跳過獎章',
     [UiText.SettingSkipMedalsHelp]: '任務完成的獎章留在信箱不領取，改領下一封信；整頁都是獎章時往下捲動繼續找愛心。',
     [UiText.SettingClaimAllOldMails]: '領取過期郵件',

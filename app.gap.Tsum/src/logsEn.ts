@@ -77,7 +77,7 @@ var LogsEn = {
   [Log.Gifts.AllReceived]: 'All gifts received',
   [Log.Gifts.Completed]: 'Receiving gifts completed',
   [Log.Gifts.CheckUnreceived]: 'Check unreceived gift',
-  [Log.Gifts.ReceiveOneMedalsOnly]: 'Only medals left in mailbox',
+  [Log.Gifts.ReceiveOneSkippedOnly]: 'Only skipped mail left in mailbox',
   [Log.Hearts.ReadRecords]: 'Reading records',
   [Log.Hearts.SaveRecords]: 'Saving records',
   [Log.Hearts.SendStart]: 'Start sending hearts',

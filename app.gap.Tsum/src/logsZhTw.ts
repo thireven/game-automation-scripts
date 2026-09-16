@@ -75,7 +75,7 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Gifts.AllReceived]: '已接收所有禮物',
   [Log.Gifts.Completed]: '完成接收禮物',
   [Log.Gifts.CheckUnreceived]: '檢查未接收的禮物',
-  [Log.Gifts.ReceiveOneMedalsOnly]: '信箱只剩獎章',
+  [Log.Gifts.ReceiveOneSkippedOnly]: '信箱只剩跳過的信件',
   [Log.Hearts.ReadRecords]: '讀取紀錄',
   [Log.Hearts.SaveRecords]: '儲存紀錄',
   [Log.Hearts.SendStart]: '開始送愛心',
