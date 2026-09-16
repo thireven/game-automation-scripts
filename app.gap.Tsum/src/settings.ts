@@ -289,7 +289,8 @@ var tabs: TabSpec[] = [
                         default: 0,
                         step: 1,
                         max: 10,
-                        min: 0
+                        min: 0,
+                        status: ReleaseStatus.Beta
                     },
                     {
                         key: SettingKey.UseFan,
