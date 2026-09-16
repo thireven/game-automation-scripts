@@ -34,11 +34,31 @@ changed, and the one fact that explains why. Measurements, rejected designs and
 long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 `DRIVING_SCREENS.md`, `PAGE_DISPATCH.md`, `DEVELOPMENT.md`).
 
-## [2.0-beta3]
+## [2.0b3]
 
 ### Summary
 
 - Skip Ruby now works like Skip Medals: rubies are left in the mailbox and the mail under them is still taken, instead of the chore stopping at the first ruby.
+- "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
+- Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer spent on the empty space it left.
+- Round stats: a medal count with a 0 in it is no longer left blank.
+
+### Added
+
+- **`SettingKey.HoldBubblesLastFeverSec`.** A hold over every Bubble Strategy
+  rather than a fourth entry: `bubbleTapBudget` answers 0 while
+  `bubblesHeldForFever` (`src/board.ts`) holds, and the All ASAP blind sweep
+  stands down too; the strategy resumes when `gFever` calls the fever over.
+  Live (`LiveWhen.Now`), shared, a stats column, and a Run order chip.
+  `bubble.held` logs each refused pop with the fever's remaining ms.
+- **`Tsum.feverRemainingMs` (`src/fever.ts`), `FeverBar` (`src/data.ts`).**
+  How long a fever has left, off a ~2.4ms crop of the bar's fill taken per
+  pop, the way `checkSkillReadinessFast` reads the gauge -- twenty samples at
+  y=1670, lit above a value of 150, each worth 500ms. Read at the moment it
+  is asked rather than estimated from the watcher's last look, so a fever the
+  game has paused under a skill animation reads as paused. Gated on
+  `gFever.active`, because an ordinary full gauge is just as bright. Measured
+  on the six corpus fever frames.
 
 ### Changed
 
@@ -57,27 +77,9 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - Debug tab: a Detect MyTsum button reads which tsum the pre-round screen shows selected, without playing a round.
 - The selected tsum is named as the running game prints it: in English on the international game, in Japanese on the Japan game.
 - Auto launch finds the Japan game on its own: whichever build is installed is the one started, so nothing has to be set for it. The stats CSV gains a `build` column.
-- "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
-- Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer spent on the empty space it left.
-- Round stats: a medal count with a 0 in it is no longer left blank.
 - Coronation Day Elsa skill improved: a freeze window that outlives the round no longer taps the score screen, which opened the Options menu and lost the round's stats.
 
 ### Added
-
-- **`SettingKey.HoldBubblesLastFeverSec`.** A hold over every Bubble Strategy
-  rather than a fourth entry: `bubbleTapBudget` answers 0 while
-  `bubblesHeldForFever` (`src/board.ts`) holds, and the All ASAP blind sweep
-  stands down too; the strategy resumes when `gFever` calls the fever over.
-  Live (`LiveWhen.Now`), shared, a stats column, and a Run order chip.
-  `bubble.held` logs each refused pop with the fever's remaining ms.
-- **`Tsum.feverRemainingMs` (`src/fever.ts`), `FeverBar` (`src/data.ts`).**
-  How long a fever has left, off a ~2.4ms crop of the bar's fill taken per
-  pop, the way `checkSkillReadinessFast` reads the gauge -- twenty samples at
-  y=1670, lit above a value of 150, each worth 500ms. Read at the moment it
-  is asked rather than estimated from the watcher's last look, so a fever the
-  game has paused under a skill animation reads as paused. Gated on
-  `gFever.active`, because an ordinary full gauge is just as bright. Measured
-  on the six corpus fever frames.
 
 - **`Tsum.gameBuild` (`src/appLifecycle.ts`), `GameBuild` (`src/globals.d.ts`).**
   Which build this device plays: the one in front (`focusedGameBuild`, off the
