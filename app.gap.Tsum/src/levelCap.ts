@@ -28,6 +28,14 @@
 // `awaitPage` is the wait every one of those hops goes through, and boxes.ts
 // borrows it -- hence its `event` parameter, so a Box Buying timeout is not
 // filed under this sweep.
+//
+// The second thing here is the Auto Unlock MyTsum Level flow, which raises one
+// cap -- the selected tsum's -- when the post-round level-up panel says it is
+// capped. It shares the sweep's last three hops (`raiseSelectedLevelCap`) and
+// none of the sort or the grid: the collection opens on the MyTsum, so there is
+// no card to find. The panel read is only the trigger; the collection is the
+// authority, and coins are spent only once the greyed "MyTsum Set" button says
+// the panel shows the MyTsum and the gold padlock says a raise is on offer.
 // ---------------------------------------------------------------------------
 
 /** Pages of eight cards one run will walk. 769 tsums is 97 pages; a backstop. */
@@ -79,6 +87,21 @@ const UnlockSelectSettleMs = 2000;
 const UnlockPageTurnSettleMs = 2500;
 /** The toast arriving or leaving after a tap on it. */
 const UnlockToastSettleMs = 1500;
+/**
+ * How long the play task keeps looking at the level-up panel for the MyTsum
+ * read, when nothing else was polling through it. The panel stands ~2.9s and
+ * the round-over look that first names it can be its first frame.
+ */
+const UnlockMyTsumLookMs = 3000;
+/** Between those looks. */
+const UnlockMyTsumLookRestMs = 250;
+/**
+ * How long a failed MyTsum raise holds the next attempt off. A raise that did
+ * not go through is nearly always coins the player does not have yet, and the
+ * trip to the collection costs each round ~15s -- so the next few rounds are
+ * played rather than spent finding that out again.
+ */
+const UnlockMyTsumRetryMs = 30 * 60 * 1000;
 
 /**
  * Poll for one screen until it shows, then until it has finished showing up.
@@ -397,19 +420,29 @@ Tsum.prototype.leaveLevelCapToast = function() {
 /**
  * Select one card and buy the raise the game offers for it.
  *
- * The card's padlock said its tsum is at its cap; the gold coin under the detail
- * panel's level bar is the game's own offer to lift it, and that is checked
- * before anything is pressed, because the tap after it spends coins. `false`
- * ends the sweep -- either the offer was not there, in which case the grid and
- * the panel disagree and the next tap would be a blind one, or the confirmation
- * never arrived, which is what running out of coins looks like.
+ * The card's padlock said its tsum is at its cap; `raiseSelectedLevelCap` is
+ * what checks the panel agrees and buys. `false` ends the sweep -- either the
+ * offer was not there, in which case the grid and the panel disagree and the
+ * next tap would be a blind one, or the confirmation never arrived, which is
+ * what running out of coins looks like.
  */
 Tsum.prototype.raiseCardLevelCap = function(slot) {
   this.tap(CollectionGrid.cells[slot]);
   // The coin below is read next, and a panel caught mid-redraw answers "no
   // raise offered" -- which ends the sweep. Wait for the redraw to finish.
   this.settleScreen(UnlockSelectSettleMs);
+  return this.raiseSelectedLevelCap({slot: slot});
+}
 
+/**
+ * Buy the raise for whichever tsum the collection's detail panel shows.
+ *
+ * The gold coin under the panel's level bar is the game's own offer to lift the
+ * cap, and it is checked before anything is pressed, because the tap after it
+ * spends coins. `fields` say which tsum this was about in every line written
+ * here -- the sweep's card slot, or the MyTsum.
+ */
+Tsum.prototype.raiseSelectedLevelCap = function(fields) {
   const offsets = CollectionGrid.raiseCapSamples;
   const points: Coord[] = [];
   for (let i = 0; i < offsets.length; i++) {
@@ -431,30 +464,30 @@ Tsum.prototype.raiseCardLevelCap = function(slot) {
   }
   if (!offered) {
     logWarn(Log.Unlock.RaiseNotOffered,
-      'The card shows a padlock but the panel offers no raise', {slot: slot});
+      'The tsum reads as capped but the panel offers no raise', fields);
     return false;
   }
 
-  logDebug(Log.Unlock.Raising, {slot: slot});
+  logDebug(Log.Unlock.Raising, fields);
   this.tap(CollectionGrid.raiseCap);
   if (!this.awaitPage(PageName.RaiseLevelCap, UnlockDialogWaitMs)) {
-    logWarn(Log.Unlock.DialogMissing, 'The raise confirmation did not open', {slot: slot});
+    logWarn(Log.Unlock.DialogMissing, 'The raise confirmation did not open', fields);
     return false;
   }
 
   this.tap(Page.RaiseLevelCap.next);
   if (!this.awaitPage(PageName.LevelCapRaised, UnlockConfirmWaitMs)) {
     // Cancel rather than leave the run standing on a dialog it did not expect.
-    logWarn(Log.Unlock.RaiseNotConfirmed, {slot: slot});
+    logWarn(Log.Unlock.RaiseNotConfirmed, fields);
     this.tap(Page.RaiseLevelCap.back);
     return false;
   }
 
   if (!this.leaveLevelCapToast()) {
-    logWarn(Log.Unlock.DialogMissing, 'The collection did not come back', {slot: slot});
+    logWarn(Log.Unlock.DialogMissing, 'The collection did not come back', fields);
     return false;
   }
-  logInfo(Log.Unlock.Raised, {slot: slot});
+  logInfo(Log.Unlock.Raised, fields);
   return true;
 }
 
@@ -574,4 +607,186 @@ Tsum.prototype.raiseCappedCards = function() {
   logWarn(Log.Unlock.RaiseLimit,
     'Stopped at the safety limit rather than spending coins without end', {raised: raised});
   return {pages: turnedPages + 1, raised: raised, reason: 'raise limit'};
+}
+
+// --- Auto Unlock MyTsum Level ----------------------------------------------
+
+/**
+ * Does the post-round level-up panel show the MyTsum at its level cap?
+ *
+ * The MyTsum is the panel's first card, and a capped card draws a "Raise level
+ * cap!" pill with a white padlock where the others draw an EXP bar. The card is
+ * *found* off the gutter column rather than assumed at a row -- three layouts,
+ * and a stack still bouncing into place on the frame that first names the page
+ * -- and the padlock is read at its middle. `LevelUpMyTsumCard` (data.ts) says
+ * why each number is what it is.
+ *
+ * Null when this frame has no card to read: the panel still arriving, or a
+ * first run that is not the height of a card. `unlock.myTsum.read` carries
+ * every answer, with what it was read off.
+ */
+Tsum.prototype.readLevelUpMyTsumCap = function() {
+  const t = LevelUpMyTsumCard;
+  const column: Coord[] = [];
+  for (let y = t.scanFromY; y < t.scanToY; y += t.scanStepY) {
+    column.push({x: t.gutterX, y: y});
+  }
+  let capped: boolean | null = null;
+  const cards: {top: number, bottom: number}[] = [];
+  let barY = 0;
+  const lock: number[][] = [];
+  const img = this.screenshot();
+  try {
+    const read = this.getColors(img, column);
+    // Runs of panel blue down the column; the dotted inner border's break is
+    // bridged, and anything shorter than a card's worth is not one.
+    let top = -1;
+    let last = -1;
+    for (let i = 0; i < read.length; i++) {
+      if (!isSameColor(t.gutterColor, read[i], t.gutterDiff)) {
+        continue;
+      }
+      const y = column[i].y;
+      if (top < 0) {
+        top = y;
+      } else if (y - last > t.mergeGapY) {
+        if (last - top >= t.minRunY) {
+          cards.push({top: top, bottom: last});
+        }
+        top = y;
+      }
+      last = y;
+    }
+    if (top >= 0 && last - top >= t.minRunY) {
+      cards.push({top: top, bottom: last});
+    }
+    if (cards.length > 0) {
+      const card = cards[0];
+      const height = card.bottom - card.top;
+      if (cards.length === 1 && card.top >= t.singleMinTopY) {
+        barY = card.top + t.singleBarFromTopY;
+      } else if (height >= t.cardMinY && height <= t.cardMaxY) {
+        barY = Math.floor((card.top + card.bottom) / 2);
+      }
+    }
+    if (barY > 0) {
+      const points: Coord[] = [];
+      for (let i = 0; i < t.lockX.length; i++) {
+        for (let j = 0; j < t.lockDy.length; j++) {
+          points.push({x: t.lockX[i], y: barY + t.lockDy[j]});
+        }
+      }
+      const glyph = this.getColors(img, points);
+      capped = true;
+      for (let i = 0; i < glyph.length; i++) {
+        capped = capped && isSameColor(t.lockColor, glyph[i], t.lockDiff);
+        lock.push([glyph[i].r, glyph[i].g, glyph[i].b]);
+      }
+    }
+  } finally {
+    releaseImage(img);
+  }
+  logDebug(Log.Unlock.MyTsumRead,
+    {capped: capped, cards: cards.length, card: cards.length > 0 ? cards[0] : null,
+     barY: barY, lock: lock});
+  return capped;
+}
+
+/**
+ * The record handler's half: note a capped MyTsum off the level-up panel.
+ *
+ * Sticky for the round -- the panel fades and bounces in, so a look that reads
+ * nothing is not evidence against one that read the padlock -- and consumed by
+ * `raiseMyTsumLevelCapIfPending` once the round is done. Nothing is read while
+ * the setting is off or a failed raise is holding the next one back: the
+ * capture is the cost.
+ */
+Tsum.prototype.noteLevelUpMyTsumCap = function() {
+  if (!this.autoUnlockMyTsumLevel || this.myTsumCapSeen
+      || Date.now() < this.myTsumCapRetryAt) {
+    return;
+  }
+  if (this.readLevelUpMyTsumCap() === true) {
+    this.myTsumCapSeen = true;
+    logInfo(Log.Unlock.MyTsumCapped, {myTsum: this.myTsum});
+  }
+}
+
+/**
+ * Is the collection's detail panel showing the MyTsum?
+ *
+ * By the "MyTsum Set" button under the grid, which the game greys out while the
+ * selected card already is the MyTsum. The collection opens on the MyTsum, so
+ * this is a check rather than a search: if it ever says no, the padlock under
+ * the panel is another tsum's and nothing is bought.
+ */
+Tsum.prototype.collectionShowsMyTsum = function() {
+  const img = this.screenshot();
+  try {
+    const read = this.getColors(img, CollectionGrid.setButtonSamples);
+    for (let i = 0; i < read.length; i++) {
+      if (!isSameColor(CollectionGrid.setButtonGreyColor, read[i],
+                       CollectionGrid.setButtonGreyDiff)) {
+        return false;
+      }
+    }
+    return true;
+  } finally {
+    releaseImage(img);
+  }
+}
+
+/**
+ * Raise the MyTsum's level cap: to the collection, prove the panel shows the
+ * MyTsum, buy the raise. The run is left on the collection, as any chore
+ * leaves the game where it finished -- the next round's walk starts from there.
+ */
+Tsum.prototype.raiseMyTsumLevelCap = function() {
+  logInfo(Log.Unlock.MyTsumStart, {myTsum: this.myTsum});
+  gPages.navigate(PageName.TsumsPage);
+  if (!this.awaitPage(PageName.TsumsPage, UnlockReturnWaitMs)) {
+    return false;
+  }
+  if (!this.collectionShowsMyTsum()) {
+    logWarn(Log.Unlock.MyTsumNotSelected,
+      'The collection opened on another tsum; not raising', {myTsum: this.myTsum});
+    return false;
+  }
+  return this.raiseSelectedLevelCap({myTsum: this.myTsum});
+}
+
+/**
+ * After a round: raise the MyTsum's cap if this round's level-up panel said it
+ * is capped. Called by the play task once the tally is dealt with.
+ *
+ * With round stats off nothing polls through the level-up panel -- the look
+ * that ends the round is the one look it gets, and that can be the panel's
+ * first frame -- so the panel is watched a little longer here, while it is
+ * still up, and the record handler reads it on each look. With stats on the
+ * tally wait has already done that, and the panel is long gone.
+ *
+ * A raise that fails holds the next attempt off for `UnlockMyTsumRetryMs`.
+ */
+Tsum.prototype.raiseMyTsumLevelCapIfPending = function() {
+  if (!this.autoUnlockMyTsumLevel || !this.isRunning
+      || Date.now() < this.myTsumCapRetryAt) {
+    return;
+  }
+  if (!this.myTsumCapSeen) {
+    const deadline = Date.now() + UnlockMyTsumLookMs;
+    while (this.isRunning && !this.myTsumCapSeen && Date.now() < deadline
+           && gPages.detect(1, 0) === PageName.TsumLevelUp) {
+      this.sleep(UnlockMyTsumLookRestMs);
+    }
+  }
+  if (!this.myTsumCapSeen) {
+    return;
+  }
+  this.myTsumCapSeen = false;
+  const raised = this.raiseMyTsumLevelCap();
+  if (!raised && this.isRunning) {
+    this.myTsumCapRetryAt = Date.now() + UnlockMyTsumRetryMs;
+    logInfo(Log.Unlock.MyTsumBackoff, {retryMinutes: UnlockMyTsumRetryMs / 60000});
+  }
+  logInfo(Log.Unlock.MyTsumEnd, {myTsum: this.myTsum, raised: raised});
 }

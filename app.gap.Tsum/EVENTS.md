@@ -20,9 +20,9 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 |---|---|---|
 | `round.over` | `src/play.ts:367` | `id`, `seconds` |
 | `round.start` | `src/play.ts:478` | `id`, `round`, `myTsum`, `skill`, `settings` |
-| `round.end` | `src/play.ts:828` | `id`, `round`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
+| `round.end` | `src/play.ts:830` | `id`, `round`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
 | `run.started` | `src/index.ts:80` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:357` | `rounds` |
+| `run.stopped` | `src/index.ts:359` | `rounds` |
 
 ## The events
 
@@ -72,7 +72,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:828` — `this.emit(Emit.Round.End, …)`
+- `src/play.ts:830` — `this.emit(Emit.Round.End, …)`
 
 ### `run.started`
 
@@ -98,4 +98,4 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:357` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:359` — `emitScriptEvent(Emit.Run.Stopped, …)`

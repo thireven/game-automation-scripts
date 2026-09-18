@@ -270,6 +270,13 @@ namespace Log {
     CardsRead         = 'unlock.cardsRead',
     DialogMissing     = 'unlock.dialogMissing',
     End               = 'unlock.end',
+    /** The Auto Unlock MyTsum Level flow: one raise for the selected tsum after a round. */
+    MyTsumBackoff     = 'unlock.myTsum.backoff',
+    MyTsumCapped      = 'unlock.myTsum.capped',
+    MyTsumEnd         = 'unlock.myTsum.end',
+    MyTsumNotSelected = 'unlock.myTsum.notSelected',
+    MyTsumRead        = 'unlock.myTsum.read',
+    MyTsumStart       = 'unlock.myTsum.start',
     NextPage          = 'unlock.nextPage',
     NowQueued         = 'unlock.nowQueued',
     NowRefused        = 'unlock.nowRefused',

@@ -42,9 +42,22 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 - "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
 - Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer spent on the empty space it left.
 - Round stats: a medal count with a 0 in it is no longer left blank.
+- "Auto Unlock MyTsum Level" setting added: when the level-up screen after a round shows "Raise level cap!" on your MyTsum, the script buys that one raise from the Tsum list and plays on.
 
 ### Added
 
+- **`SettingKey.AutoUnlockMyTsumLevel`** (Chores tab, Beta). `record.myTsumLevelCap`
+  reads the level-up panel's first card off `LevelUpMyTsumCard` (`src/data.ts`):
+  the card is found by scanning the gutter column for panel blue -- the stack
+  is still bouncing into place on the frame the router first names, and a
+  fixed row read the "Lv" text as the padlock -- and the padlock's white body
+  read at its middle. `raiseMyTsumLevelCapIfPending` (`src/levelCap.ts`) runs
+  from the play task's tail: to the collection, the greyed "MyTsum Set" button
+  proves the panel shows the MyTsum, then the sweep's own raise
+  (`raiseSelectedLevelCap`, split out of `raiseCardLevelCap`). A failed raise
+  holds the next attempt off for 30 minutes. Live (`LiveWhen.Now`). Proven
+  on 14 level-up and 3 collection frames through the bundle; not yet on a
+  device -- `unlock.myTsum.*` is what to read.
 - **`SettingKey.HoldBubblesLastFeverSec`.** A hold over every Bubble Strategy
   rather than a fourth entry: `bubbleTapBudget` answers 0 while
   `bubblesHeldForFever` (`src/board.ts`) holds, and the All ASAP blind sweep

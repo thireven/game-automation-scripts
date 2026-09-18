@@ -2495,7 +2495,73 @@ var CollectionGrid = {
   ],
   prevPageColor: {r: 220, g: 244, b: 253},
   prevPageDiff: 60,
-  prevPageVotes: 3
+  prevPageVotes: 3,
+  /**
+   * The "MyTsum Set" button under the grid, which the game greys out while the
+   * selected card is already the MyTsum -- the cheapest proof that the detail
+   * panel above shows the MyTsum rather than whatever card was tapped last.
+   * Four points on the button's body clear of its label; all four required.
+   * Measured on the three corpus frames: greyed 24-41/121-154/173-198, live
+   * (another card selected) 239-255/81-162/0-33.
+   */
+  setButtonSamples: [
+    {x: 410, y: 1600}, {x: 440, y: 1720}, {x: 540, y: 1720}, {x: 640, y: 1720}
+  ],
+  setButtonGreyColor: {r: 33, g: 140, b: 190},
+  setButtonGreyDiff: 60
+};
+
+// ---------------------------------------------------------------------------
+// The MyTsum's card on the post-round level-up panel, as the Auto Unlock
+// MyTsum Level read takes it (`Tsum.readLevelUpMyTsumCap`, src/levelCap.ts).
+//
+// The panel lists the party with the MyTsum first, and where the other cards
+// draw an EXP bar (or a MAX bar) a capped one draws a "Raise level cap!" pill
+// with a white padlock at its left end. The padlock is the tell: on every
+// corpus frame its body reads >= 243 on all three channels at the four
+// `lock` points, and the same points on an EXP or MAX bar are cyan fill, dark
+// track or the MAX fill -- red never above 189 -- so nothing there is white.
+//
+// The card is *found* rather than assumed. Three layouts put it at three
+// heights (five cards, four under the 5>4 bonus, one for a one-tsum party),
+// the router never says which, and the stack bounces into place: a report
+// trail frame recognised mid-bounce had the cards ~50px low, where a fixed
+// row read the "Lv" text as the padlock. So the gutter column between the
+// icon and the text is scanned for panel blue, the first run is the card, and
+// the bar row is its middle. The dimmed board under the panel never reads
+// above 74 on any channel, so panel blue (b >= 132) cannot be mistaken for it.
+// ---------------------------------------------------------------------------
+
+var LevelUpMyTsumCard = {
+  /** The column scanned: clear of the icon and the text on every card of every layout. */
+  gutterX: 450,
+  scanFromY: 300,
+  scanToY: 1560,
+  scanStepY: 3,
+  /** Panel blue at the gutter; the card's rim reads ~22 off it and passes too. */
+  gutterColor: {r: 52, g: 90, b: 144},
+  gutterDiff: 40,
+  /** The dotted inner border breaks a run for ~6px; runs this close are one card. */
+  mergeGapY: 12,
+  /** Shorter runs are not a card: a stray probe on the dimmed board, or text. */
+  minRunY: 100,
+  /** A card is 183 tall rim to rim; outside this the first run is not one. */
+  cardMinY: 170,
+  cardMaxY: 230,
+  /**
+   * A lone card sits far below any multi-card first card (~860 against
+   * ~400-575 mid-bounce), and its own gutter run is cut short by its wider
+   * Score row -- so it is told by its top, and its bar placed off the top
+   * rather than the middle. Unverified on a capped lone card: the one corpus
+   * frame of this layout shows an EXP bar.
+   */
+  singleMinTopY: 780,
+  singleBarFromTopY: 119,
+  /** The padlock body, about the bar row: two columns, two rows, all four required. */
+  lockX: [500, 515],
+  lockDy: [0, 6],
+  lockColor: {r: 255, g: 255, b: 255},
+  lockDiff: 40
 };
 
 /**

@@ -565,6 +565,17 @@ var tabs: TabSpec[] = [
                         buttons: [
                             {text: i18nThunk(UiText.ButtonNow), onClick: function () { askUnlockLevelsNow(); }}
                         ]
+                    },
+                    {
+                        // One raise for the selected tsum, after the round whose
+                        // level-up screen showed it capped -- not a sweep, and
+                        // independent of the schedule above. Beta until a device
+                        // run has read `unlock.myTsum.*`.
+                        key: SettingKey.AutoUnlockMyTsumLevel,
+                        title: UiText.SettingUnlockMyTsumLevel,
+                        help: UiText.SettingUnlockMyTsumLevelHelp,
+                        default: false,
+                        status: ReleaseStatus.Beta
                     }
                 ]
             },

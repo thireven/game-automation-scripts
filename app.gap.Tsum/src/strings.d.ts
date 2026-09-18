@@ -110,6 +110,8 @@ declare const enum UiText {
   SettingBonusComboHelp = 'setting.bonusCombo.help',
   SettingUnlockLevel = 'setting.unlockLevel',
   SettingUnlockLevelHelp = 'setting.unlockLevel.help',
+  SettingUnlockMyTsumLevel = 'setting.unlockMyTsumLevel',
+  SettingUnlockMyTsumLevelHelp = 'setting.unlockMyTsumLevel.help',
   SettingBuyBox = 'setting.buyBox',
   SettingBuyBoxHelp = 'setting.buyBox.help',
   SettingBuyBoxType = 'setting.buyBoxType',

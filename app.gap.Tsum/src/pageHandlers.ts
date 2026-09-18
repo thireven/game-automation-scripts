@@ -177,6 +177,26 @@ gPages.subscribe({
 });
 
 gPages.subscribe({
+  id: 'record.myTsumLevelCap',
+  category: PageCategory.Record,
+  what: 'Read whether the level-up screen shows the MyTsum at its level cap -- the '
+      + 'padlock on its card, where the others draw an EXP bar -- so the round '
+      + 'can be followed by one trip to the collection to raise it. Only the '
+      + 'trigger: the collection page is where the offer is checked before coins go.',
+  pages: [PageName.TsumLevelUp],
+  // Every look, for the reason record.baseCoins has it: the panel is still
+  // fading and bouncing in on the frame that first fingerprints it, and one
+  // clean read is all the round needs -- `noteLevelUpMyTsumCap` keeps it.
+  every: true,
+  steps: [
+    // Declines silently unless the setting is on: the capture is the cost.
+    { do: 'call', name: 'noteLevelUpMyTsumCap', run: function() {
+      this.noteLevelUpMyTsumCap();
+    } }
+  ]
+});
+
+gPages.subscribe({
   id: 'record.myTsum',
   category: PageCategory.Record,
   what: 'Read which tsum is selected off the thumbnail in the pre-round screen\'s '

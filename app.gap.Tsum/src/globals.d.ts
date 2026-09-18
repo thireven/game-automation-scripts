@@ -1377,8 +1377,20 @@ interface Tsum {
   readCappedCards(): boolean[];
   /** Select card `slot` and raise its tsum's cap; false stops the sweep. */
   raiseCardLevelCap(slot: number): boolean;
+  /** Buy the raise for the tsum the detail panel shows; `fields` name it in the log. */
+  raiseSelectedLevelCap(fields: LogFields): boolean;
   /** Tap the "level cap raised" toast away, until the collection is back. */
   leaveLevelCapToast(): boolean;
+  /** Does the level-up panel show the MyTsum capped? Null when no card could be read. */
+  readLevelUpMyTsumCap(): boolean | null;
+  /** The `record.myTsumLevelCap` handler: keep a capped read for the round. */
+  noteLevelUpMyTsumCap(): void;
+  /** Is the collection's detail panel showing the MyTsum? By the greyed Set button. */
+  collectionShowsMyTsum(): boolean;
+  /** To the collection and buy the MyTsum's raise; false when it could not. */
+  raiseMyTsumLevelCap(): boolean;
+  /** After a round: raise the MyTsum's cap if this round's level-up said it is capped. */
+  raiseMyTsumLevelCapIfPending(): void;
   /**
    * Poll for `page` until it shows or `timeoutMs` runs out. `event` names the
    * chore in the give-up line; the level-cap sweep's when it is left out.

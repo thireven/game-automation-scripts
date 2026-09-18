@@ -98,6 +98,8 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.SettingBonusComboHelp]: '維持 Combo 的時間變長。',
     [UiText.SettingUnlockLevel]: '解鎖角色等級時間(時)',
     [UiText.SettingUnlockLevelHelp]: '0 表示關閉。「立即」會馬上跑一次，除了進行中的一局之外優先於其他動作；腳本停止時會先啟動腳本。',
+    [UiText.SettingUnlockMyTsumLevel]: '自動解鎖 MyTsum 等級上限',
+    [UiText.SettingUnlockMyTsumLevelHelp]: '一局結束後的升級畫面若顯示 MyTsum「提升等級上限」，就前往 Tsum 列表買下那一次解鎖（消耗金幣），再繼續遊玩。只針對目前選用的 Tsum；上方的定時掃描是另一回事。',
     [UiText.SettingBuyBox]: '購買BOX時間(時)',
     [UiText.SettingBuyBoxHelp]: '0 表示關閉。會在 Tsum Tsum 商店一路買到售完或金幣不足為止，絕不會花掉紅寶石。「立即」會馬上跑一次；腳本停止時會先啟動腳本。',
     [UiText.SettingBuyBoxType]: '要買的BOX',

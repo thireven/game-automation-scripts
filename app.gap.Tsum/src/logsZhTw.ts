@@ -101,7 +101,12 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Unlock.SortRestored]: '已恢復收藏排序',
   [Log.Unlock.RaiseNotConfirmed]: '等級上限未提升，金幣不足？',
   [Log.Unlock.Retrying]: '提升失敗，重讀收藏頁面',
-  [Log.Unlock.End]: '提升等級上限完成'
+  [Log.Unlock.End]: '提升等級上限完成',
+  [Log.Unlock.MyTsumCapped]: 'MyTsum 已達等級上限',
+  [Log.Unlock.MyTsumStart]: '提升 MyTsum 等級上限',
+  [Log.Unlock.MyTsumNotSelected]: '收藏頁面顯示的不是 MyTsum，不提升',
+  [Log.Unlock.MyTsumBackoff]: 'MyTsum 提升失敗，稍後再試',
+  [Log.Unlock.MyTsumEnd]: 'MyTsum 等級上限提升完成'
 }
 
 logRegisterStrings(Locale.Taiwan, LogsZhTw);

@@ -121,6 +121,12 @@ class Tsum {
   _gameBuild: GameBuild | null;
   overloadPending: boolean;
   unlockLevelHoursWait: number;
+  /** The "Auto Unlock MyTsum Level" setting. */
+  autoUnlockMyTsumLevel: boolean;
+  /** This round's level-up panel showed the MyTsum capped; consumed after the round. */
+  myTsumCapSeen: boolean;
+  /** No MyTsum raise before this instant, epoch ms -- set after one fails; 0 means no hold. */
+  myTsumCapRetryAt: number;
   /** Box Buying: which box the sweep buys. */
   buyBoxType: BoxType;
   /** Box Buying: boxes per purchase, and what to do once the store refuses ten. */
@@ -338,6 +344,9 @@ class Tsum {
     // carry-over tap on the skill button (see link / scanBoardQuick).
     this.overloadPending = false;
     this.unlockLevelHoursWait = 0;
+    this.autoUnlockMyTsumLevel = false;
+    this.myTsumCapSeen = false;
+    this.myTsumCapRetryAt = 0;
     this.buyBoxType = BoxType.Premium;
     this.buyBoxSize = BoxPurchaseSize.One;
     this.buyBoxMaxPurchases = 0;

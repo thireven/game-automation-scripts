@@ -158,6 +158,8 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   ts.skillAutoTap = settings.skillAutoTap;
   ts.lorcanaCard = settings.lorcanaCard === true;
   ts.unlockLevelHoursWait = settings.unlockLevelHoursWait;
+  // `=== true` for a stored form from before the row existed.
+  ts.autoUnlockMyTsumLevel = settings.autoUnlockMyTsumLevel === true;
   // Defaulted for a hand-written start() command: a missing box would make the
   // sweep buy nothing at all rather than the wrong thing, but naming one is
   // still the friendlier failure.

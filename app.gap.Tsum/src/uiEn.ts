@@ -92,6 +92,8 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingBonusComboHelp]: 'More time to keep a combo going.',
     [UiText.SettingUnlockLevel]: 'Unlock Level every hours',
     [UiText.SettingUnlockLevelHelp]: '0 turns it off. Now runs one sweep straight away, ahead of everything but a round in progress, and starts the script if it is stopped.',
+    [UiText.SettingUnlockMyTsumLevel]: 'Auto Unlock MyTsum Level',
+    [UiText.SettingUnlockMyTsumLevelHelp]: 'When the level-up screen after a round shows "Raise level cap!" on your MyTsum, goes to the Tsum list and buys that one raise (consumes coins), then plays on. Only the selected tsum; the sweep above is separate.',
     [UiText.SettingBuyBox]: 'Buy boxes every hours',
     [UiText.SettingBuyBoxHelp]: '0 turns it off. Buys from the Tsum Tsum Store until it sells out or the Coins run out. Rubies are never spent. Now runs one sweep straight away, and starts the script if it is stopped.',
     [UiText.SettingBuyBoxType]: 'Box to buy',

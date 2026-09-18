@@ -127,6 +127,7 @@ function quickBarState(): string {
     // reporting the raw value would move it to the row's minimum instead.
     state[SettingKey.BuyBoxMaxPurchases] = ts.buyBoxMaxPurchases > 0
       ? ts.buyBoxMaxPurchases : BuyBoxDefaultMax;
+    state[SettingKey.AutoUnlockMyTsumLevel] = ts.autoUnlockMyTsumLevel;
     // Reported without being drawn, for the reason above: the strip's own Rest
     // stepper made way for the preset chip, and the settings panel's row is now
     // the only one that moves it -- which means the panel reads this back.
@@ -333,6 +334,10 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
       applied = quickBarClamp(value, 1, BuyBoxMaxPurchases);
       tsum.buyBoxMaxPurchases = applied as number;
       break;
+    case SettingKey.AutoUnlockMyTsumLevel:
+      applied = !!value;
+      tsum.autoUnlockMyTsumLevel = applied;
+      break;
     case SettingKey.RoundDelayMinutes:
       applied = quickBarClamp(value, 0, 120);
       quickBarSetRoundDelay(tsum, (applied as number) * 60 * 1000);
@@ -488,6 +493,9 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   [SettingKey.BuyBoxType]: LiveWhen.Now,
   [SettingKey.BuyBoxSize]: LiveWhen.Now,
   [SettingKey.BuyBoxMaxPurchases]: LiveWhen.Now,
+  // Read at the round's end -- by the level-up record handler and then the
+  // play task's tail -- so a switch thrown mid-round counts for this round.
+  [SettingKey.AutoUnlockMyTsumLevel]: LiveWhen.Now,
 
   // --- The round in front of the loop was set up under the old value -------
   //

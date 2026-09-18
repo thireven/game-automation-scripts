@@ -302,6 +302,7 @@ declare const enum SettingKey {
   NoSkillLastFeverSec = 'noSkillLastFeverSec',
   UnlockLevelHoursWait = 'unlockLevelHoursWait',
   UnlockLevelsFirst = 'unlockLevelsFirst',
+  AutoUnlockMyTsumLevel = 'autoUnlockMyTsumLevel',
   BuyBoxHoursWait = 'buyBoxHoursWait',
   BuyBoxType = 'buyBoxType',
   /** Replaced the `buyBoxTenTimes` switch; `loadSettings` carries a stored `true` over once. */
@@ -420,6 +421,12 @@ interface Settings {
    * button starts a run, and `buildRun` queues the sweep off it.
    */
   [SettingKey.UnlockLevelsFirst]?: boolean;
+  /**
+   * Raise the MyTsum's own level cap as soon as the post-round level-up panel
+   * shows it capped: one trip to the collection after that round, for the
+   * selected tsum only. Independent of the scheduled sweep above.
+   */
+  [SettingKey.AutoUnlockMyTsumLevel]: boolean;
   /** Hours between Box Buying sweeps; 0 turns the chore off. */
   [SettingKey.BuyBoxHoursWait]: number;
   /** Which box the sweep buys. Only ever this one -- it never falls back to another. */
