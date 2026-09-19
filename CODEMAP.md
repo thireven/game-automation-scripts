@@ -84,7 +84,7 @@ repository beside this one — `DEVELOPMENT.md` § The development toolkit.
 | How a tsum is identified and named, or why the `tsum` column is empty | `src/roundStats.ts`'s header for the reader; the library it reads, `src/tsums.dat`, is built by the development tools |
 | What is *in* an issue report, and how it left the device | `src/report.ts`; the host's `README.md` § Sending in a problem |
 | Which tooling is not here, and what the commands comments cite refer to | `DEVELOPMENT.md` § Development tooling outside this repo |
-| When something changed, and why | `CHANGELOG.md` |
+| When something changed, and why | `CHANGELOG.md` — 1.0 on; `CHANGELOG_0.x.md` before that; `CHANGELOG_ELSA.md` for Coronation Day Elsa while she is off the production build |
 | How a release is cut, what it publishes, and where | `DEVELOPMENT.md` § Releasing, then `tools/release/` |
 | Known bugs, wanted features | `BACKLOG.md` |
 | What a host native actually does | `../game-automation-app/CODEMAP.md`, then its `../game-automation-app/docs/API.md` and `app/src/main/cpp/` |
