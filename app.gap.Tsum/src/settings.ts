@@ -290,7 +290,6 @@ var tabs: TabSpec[] = [
                         step: 1,
                         max: 10,
                         min: 0,
-                        status: ReleaseStatus.Beta
                     },
                     {
                         key: SettingKey.UseFan,
@@ -575,7 +574,6 @@ var tabs: TabSpec[] = [
                         title: UiText.SettingUnlockMyTsumLevel,
                         help: UiText.SettingUnlockMyTsumLevelHelp,
                         default: false,
-                        status: ReleaseStatus.Beta
                     }
                 ]
             },
