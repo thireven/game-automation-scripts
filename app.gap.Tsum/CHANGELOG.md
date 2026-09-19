@@ -48,6 +48,7 @@ release note; they fold back in here when she ships.
 - "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
 - Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer spent on the empty space it left.
 - Skip Ruby now works like Skip Medals: rubies are left in the mailbox and the mail under them is still taken, instead of the chore stopping at the first ruby.
+- Skip Medals / Skip Ruby no longer open the last mail on a scrolled screen, which on a full medal box left the chore opening the same medal over and over.
 - Box Buying no longer stalls on the "You got a Patch!" popup a purchase can come with: it is closed like the reveal card and the sweep goes on.
 - Box Buying handles the store refusing a 10-Time purchase on a nearly empty box ("You can't use 10-Time Purchases"): the sweep ends there instead of retrying into it, and the new "Ten, then one until sold out" size carries on singly to empty the box. "Buy ten at a time" became the "Boxes per purchase" dropdown.
 - Auto launch finds the Japan game on its own: whichever build is installed is the one started, so nothing has to be set for it. The stats CSV gains a `build` column.
@@ -190,6 +191,16 @@ release note; they fold back in here when she ships.
 - **`renderPage` now drops `reportPanel` with the other panels.** A language
   change re-renders `#tabPanels`, and the Report row's panel was the one still
   pointing at the detached copy.
+- **A scrolled mail list no longer opens the row under the Claim All bar.**
+  `MailList.scroll` lands the rows half a pitch out of phase, where the last
+  row's Check button is whole but its badge is under the bar -- so the medal
+  probe read the bar's cyan, the row went as a heart, and with the medal box
+  full the pass tapped the same medal over and over (a JP recording).
+  `mailRowToOpen` now leaves a row whose deepest probe falls past
+  `MailList.buttonColumn.toY` for the next scroll (`gifts.receiveOne.rowUnderBar`).
+  `toY` is 1340, the last list pixel: at 1345 the scan's last sample sat on
+  the bar, so a button it cut never registered as clipped. Reproduced offline
+  by shifting the medals corpus frame.
 - **A medal count with a `0` in it reads.** The tally's medals row draws its
   glyphs 19px tall on the 540 emulator where the coin row's are 20, and at that
   height the `0` led `9` by 0.029 -- a thousandth under `StatsMinGlyphMargin`

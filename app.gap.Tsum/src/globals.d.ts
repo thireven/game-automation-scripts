@@ -1309,7 +1309,8 @@ interface Tsum {
    * Which mail row a Skip Medals / Skip Ruby pass should open, as one of
    * `readMailRows`' offsets; `MailNoRow` when nothing on screen can be opened,
    * `MailAllSkipped` when every row on screen is a medal or ruby being stepped
-   * past and the hearts under them are only out of sight.
+   * past and the hearts under them are only out of sight. A row whose badge is
+   * still under the Claim All bar is never opened: it counts as out of sight.
    */
   mailRowToOpen(img: NativeImage): number;
   /** Drag the mail list on; false when it did not move, so the mail ended. */

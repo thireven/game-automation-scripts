@@ -401,8 +401,11 @@ var MailList = {
    * gold instead of the three pieces the word cuts it into. `fromY`/`toY` are
    * the list's viewport -- the title bar above and the Claim All bar below are
    * outside it, and a run touching either end belongs to a half-drawn row.
+   * Both are the last list pixels the scan samples: the title bar ends at 494
+   * and the bar starts at 1344, so a sample on either would never read gold
+   * and a button cut by it would pass as whole.
    */
-  buttonColumn: {x: 780, fromY: 500, toY: 1345, step: 4},
+  buttonColumn: {x: 780, fromY: 500, toY: 1340, step: 4},
   /** A run shorter than this is a highlight or a clipped button, not a row. */
   minButtonRun: 50,
   /**

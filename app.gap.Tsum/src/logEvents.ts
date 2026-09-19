@@ -255,6 +255,7 @@ namespace Log {
     ReceiveOneOk              = 'gifts.receiveOne.ok',
     ReceiveOneProbe           = 'gifts.receiveOne.probe',
     ReceiveOneReceiveAll      = 'gifts.receiveOne.receiveAll',
+    ReceiveOneRowUnderBar     = 'gifts.receiveOne.rowUnderBar',
     ReceiveOneSkipMedal       = 'gifts.receiveOne.skipMedal',
     ReceiveOneSkipRuby        = 'gifts.receiveOne.skipRuby',
     ReceiveOneSkippedOnly     = 'gifts.receiveOne.skippedOnly',
