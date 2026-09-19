@@ -34,15 +34,23 @@ changed, and the one fact that explains why. Measurements, rejected designs and
 long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 `DRIVING_SCREENS.md`, `PAGE_DISPATCH.md`, `DEVELOPMENT.md`).
 
-## [2.0b3]
+## [2.0]
 
 ### Summary
 
-- Skip Ruby now works like Skip Medals: rubies are left in the mailbox and the mail under them is still taken, instead of the chore stopping at the first ruby.
-- "Hold bubbles last fever seconds" setting added: leaves bubbles alone while a fever is about to end, so they are there to pop into the first chains after it and start the next fever sooner.
-- Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer spent on the empty space it left.
+- Version bump from 1.0 to 2.0
+- "Auto Unlock MyTsum Level" setting added: when the level-up screen shows "Raise level cap!" on your MyTsum, the script buys that raise and plays on.
+- "Hold bubbles last fever seconds" setting added: bubbles are left as a fever ends, to pop into the first chains after it and start the next fever sooner.
+- Bubbles are popped once tsums have refilled around them, so one a burst skill leaves is no longer wasted on the hole it sat in.
+- Skip Ruby now works like Skip Medals: rubies stay in the mailbox and the mail under them is still taken, instead of stopping at the first ruby.
+- Box Buying no longer stalls on the "You got a Patch!" popup: it is closed and the sweep goes on.
+- Box Buying handles the store refusing a 10-Time purchase on a nearly empty box: the sweep ends there, or the new "Ten, then one until sold out" size finishes the box singly. "Buy ten at a time" is now the "Boxes per purchase" dropdown.
+- Auto launch finds the Japan game on its own: whichever build is installed is started, with no setting for it. The stats CSV gains a build column.
+- The selected tsum is named as the running game prints it: English on the international game, Japanese on the Japan game.
+- The JP game's Magical Time offer is now recognised and cancelled like the EN one.
+- Debug tab: a Detect MyTsum button reads the tsum selected on the pre-round screen without playing a round.
+- Rounds turn over faster: the score tally's count-up is tapped through instead of waited out.
 - Round stats: a medal count with a 0 in it is no longer left blank.
-- "Auto Unlock MyTsum Level" setting added: when the level-up screen after a round shows "Raise level cap!" on your MyTsum, the script buys that one raise from the Tsum list and plays on.
 
 ### Added
 
@@ -72,126 +80,12 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   game has paused under a skill animation reads as paused. Gated on
   `gFever.active`, because an ordinary full gauge is just as bright. Measured
   on the six corpus fever frames.
-
-### Changed
-
-- **Skip Ruby** (`receiveHeartsSkipRuby`) goes through the row walk Skip Medals
-  built: `mailRowToOpen` reads every found row at each badge its switch turned
-  on, opens the first row carrying none, and answers `MailAllSkipped` (was
-  `MailAllMedals`) when the screenful is all skipped mail, which scrolls on. The
-  fixed ruby probe and the idle-out it forced are gone from the loop.
-  `gifts.receiveOne.skipRuby` marks each row stepped past;
-  `gifts.receiveOne.medalsOnly` is `gifts.receiveOne.skippedOnly`.
-
-## [2.0-beta2]
-
-### Summary
-
-- Debug tab: a Detect MyTsum button reads which tsum the pre-round screen shows selected, without playing a round.
-- The selected tsum is named as the running game prints it: in English on the international game, in Japanese on the Japan game.
-- Auto launch finds the Japan game on its own: whichever build is installed is the one started, so nothing has to be set for it. The stats CSV gains a `build` column.
-- Coronation Day Elsa skill improved: a freeze window that outlives the round no longer taps the score screen, which opened the Options menu and lost the round's stats.
-
-### Added
-
 - **`Tsum.gameBuild` (`src/appLifecycle.ts`), `GameBuild` (`src/globals.d.ts`).**
   Which build this device plays: the one in front (`focusedGameBuild`, off the
   same `dumpsys window` line `isAppOn` reads, now shared as `focusedPackage`),
   else the one last seen in front, else the one installed (`installedGameBuilds`,
   one `pm path` per package, at most once a run). Both or neither installed
   answers global. `app.build` logs the installed-package read.
-
-### Removed
-
-- **`SettingKey.JpVersion`.** Its row had been commented out since the public
-  release, so `startApp` always launched the international package and a
-  Japan-only device never came up. Launch, the force-stops, `selectedTsum`, the
-  stats CSV (`build` column, in place of `jpVersion`), the report manifest
-  (`script.build`) and the corpus sidecar (`build`; `load.js` still reads
-  `isJP` off old ones) all take `gameBuild()` instead. `Tsum`'s constructor
-  loses its first argument.
-
-### Changed
-
-- **The Bubble Strategy pops only bubbles worth popping.** `findGameBubbles`
-  counts each bubble's `near` -- the scan's tsum circles within
-  `GameBubbleConfig.blastReach` past its edge -- and `popGameBubbles`' default
-  path takes only those at `minTsumsInBlast` or more, richest first
-  (`ripeGameBubbles`, `src/board.ts`), leaving the rest for the next scan. A
-  Burst activation is a blind tap that never arms `settleScansAfterSkill`, so
-  the bubble it left was tapped in the hole it sat in. Bounded by
-  `unripeHoldScans` (`bubbleUnripeScans`, counted per scan) so a misread cannot
-  park one; a skill's explicit limit still takes every bubble. `bubble.unripe`
-  logs a refused pop, and `bubble.found` / `bubble.popped` carry `near` / `held`.
-
-- **`src/tsums.dat` is `v2`: a name column per build.** English and Japanese
-  side by side, blank where that build's pack has no strip (84 Japanese-only,
-  38 with neither). `myTsumLoadLibrary` refuses a v1 file; `selectedTsum` names
-  the match by the build in front, falling back to the other column, then the
-  id. `tsums.identified` / `tsums.detected` carry `build`.
-
-- **`detectMyTsum` (`src/roundStats.ts`).** The Debug tab's Detect button,
-  reached by name through `runScriptCallback` like `reportIssue`. Refuses a
-  live run (the loop reads the same screen itself), else builds a throwaway
-  `Tsum` on the page's settings for the geometry, sleeps
-  `DetectMyTsumSettleMs` for the closed panel to leave the frame -- the host
-  captures every window -- and answers the `MyTsumSelection` or a
-  `DetectMyTsumRefusal` (`src/shared.d.ts`) as JSON. `tsums.detected` is its
-  own event so a log reader cannot take a press for a round's read; the
-  banner carries the name with score and margin.
-- **`askDetectMyTsum` / `onMyTsumDetected` (`src/settings.ts`).** Closes the
-  panel the way the Now buttons do, sends the form, and words the answer under
-  the row (`tpl-detect`) in the page's language, so it is there when the
-  panel is reopened.
-- **`skillWaitOutEndingFever` reads its fill geometry off `FeverBar`** instead
-  of its own 345/733 constants; the measured fill runs 350-705, so the
-  "nearly over" mark moves by a few px.
-
-### Fixed
-
-- **A fever is recognised on the 2025 layout.** `FeverProbes`' two
-  dimmed-chrome pixels sat under the gauge, and on MuMu that build ends the
-  game in a black band there, so `isFeverTime` was false on every frame and
-  `gFever` never went active on that device -- the new bubble hold could not
-  engage, and the "No skill last fever seconds" hold-off, whose own backdrop
-  probe at (340,310) lands on that layout's gem icon, had never fired either.
-  Both now read the chrome beside the score capsule, where
-  `LevelUpDimmedChrome` reads; the ring thresholds go to 100 for the same
-  frames. Measured on three of the device's own trail frames, filed in the
-  corpus as `mumu-360x640-fever*`.
-- **`renderPage` now drops `reportPanel` with the other panels.** A language
-  change re-renders `#tabPanels`, and the Report row's panel was the one still
-  pointing at the detached copy.
-- **A medal count with a `0` in it reads.** The tally's medals row draws its
-  glyphs 19px tall on the 540 emulator where the coin row's are 20, and at that
-  height the `0` led `9` by 0.029 -- a thousandth under `StatsMinGlyphMargin`
-  -- so 401, 380 and 400 all went to the CSV blank. `StatsDigits` recut with
-  two of those tallies in the sample; the worst lead over the corpus is 0.036.
-- **Elsa's closing break no longer lands on the score tally.** Windows chain
-  back to back (the break refills the gauge), so one opened in the round's last
-  seconds outlives it, and the choreography checked only its clock. On
-  `option_menu.mp4` the break's grid ran over the tally and the post-burst scan
-  read the tally's gear as a bubble -- the play square reaches that row on the
-  540x960 layout -- so the pop opened Options over the numbers the stats read
-  wanted, and the row went blank. `elsaRoundOver` (the play loop's
-  `inRoundPages()` sweep) is asked on a starved look, at most once a second,
-  and once more before the break; `skill.elsa.roundOver` says when, and
-  `skill.elsa.done` carries `roundOver`.
-
-## [2.0]
-
-### Summary
-
-- Version bump from 1.0 to 2.0
-- Coronation Day Elsa skill promoted to Beta.
-- Coronation Elsa Legacy skill added: the 1.0 version of the freeze window, offered beside the current one on Beta builds so the two can be compared.
-- The JP game's Magical Time offer is now recognised and cancelled like the EN one.
-- Box Buying no longer stalls on the "You got a Patch!" popup a purchase can come with: it is closed like the reveal card and the sweep goes on.
-- Box Buying handles the store refusing a 10-Time purchase on a nearly empty box ("You can't use 10-Time Purchases"): the sweep ends there instead of retrying into it, and the new "Ten, then one until sold out" size carries on singly to empty the box. "Buy ten at a time" became the "Boxes per purchase" dropdown.
-- Rounds turn over faster: the score tally's count-up is tapped through instead of waited out.
-
-### Added
-
 - **`BoxTenTimeRefused` (`src/data.ts`).** The "You can't use 10-Time
   Purchases" toast, `targeted` like `LevelCapRaised` because it is the
   `HeartSent` sprite -- a sweep over it answers `HeartSent` -- with one probe
@@ -225,6 +119,44 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 
 ### Changed
 
+- **Skip Ruby** (`receiveHeartsSkipRuby`) goes through the row walk Skip Medals
+  built: `mailRowToOpen` reads every found row at each badge its switch turned
+  on, opens the first row carrying none, and answers `MailAllSkipped` (was
+  `MailAllMedals`) when the screenful is all skipped mail, which scrolls on. The
+  fixed ruby probe and the idle-out it forced are gone from the loop.
+  `gifts.receiveOne.skipRuby` marks each row stepped past;
+  `gifts.receiveOne.medalsOnly` is `gifts.receiveOne.skippedOnly`.
+- **The Bubble Strategy pops only bubbles worth popping.** `findGameBubbles`
+  counts each bubble's `near` -- the scan's tsum circles within
+  `GameBubbleConfig.blastReach` past its edge -- and `popGameBubbles`' default
+  path takes only those at `minTsumsInBlast` or more, richest first
+  (`ripeGameBubbles`, `src/board.ts`), leaving the rest for the next scan. A
+  Burst activation is a blind tap that never arms `settleScansAfterSkill`, so
+  the bubble it left was tapped in the hole it sat in. Bounded by
+  `unripeHoldScans` (`bubbleUnripeScans`, counted per scan) so a misread cannot
+  park one; a skill's explicit limit still takes every bubble. `bubble.unripe`
+  logs a refused pop, and `bubble.found` / `bubble.popped` carry `near` / `held`.
+- **`src/tsums.dat` is `v2`: a name column per build.** English and Japanese
+  side by side, blank where that build's pack has no strip (84 Japanese-only,
+  38 with neither). `myTsumLoadLibrary` refuses a v1 file; `selectedTsum` names
+  the match by the build in front, falling back to the other column, then the
+  id. `tsums.identified` / `tsums.detected` carry `build`.
+- **`detectMyTsum` (`src/roundStats.ts`).** The Debug tab's Detect button,
+  reached by name through `runScriptCallback` like `reportIssue`. Refuses a
+  live run (the loop reads the same screen itself), else builds a throwaway
+  `Tsum` on the page's settings for the geometry, sleeps
+  `DetectMyTsumSettleMs` for the closed panel to leave the frame -- the host
+  captures every window -- and answers the `MyTsumSelection` or a
+  `DetectMyTsumRefusal` (`src/shared.d.ts`) as JSON. `tsums.detected` is its
+  own event so a log reader cannot take a press for a round's read; the
+  banner carries the name with score and margin.
+- **`askDetectMyTsum` / `onMyTsumDetected` (`src/settings.ts`).** Closes the
+  panel the way the Now buttons do, sends the form, and words the answer under
+  the row (`tpl-detect`) in the page's language, so it is there when the
+  panel is reopened.
+- **`skillWaitOutEndingFever` reads its fill geometry off `FeverBar`** instead
+  of its own 345/733 constants; the measured fill runs 350-705, so the
+  "nearly over" mark moves by a few px.
 - **Both Coronation Elsa entries are `ReleaseStatus.Beta`.**
 - **`waitForScorePage` taps the tally through its count-up
   (`src/roundStats.ts`).** A tap skips the animation and the game draws the
@@ -234,6 +166,47 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
   finished tally and on every panel that can drop over it. Only on a look that
   named the tally, so a panel in front is still cleared by its own handler
   first. `stats.tallySkipped` records the taps and how long the row took.
+
+### Removed
+
+- **`SettingKey.JpVersion`.** Its row had been commented out since the public
+  release, so `startApp` always launched the international package and a
+  Japan-only device never came up. Launch, the force-stops, `selectedTsum`, the
+  stats CSV (`build` column, in place of `jpVersion`), the report manifest
+  (`script.build`) and the corpus sidecar (`build`; `load.js` still reads
+  `isJP` off old ones) all take `gameBuild()` instead. `Tsum`'s constructor
+  loses its first argument.
+
+### Fixed
+
+- **A fever is recognised on the 2025 layout.** `FeverProbes`' two
+  dimmed-chrome pixels sat under the gauge, and on MuMu that build ends the
+  game in a black band there, so `isFeverTime` was false on every frame and
+  `gFever` never went active on that device -- the new bubble hold could not
+  engage, and the "No skill last fever seconds" hold-off, whose own backdrop
+  probe at (340,310) lands on that layout's gem icon, had never fired either.
+  Both now read the chrome beside the score capsule, where
+  `LevelUpDimmedChrome` reads; the ring thresholds go to 100 for the same
+  frames. Measured on three of the device's own trail frames, filed in the
+  corpus as `mumu-360x640-fever*`.
+- **`renderPage` now drops `reportPanel` with the other panels.** A language
+  change re-renders `#tabPanels`, and the Report row's panel was the one still
+  pointing at the detached copy.
+- **A medal count with a `0` in it reads.** The tally's medals row draws its
+  glyphs 19px tall on the 540 emulator where the coin row's are 20, and at that
+  height the `0` led `9` by 0.029 -- a thousandth under `StatsMinGlyphMargin`
+  -- so 401, 380 and 400 all went to the CSV blank. `StatsDigits` recut with
+  two of those tallies in the sample; the worst lead over the corpus is 0.036.
+- **Elsa's closing break no longer lands on the score tally.** Windows chain
+  back to back (the break refills the gauge), so one opened in the round's last
+  seconds outlives it, and the choreography checked only its clock. On
+  `option_menu.mp4` the break's grid ran over the tally and the post-burst scan
+  read the tally's gear as a bubble -- the play square reaches that row on the
+  540x960 layout -- so the pop opened Options over the numbers the stats read
+  wanted, and the row went blank. `elsaRoundOver` (the play loop's
+  `inRoundPages()` sweep) is asked on a starved look, at most once a second,
+  and once more before the break; `skill.elsa.roundOver` says when, and
+  `skill.elsa.done` carries `roundOver`.
 
 ## [1.0]
 
