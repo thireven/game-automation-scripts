@@ -132,19 +132,68 @@ Tsum.prototype.bubbleTapBudget = function() {
   }
 };
 
-// The bubbles of the last scan a pop is worth taking now: those with at least
-// `minTsumsInBlast` tsums in the blast, richest first, so a budget of one takes
-// the one that clears most. A bubble in the hole a burst just left has none
-// and is left for the next scan, which re-finds it once the refill has closed
-// round it. Past `unripeHoldScans` scans the count is a misread and every
-// bubble is worth it by fiat -- see GameBubbleConfig.
+/** Each bubble's age since first sighting, ms; -1 for one never tracked. */
+function bubbleAges(bubbles: GameBubble[]): number[] {
+  const now = Date.now();
+  const ages: number[] = [];
+  for (let i = 0; i < bubbles.length; i++) {
+    const seen = bubbles[i].firstSeen;
+    ages.push(seen === undefined ? -1 : now - seen);
+  }
+  return ages;
+}
+
+// Give this scan's bubbles their first sightings. See `minAgeMs`. Each is
+// matched to the nearest known sighting within `matchRadius`, nearest first;
+// one nothing matched is kept for `sightingMemoryMs`, so a scan that missed
+// a bubble does not make it new again. A popped one lends its age to nothing.
+Tsum.prototype.trackGameBubbles = function(bubbles) {
+  const cfg = GameBubbleConfig;
+  const now = Date.now();
+  const known = this.bubbleSightings;
+  const taken: boolean[] = [];
+  for (let i = 0; i < bubbles.length; i++) {
+    const b = bubbles[i];
+    let best = -1;
+    let bestD = cfg.matchRadius * cfg.matchRadius;
+    for (let k = 0; k < known.length; k++) {
+      if (taken[k] || known[k].popped) { continue; }
+      const dx = known[k].x - b.x;
+      const dy = known[k].y - b.y;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = k; }
+    }
+    if (best >= 0) { taken[best] = true; }
+    b.firstSeen = best >= 0 ? known[best].firstSeen : now;
+    b.lastSeen = now;
+  }
+  const next = bubbles.slice();
+  for (let k = 0; k < known.length; k++) {
+    if (!taken[k] && !known[k].popped
+        && now - (known[k].lastSeen || 0) <= cfg.sightingMemoryMs) {
+      next.push(known[k]);
+    }
+  }
+  this.bubbleSightings = next;
+};
+
+// The bubbles of the last scan a pop is worth taking now: seen for at least
+// `minAgeMs`, with at least `minTsumsInBlast` tsums in the blast, richest
+// first, so a budget of one takes the one that clears most. A bubble that has
+// just appeared, or sits in the hole a burst just left, is left for a later
+// scan, which re-finds it once the refill has closed round it. Past
+// `unripeReleaseMs` the count is a misread and the bubble is worth it by fiat
+// -- see GameBubbleConfig.
 Tsum.prototype.ripeGameBubbles = function(bubbles) {
   const cfg = GameBubbleConfig;
-  const released = this.bubbleUnripeScans >= cfg.unripeHoldScans;
+  const now = Date.now();
   const ripe: GameBubble[] = [];
   for (let i = 0; i < bubbles.length; i++) {
     const b = bubbles[i];
-    if (released || b.near === undefined || b.near >= cfg.minTsumsInBlast) {
+    // Never tracked: old enough, and judged on the count alone.
+    const age = b.firstSeen === undefined ? cfg.unripeReleaseMs : now - b.firstSeen;
+    if (age < cfg.minAgeMs) { continue; }
+    if (age >= cfg.unripeReleaseMs || b.near === undefined || b.near >= cfg.minTsumsInBlast) {
       ripe.push(b);
     }
   }
@@ -175,11 +224,12 @@ Tsum.prototype.popGameBubbles = function(limit) {
   const held = all.length - bubbles.length;
   const count = Math.min(bubbles.length, budget);
   if (count <= 0) {
-    // Every bubble is in a hole. The list stays: the next scan replaces it.
+    // Every bubble has just appeared or is in a hole. The list stays: the next
+    // scan replaces it.
     logDebug(Log.Bubble.Unripe, {
       held: held,
       near: all.map(function(b) { return b.near || 0; }),
-      scans: this.bubbleUnripeScans
+      age: bubbleAges(all)
     });
     return;
   }
@@ -188,6 +238,7 @@ Tsum.prototype.popGameBubbles = function(limit) {
     const x = Math.floor(this.playOffsetX + b.x * this.playWidth / this.playResizeWidth);
     const y = Math.floor(this.playOffsetY + b.y * this.playHeight / this.playResizeHeight);
     tap(x, y, cfg.tapDuring);
+    b.popped = true;
   }
   logDebug(Log.Bubble.Popped, { popped: count, seen: all.length, held: held });
   // A bubble only pops once, and one left behind is one this strategy is
@@ -282,6 +333,9 @@ Tsum.prototype.clearAllBubbles = function(startDelay, endDelay, fromY, delayBetw
     }
     this.sleep(delayBetweenLines);
   }
+  // Blind, so nothing knows which it took: whatever the next scan finds is
+  // new, rather than a new bubble inheriting the age of one this just popped.
+  this.bubbleSightings = [];
 
   if (typeof endDelay === 'number' && endDelay > 0) {
     this.sleep(endDelay);
@@ -350,20 +404,14 @@ Tsum.prototype.scanBoardQuick = function() {
     // are big and drift slowly, so a position a second old still lands. Each
     // carries how many of this scan's tsums its pop would take (`near`).
     this.gameBubbles = findGameBubbles(grayImg, points);
+    // Each one's first sighting, carried over from earlier scans -- what
+    // `ripeGameBubbles` ages it by. Run on an empty list too: that is what
+    // lets old sightings go.
+    this.trackGameBubbles(this.gameBubbles);
     if (this.gameBubbles.length > 0) {
-      const near: number[] = [];
-      let unripe = false;
-      for (let i = 0; i < this.gameBubbles.length; i++) {
-        const n = this.gameBubbles[i].near || 0;
-        near.push(n);
-        if (n < GameBubbleConfig.minTsumsInBlast) { unripe = true; }
-      }
-      // Consecutive scans that saw a bubble with too few tsums round it -- the
-      // bound on how long `ripeGameBubbles` may hold one.
-      this.bubbleUnripeScans = unripe ? this.bubbleUnripeScans + 1 : 0;
-      logDebug(Log.Bubble.Found, { bubbles: this.gameBubbles.length, near: near });
-    } else {
-      this.bubbleUnripeScans = 0;
+      logDebug(Log.Bubble.Found, { bubbles: this.gameBubbles.length,
+        near: this.gameBubbles.map(function(b) { return b.near || 0; }),
+        age: bubbleAges(this.gameBubbles) });
     }
     logDebug(Log.Board.RecognitionStart);
     const tcs = classifyTsums(points);

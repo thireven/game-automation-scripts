@@ -162,8 +162,8 @@ class Tsum {
   bubbleStrategy: BubbleStrategy;
   /** Epoch ms the hold after a skill activation lifts; 0 means none stands. */
   bubbleHoldUntil: number;
-  /** Consecutive scans that saw a bubble with too few tsums in its blast. */
-  bubbleUnripeScans: number;
+  /** Bubbles seen on recent scans with their first sightings -- what a bubble's age is read from. */
+  bubbleSightings: GameBubble[];
   /** Pop no bubble while a fever has this many seconds left; 0 never holds. */
   holdBubblesLastFeverSec: number;
   noSkillLastFeverSec: number;
@@ -374,7 +374,7 @@ class Tsum {
     this.receiveCheckLimit = 5;
     this.bubbleStrategy = BubbleStrategy.OneMidChain;
     this.bubbleHoldUntil = 0;
-    this.bubbleUnripeScans = 0;
+    this.bubbleSightings = [];
     this.holdBubblesLastFeverSec = 0;
     this.noSkillLastFeverSec = 0;
     this.lorcanaCard = false;

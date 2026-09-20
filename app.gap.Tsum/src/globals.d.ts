@@ -751,6 +751,12 @@ interface GameBubble {
    * list built without the tsum pass, which pops as it always did.
    */
   near?: number;
+  /** Epoch ms this bubble was first seen at about this spot (`trackGameBubbles`). */
+  firstSeen?: number;
+  /** Epoch ms of the scan that last found it. */
+  lastSeen?: number;
+  /** Tapped by `popGameBubbles`: lends its age to nothing that appears where it was. */
+  popped?: boolean;
 }
 
 /**
@@ -1218,8 +1224,10 @@ interface Tsum {
   linkTsums(path: Point[]): void;
   /** Epoch ms the hold after a skill activation lifts; 0 means none stands. */
   bubbleHoldUntil: number;
-  /** Consecutive scans that saw a bubble with too few tsums in its blast. */
-  bubbleUnripeScans: number;
+  /** Bubbles seen on recent scans with their first sightings -- what a bubble's age is read from. */
+  bubbleSightings: GameBubble[];
+  /** Give this scan's bubbles their first sightings, matched by position against recent scans. */
+  trackGameBubbles(bubbles: GameBubble[]): void;
   /** The chain length that earns a bubble pop, bounded by the chain cap in
    * force -- `Config.maxChain`, or the selected skill's `chainLimits`. */
   bubblePopChainLength(): number;

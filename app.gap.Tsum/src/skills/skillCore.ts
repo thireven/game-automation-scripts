@@ -385,9 +385,11 @@ Tsum.prototype.maybeAutoTapSkill = function(board) {
     // next pop would land in the hole the burst is about to leave. One ~2.4ms
     // crop of the button after the tap: still Active means it was full, so
     // the tap fired it (the animation reads Active too). Asked only with
-    // bubbles on the board and no hold standing, so a batch with none to hold
-    // costs what it did. The scan's bubbles go with the hold: their positions
-    // and blast counts were read off the board being cleared.
+    // bubbles on the board and no hold standing: those are what the hold is
+    // for, since the bubbles the burst itself makes are new to the next scan
+    // and `ripeGameBubbles` holds them by age. The scan's bubbles go with the
+    // hold: their positions and blast counts were read off the board being
+    // cleared.
     if (this.gameBubbles.length > 0 && Date.now() >= this.bubbleHoldUntil
         && this.checkSkillReadinessFast() === SkillReadiness.Active) {
       logDebug(Log.Skill.BlindTapFired, { bubbles: this.gameBubbles.length });

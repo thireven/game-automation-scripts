@@ -44,7 +44,7 @@ release note; they fold back in here when she ships.
 ### Summary
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
-- Bubbles are no longer popped in the two seconds after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
+- Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
 
 ### Added
 
@@ -75,6 +75,13 @@ release note; they fold back in here when she ships.
   button once after the tap while bubbles are on the board: still Active means
   it fired, so the hold is stamped and the scan's bubbles dropped
   (`skill.blindTapFired`). A skill's own pops and sweeps are untouched.
+- **A bubble is held for a second after it is first seen**
+  (`GameBubbleConfig.minAgeMs`). The blast count is one frame's reading, and a
+  burst's bubble first shows mid-clear, where it can read surrounded over a
+  hole -- Ariel+ popped hers the instant she made them. `trackGameBubbles`
+  carries sightings across scans by position (`GameBubble.firstSeen`), and the
+  unripe release is per bubble by age (`unripeReleaseMs`, 3s) instead of five
+  consecutive scans. `bubble.found` and `bubble.unripe` carry `age`.
 
 ### Fixed
 

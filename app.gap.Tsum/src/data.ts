@@ -107,13 +107,31 @@ var GameBubbleConfig = {
   // one in the hole a burst just left clears nothing, and the refill closes
   // round it within a scan or two. A full board puts ~6 in that ring, and the
   // Hough pass keeps 45-80% of a landed board's circles, so 3 reads as
-  // "surrounded" where a fresh hole reads 0-1. The hold is bounded by
-  // `unripeHoldScans`: a bubble on a settled board always has neighbours, so
-  // past that many consecutive scans the count is a misread and the bubble is
-  // spent regardless. A skill's own pop (an explicit limit) reads none of this.
+  // "surrounded" where a fresh hole reads 0-1. A skill's own pop (an explicit
+  // limit) reads none of this.
   blastReach: 1,
   minTsumsInBlast: 3,
-  unripeHoldScans: 5,
+
+  // A bubble is also left alone for `minAgeMs` after it is first seen. The
+  // blast count is one frame's reading, and the frame a burst's bubble first
+  // shows on is mid-clear: the tsums still round it are going and the refill
+  // has not landed, so the count can read "surrounded" over a hole -- which is
+  // the bubble popped the instant it appears, hitting nothing. The refill
+  // lands within a second of the clear whatever the skill's animation took to
+  // get there, so age from first sighting is the one gate that does not need
+  // the animation's length. `unripeReleaseMs` bounds both holds: a bubble on
+  // a settled board always has neighbours, so past that age the count is a
+  // misread and the bubble is spent regardless.
+  //
+  // Sightings are carried across scans by position (`trackGameBubbles`): a
+  // bubble that moved under `matchRadius` (200px-square space, about a bubble
+  // radius) since the last scan is the same bubble; one that moved more is
+  // falling and counts as new, which holds it -- the safe way to be wrong. A
+  // sighting outlives a missed detection for `sightingMemoryMs`.
+  minAgeMs: 1000,
+  unripeReleaseMs: 3000,
+  matchRadius: 20,
+  sightingMemoryMs: 1500,
 
   // How long a row of the quick sweep waits before the next one.
   //
