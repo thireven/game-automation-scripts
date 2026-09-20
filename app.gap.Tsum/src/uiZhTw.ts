@@ -118,7 +118,7 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.SettingSkillWaitingTime]: '技能等待時間(秒)',
     [UiText.SettingSkillWaitingTimeHelp]: '發動技能後最多讓版面靜置這麼久，讓技能演完；版面一停下來就繼續玩。技能結束後還會清泡泡的話，設成蓋得住它的長度。',
     [UiText.SettingSkillSettle]: '等待版面補滿(毫秒)',
-    [UiText.SettingSkillSettleHelp]: '集氣滿了最多等這麼久，讓剛消掉的位置補回新的 Tsum 再放技能；版面半空時放技能消得很少。版面一停下來就放，最晚到這個時間。0 表示馬上放。',
+    [UiText.SettingSkillSettleHelp]: '集氣滿了最多等這麼久，讓剛消掉的位置補回新的 Tsum 再放技能；版面半空時放技能消得很少。版面一停下來就放；還在動的時候會照泡泡策略戳泡泡。0 表示馬上放。',
     [UiText.SettingNoSkillLastFever]: 'Fever尾段扣技能秒數',
     [UiText.SettingNoSkillLastFeverHelp]: 'Fever 結束前這段時間先不放技能，留著開下一次 Fever。0 表示不保留。',
     [UiText.SettingSkillAutoTap]: '自動點擊技能',

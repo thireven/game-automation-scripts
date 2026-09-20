@@ -407,7 +407,8 @@ interface Settings {
   /**
    * The most milliseconds to wait, once the gauge reads full, for the tsums the
    * last chains cleared to drop back in before the activation tap -- the tap
-   * goes out as soon as the board holds still, or at this deadline. In ms
+   * goes out as soon as the board holds still, or at this deadline, and a board
+   * found moving gets the bubbles a chain would spend popped into it. In ms
    * rather than seconds because a share code carries whole numbers only. 0
    * fires at once.
    */

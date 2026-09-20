@@ -39,13 +39,11 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [2.1b2]
+## [3.0b]
 
 ### Summary
 
-- The script no longer sits on the game's pause menu flipping the Gyro switch when a chore starts during a round; the chore waits for the round instead.
-- Max round duration: once it stops playing a long round it now waits for the game over screen however long that takes, instead of picking the round back up after a few minutes.
-- New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, so it goes off on a full board rather than a half-empty one.
+- New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 
 ### Added
 
@@ -59,6 +57,18 @@ release note; they fold back in here when she ships.
   `bareTapActivates` skills and reads the gauge instead, since a blind tap
   cannot wait for the board. `skill.use` carries `settleMs` (what the wait
   took) and `settled`.
+- **`settleBoard` takes an `onMoving` callback**, run once at the first reading
+  that shows the tsums moving. The settle look above uses it to
+  `popGameBubbles()` -- the Bubble Strategy's own budget, under the same
+  `bubbleSettleScans` hold as `link` -- so a board found refilling gets its
+  bubbles spent into the drop, and a board already still keeps them.
+
+## [2.1b2]
+
+### Summary
+
+- The script no longer sits on the game's pause menu flipping the Gyro switch when a chore starts during a round; the chore waits for the round instead.
+- Max round duration: once it stops playing a long round it now waits for the game over screen however long that takes, instead of picking the round back up after a few minutes.
 
 ### Fixed
 

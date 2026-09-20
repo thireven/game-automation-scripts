@@ -1193,9 +1193,10 @@ interface Tsum {
    * Wait for the tsums to stop moving, up to `maxMs` (`BoardSettle.maxMs` when
    * omitted) and not before `minMs` (`BoardSettle.minMs`): `settleScreen`'s
    * counterpart for the board, which the full-screen grid can never call still.
+   * `onMoving` runs once, at the first reading that shows them moving.
    * False means they never did, or the run stopped.
    */
-  settleBoard(maxMs?: number, minMs?: number): boolean;
+  settleBoard(maxMs?: number, minMs?: number, onMoving?: () => void): boolean;
   /** `isRunning`, and no level-cap sweep waiting to take the screen (`yieldAsked`). */
   mayContinue(): boolean;
 

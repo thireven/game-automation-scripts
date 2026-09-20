@@ -116,7 +116,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingSkillWaitingTime]: 'Skill Waiting time (sec)',
     [UiText.SettingSkillWaitingTimeHelp]: 'The most time the board is left alone after firing, so the skill can play out; play resumes as soon as the tsums have landed. Set it to cover a skill that clears bubbles after itself.',
     [UiText.SettingSkillSettle]: 'Wait for Settle (ms)',
-    [UiText.SettingSkillSettleHelp]: 'Once the gauge is full, waits up to this long for the tsums the last chains cleared to drop back in before firing -- a skill fired onto a half-empty board clears very little. Fires as soon as the board holds still, or at this deadline. 0 fires at once.',
+    [UiText.SettingSkillSettleHelp]: 'Once the gauge is full, waits up to this long for the tsums the last chains cleared to drop back in before firing -- a skill fired onto a half-empty board clears very little. Fires as soon as the board holds still; while it is still moving, bubbles are popped as the Bubble Strategy allows. 0 fires at once.',
     [UiText.SettingNoSkillLastFever]: 'No skill last fever seconds',
     [UiText.SettingNoSkillLastFeverHelp]: 'Holds the skill back this near the end of a fever, so it can start the next one instead. 0 never holds.',
     [UiText.SettingSkillAutoTap]: 'Auto Tap Skill',

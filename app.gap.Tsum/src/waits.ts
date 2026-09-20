@@ -155,10 +155,15 @@ function boardSettleDiff(a: number[], b: number[]): number {
  * fired yet, so there is no cut-in to wait through. What comes off is the tail
  * of the wait, where the tsums have landed and the clock is still running.
  *
+ * `onMoving` is called once, the first time a reading shows the tsums moving,
+ * for a caller with something to do about a board that is not still yet -- the
+ * "Wait for Settle" look pops bubbles there. A board still from the first read
+ * never calls it.
+ *
  * False means the budget ran out with the board still moving, or the run
  * stopped -- the old wait, in full, so a caller need not look.
  */
-Tsum.prototype.settleBoard = function(maxMs, minMs) {
+Tsum.prototype.settleBoard = function(maxMs, minMs, onMoving) {
   if (!this.isRunning) {
     return false;
   }
@@ -169,6 +174,7 @@ Tsum.prototype.settleBoard = function(maxMs, minMs) {
   let diff = 1;
   let quiet = 0;
   let reads = 1;
+  let movingSeen = false;
   while (this.isRunning && Date.now() - startedAt < budget) {
     this.sleep(BoardSettle.spacingMs);
     const after = boardSettleSample(this);
@@ -176,6 +182,10 @@ Tsum.prototype.settleBoard = function(maxMs, minMs) {
     diff = boardSettleDiff(before, after);
     before = after;
     quiet = diff <= BoardSettle.maxDiff ? quiet + 1 : 0;
+    if (quiet === 0 && !movingSeen && onMoving !== undefined) {
+      movingSeen = true;
+      onMoving();
+    }
     if (quiet >= BoardSettle.quietReads && Date.now() - startedAt >= floor) {
       logDebug(Log.Screen.BoardSettled,
         {still: true, ms: Date.now() - startedAt, diff: +diff.toFixed(3), reads: reads});

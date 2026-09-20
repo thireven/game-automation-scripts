@@ -534,11 +534,20 @@ Tsum.prototype.useSkill = function(board, fast) {
   // so a handler's own pre-taps and baseline reads stay right before the tap.
   // Applies on the overload path too: the setting is explicit, and a tsum that
   // wants the fill instant leaves it 0.
+  //
+  // A board found still moving gets the last scan's bubbles popped into it,
+  // as many as the Bubble Strategy allows a chain, so the refill lands as one
+  // drop rather than the skill firing round bubbles it then has to wait on. A
+  // board already still keeps them: the skill is about to fire anyway. The
+  // `bubbleSettleScans` hold stands as it does in `link` -- those bubbles were
+  // read off a board a skill was still detonating on.
   let settleMs = 0;
   let settled: boolean | undefined;
   if (this.skillSettleMs > 0) {
     const from = Date.now();
-    settled = this.settleBoard(this.skillSettleMs, 0);
+    settled = this.settleBoard(this.skillSettleMs, 0, () => {
+      if (this.bubbleSettleScans <= 0) { this.popGameBubbles(); }
+    });
     settleMs = Date.now() - from;
     if (!this.isRunning) {
       return false;
