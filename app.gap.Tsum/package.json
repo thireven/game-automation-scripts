@@ -1,6 +1,6 @@
 {
   "name": "app.gap.tsum",
-  "version": "2.1",
+  "version": "2.1b2",
   "description": "Game Automation Platform automation script for Tsum Tsum.",
   "main": "src/index.ts",
   "scripts": {
