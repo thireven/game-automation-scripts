@@ -57,6 +57,7 @@ release note; they fold back in here when she ships.
 - Debug tab: a Detect MyTsum button reads which tsum the pre-round screen shows selected, without playing a round.
 - Rounds turn over faster: the score tally's count-up is tapped through instead of waited out.
 - Round stats: a medal count with a 0 in it is no longer left blank.
+- The script no longer sits on the game's pause menu flipping the Gyro switch when a chore starts during a round; the chore waits for the round instead.
 
 ### Added
 
@@ -206,6 +207,15 @@ release note; they fold back in here when she ships.
   height the `0` led `9` by 0.029 -- a thousandth under `StatsMinGlyphMargin`
   -- so 401, 380 and 400 all went to the CSV blank. `StatsDigits` recut with
   two of those tallies in the sample; the worst lead over the corpus is 0.036.
+- **The pause menu's Gyro toggle is no longer tapped once a second.**
+  `Page.GamePause.back` sat on the Gyro switch (318,1078), and `PageRoutes`
+  declared it an exit, so a `navigate` with any goal but the board -- the
+  mailbox or heart chore starting while a round was up, which only stood aside
+  for the pause menu -- pressed Pause and then toggled the gyro every pass until
+  the stall guard restarted the game (`gyro_stuck.mp4`). The pause menu now
+  declares no exit (its other buttons forfeit the round), `back` names To Home
+  Screen, and every chore stands aside for a round in progress through
+  `roundInProgress` (`src/pages.ts`), logged as `task.stoodAside`.
 
 ## [1.0]
 

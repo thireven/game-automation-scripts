@@ -20,8 +20,9 @@
 const ReceiveAllSettleMs = 3000;
 
 Tsum.prototype.taskReceiveAllItems = function() {
-  if (gPages.detect() === PageName.GamePause)
+  if (roundInProgress()) {
     return;
+  }
   logInfo(Log.Page.Friends);
   // The mailbox is a navigation destination rather than a tap-and-hope: the hop
   // that used to be `navigate(FriendPage)` + `tap(outReceive)` + `sleep(3500)`
@@ -199,8 +200,9 @@ Tsum.prototype.scrollMailList = function() {
 }
 
 Tsum.prototype.taskReceiveOneItem = function() {
-  if (gPages.detect() === PageName.GamePause)
+  if (roundInProgress()) {
     return;
+  }
   logInfo(Log.Page.Friends);
   gPages.navigate(PageName.FriendPage);
   this.sleep(1000)

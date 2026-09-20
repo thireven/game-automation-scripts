@@ -1441,6 +1441,11 @@ var Page = {
     back: {x: 540, y: 880},
     next: {x: 540, y: 880}
   },
+  // The pause menu: Sound sliders, the Gyro toggle, Try Again beside To Home
+  // Screen, Continue below. Continue (`next`) is the only button anything
+  // presses; the other two forfeit the round, so `PageRoutes` declares no exit
+  // and `nav.move.exit` never taps here. `back` is To Home Screen so the anchor
+  // names a real button -- it used to sit on the Gyro toggle at (318,1078).
   GamePause: {
     name: PageName.GamePause,
     colors: [
@@ -1449,7 +1454,7 @@ var Page = {
       {x: 623, y: 1221, r: 255, g: 192, b:   8, match: true, threshold: 80},  // stability 12, separation 150
       {x: 477, y: 1595, r: 246, g: 178, b:   7, match: true, threshold: 40}  // stability 4, separation 32
     ],
-    back: {x: 318, y: 1078},
+    back: {x: 761, y: 1248},
     next: {x: 539, y: 1657}
   },
   GamePlaying480x800: {
@@ -2999,12 +3004,14 @@ var PageRoutes: PageRouteMap = {
   GamePlaying: [
     { via: PageAnchor.Back, to: PageName.GamePause, source: RouteSource.Declared }
   ],
-  // dismiss.resumeGame: Continue, back to a round already running. The other
-  // button ends the round; nav.move.exit takes it only when something is
-  // deliberately heading off the board, which is when resumeGame declines.
+  // dismiss.resumeGame: Continue, back to a round already running. The only
+  // edge on purpose: the other buttons forfeit the round, so nothing navigates
+  // off one -- a chore that finds a round in progress stands aside instead
+  // (`roundInProgress`, pages.ts). A navigate with any other goal is left
+  // untouched here and reports `nav.noRoute`; the `back` exit this row used to
+  // declare sat on the Gyro toggle, and toggled it once a pass.
   GamePause: [
-    { via: PageAnchor.Next, to: PageName.GamePlaying, source: RouteSource.Handler },
-    { via: PageAnchor.Back, source: RouteSource.Declared }
+    { via: PageAnchor.Next, to: PageName.GamePlaying, source: RouteSource.Handler }
   ],
   // The three panels that stand between a finished round and its tally. Each is
   // closed by a `dismiss` handler, and each says so in its own `what`.

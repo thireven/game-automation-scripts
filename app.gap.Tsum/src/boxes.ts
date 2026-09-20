@@ -598,13 +598,9 @@ Tsum.prototype.buyBoxes = function(box, size, maxPurchases) {
 }
 
 // Returns false only when it stood aside for a round in progress, for the same
-// reason `taskAutoUnlockLevel` does: there is no route off a running board, so
-// navigating from one only stalls into an app restart. The detect broadcasts, so
-// on the pause menu `dismiss.resumeGame` has pressed Continue by the time the
-// answer is read.
+// reason `taskAutoUnlockLevel` does: `roundInProgress` (pages.ts) says why.
 Tsum.prototype.taskBuyBoxes = function() {
-  const page = gPages.detect();
-  if (page === PageName.GamePause || page === PageName.GamePlaying) {
+  if (roundInProgress()) {
     return false;
   }
   logInfo(Log.Box.Start, {

@@ -1397,7 +1397,7 @@ interface Tsum {
    * chore in the give-up line; the level-cap sweep's when it is left out.
    */
   awaitPage(page: PageName, timeoutMs: number, event?: LogEvent): boolean;
-  /** True once the sweep has run; false when it stood aside for a paused round. */
+  /** True once the sweep has run; false when it stood aside for a round in progress. */
   taskAutoUnlockLevel(): boolean;
 
   // --- boxes.ts --------------------------------------------------------
@@ -1427,7 +1427,7 @@ interface Tsum {
   buyOneBox(tenTimes: boolean, purchase: number, limit: number): BoxPurchaseOutcome;
   /** The purchase loop. The fields for `Log.Box.End`, or null when the run stopped under it. */
   buyBoxes(box: BoxType, size: BoxPurchaseSize, maxPurchases: number): LogFields | null;
-  /** True once the sweep has run; false when it stood aside for a paused round. */
+  /** True once the sweep has run; false when it stood aside for a round in progress. */
   taskBuyBoxes(): boolean;
 
   // --- fever.ts --------------------------------------------------------

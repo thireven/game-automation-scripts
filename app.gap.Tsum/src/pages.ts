@@ -313,6 +313,24 @@ function inRoundPages(): PageName[] {
 }
 
 /**
+ * Is a round on -- the board, or the game's pause menu over it?
+ *
+ * What every chore asks before it navigates. There is no route off a running
+ * round (`PageRoutes.GamePause`, data.ts: its only exit is Continue), so a chore
+ * that finds one hands back and the play task finishes it. The look broadcasts,
+ * so on the pause menu `dismiss.resumeGame` has pressed Continue by the time
+ * this answers.
+ */
+function roundInProgress(): boolean {
+  const page = gPages.detect();
+  if (pagesWithRole(PageRole.Board).indexOf(page) === -1) {
+    return false;
+  }
+  logInfo(Log.Task.StoodAside, { task: gTaskController!.runningTask, page: page });
+  return true;
+}
+
+/**
  * The panels between a finished round and its tally. `waitForScorePage` renews
  * its window on one of these rather than spending it: the tally is not late, it
  * is not due yet.

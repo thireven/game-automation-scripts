@@ -327,7 +327,7 @@ Tsum.prototype.sweepHearts = function(down, startTime) {
 }
 
 Tsum.prototype.taskSendHearts = function() {
-  if (gPages.detect() === PageName.GamePause) {
+  if (roundInProgress()) {
     return;
   }
   logInfo(Log.Page.Friends);

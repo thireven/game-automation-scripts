@@ -493,12 +493,9 @@ Tsum.prototype.raiseSelectedLevelCap = function(fields) {
 
 // Returns false only when it stood aside for a round in progress -- the board,
 // or the game's own pause menu over it. Either way the round is the play task's
-// to finish: there is no route off a running board, so navigating from one only
-// stalls into an app restart. The detect broadcasts, so on the pause menu
-// `dismiss.resumeGame` has pressed Continue by the time the answer is read.
+// to finish: `roundInProgress` (pages.ts) says why.
 Tsum.prototype.taskAutoUnlockLevel = function() {
-  const page = gPages.detect();
-  if (page === PageName.GamePause || page === PageName.GamePlaying) {
+  if (roundInProgress()) {
     return false;
   }
   logInfo(Log.Page.Tsums);

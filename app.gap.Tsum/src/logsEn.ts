@@ -13,6 +13,7 @@ var LogsEn = {
   [Log.Run.Stop]: '[TsumTsum] Stop',
   [Log.Run.StopSlow]: '[TsumTsum] Task loop still running; letting it finish',
   [Log.Task.LoopStopped]: 'TaskController Stop',
+  [Log.Task.StoodAside]: 'Round in progress; chore stood aside',
   [Log.Board.Recognized]: 'Recognized Tsums',
   [Log.Board.RecognitionStart]: 'Start Tsums recognition',
   [Log.Board.RecognitionTime]: 'Tsums recognised',

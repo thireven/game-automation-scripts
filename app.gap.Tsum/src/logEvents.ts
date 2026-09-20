@@ -33,6 +33,7 @@ namespace Log {
     LoopStopped           = 'task.loopStopped',
     LoopStopping          = 'task.loopStopping',
     NotAFunction          = 'task.notAFunction',
+    StoodAside            = 'task.stoodAside',
     Threw                 = 'task.threw',
     WatchdogRestart       = 'task.watchdogRestart',
     WatchdogRestartFailed = 'task.watchdogRestartFailed',

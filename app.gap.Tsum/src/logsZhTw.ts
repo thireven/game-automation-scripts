@@ -11,6 +11,7 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Run.Stop]: '[TsumTsum] 停止',
   [Log.Run.StopSlow]: '[TsumTsum] 任務迴圈尚未結束，等待中',
   [Log.Task.LoopStopped]: 'TaskController 停止',
+  [Log.Task.StoodAside]: '本局進行中，例行工作先讓開',
   [Log.Board.Recognized]: '成功辨識 Tsums',
   [Log.Board.RecognitionStart]: '開始辨識 Tsums',
   [Log.Board.RecognitionTime]: 'Tsums 辨識完成',

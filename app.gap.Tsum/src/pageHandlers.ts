@@ -387,7 +387,9 @@ gPages.subscribe({
  * Nothing here navigates *to* the pause menu -- `PageRoutes` gives it one edge
  * and it leads back to the board -- so the only goal it can be a step towards is
  * `GamePlaying` itself. Outside `navigate()` the goal is `''`, which is the case
- * this band exists for: the play loop asking what is on screen.
+ * this band exists for: the play loop asking what is on screen. Any other goal
+ * gets no tap at all: the menu declares no exit, so `navigate` reports
+ * `nav.noRoute` rather than pressing a button that forfeits the round.
  */
 function pauseMenuIsInTheWay(event: PageEvent): boolean {
   return event.goal === '' || event.goal === PageName.GamePlaying;
