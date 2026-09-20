@@ -3,3 +3,6 @@
 
 # Editor state.
 .vscode/
+
+# Device logs pulled over adb for a debugging session. One got committed once.
+target/
