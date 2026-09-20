@@ -557,8 +557,15 @@ Tsum.prototype.tiaraCapture = function() {
   const img = getScreenshotModify(
     this.playOffsetX, this.playOffsetY, this.playWidth, this.playHeight,
     cfg.captureSize, cfg.captureSize, 100);
-  smooth(img, 1, cfg.captureBlur);
-  convertColor(img, 40);
+  // The caller releases what it is handed; a throw before the return would
+  // hand it nothing, so the capture is released here on that path.
+  try {
+    smooth(img, 1, cfg.captureBlur);
+    convertColor(img, 40);
+  } catch (e) {
+    releaseImage(img);
+    throw e;
+  }
   return img;
 };
 

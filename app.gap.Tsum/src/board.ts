@@ -303,13 +303,6 @@ Tsum.prototype.scanBoardQuick = function() {
   // load game tsums
   const startTime = Date.now();
   const srcImg = this.playScreenshotSquare();
-  // Overload carry-over: the last batch's count-in may top the gauge off
-  // during this scan; one blind tap catches it. After the capture so the tap
-  // can't disturb the frame.
-  if (this.overloadPending) {
-    this.overloadPending = false;
-    this.tap(Button.gameSkill1, 10);
-  }
   const board = [];
   // Owned here rather than inside either pass, so the two Hough passes below
   // share one image and exactly one release covers it -- including when a
@@ -317,6 +310,14 @@ Tsum.prototype.scanBoardQuick = function() {
   // retries, so a leak here would recur on every scan.
   let grayImg: NativeImage | null = null;
   try {
+    // Overload carry-over: the last batch's count-in may top the gauge off
+    // during this scan; one blind tap catches it. After the capture so the tap
+    // can't disturb the frame, and inside the try so a tap that throws still
+    // releases it.
+    if (this.overloadPending) {
+      this.overloadPending = false;
+      this.tap(Button.gameSkill1, 10);
+    }
     // Both circle passes want the same grayscale, blurred copy of the board, so
     // it is built once here and handed to each. They used to build one apiece:
     // two clones, two colour conversions and two 9x9 Gaussians per scan for a

@@ -456,10 +456,22 @@ function findChainAtTouch(board: BoardPoint[], touchX: number, touchY: number): 
  */
 function buildBoardGray(img: NativeImage): NativeImage {
   const tmpImg = clone(img);
-  const grayImg = bgrToGray(tmpImg);
-  releaseImage(tmpImg);
-  smooth(grayImg, 2, 9);
-  return grayImg;
+  // Held here until the caller has it: a native throwing between the
+  // conversion and the return would otherwise leave the grey copy unreleased,
+  // and the caller's own finally never sees a handle it was not handed.
+  let grayImg: NativeImage | null = null;
+  try {
+    grayImg = bgrToGray(tmpImg);
+    smooth(grayImg, 2, 9);
+    const out = grayImg;
+    grayImg = null;
+    return out;
+  } finally {
+    releaseImage(tmpImg);
+    if (grayImg !== null) {
+      releaseImage(grayImg);
+    }
+  }
 }
 
 // Game bubbles are circles too, just a good deal bigger than a tsum, so they

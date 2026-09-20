@@ -63,6 +63,14 @@ release note; they fold back in here when she ships.
   `bubbleSettleScans` hold as `link` -- so a board found refilling gets its
   bubbles spent into the drop, and a board already still keeps them.
 
+### Fixed
+
+- **Three native-image throw windows closed.** The host keeps every capture
+  until `releaseImage`, so a native throwing between a capture and its guard
+  leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
+  now release on a throw before the return, and `scanBoardQuick`'s overload
+  tap moved inside its `try`. Nothing leaked on a normal path.
+
 ## [2.1b2]
 
 ### Summary
