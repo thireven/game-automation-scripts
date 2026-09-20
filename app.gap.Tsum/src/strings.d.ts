@@ -133,6 +133,8 @@ declare const enum UiText {
   SettingSkillLevelHelp = 'setting.skillLevel.help',
   SettingSkillWaitingTime = 'setting.skillWaitingTime',
   SettingSkillWaitingTimeHelp = 'setting.skillWaitingTime.help',
+  SettingSkillSettle = 'setting.skillSettle',
+  SettingSkillSettleHelp = 'setting.skillSettle.help',
   SettingNoSkillLastFever = 'setting.noSkillLastFever',
   SettingNoSkillLastFeverHelp = 'setting.noSkillLastFever.help',
   SettingSkillAutoTap = 'setting.skillAutoTap',
@@ -372,6 +374,8 @@ declare const enum UiText {
   FlowLink = 'flow.link',
   FlowFan = 'flow.fan',
   FlowNoSkill = 'flow.noSkill',
+  /** Wait up to `{ms}` milliseconds for the board to refill before the skill. */
+  FlowSettleSkill = 'flow.settleSkill',
   /** `{skill}` at level `{level}`. */
   FlowUseSkill = 'flow.useSkill',
   FlowLorcanaCard = 'flow.lorcanaCard',

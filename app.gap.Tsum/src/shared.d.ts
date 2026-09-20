@@ -295,6 +295,7 @@ declare const enum SettingKey {
   Bonus5to4 = 'bonus5to4',
   BonusCombo = 'bonusCombo',
   SkillWaitingTime = 'skillWaitingTime',
+  SkillSettleMs = 'skillSettleMs',
   SkillLevel = 'skillLevel',
   SkillType = 'skillType',
   SkillAutoTap = 'skillAutoTap',
@@ -403,6 +404,14 @@ interface Settings {
   [SettingKey.Bonus5to4]: boolean;
   [SettingKey.BonusCombo]: boolean;
   [SettingKey.SkillWaitingTime]: number;
+  /**
+   * The most milliseconds to wait, once the gauge reads full, for the tsums the
+   * last chains cleared to drop back in before the activation tap -- the tap
+   * goes out as soon as the board holds still, or at this deadline. In ms
+   * rather than seconds because a share code carries whole numbers only. 0
+   * fires at once.
+   */
+  [SettingKey.SkillSettleMs]: number;
   [SettingKey.SkillLevel]: number;
   [SettingKey.SkillType]: SkillType;
   [SettingKey.SkillAutoTap]: boolean;

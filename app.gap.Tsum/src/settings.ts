@@ -384,6 +384,18 @@ var tabs: TabSpec[] = [
                         min: 0
                     },
                     {
+                        // Milliseconds stepping by 200 rather than seconds by
+                        // 0.2, for the reason Link reach is a percent: a share
+                        // code carries whole numbers only.
+                        key: SettingKey.SkillSettleMs,
+                        title: UiText.SettingSkillSettle,
+                        help: UiText.SettingSkillSettleHelp,
+                        default: 0,
+                        step: 200,
+                        max: 3000,
+                        min: 0
+                    },
+                    {
                         // Not part of the skill above it: every Lorcana tsum
                         // transforms the same way whatever its own skill is, so
                         // this is its own switch rather than something a
@@ -1391,6 +1403,7 @@ var SHARE_SLOTS: (SettingKey | '')[] = [
     // -- they are about the run, not about the round. See SHARE_TABS.
     SettingKey.BubbleStrategy,
     SettingKey.HoldBubblesLastFeverSec,
+    SettingKey.SkillSettleMs,
 ];
 
 /**
@@ -3252,6 +3265,9 @@ function roundFlowChips(values: { [key: string]: SettingValue }): string[] {
             : UiText.FlowLink));
     if (on(SettingKey.UseFan)) {
         chips.push(i18nText(UiText.FlowFan));
+    }
+    if (values[SettingKey.SkillType] !== SkillType.NoSkill && num(SettingKey.SkillSettleMs) > 0) {
+        chips.push(i18nFormat(UiText.FlowSettleSkill, {ms: num(SettingKey.SkillSettleMs)}));
     }
     chips.push(values[SettingKey.SkillType] === SkillType.NoSkill
         ? i18nText(UiText.FlowNoSkill)

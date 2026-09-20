@@ -443,11 +443,11 @@ So `LiveWhen.NextRound` is what a setting gets unless it argues otherwise:
 the pre-round screen. `LiveWhen.Now` is earned by being **read fresh, during
 play, by the pass that wants it** — so a board already dealt is not being
 reinterpreted, it is simply played differently from the next scan on. Of the
-twenty-four rows a preset carries:
+twenty-five rows a preset carries:
 
 | | Rows | Why |
 |:--|:--|:--|
-| `Now` (12) | `maxChain`, `maxChainsPerScan`, `linkReachPercent`, `prioritizeMyTsum`, `useFan`, `bubbleStrategy`, `holdBubblesLastFeverSec`, `skillWaitingTime`, `skillAutoTap`, `noSkillLastFeverSec`, `skillLevel`, `roundDelayMinutes` | each has a read site inside the play loop, per scan, per pop or per activation. `LiveSettings` names them one by one. `roundDelayMinutes` is the odd one — it governs the gap, so there is no round to be halfway through, and `quickBarSetRoundDelay` deliberately re-bases a rest already running |
+| `Now` (13) | `maxChain`, `maxChainsPerScan`, `linkReachPercent`, `prioritizeMyTsum`, `useFan`, `bubbleStrategy`, `holdBubblesLastFeverSec`, `skillWaitingTime`, `skillSettleMs`, `skillAutoTap`, `noSkillLastFeverSec`, `skillLevel`, `roundDelayMinutes` | each has a read site inside the play loop, per scan, per pop or per activation. `LiveSettings` names them one by one. `roundDelayMinutes` is the odd one — it governs the gap, so there is no round to be halfway through, and `quickBarSetRoundDelay` deliberately re-bases a rest already running |
 | `NextRound` (10) | `skillType`, `lorcanaCard`, `bonus5to4`, the five other bonus items, `trackRoundStats` | the round committed to all of them before it began. The items are read only by `openRound`'s item screen, which is the next round's; `skillType` and `lorcanaCard` are the tsum on the board; `bonus5to4` is an item *and* `uniqueTsumCount`; and a stats row is opened at the whistle, so flipping the flag mid-round writes a partial row or drops a begun one |
 | `Restart` (2) | `autoPlayGame`, `clickAssist` | they decide which tasks a run registers |
 

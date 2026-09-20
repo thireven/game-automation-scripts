@@ -141,6 +141,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   ts.holdBubblesLastFeverSec = typeof settings.holdBubblesLastFeverSec === 'number'
     ? settings.holdBubblesLastFeverSec : 0;
   ts.skillInterval = settings.skillWaitingTime * 1000;
+  // Same default, same reason: a stored form from before the row existed.
+  ts.skillSettleMs = typeof settings.skillSettleMs === 'number' && settings.skillSettleMs > 0
+    ? settings.skillSettleMs : 0;
   ts.skillLevel = settings.skillLevel;
   ts.skillType = settings.skillType;
   ts.trackRoundStats = settings.trackRoundStats;

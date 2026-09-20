@@ -110,6 +110,7 @@ function quickBarState(): string {
     state[SettingKey.MaxChainsPerScan] = ts.maxChainsPerScan;
     state[SettingKey.MaxChain] = Config.maxChain;
     state[SettingKey.SkillWaitingTime] = Math.round(ts.skillInterval / 1000);
+    state[SettingKey.SkillSettleMs] = ts.skillSettleMs;
     state[SettingKey.SkillAutoTap] = ts.skillAutoTap;
     state[SettingKey.NoSkillLastFeverSec] = ts.noSkillLastFeverSec;
     state[SettingKey.PrioritizeMyTsum] = ts.prioritizeMyTsum;
@@ -299,6 +300,10 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
       applied = quickBarClamp(value, 0, 15);
       tsum.skillInterval = (applied as number) * 1000;
       break;
+    case SettingKey.SkillSettleMs:
+      applied = quickBarClamp(value, 0, 3000);
+      tsum.skillSettleMs = applied as number;
+      break;
     case SettingKey.NoSkillLastFeverSec:
       applied = quickBarClamp(value, 0, 10);
       tsum.noSkillLastFeverSec = applied as number;
@@ -455,6 +460,7 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   //   bubbleStrategy               the bubble sweep, per scan
   //   holdBubblesLastFeverSec      bubblesHeldForFever, per pop
   //   skillWaitingTime             ts.skillInterval, per activation
+  //   skillSettleMs                useSkill, per activation
   //   skillAutoTap                 maybeAutoTapSkill, inside a link batch
   //   noSkillLastFeverSec          the skill decision, per activation
   //   skillLevel                   per activation. The level of the tsum you
@@ -470,6 +476,7 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   [SettingKey.BubbleStrategy]: LiveWhen.Now,
   [SettingKey.HoldBubblesLastFeverSec]: LiveWhen.Now,
   [SettingKey.SkillWaitingTime]: LiveWhen.Now,
+  [SettingKey.SkillSettleMs]: LiveWhen.Now,
   [SettingKey.SkillAutoTap]: LiveWhen.Now,
   [SettingKey.NoSkillLastFeverSec]: LiveWhen.Now,
   [SettingKey.SkillLevel]: LiveWhen.Now,

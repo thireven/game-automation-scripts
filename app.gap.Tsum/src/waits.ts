@@ -150,9 +150,10 @@ function boardSettleDiff(a: number[], b: number[]): number {
  * `maxMs` is that budget now: the call returns once the board has held still
  * for `quietReads` readings, and not before `minMs`, because a skill's cut-in
  * can hold the board motionless before the clear and that is not the stillness
- * wanted. A caller whose clear is already under way may pass a lower `minMs`.
- * What comes off is the tail of the wait, where the tsums have landed and the
- * clock is still running.
+ * wanted. A caller whose clear is already under way may pass a lower `minMs`,
+ * and the "Wait for Settle" look *before* an activation passes 0: nothing has
+ * fired yet, so there is no cut-in to wait through. What comes off is the tail
+ * of the wait, where the tsums have landed and the clock is still running.
  *
  * False means the budget ran out with the board still moving, or the run
  * stopped -- the old wait, in full, so a caller need not look.

@@ -45,6 +45,20 @@ release note; they fold back in here when she ships.
 
 - The script no longer sits on the game's pause menu flipping the Gyro switch when a chore starts during a round; the chore waits for the round instead.
 - Max round duration: once it stops playing a long round it now waits for the game over screen however long that takes, instead of picking the round back up after a few minutes.
+- New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, so it goes off on a full board rather than a half-empty one.
+
+### Added
+
+- **`SettingKey.SkillSettleMs`.** `useSkill` runs `settleBoard` with the
+  setting as the budget and no floor between the gauge read and the activation
+  tap, ahead of the fever hold-off and `beforeActivate` -- the tap goes out the
+  moment the tsums have landed, or at the deadline. Milliseconds rather than
+  fractional seconds because a share code carries whole numbers. Live (`Now`,
+  read per activation), in share codes, presets and the stats CSV, and a Run
+  order chip when set. With it on, `maybeAutoTapSkill` stops blind-tapping
+  `bareTapActivates` skills and reads the gauge instead, since a blind tap
+  cannot wait for the board. `skill.use` carries `settleMs` (what the wait
+  took) and `settled`.
 
 ### Fixed
 

@@ -99,6 +99,8 @@ class Tsum {
   comboItem: boolean;
   sentToZero: boolean;
   skillInterval: number;
+  /** The "Wait for Settle" setting: the most ms the board is watched before the activation tap; 0 fires at once. */
+  skillSettleMs: number;
   skillLevel: number;
   /** `SkillType.Unset` until start() reads the setting. */
   skillType: SkillType;
@@ -328,6 +330,7 @@ class Tsum {
     this.comboItem = false;
     this.sentToZero = false;
     this.skillInterval = 3000;
+    this.skillSettleMs = 0;
     this.skillLevel = 3;
     this.skillType = SkillType.Unset;
     // Bubble positions from the last board scan, tapped after a long chain.

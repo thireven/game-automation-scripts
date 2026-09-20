@@ -22,7 +22,8 @@ interface SkillHandler {
   // A bare tap on the skill button is a complete activation: no aiming, no
   // follow-up, and a tap while the gauge is still filling is a no-op the game
   // ignores. Lets the play loop fire these blind instead of paying for a gauge
-  // check (see Tsum.link and maybeAutoTapSkill).
+  // check (see Tsum.link and maybeAutoTapSkill) -- unless "Wait for Settle" is
+  // set, which needs to know the gauge is full before it watches the board.
   bareTapActivates?: boolean;
   // The skill has two halves on two buttons (Pair Tsum): gameSkill2 counts
   // towards readiness and gets its own activation tap.
@@ -373,9 +374,12 @@ Tsum.prototype.maybeAutoTapSkill = function(board) {
   const interval = overload ? SkillOverloadProbeIntervalMs : this.skillAutoTapInterval;
   if (now - this._lastSkillAutoTap < interval) { return false; }
   this._lastSkillAutoTap = now;
-  if (skillBareTapActivates(this.skillType)) {
-    // A bare tap is a complete activation for burst skills, and it's a no-op
-    // while the gauge isn't full -- skip the screenshots entirely.
+  // A bare tap is a complete activation for burst skills, and it's a no-op
+  // while the gauge isn't full -- skip the screenshots entirely. Not with a
+  // "Wait for Settle" set: a blind tap cannot wait for the board, since nothing
+  // knows whether it fired, so those skills take the gauge read and `useSkill`
+  // below instead, where the settle wait sits before the tap.
+  if (skillBareTapActivates(this.skillType) && this.skillSettleMs <= 0) {
     this.tap(Button.gameSkill1, 10);
     return false;
   }
@@ -520,11 +524,35 @@ Tsum.prototype.useSkill = function(board, fast) {
     }
   }
 
+  // "Wait for Settle": the gauge fills off a chain, and the loop chains fast
+  // enough that the board is often half empty and still refilling when it
+  // does. Fired then, the skill clears very little. The setting is the most
+  // this waits: `settleBoard` hands back as soon as the tsums have landed, so a
+  // board already refilled costs three reads. No floor -- the default 500ms one
+  // guards a skill's own cut-in, and nothing has fired yet. Ahead of the fever
+  // hold-off so that still reads a fresh frame, and ahead of `beforeActivate`
+  // so a handler's own pre-taps and baseline reads stay right before the tap.
+  // Applies on the overload path too: the setting is explicit, and a tsum that
+  // wants the fill instant leaves it 0.
+  let settleMs = 0;
+  let settled: boolean | undefined;
+  if (this.skillSettleMs > 0) {
+    const from = Date.now();
+    settled = this.settleBoard(this.skillSettleMs, 0);
+    settleMs = Date.now() - from;
+    if (!this.isRunning) {
+      return false;
+    }
+  }
+
   if (this.noSkillLastFeverSec > 0) {
     skillWaitOutEndingFever(this);
   }
 
-  logInfo(Log.Skill.Use, { skill: this.skillType, skillLevel: this.skillLevel });
+  // `settleMs` is what the wait above actually took, against the setting's
+  // ceiling; `settled` is whether the board held still inside it.
+  logInfo(Log.Skill.Use, { skill: this.skillType, skillLevel: this.skillLevel,
+    settleMs: settleMs, settled: settled });
   if (handler && handler.beforeActivate) {
     handler.beforeActivate(this);
   }
