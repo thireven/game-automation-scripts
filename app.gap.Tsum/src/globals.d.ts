@@ -1216,8 +1216,8 @@ interface Tsum {
 
   // --- board.ts --------------------------------------------------------
   linkTsums(path: Point[]): void;
-  /** Scans still to go before a mid-chain pop is worth taking again. */
-  bubbleSettleScans: number;
+  /** Epoch ms the hold after a skill activation lifts; 0 means none stands. */
+  bubbleHoldUntil: number;
   /** Consecutive scans that saw a bubble with too few tsums in its blast. */
   bubbleUnripeScans: number;
   /** The chain length that earns a bubble pop, bounded by the chain cap in
@@ -1230,6 +1230,10 @@ interface Tsum {
    * end? The "Hold bubbles last fever seconds" setting, asked per pop.
    */
   bubblesHeldForFever(): boolean;
+  /** Start the hold on the Bubble Strategy's pops from an activation at `activatedAt`. */
+  holdBubblesAfterSkill(activatedAt: number): void;
+  /** Is the hold after a skill activation still standing? Asked per pop. */
+  bubblesHeldAfterSkill(): boolean;
   /** How many bubbles the Bubble Strategy setting allows one pop to spend. */
   bubbleTapBudget(): number;
   /**

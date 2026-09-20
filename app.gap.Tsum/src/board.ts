@@ -85,6 +85,28 @@ Tsum.prototype.bubblesHeldForFever = function() {
   return true;
 };
 
+// The hold after a skill activation: no Bubble Strategy pop for
+// `GameBubbleConfig.holdAfterSkillMs` from the tap, because the burst has
+// just emptied the board round every bubble on it. Stamped by every
+// activation, however the skill was fired -- `useSkill`, or a blind tap the
+// gauge then showed had taken -- and honoured wherever the strategy would pop:
+// `bubbleTapBudget` for the aimed pops, `link` for a skill's per-chain pops,
+// the play loop for its blind sweep. A skill's own pops (an explicit limit,
+// or `clearAllBubbles`) are not the strategy's and read none of it.
+Tsum.prototype.holdBubblesAfterSkill = function(activatedAt) {
+  this.bubbleHoldUntil = activatedAt + GameBubbleConfig.holdAfterSkillMs;
+};
+
+Tsum.prototype.bubblesHeldAfterSkill = function() {
+  const remainingMs = this.bubbleHoldUntil - Date.now();
+  if (remainingMs <= 0) { return false; }
+  logDebug(Log.Bubble.HeldAfterSkill, {
+    remainingMs: remainingMs,
+    bubbles: this.gameBubbles ? this.gameBubbles.length : 0
+  });
+  return true;
+};
+
 // How many of the bubbles the last scan found this strategy will spend at once.
 // The ceilings, and why there are any, are in GameBubbleConfig.
 Tsum.prototype.bubbleTapBudget = function() {
@@ -92,6 +114,9 @@ Tsum.prototype.bubbleTapBudget = function() {
   // on the way past is a link out of that chain, and its chain is worth far more
   // than the bigger clear the pop buys. See `SkillHandler.claimsBubbles`.
   if (skillClaimsBubbles(this)) { return 0; }
+  // The hold after a skill activation, for every strategy: the bubbles are in
+  // the hole the burst left, and the refill closes round them inside it.
+  if (this.bubblesHeldAfterSkill()) { return 0; }
   // The fever hold, for every strategy: the bubbles stay on the board for the
   // chains after the fever. `popGameBubbles` keeps the list on a 0 budget, and
   // the next scan re-finds them anyway.
@@ -174,20 +199,15 @@ Tsum.prototype.popGameBubbles = function(limit) {
 
 Tsum.prototype.link = function(paths, board) {
   let isBubble = false;
-  // Bubbles seen on a board still detonating from a skill are not spent on this
-  // batch -- see `settleScansAfterSkill`. Read and spent once here rather than
-  // per path, so a batch is held or not held as a whole, and so the count moves
-  // by one scan rather than by one chain.
-  const holdBubbles = this.bubbleSettleScans > 0;
-  if (holdBubbles) { this.bubbleSettleScans--; }
   // Overloading (burst skills): erased MyTsums keep counting into the gauge
   // for a moment after the drag, and firing the skill right as the gauge tops
   // off lets the rest of that count spill into the next gauge instead of
   // capping at 100%. Tapping a not-yet-full skill button is a no-op the game
   // ignores, so the cheap way to catch the fill instant is a single
-  // fire-and-forget tap after each drag: no screenshots, no waits (a gauge
-  // check costs ~10x a tap), no change to the link cadence. The game itself
-  // fires the skill on whichever tap lands first after the gauge fills.
+  // fire-and-forget tap after each drag: no waits, no change to the link
+  // cadence, and a capture only when there are bubbles on the board to hold
+  // (`maybeAutoTapSkill`). The game itself fires the skill on whichever tap
+  // lands first after the gauge fills.
   // Choreographed skills can't ride blind taps (activating without the
   // follow-up aiming wastes the skill) and go through maybeAutoTapSkill,
   // which verifies readiness before handing over to useSkill.
@@ -205,17 +225,17 @@ Tsum.prototype.link = function(paths, board) {
     // go is the Bubble Strategy setting's call -- one, under the default. Under
     // All Bubbles ASAP there is nothing left here to pop: the loop spent them
     // the moment the scan found them.
-    if (!holdBubbles && path.length >= this.bubblePopChainLength()) {
+    if (path.length >= this.bubblePopChainLength()) {
       this.popGameBubbles();
     }
     // A skill that claimed the bubbles gets its own say. The budget above is 0
     // while a claim stands, and hoarding every bubble for the next activation
     // leaves the board clearing no faster than tsum chains clear it -- so Aurora
-    // spends one every couple of long chains. See `popBubblesAfterChain`.
-    if (!holdBubbles) {
-      const pops = skillPopBubblesAfterChain(this, path.length);
-      if (pops > 0) { this.popGameBubbles(pops); }
-    }
+    // spends one every couple of long chains. See `popBubblesAfterChain`. Held
+    // after an activation as the strategy's pops are, since an explicit count
+    // is an override to `popGameBubbles`.
+    const pops = skillPopBubblesAfterChain(this, path.length);
+    if (pops > 0 && !this.bubblesHeldAfterSkill()) { this.popGameBubbles(pops); }
     // Linking a full batch of chains can take several seconds; check between
     // chains so a gauge that fills mid-batch fires right away.
     //

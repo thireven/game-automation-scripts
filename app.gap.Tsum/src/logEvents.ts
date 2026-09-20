@@ -117,14 +117,16 @@ namespace Log {
 
   /** Bubbles on the board. */
   export const enum Bubble {
-    Cleared   = 'bubble.cleared',
-    Found     = 'bubble.found',
-    Generated = 'bubble.generated',
+    Cleared        = 'bubble.cleared',
+    Found          = 'bubble.found',
+    Generated      = 'bubble.generated',
     /** A pop refused because a fever is about to end -- the fever hold. */
-    Held      = 'bubble.held',
-    Popped    = 'bubble.popped',
+    Held           = 'bubble.held',
+    /** A pop refused because a skill fired inside `holdAfterSkillMs` -- the burst hold. */
+    HeldAfterSkill = 'bubble.heldAfterSkill',
+    Popped         = 'bubble.popped',
     /** A pop refused because every bubble sits in a hole -- too few tsums round it. */
-    Unripe    = 'bubble.unripe',
+    Unripe         = 'bubble.unripe',
   }
 
   /** A round, start to finish. */
@@ -164,6 +166,8 @@ namespace Log {
 
   /** The skill core, then one group per skill that has anything to say. */
   export const enum Skill {
+    /** A blind tap on a burst skill read as fired: the bubbles are held. */
+    BlindTapFired         = 'skill.blindTapFired',
     CabbageMickeyFound    = 'skill.cabbageMickey.found',
     CabbageMickeyNotFound = 'skill.cabbageMickey.notFound',
     CinderellaStroke      = 'skill.cinderella.stroke',

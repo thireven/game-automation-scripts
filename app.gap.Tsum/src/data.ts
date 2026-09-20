@@ -82,21 +82,24 @@ var GameBubbleConfig = {
   param1: 20,
   param2: 26,
 
-  // Board scans after a skill fires whose bubbles are left alone.
+  // How long after a skill activation the Bubble Strategy pops nothing, ms.
   //
-  // A skill's burst is what *makes* most bubbles, and several choreographies --
-  // Tiara Minnie+ is the clearest -- return the moment their last aiming tap
-  // goes out, before the burst has played out. The loop's very next scan is
-  // therefore taken on a board still detonating: it finds the fresh bubbles,
-  // and the longest chain it can offer is a scrap of one off a half-empty
-  // board. Spending a bubble there is the waste this whole setting exists to
-  // avoid, and from the outside it looks like the bubble being popped the
-  // instant it appears.
+  // A skill's burst is what *makes* most bubbles, and it empties the board
+  // round every one already there. Several choreographies -- Tiara Minnie+ is
+  // the clearest -- return the moment their last aiming tap goes out, before
+  // the burst has played out, and a blind-fired burst is not waited on at all.
+  // A bubble popped then sits in the hole the burst left and clears next to
+  // nothing; from the outside it looks like the bubble being popped the
+  // instant it appears. So every activation stamps this hold from its tap
+  // (`holdBubblesAfterSkill`), whichever way the skill was fired.
   //
-  // One scan, not a duration: it costs nothing on a fast device, scales with a
-  // slow one, and nothing is lost by waiting -- every scan re-finds the
-  // bubbles, so this only ever moves which chain spends them.
-  settleScansAfterSkill: 1,
+  // A duration, not a scan count: a scan on a fast device is a few hundred ms,
+  // well inside a burst, and the one-scan hold this replaces was over before
+  // the refill began. Long enough for the burst and the refill after it;
+  // `ripeGameBubbles` then judges each bubble by the tsums round it. Nothing
+  // is lost by waiting -- every scan re-finds the bubbles, so this only ever
+  // moves which chain spends them.
+  holdAfterSkillMs: 2000,
 
   // What a pop is worth: the tsums within `blastReach` tsum widths past the
   // bubble's edge, counted off the same scan (`GameBubble.near`). The

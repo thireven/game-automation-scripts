@@ -381,6 +381,19 @@ Tsum.prototype.maybeAutoTapSkill = function(board) {
   // below instead, where the settle wait sits before the tap.
   if (skillBareTapActivates(this.skillType) && this.skillSettleMs <= 0) {
     this.tap(Button.gameSkill1, 10);
+    // Did that one take? Nothing else here knows, and the Bubble Strategy's
+    // next pop would land in the hole the burst is about to leave. One ~2.4ms
+    // crop of the button after the tap: still Active means it was full, so
+    // the tap fired it (the animation reads Active too). Asked only with
+    // bubbles on the board and no hold standing, so a batch with none to hold
+    // costs what it did. The scan's bubbles go with the hold: their positions
+    // and blast counts were read off the board being cleared.
+    if (this.gameBubbles.length > 0 && Date.now() >= this.bubbleHoldUntil
+        && this.checkSkillReadinessFast() === SkillReadiness.Active) {
+      logDebug(Log.Skill.BlindTapFired, { bubbles: this.gameBubbles.length });
+      this.holdBubblesAfterSkill(Date.now());
+      this.gameBubbles = [];
+    }
     return false;
   }
   // One readiness read before the full useSkill probe (findPage plus a double
@@ -539,15 +552,13 @@ Tsum.prototype.useSkill = function(board, fast) {
   // as many as the Bubble Strategy allows a chain, so the refill lands as one
   // drop rather than the skill firing round bubbles it then has to wait on. A
   // board already still keeps them: the skill is about to fire anyway. The
-  // `bubbleSettleScans` hold stands as it does in `link` -- those bubbles were
-  // read off a board a skill was still detonating on.
+  // hold after the last activation stands, inside `popGameBubbles` -- those
+  // bubbles were read off a board a skill was still detonating on.
   let settleMs = 0;
   let settled: boolean | undefined;
   if (this.skillSettleMs > 0) {
     const from = Date.now();
-    settled = this.settleBoard(this.skillSettleMs, 0, () => {
-      if (this.bubbleSettleScans <= 0) { this.popGameBubbles(); }
-    });
+    settled = this.settleBoard(this.skillSettleMs, 0, () => { this.popGameBubbles(); });
     settleMs = Date.now() - from;
     if (!this.isRunning) {
       return false;
@@ -573,6 +584,9 @@ Tsum.prototype.useSkill = function(board, fast) {
   // everything the handler spends before its first timed tap, including this
   // tap's own hold and the settle below, comes out of its own budget.
   const activatedAt = Date.now();
+  // No Bubble Strategy pop for a while from here: the burst is about to empty
+  // the board round every bubble on it. See `holdBubblesAfterSkill`.
+  this.holdBubblesAfterSkill(activatedAt);
   // The Lorcana card check stands down until this animation is over: for a
   // Lorcana tsum the animation *is* a card, drawn across the whole screen.
   // Here rather than in the play loop because this is the one place every

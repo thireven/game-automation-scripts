@@ -753,11 +753,6 @@ Tsum.prototype.taskPlayGameQuick = function() {
           && !skillSweepsBubbles(this.skillType)) {
         this.popLorcanaStoneBubble();
       }
-      // The burst is what made those bubbles, and several choreographies return
-      // before it has finished playing. Let the board settle before any of them
-      // is spent, so the chain that spends one is a real chain rather than
-      // whatever could be scraped off a board mid-detonation.
-      this.bubbleSettleScans = GameBubbleConfig.settleScansAfterSkill;
     }
     // The transformation: while the skill button is still a medallion the
     // card's spot is tapped blind, and the medallion going is the
@@ -778,8 +773,11 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // skill's next activation is counting on -- Gaston's cancel bubble, or
     // Aurora's chain. So does the fever hold, for the same reason: it has
     // just refused the aimed pops so the bubbles are there after the fever.
+    // And the hold after an activation: the events stand, so the sweep runs
+    // on the first turn after it lifts, onto a board that has refilled.
     if (this.bubbleStrategy === BubbleStrategy.AllAsap && bubbleEvents >= 2
-        && !skillClaimsBubbles(this) && !this.bubblesHeldForFever()) {
+        && !skillClaimsBubbles(this) && !this.bubblesHeldForFever()
+        && !this.bubblesHeldAfterSkill()) {
       logDebug(Log.Bubble.Cleared);
       bubbleEvents = 0;
       // A popped bubble clears the area around it, which can take the chain

@@ -44,6 +44,7 @@ release note; they fold back in here when she ships.
 ### Summary
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
+- Bubbles are no longer popped in the two seconds after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
 
 ### Added
 
@@ -60,8 +61,20 @@ release note; they fold back in here when she ships.
 - **`settleBoard` takes an `onMoving` callback**, run once at the first reading
   that shows the tsums moving. The settle look above uses it to
   `popGameBubbles()` -- the Bubble Strategy's own budget, under the same
-  `bubbleSettleScans` hold as `link` -- so a board found refilling gets its
+  hold after an activation as `link` -- so a board found refilling gets its
   bubbles spent into the drop, and a board already still keeps them.
+
+### Changed
+
+- **The hold after a skill activation is two seconds from the tap, not one
+  scan.** `GameBubbleConfig.holdAfterSkillMs` replaces `settleScansAfterSkill`.
+  `useSkill` stamps it at the activation, so an auto-tapped skill is covered
+  too (only the play loop's own path stamped the old one), and
+  `bubbleTapBudget`, `link`'s per-chain pops and the All Bubbles ASAP sweep
+  all honour it (`bubble.heldAfterSkill`). A blind-tapped burst reads the
+  button once after the tap while bubbles are on the board: still Active means
+  it fired, so the hold is stamped and the scan's bubbles dropped
+  (`skill.blindTapFired`). A skill's own pops and sweeps are untouched.
 
 ### Fixed
 
