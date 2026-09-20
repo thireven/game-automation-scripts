@@ -145,7 +145,7 @@ namespace Log {
     RoundDelaySkipped     = 'play.roundDelaySkipped',
     RoundDelayStarted     = 'play.roundDelayStarted',
     RoundDelayWaiting     = 'play.roundDelayWaiting',
-    RoundCoastGaveUp      = 'play.roundCoastGaveUp',
+    RoundCoasting         = 'play.roundCoasting',
     RoundTimeUp           = 'play.roundTimeUp',
   }
 

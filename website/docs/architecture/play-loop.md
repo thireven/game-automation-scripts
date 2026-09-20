@@ -55,8 +55,10 @@ https://github.com/game-automation-platform/game-automation-scripts/blob/main/ap
 1. **Cap check.** If *Max round duration* is set and has elapsed, either stop
    the script or *coast*: stop playing and keep only the liveness check, so the
    round times out on its own and the tally, the stats and the next round
-   follow as usual. The game's Pause is never pressed here — it would stop the
-   very clock the round has to run down.
+   follow as usual. A coast has no deadline — it watches until the game over
+   screen, however long that takes, logging `play.roundCoasting` once a minute.
+   The game's Pause is never pressed here — it would stop the very clock the
+   round has to run down.
 2. **Scan.** `scanBoardQuick()` takes one capture and reads the tsums (circle
    detection, colour clustering) and the bubbles off it.
 3. **Stall check.** A chain the game refused leaves the board exactly as it

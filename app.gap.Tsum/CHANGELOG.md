@@ -44,8 +44,16 @@ release note; they fold back in here when she ships.
 ### Summary
 
 - The script no longer sits on the game's pause menu flipping the Gyro switch when a chore starts during a round; the chore waits for the round instead.
+- Max round duration: once it stops playing a long round it now waits for the game over screen however long that takes, instead of picking the round back up after a few minutes.
 
 ### Fixed
+
+- **A capped round is left alone until it ends.** Coasting gave up after three
+  minutes and handed the task back, and the next pass found the board still up,
+  restamped the clock and played on -- so a round the cap had stopped was played
+  again in stretches for hours. The give-up is gone: a coast ends only on game
+  over or a stop, and `play.roundCoasting` (`ranMs`, `coastedMs`) goes out once
+  a minute so a long one is visibly alive. `play.roundCoastGaveUp` is retired.
 
 - **The pause menu's Gyro toggle is no longer tapped once a second.**
   `Page.GamePause.back` sat on the Gyro switch (318,1078), and `PageRoutes`

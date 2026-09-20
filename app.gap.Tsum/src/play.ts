@@ -420,6 +420,12 @@ const DeadScanFanSettleMs = 1200;
 // default because it costs the least -- leaving the board alone ends the round
 // within a minute or so, and the run then carries on as normal.
 //
+// Coasting has no time limit of its own. It used to give up after three minutes
+// and hand the task back, and that undid the cap: the next pass found the board
+// still up, restamped the clock and played on, so a round the person had asked
+// to be left alone was played again in stretches until it ended. The only thing
+// that ends a coast now is the game over screen, or the script being stopped.
+//
 // Neither presses the game's Pause button, and that is the point rather than an
 // omission: pausing the game stops its round timer, and a round that can no
 // longer time out is exactly what this is here to avoid. The game's Pause
@@ -428,15 +434,8 @@ const DeadScanFanSettleMs = 1200;
 
 /** Between looks while a round is coasting to its end. */
 const RoundCoastPollMs = 500;
-/**
- * How long coasting will wait for the round to end on its own.
- *
- * Generous: a 60s round stretched by +Time and a long fever is nowhere near it.
- * It bounds the one case coasting cannot answer -- a board that goes on
- * fingerprinting as the round with the game's own clock stopped -- because the
- * task never handing back is exactly the wedge the cap exists to escape.
- */
-const RoundCoastMaxMs = 3 * 60 * 1000;
+/** Between `play.roundCoasting` lines, so a long coast is visibly still alive. */
+const RoundCoastHeartbeatMs = 60 * 1000;
 
 Tsum.prototype.roundDelayRemainingMs = function() {
   const left = this.nextRoundAt - Date.now();
@@ -567,10 +566,11 @@ Tsum.prototype.taskPlayGameQuick = function() {
   let zeroPath = 0;
   // The liveness check's debounce, carried across the turns that share it.
   const hud: HudWatch = { misses: 0, firstMissAt: 0 };
-  // While the Max Round Duration cap is coasting this round out, when it gives
-  // up on that too; 0 while the round is still being played. See the block at
-  // the top of the loop.
-  let coastUntil = 0;
+  // When the Max Round Duration cap stopped playing this round, epoch ms; 0
+  // while it is still being played. The loop then only watches for the end,
+  // with `nextCoastBeatAt` pacing the heartbeat line. See the cap block above.
+  let coastStartedAt = 0;
+  let nextCoastBeatAt = 0;
   // The chain the last turn certainly drew, and how many scans running have
   // found it still standing afterwards -- the stalled-board check above. Null
   // means the last turn drew nothing, or churned the board by some other means,
@@ -581,7 +581,7 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // The Max Round Duration cap. Read off `ts` each turn, which is what lets a
     // Quick Bar change land at once, and measured from `roundStartedAt` -- the
     // board coming up, not the walk in.
-    if (coastUntil === 0 && this.maxRoundMs > 0
+    if (coastStartedAt === 0 && this.maxRoundMs > 0
         && Date.now() - this.roundStartedAt >= this.maxRoundMs) {
       const stopping = this.maxRoundAction === MaxRoundAction.Stop;
       logWarn(Log.Play.RoundTimeUp, { ranMs: Date.now() - this.roundStartedAt,
@@ -598,20 +598,19 @@ Tsum.prototype.taskPlayGameQuick = function() {
       }
       // Coast. Nothing below runs again; the round then finishes like any
       // other, so the tally, the stats and the next round all follow as usual.
-      coastUntil = Date.now() + RoundCoastMaxMs;
+      coastStartedAt = Date.now();
+      nextCoastBeatAt = coastStartedAt + RoundCoastHeartbeatMs;
     }
-    if (coastUntil !== 0) {
-      if (Date.now() >= coastUntil) {
-        // Left alone for longer than any round can last and still going, so the
-        // game's own clock is not running either and there is nothing to wait
-        // for. Hand the task back rather than watch for ever -- the chores get
-        // their turns, and the next pass walks to the board again.
-        logWarn(Log.Play.RoundCoastGaveUp, { ranMs: Date.now() - this.roundStartedAt,
-          coastedMs: RoundCoastMaxMs });
-        break;
-      }
+    if (coastStartedAt !== 0) {
       // Watching, not playing: no scan, no chain, no skill. The liveness check
-      // is the whole turn, and the rest is what keeps it cheap.
+      // is the whole turn, and the rest is what keeps it cheap. No deadline --
+      // see the cap block above -- so the heartbeat is what says this is a
+      // coast still going rather than a script that has hung.
+      if (Date.now() >= nextCoastBeatAt) {
+        logInfo(Log.Play.RoundCoasting, { ranMs: Date.now() - this.roundStartedAt,
+          coastedMs: Date.now() - coastStartedAt });
+        nextCoastBeatAt = Date.now() + RoundCoastHeartbeatMs;
+      }
       this.sleep(RoundCoastPollMs);
       if (this.watchRoundEnd(hud) === RoundLook.Over) {
         break;
