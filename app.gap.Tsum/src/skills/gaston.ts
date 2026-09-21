@@ -14,8 +14,8 @@
 // Read frame by frame, the human's thirty-chain starts at the top-left corner,
 // sweeps right along the top row, drops a row, sweeps back left, drops, sweeps
 // right -- a boustrophedon down the pile, and it stops where the Gastons run
-// out. `gastonSnake` draws exactly that as a greedy walk on the link-reach
-// graph, and the part that took two tries to get right is **what a row is**. A
+// out. `gastonSnake` draws exactly that as a walk on the link-reach graph, and
+// the part that took two tries to get right is **what a row is**. A
 // pile is jumbled: the next tsum along a row sits ten or fifteen px above or
 // below the last, so judging "same row" hop by hop read it as the row below,
 // dropped, turned, found everything behind already visited and dropped again --
@@ -27,10 +27,23 @@
 // needs. The walk then exhausts its row -- forward, then back for anything it
 // passed -- before it drops, and it drops to the far end of the row below so the
 // sweep back covers that row whole. Tried from both top corners, longest kept.
-// A snake that dead-ends early -- a board fragmented by bubbles, or read with a
-// band of the refill still in the air -- is beaten by the longest path the
-// search finds over the same points (`findLongestTsumPath`): the game takes any
-// hop inside its reach, so the shape is a preference and the count is the point.
+//
+// **The walk backtracks.** Greedy, one hop with no way back, it stranded what
+// it turned away from: on a jumbled pile the hop that looks like the next along
+// the row is sometimes the only bridge to the rest, and the sweep took it,
+// found nothing beyond and stopped. Two device rounds on 2026-09-20, 38 passes
+// with board and route logged, planned 874 tsums where 999 were connected -- a
+// third of the passes at 21 of 32, 20 of 29, 15 of 24. So the sweep is a
+// depth-first search whose branch order is the sweep's preference: its first
+// descent is the greedy walk, and a dead end is backed out of for the next-best
+// hop, under a step budget (`snakeSteps`). Over those 38 boards it plans 980,
+// the best route found inside the first few hundred steps on nearly every one.
+// What it still leaves -- a top corner outside the biggest component, a row
+// order no corner can complete -- the longest path the search finds over the
+// same points takes (`findLongestTsumPath`, 992 of the 999), run only when the
+// snake is short of the biggest component, since nothing beats a route through
+// the whole of it. The game takes any hop inside its reach, so the shape is a
+// preference and the count is the point.
 //
 // **The route is Gaston only, and Gaston is learned from the board.** The snake
 // ran over the whole board array for a while, on the theory that a leftover of
@@ -239,9 +252,11 @@ var GastonConfig = {
   rowGap: 0.4,
   rowHeight: 0.75,
   minChain: 3,
-  // A snake shorter than this share of the Gastons dead-ended early, and the
-  // longest-path search gets the board (see the header).
-  snakeMinShare: 0.6,
+  // Steps one corner's snake may spend backtracking (`gastonSnake`). Its best
+  // route is found inside the first few hundred on nearly every board, and
+  // 50,000 planned nothing more than 3,000 over 38 device boards; the bench
+  // prices 3,000 pruned steps at ~12ms on the device.
+  snakeSteps: 3000,
   // Which clusters are Gaston (`gastonGastons`). On the window's first board,
   // the biggest until they hold this share of it -- his face and hair are
   // 40-60% and 20-30% of a filled board, the largest leftover colour under 15%
@@ -561,14 +576,57 @@ function gastonRows(points: BoardPoint[]): Int32Array {
   return rows;
 }
 
+/** A hop the snake may take next, and the sweep direction it leaves the walk heading in. */
+interface GastonHop {
+  to: number;
+  dir: number;
+  /** Rule order: 1 ahead along the row, 2 back along it, 3 and up the rows below, nearest row first. */
+  tier: number;
+  /** Order within the tier, ascending. */
+  key: number;
+}
+
+/**
+ * The hops open from `cur`, in the sweep's order of preference -- see
+ * `gastonSnake`. Every unvisited neighbour is one: the row and above split
+ * between ahead (rule 1) and behind (rule 2), and the rows below are rule 3.
+ */
+function gastonHops(points: BoardPoint[], neighbors: number[][], rows: Int32Array,
+                    seen: Int32Array, visited: Uint8Array, cur: number, dir: number): GastonHop[] {
+  const row = rows[cur];
+  const nbrs = neighbors[cur];
+  const hops: GastonHop[] = [];
+  for (let k = 0; k < nbrs.length; k++) {
+    const u = nbrs[k];
+    if (visited[u]) { continue; }
+    const dx = points[u].x - points[cur].x;
+    if (rows[u] <= row) {
+      const ahead = dx * dir;
+      if (ahead > 0) {
+        hops.push({ to: u, dir: dir, tier: 1, key: ahead });
+      } else {
+        hops.push({ to: u, dir: -dir, tier: 2, key: gastonDistance(points[u], points[cur]) });
+      }
+    } else {
+      // A fresh row at its far end ahead; a row the walk has been in at its nearest.
+      const key = seen[rows[u]] === 0 ? -dx * dir : gastonDistance(points[u], points[cur]);
+      hops.push({ to: u, dir: dir, tier: 2 + rows[u] - row, key: key });
+    }
+  }
+  hops.sort(function(a, b) { return a.tier - b.tier || a.key - b.key; });
+  return hops;
+}
+
 /**
  * A boustrophedon over one colour's points, as indices into `points`: start at
  * a corner of the top row, sweep it, drop a row, sweep back, and so on down the
  * pile until no unvisited tsum is within reach.
  *
- * Greedy, one hop at a time, over `neighbors` (the link-reach graph), with the
- * rows already decided (`rows`). From the current tsum the next is, in strict
- * order of preference:
+ * A depth-first search over `neighbors` (the link-reach graph), with the rows
+ * already decided (`rows`), whose branch order at every tsum is the sweep's
+ * preference -- so the first descent is the plain sweep, and a dead end is
+ * backed out of for the next-best hop. From the current tsum the branches are,
+ * in strict order:
  *
  *   1. the next tsum along the row in the current direction -- the one the
  *      least far ahead, so the row is walked tsum by tsum. "The row" here is
@@ -585,14 +643,16 @@ function gastonRows(points: BoardPoint[]): Int32Array {
  *      lost. A row the walk has already been in (it stepped out for a
  *      straggler) is re-entered at its nearest tsum, which is where the sweep
  *      left off. Nothing turns here: rule 1 first takes whatever lies further
- *      along, and rule 2 is the turn;
- *   4. anything left, nearest first, heading away from where it came -- the
- *      climb back up for what the sweep down left behind.
+ *      along, and rule 2 is the turn.
  *
- * `startRight` picks the corner; the caller tries both and keeps the longer.
+ * Two prunings: a branch that cannot beat the best route even by taking every
+ * tsum still reachable is dropped, and a route through the whole of the
+ * start's component ends the search, since nothing beats it. `budget` caps the
+ * steps; a capped search answers with the best route it found. `startRight`
+ * picks the corner; the caller tries both and keeps the longer.
  */
 function gastonSnake(points: BoardPoint[], neighbors: number[][], rows: Int32Array,
-                     startRight: boolean): number[] {
+                     startRight: boolean, budget: number): number[] {
   const n = points.length;
   let start = -1;
   for (let i = 0; i < n; i++) {
@@ -606,73 +666,61 @@ function gastonSnake(points: BoardPoint[], neighbors: number[][], rows: Int32Arr
 
   let rowCount = 0;
   for (let i = 0; i < n; i++) { if (rows[i] >= rowCount) { rowCount = rows[i] + 1; } }
-  // Visited tsums per row: whether a row rule 3 drops into is fresh or one the
-  // walk has been in before.
+  // Visited tsums per row, kept down and back up the search: whether a row
+  // rule 3 drops into is fresh or one the walk has been in before.
   const seen = new Int32Array(rowCount);
   const visited = new Uint8Array(n);
-  const route: number[] = [start];
-  visited[start] = 1;
-  seen[rows[start]]++;
-  // Heading along the row: from the right corner the sweep goes left.
-  let dir = startRight ? -1 : 1;
-  let cur = start;
-  for (;;) {
-    const nbrs = neighbors[cur];
-    const row = rows[cur];
-    let best = -1;
-    // 1. Along the row, or a straggler above it: the least far ahead.
-    let bestKey = Infinity;
+
+  // Unvisited tsums reachable from `v` through unvisited ones. A stamp marks
+  // what one count has queued, so nothing is cleared between counts.
+  const stampOf = new Int32Array(n);
+  const queue = new Int32Array(n);
+  let stamp = 0;
+  function reach(v: number): number {
+    stamp++;
+    let head = 0;
+    let tail = 0;
+    const nbrs = neighbors[v];
     for (let k = 0; k < nbrs.length; k++) {
       const u = nbrs[k];
-      if (visited[u] || rows[u] > row) { continue; }
-      const ahead = (points[u].x - points[cur].x) * dir;
-      if (ahead > 0 && ahead < bestKey) { bestKey = ahead; best = u; }
+      if (visited[u] === 0) { stampOf[u] = stamp; queue[tail++] = u; }
     }
-    // 2. Back along the row (or above): the nearest, and turn.
-    if (best < 0) {
-      for (let k = 0; k < nbrs.length; k++) {
-        const u = nbrs[k];
-        if (visited[u] || rows[u] > row) { continue; }
-        const d = gastonDistance(points[u], points[cur]);
-        if (d < bestKey) { bestKey = d; best = u; }
-      }
-      if (best >= 0) { dir = -dir; }
-    }
-    // 3. The nearest row below: a fresh row at its far end ahead, a row the
-    //    walk has been in at its nearest tsum.
-    if (best < 0) {
-      let bestRow = Infinity;
-      for (let k = 0; k < nbrs.length; k++) {
-        const u = nbrs[k];
-        if (visited[u] || rows[u] <= row) { continue; }
-        const key = seen[rows[u]] === 0
-          ? -(points[u].x - points[cur].x) * dir
-          : gastonDistance(points[u], points[cur]);
-        if (rows[u] < bestRow || (rows[u] === bestRow && key < bestKey)) {
-          bestRow = rows[u]; bestKey = key; best = u;
-        }
+    while (head < tail) {
+      const wn = neighbors[queue[head++]];
+      for (let k = 0; k < wn.length; k++) {
+        const u = wn[k];
+        if (visited[u] === 0 && stampOf[u] !== stamp) { stampOf[u] = stamp; queue[tail++] = u; }
       }
     }
-    // 4. Anything left, nearest first, heading away from here.
-    if (best < 0) {
-      for (let k = 0; k < nbrs.length; k++) {
-        const u = nbrs[k];
-        if (visited[u]) { continue; }
-        const d = gastonDistance(points[u], points[cur]);
-        if (d < bestKey) { bestKey = d; best = u; }
-      }
-      if (best >= 0) {
-        const dx = points[best].x - points[cur].x;
-        if (dx !== 0) { dir = dx > 0 ? 1 : -1; }
-      }
-    }
-    if (best < 0) { break; }
-    visited[best] = 1;
-    seen[rows[best]]++;
-    route.push(best);
-    cur = best;
+    return tail;
   }
-  return route;
+
+  // The start's whole component: a route through all of it ends the search.
+  const ceiling = 1 + reach(start);
+  const path: number[] = [];
+  let best: number[] = [];
+  let steps = 0;
+  let stop = false;
+  function walk(cur: number, dir: number): void {
+    steps++;
+    visited[cur] = 1;
+    seen[rows[cur]]++;
+    path.push(cur);
+    if (path.length > best.length) { best = path.slice(); }
+    if (best.length >= ceiling || steps >= budget) { stop = true; }
+    if (!stop && path.length + reach(cur) > best.length) {
+      const hops = gastonHops(points, neighbors, rows, seen, visited, cur, dir);
+      for (let k = 0; k < hops.length && !stop; k++) {
+        walk(hops[k].to, hops[k].dir);
+      }
+    }
+    path.pop();
+    seen[rows[cur]]--;
+    visited[cur] = 0;
+  }
+  // Heading along the row: from the right corner the sweep goes left.
+  walk(start, startRight ? -1 : 1);
+  return best;
 }
 
 function gastonDistance(a: Point, b: Point): number {
@@ -682,27 +730,30 @@ function gastonDistance(a: Point, b: Point): number {
 }
 
 /**
- * The chain to draw over `board` -- the Gastons the drag may touch: the longest
- * snake from either top corner, or the longest path the search finds when the
- * snake dead-ended early. See the header.
+ * The chain to draw over `board` -- the Gastons the drag may touch: the longer
+ * snake from the two top corners, or the longest path the search finds when
+ * that is short of the biggest connected component. See the header.
  */
 function gastonChain(board: BoardPoint[]): TsumPath | null {
   const cfg = GastonConfig;
   if (board.length < cfg.minChain) { return null; }
   const reach = Config.tsumWidth * Config.linkReach;
   const neighbors = buildTsumNeighbors(board, reach * reach);
+  const comps = findTsumComponents(neighbors);
+  let biggest: number[] = [];
+  for (let i = 0; i < comps.length; i++) {
+    if (comps[i].length > biggest.length) { biggest = comps[i]; }
+  }
   const rows = gastonRows(board);
+  // Nothing beats a route through the whole of the biggest component, so the
+  // second corner and the search run only while short of it. The search wins
+  // only outright: at equal length the snake's shape is kept.
   let best: number[] = [];
-  for (let side = 0; side < 2; side++) {
-    const route = gastonSnake(board, neighbors, rows, side === 1);
+  for (let side = 0; side < 2 && best.length < biggest.length; side++) {
+    const route = gastonSnake(board, neighbors, rows, side === 1, cfg.snakeSteps);
     if (route.length > best.length) { best = route; }
   }
-  if (best.length < cfg.snakeMinShare * board.length) {
-    const comps = findTsumComponents(neighbors);
-    let biggest: number[] = [];
-    for (let i = 0; i < comps.length; i++) {
-      if (comps[i].length > biggest.length) { biggest = comps[i]; }
-    }
+  if (best.length < biggest.length) {
     const found = findLongestTsumPath(neighbors, biggest, SearchStepBudget).path;
     if (found.length > best.length) { best = found; }
   }
@@ -814,10 +865,16 @@ function gastonPass(ts: Tsum, cancelBefore: number): GastonPass {
   const gastons = gastonGastons(ts, board);
   const free = gastonFreeBoard(gastons, bubbles);
   const path = gastonChain(free);
+  // Bubble centres in play-square scale, beside the board below: whether a
+  // hop crossed one is then answerable offline.
+  const bubbleAt: number[] = [];
+  for (let b = 0; b < bubbles.length; b++) {
+    bubbleAt.push(Math.round(bubbles[b].x), Math.round(bubbles[b].y));
+  }
   if (!path) {
     logInfo(Log.Skill.GastonPass, {
       chain: 0, read: board.length, gaston: gastons.length, cut: gastons.length - free.length,
-      bubbles: bubbles.length, palette: gastonPalette.length,
+      bubbles: bubbles.length, palette: gastonPalette.length, bubbleAt: bubbleAt,
     });
     return { chain: 0, cancelled: 0, held: false, read: board.length, biggest: biggest, onBoard: true };
   }
@@ -841,7 +898,7 @@ function gastonPass(ts: Tsum, cancelBefore: number): GastonPass {
   logInfo(Log.Skill.GastonPass, {
     chain: path.length, read: board.length, gaston: gastons.length, cut: gastons.length - free.length,
     bubbles: bubbles.length, palette: gastonPalette.length,
-    held: held, cancelled: cancelled, board: flat, route: route,
+    held: held, cancelled: cancelled, board: flat, route: route, bubbleAt: bubbleAt,
   });
   return {
     chain: path.length, cancelled: cancelled, held: held, read: board.length, biggest: biggest,

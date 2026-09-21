@@ -45,6 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
+- Gaston skill improved by chaining every reachable Gaston in each window pass, where the sweep used to stop short on a jumbled pile.
 
 ### Added
 
@@ -66,6 +67,14 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
+- **Gaston's snake backtracks.** `gastonSnake` is a depth-first search whose
+  branch order is the sweep's rule order, under `GastonConfig.snakeSteps`,
+  rather than a greedy walk: the greedy one stranded what it turned away from,
+  and 38 logged device passes planned 874 tsums of 999 connected (980
+  backtracking, 992 with the search behind it). `snakeMinShare` is gone: the
+  longest-path search runs whenever the snake is short of the biggest
+  component. `skill.gaston.pass` carries `bubbleAt`, the bubble centres, so a
+  hop across one can be checked offline.
 - **The hold after a skill activation is two seconds from the tap, not one
   scan.** `GameBubbleConfig.holdAfterSkillMs` replaces `settleScansAfterSkill`.
   `useSkill` stamps it at the activation, so an auto-tapped skill is covered
