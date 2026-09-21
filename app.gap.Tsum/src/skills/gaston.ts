@@ -57,9 +57,17 @@
 // remembered by colour (`gastonGastons`). Gaston is one colour to the game and
 // two or three to the scan -- a tan face under black hair, and the Hough centre
 // lands on either -- but on a board the window has just filled the biggest
-// clusters are his: they are taken until they hold `paletteShare` of the board,
-// and the large ones go on `gastonPalette` for the window, so a hair cluster a
-// later board's leftovers outnumber is still his. Matching the skill-button
+// cluster is his: it goes on `gastonPalette` for the window, every board after
+// is matched by colour, and a board the palette no longer matches (fever tints
+// it) relearns. **One cluster, never a second by size.** The palette used to
+// take the biggest clusters until they held 60% of the board, to bring his hair
+// in; `gaston_2.mp4` (2026-09-20) showed what that does on a window that opens
+// on a board still half leftovers -- the second cluster was the reds, and a
+// route that starts on a red links one tsum. Five chains of that recording went
+// that way, 127 planned and 10 registered. What the scan merges *into* his
+// cluster this file cannot tell apart: Marie's pale face sat in it on every
+// board she was on, and chains planned through her stopped at her, 20 of 26 and
+// 19 of 23. That is the colour model's to fix. Matching the skill-button
 // portrait was tried first and drew nothing: his face on blue is not his sprite
 // on the board. `extraClusterSlots` keeps his second and third clusters in the
 // board array whatever the leftovers do.
@@ -164,7 +172,11 @@
 //     filling the gauge; the surplus goes on the cancels instead. The bubbles
 //     are read off a capture that runs below the play square (`gastonBubbles`,
 //     `bubbleHem`): the square cuts the bottom row of them in half, and a third
-//     of one window's passes went uncancelled with four in plain sight.
+//     of one window's passes went uncancelled with four in plain sight. The hem
+//     also brings in the two round HUD buttons under the bowl, which the pass
+//     read as bubbles on every board of `gaston_2.mp4` and the cancels tapped
+//     instead of the bubble in play; `hemButtons` names them and they are
+//     dropped.
 //   - **the drag has to be sampled, not flicked.** One `moveTo` per tsum at
 //     10ms is under a display frame, so a thirty-chain can have its middle
 //     sampled away. Same answer as Rapunzel+: dwell longer than a frame on each
@@ -257,16 +269,23 @@ var GastonConfig = {
   // 50,000 planned nothing more than 3,000 over 38 device boards; the bench
   // prices 3,000 pruned steps at ~12ms on the device.
   snakeSteps: 3000,
-  // Which clusters are Gaston (`gastonGastons`). On the window's first board,
-  // the biggest until they hold this share of it -- his face and hair are
-  // 40-60% and 20-30% of a filled board, the largest leftover colour under 15%
-  // -- with those at least `paletteMinShare` of the board remembered on
-  // `gastonPalette`; on every board after, the clusters within
-  // `paletteDistance` of a remembered centre, which is `ChromaMergeDistance`,
-  // what the scan itself calls one colour.
-  paletteShare: 0.6,
+  // Which clusters are Gaston (`gastonGastons`): the biggest cluster of the
+  // board the palette is learned on, remembered on `gastonPalette`, and on
+  // every board after the clusters within `paletteDistance` of a remembered
+  // centre -- `ChromaMergeDistance`, what the scan itself calls one colour.
+  // The palette is relearned on a board it matches less than `paletteMinShare`
+  // of: fever tints the board enough that a palette learned outside it matched
+  // 4 tsums of 44 for eighteen passes running (`gaston_2.mp4`). One cluster,
+  // never a second by size -- see the header.
   paletteMinShare: 0.2,
   paletteDistance: 40,
+  // The two round HUD buttons under the bowl -- the skill button and the one
+  // across from it -- in play-square coordinates. The hem brings them into the
+  // bubble capture, and a circle within `hemButtonAvoid` tsum widths of one is
+  // a button, not a bubble. Off the pass logs: x 27-34 and 167-173, y 212-216,
+  // every pass.
+  hemButtons: [{ x: 30, y: 214 }, { x: 170, y: 214 }],
+  hemButtonAvoid: 1.0,
   // How far a planned tsum must stay from a bubble, in tsum widths. A bubble is
   // about 1.4 tsums across, so this is "not touching".
   bubbleAvoid: 1.0,
@@ -437,10 +456,10 @@ function gastonAwaitGauge(ts: Tsum, until: number): boolean {
 }
 
 /**
- * The Gastons on the board: the points of the colour clusters that are his,
- * decided by size and remembered by colour -- see the header and
- * `paletteShare`. The clusters' colours are `ts.boardClusters`, as the scan
- * that made `board` left them.
+ * The Gastons on the board: the points of the colour clusters that are his --
+ * the biggest cluster of the board the palette was learned on, remembered by
+ * colour, see the header and `paletteMinShare`. The clusters' colours are
+ * `ts.boardClusters`, as the scan that made `board` left them.
  */
 function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
   const cfg = GastonConfig;
@@ -451,9 +470,6 @@ function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
     const c = +board[i].tsumIdx;
     if (c >= 0 && c < sizes.length) { sizes[c]++; }
   }
-  const order: number[] = [];
-  for (let c = 0; c < sizes.length; c++) { order.push(c); }
-  order.sort(function(a, b) { return sizes[b] - sizes[a]; });
   const his: boolean[] = [];
   for (let c = 0; c < sizes.length; c++) { his.push(false); }
   // By colour, once the window has a palette: a cluster near a remembered
@@ -471,19 +487,19 @@ function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
       }
     }
   }
-  // By size, for the window's first board or a palette that no longer matches
-  // it: the biggest until together they hold the share, and the large ones
-  // among them remembered.
-  if (found < cfg.minChain) {
-    let held = 0;
-    for (let k = 0; k < order.length; k++) {
-      const c = order[k];
-      if (sizes[c] === 0 || (held > 0 && held >= cfg.paletteShare * board.length)) { break; }
-      his[c] = true;
-      held += sizes[c];
-      if (sizes[c] >= cfg.paletteMinShare * board.length) {
-        gastonPalette.push(chromaFeature(clusters[c]));
-      }
+  // By size, for the window's first board or one the palette no longer
+  // matches: the biggest cluster alone is his, and it joins the palette. What
+  // the stale palette did match is dropped -- a few tsums near an old centre
+  // are as likely a leftover as his.
+  if (found < cfg.paletteMinShare * board.length) {
+    let biggest = -1;
+    for (let c = 0; c < sizes.length; c++) {
+      his[c] = false;
+      if (sizes[c] > 0 && (biggest < 0 || sizes[c] > sizes[biggest])) { biggest = c; }
+    }
+    if (biggest >= 0) {
+      his[biggest] = true;
+      gastonPalette.push(chromaFeature(clusters[biggest]));
     }
   }
   const out: BoardPoint[] = [];
@@ -509,11 +525,33 @@ function gastonBubbles(ts: Tsum): GameBubble[] {
   let gray: NativeImage | null = null;
   try {
     gray = buildBoardGray(img);
-    return findGameBubbles(gray);
+    return gastonNotButtons(findGameBubbles(gray));
   } finally {
     if (gray != null) { releaseImage(gray); }
     releaseImage(img);
   }
+}
+
+/**
+ * The bubbles less the two round HUD buttons the hem brings into the capture
+ * (`hemButtons`): every pass of `gaston_2.mp4` read them as bubbles, and the
+ * cancels went to them instead of the bubble in play.
+ */
+function gastonNotButtons(bubbles: GameBubble[]): GameBubble[] {
+  const cfg = GastonConfig;
+  const avoid = Config.tsumWidth * cfg.hemButtonAvoid;
+  const avoidSq = avoid * avoid;
+  const out: GameBubble[] = [];
+  for (let b = 0; b < bubbles.length; b++) {
+    let button = false;
+    for (let k = 0; k < cfg.hemButtons.length; k++) {
+      const dx = bubbles[b].x - cfg.hemButtons[k].x;
+      const dy = bubbles[b].y - cfg.hemButtons[k].y;
+      if (dx * dx + dy * dy < avoidSq) { button = true; break; }
+    }
+    if (!button) { out.push(bubbles[b]); }
+  }
+  return out;
 }
 
 /**

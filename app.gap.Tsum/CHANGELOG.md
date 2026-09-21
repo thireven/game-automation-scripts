@@ -94,6 +94,19 @@ release note; they fold back in here when she ships.
 
 ### Fixed
 
+- **Gaston's palette no longer takes a second cluster by size.** On a window
+  that opened on a board still half leftovers, the second-biggest cluster was
+  a leftover colour, and a route that started on one linked a single tsum:
+  five chains of a recorded round, 127 planned, 10 registered
+  (`gaston_2.mp4`). `gastonGastons` takes the biggest cluster only, and
+  relearns when the palette matches under `paletteMinShare` of the board --
+  fever tints the board past a palette learned outside it, which left one
+  window scanning 18 passes at 4 matched tsums. `paletteShare` is gone.
+- **Gaston's cancels no longer tap the HUD buttons.** The hem the bubble
+  capture runs below the play square brings in the two round buttons under the
+  bowl, read as bubbles on every pass; `hemButtons` names them and
+  `gastonNotButtons` drops them, so a cancel lands on a bubble in play and a
+  pass with none waits out the pop.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
