@@ -84,6 +84,7 @@ namespace Log {
     Rejected              = 'page.rejected',
     SubscriptionCycle     = 'page.subscriptionCycle',
     SubscriptionThrew     = 'page.subscriptionThrew',
+    TallySkipping         = 'page.scorePage.skipping',
     Trail                 = 'page.trail',
     Tsums                 = 'page.tsums',
     Unmatched             = 'page.unmatched',

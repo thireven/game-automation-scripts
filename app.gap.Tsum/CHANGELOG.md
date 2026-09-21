@@ -46,6 +46,7 @@ release note; they fold back in here when she ships.
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
 - Gaston skill improved by chaining every reachable Gaston in each window pass, where the sweep used to stop short on a jumbled pile.
+- The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 
 ### Added
 
@@ -67,6 +68,16 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
+- **The tally's count-up tap is a dispatch handler, not `waitForScorePage`'s.**
+  `dismiss.tallyCountUp` fires on every look that names the tally -- the play
+  loop's, a chore's, `navigate`'s -- where with stats off nothing aimed a tap
+  at the count-up at all, only `nav.move.exit`'s Close at a button not yet
+  drawn. `record.tallyRow` (`readTallyRow`) reads the button row, the medals row
+  and Play off one frame into `Tsum.tallyRow`; the count-up tap, the Play
+  shortcut (`nav.move.tallyToGame`, which used to capture its own frame through
+  `tallyPlayShown`) and the stats read (`roundMedalsRow` is gone) all read that.
+  Each tap logs `page.scorePage.skipping` and is followed by a settle, so the
+  next look reads the finished row; `stats.tallySkipped` still sums them.
 - **Gaston's snake backtracks.** `gastonSnake` is a depth-first search whose
   branch order is the sweep's rule order, under `GastonConfig.snakeSteps`,
   rather than a greedy walk: the greedy one stranded what it turned away from,

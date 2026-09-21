@@ -250,12 +250,19 @@ class Tsum {
   roundEndedAt: number;
   roundBaseCoins: number;
   /**
-   * Whether the tally the round ended on drew a medals row. Set by
-   * `waitForScorePage` off the frame that says the count-up has finished, and
-   * read by `finishRoundStats` -- the row moves the coin figure, so which
-   * rectangle holds it is this flag.
+   * The tally's button row as the last look at it read it, written by
+   * `record.tallyRow` on every look. `dismiss.tallyCountUp` taps while
+   * `buttons` is off, `nav.move.tallyToGame` presses Play only when `play` is
+   * on, and `finishRoundStats` reads `medals` to know which rectangle holds
+   * the coin figure. Stale off the tally; nothing reads it there.
    */
-  roundMedalsRow: boolean;
+  tallyRow: TallyRow;
+  /**
+   * The count-up skip taps: when the last went out, and how many this round
+   * (`beginRoundStats` zeroes it; `waitForScorePage` reports it).
+   */
+  tallySkipTapAt: number;
+  tallySkipTaps: number;
   /**
    * The settings this round is being played under -- a copy of `settings` taken
    * by `beginRoundStats`, and what `writeRoundStats` writes its columns from.
@@ -409,7 +416,9 @@ class Tsum {
     this.roundStartedAt = 0;
     this.roundEndedAt = 0;
     this.roundBaseCoins = -1;
-    this.roundMedalsRow = false;
+    this.tallyRow = {buttons: false, medals: false, play: false};
+    this.tallySkipTapAt = 0;
+    this.tallySkipTaps = 0;
     this.roundSettings = undefined;
     this.baseCoinReads = 0;
     this.baseCoinHits = 0;

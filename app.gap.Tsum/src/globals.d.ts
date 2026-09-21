@@ -853,6 +853,20 @@ interface RoundOutcome {
   medals: number | null;
 }
 
+/**
+ * What the last look at the score tally read off its frame -- the three
+ * questions about its button row, answered together by `readTallyRow`
+ * (`record.tallyRow`) so the handlers and the stats read share one capture.
+ */
+interface TallyRow {
+  /** The button row is out, which is the game's own signal the count-up is over. */
+  buttons: boolean;
+  /** The medals-row layout; only meaningful once `buttons` is true. */
+  medals: boolean;
+  /** Play is drawn beside Close -- a point battle's tally draws Close alone. */
+  play: boolean;
+}
+
 /** The best library entry for a signature, and how far clear of the runner-up. */
 interface MyTsumMatch {
   short: string;
@@ -1536,11 +1550,8 @@ interface Tsum {
    * ran out.
    */
   waitForScorePage(): boolean;
-  /**
-   * Whether this tally draws Play beside Close, which a point battle's does not.
-   * Takes its own frame unless given one.
-   */
-  tallyPlayShown(img?: NativeImage): boolean;
+  /** Read the tally's button row off a fresh frame into `tallyRow`; see `record.tallyRow`. */
+  readTallyRow(): void;
   finishRoundStats(): void;
   saveStatsDebugShot(tag: string): void;
   writeRoundStats(date: Date, seconds: number, score: number | null,

@@ -49,16 +49,27 @@ function createFake(ctx, host, trace, clock) {
     throw new Error('a handler captured the screen; the fake has none');
   };
   fake.isFeverTime = () => false;
-  // The ordinary tally, which draws Play: the layout a point battle ends on
-  // draws Close alone, and `nav.move.tallyToGame` then declines. Which of the
-  // two is up is a question about a frame, and a row here has none -- so the
-  // fallback is gated on real frames elsewhere and these rows pin the fast path.
+  // The finished, ordinary tally: button row out, no medals row, Play drawn.
+  // A tally still counting up (`dismiss.tallyCountUp` taps) or the layout a
+  // point battle ends on (Close alone, `nav.move.tallyToGame` declines) is a
+  // question about a frame, and a row here has none -- so those paths are gated
+  // on real frames elsewhere and these rows pin the fast path.
   //
-  // Why only the first tally row presses it: the handler allows one press per
+  // Why only the first tally row presses Play: the handler allows one press per
   // *visit* to the page, and the clock does not move between rows, so all four
   // ScorePage rows are one visit. The rows after the first read `declined` and
   // fall through to `nav.move.exit` -- which is the fallback itself, pinned.
-  fake.tallyPlayShown = () => true;
+  //
+  // The field is set up front as well as by the reader: the harness asks the
+  // forecast before it runs the queue, and the forecast reads `acts` off a
+  // frame the record band has not seen yet.
+  fake.tallyRow = { buttons: true, medals: false, play: true };
+  fake.readTallyRow = () => {
+    note('call', 'readTallyRow');
+    fake.tallyRow = { buttons: true, medals: false, play: true };
+  };
+  fake.tallySkipTapAt = 0;
+  fake.tallySkipTaps = 0;
   fake.saveCorpusFrame = (tag) => { note('call', 'saveCorpusFrame', tag); return false; };
   fake.sampleBaseCoins = () => { note('call', 'sampleBaseCoins'); };
   fake.identifyMyTsum = () => { note('call', 'identifyMyTsum'); };

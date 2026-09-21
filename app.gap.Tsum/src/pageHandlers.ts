@@ -219,6 +219,23 @@ gPages.subscribe({
   ]
 });
 
+gPages.subscribe({
+  id: 'record.tallyRow',
+  category: PageCategory.Record,
+  what: 'Read the score tally\'s button row -- out yet, with a medals row, with Play '
+      + '-- off one fresh frame into `tallyRow`, for the count-up tap, the Play '
+      + 'shortcut and the stats read to share rather than capture three times over.',
+  pages: [PageName.ScorePage],
+  // Every look: the row is what changes while the tally stays up, and whether
+  // it has arrived is the whole question.
+  every: true,
+  steps: [
+    { do: 'call', name: 'readTallyRow', run: function() {
+      this.readTallyRow();
+    } }
+  ]
+});
+
 // ===========================================================================
 // guard -- not a game screen at all.
 // ===========================================================================
@@ -360,6 +377,49 @@ gPages.subscribe({
   ]
 });
 
+/**
+ * Is the tally still counting up, and is a tap due?
+ *
+ * `record.tallyRow` has just read the row off this look's frame. The interval
+ * is `StatsSkipTapMs` (roundStats.ts): the game draws the final figures on the
+ * tap itself, so the look after says whether it landed, and a tap that went out
+ * while the panel was still sliding in is simply lost.
+ */
+function tallyCountingUp(event: PageEvent): boolean {
+  return !event.ts.tallyRow.buttons
+    && event.at - event.ts.tallySkipTapAt >= StatsSkipTapMs;
+}
+
+gPages.subscribe({
+  id: 'dismiss.tallyCountUp',
+  category: PageCategory.Dismiss,
+  what: 'Tap the score tally through its count-up. The game counts the score and '
+      + 'coins up from zero and holds the button row back until it has finished, '
+      + 'and any tap on the panel skips to the final figures with the row -- so '
+      + 'Play or Close comes sooner, whether or not the round\'s stats are being '
+      + 'read. The spot is the panel\'s number rows, inert once the row is out.',
+  pages: [PageName.ScorePage],
+  // Dismiss rather than navigate: `waitForScorePage` and the play loop look with
+  // no goal, and the navigate band is silent then. Every look, since the tally
+  // stays up while it counts.
+  every: true,
+  after: ['record.tallyRow'],
+  acts: tallyCountingUp,
+  steps: [
+    // Before the tap, so the interval runs from this attempt whether it lands.
+    { do: 'call', name: 'markTallySkipTap', run: function() {
+      this.tallySkipTapAt = Date.now();
+      this.tallySkipTaps++;
+    } },
+    { do: 'log', event: Log.Page.TallySkipping, message: 'Score tally counting up, tapping it on' },
+    { do: 'tapAt', at: StatsBlindTapSpot },
+    // Until the final figures and the row have drawn, so the next look reads a
+    // finished tally and presses Play -- rather than a row still arriving,
+    // which `nav.move.exit` would tap Close onto.
+    { do: 'settle', ms: ShortSettleMs }
+  ]
+});
+
 gPages.subscribe({
   id: 'dismiss.notEnoughCoins',
   category: PageCategory.Dismiss,
@@ -481,15 +541,14 @@ var gTallyPlayPressedAt = 0;
  * Counting the press against the visit instead gives the shortcut exactly one
  * attempt and hands the tally to `nav.move.exit` after it, whatever went wrong.
  *
- * `tallyPlayShown` takes a frame of its own, because the router has released
- * the sweep's by the time the queue runs. One capture a tally -- and none on a
- * point-battle tally once the attempt is spent.
+ * The button is read off `tallyRow`, which `record.tallyRow` filled from this
+ * look's frame: no capture of its own.
  */
 function navTallyPlayDrawn(event: PageEvent): boolean {
   if (gTallyPlayPressedAt === navTallyVisitAt(event)) {
     return false;
   }
-  return event.ts.tallyPlayShown();
+  return event.ts.tallyRow.play;
 }
 
 gPages.subscribe({
@@ -522,6 +581,7 @@ gPages.subscribe({
   // collection, the store -- starts from the hub, so those still leave by Close.
   goals: [PageName.GamePlaying],
   every: true,
+  after: ['record.tallyRow'],
   acts: navTallyPlayDrawn,
   steps: [
     // Before the tap, so the attempt is spent even if the tap is what fails.
