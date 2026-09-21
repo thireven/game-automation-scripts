@@ -104,6 +104,13 @@ release note; they fold back in here when she ships.
   planned; a fever-tinted board also left one window scanning 18 passes at 4
   matched tsums. A route over one cluster is at worst a chain of one leftover
   colour.
+- **Gaston's drag dwells 40ms on each tsum, not 18.** Android hands the game
+  one MOVE per frame, the latest one, and a recorded round showed the game
+  dropping a frame in five under fever: at 18ms the tsum under a dropped frame
+  was never seen and the chain stalled two hops from its head. Nineteen chains
+  read frame by frame against their logged routes registered 279 of 456
+  planned, sixteen of them stopping at a Gaston on an ordinary 24-33px hop
+  while 42-47px hops linked (`gaston_3.mp4`). A thirty-chain is now 1.4s.
 - **Gaston's cancels no longer tap the HUD buttons.** The hem the bubble
   capture runs below the play square brings in the two round buttons under the
   bowl, read as bubbles on every pass; `hemButtons` names them and

@@ -179,10 +179,18 @@
 //     read as bubbles on every board of `gaston_2.mp4` and the cancels tapped
 //     instead of the bubble in play; `hemButtons` names them and they are
 //     dropped.
-//   - **the drag has to be sampled, not flicked.** One `moveTo` per tsum at
-//     10ms is under a display frame, so a thirty-chain can have its middle
-//     sampled away. Same answer as Rapunzel+: dwell longer than a frame on each
-//     tsum and sweep the gaps.
+//   - **the drag has to be sampled, not flicked, and each sample has to outlast
+//     a dropped frame.** Android hands the game one MOVE per frame, the latest
+//     one, so a tsum's centre is seen only while it is still the latest event
+//     at a frame boundary. At `dwellMs` 18 against a 16.7ms frame that margin
+//     was 1.3ms, and `gaston_3.mp4` (2026-09-21, 19 chains read frame by frame
+//     against their logged routes) paid for it: 279 of 456 planned tsums
+//     registered, sixteen chains stopped at a Gaston on an ordinary 24-33px hop
+//     while 42-47px hops in the same chains linked, and the capture showed the
+//     game dropping one frame in five under fever. A dropped frame loses the
+//     tsum under it, the next is then two hops from the head, and the chain
+//     limps on only while a diagonal keeps it in reach. So the dwell is two
+//     frames and change.
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -297,9 +305,10 @@ var GastonConfig = {
   //
   // `linkTsums`' 10/10/10 is measured against ordinary chains and left alone;
   // this drag is an order of magnitude longer and `dwellMs` is what it is for:
-  // it outlasts one frame (16.7ms at 60fps), so each tsum's centre is some
-  // frame's final position however the moves coalesce. A thirty-chain that
-  // loses one link stops there and merely looks short.
+  // a tsum's centre must still be the latest MOVE at some frame boundary, and
+  // the game drops one frame in five under fever (`gaston_3.mp4`), so the
+  // dwell outlasts two frames (33.3ms) with margin. 18 -- one frame and 1.3ms
+  // -- lost a third of every chain; see the header. A thirty-chain is 1.4s.
   //
   // `stepsPerHop` is 1 rather than Rapunzel+'s 2 because the two skills are
   // sweeping for different reasons. Hers is colour blind, so everything the
@@ -307,11 +316,10 @@ var GastonConfig = {
   // way a finger crosses it. This chain is one colour and every hop is inside
   // the game's own link reach, so the gap has nothing that must be crossed --
   // one intermediate move is a hedge against a hop at the full reach, not a
-  // requirement. The game takes one touch event per frame, so this is also the
-  // whole cost: 45 tsums at 2 events each is ~1.5s, against ~2.2s at 2 steps
-  // and the human's own 1.75s. Drop it to 0 if the links hold.
+  // requirement. The midpoint is the latest event for `stepMs` only, so it is
+  // rarely the one the game sees; it costs 5ms a hop and nothing else.
   grabMs: 30,
-  dwellMs: 18,
+  dwellMs: 40,
   stepMs: 5,
   stepsPerHop: 1,
   releaseMs: 20,
