@@ -17,7 +17,7 @@
 // leaves a bubble -- so from the first one on the round is played to keep it
 // that way: bubbles are the window's (`claimsBubbles`), spent inside it on the
 // leftovers, and nothing between windows pops one. The window itself is two
-// sweeps and a hold. The longest chain from a top corner, cancelled at once
+// chains and a hold. The longest chain on the board, cancelled at once
 // with a bubble so the refill lands as one drop, twice (`passesBeforeHold`);
 // then the longest chain again, drawn and **held on its last tsum until the
 // window has closed**, because Gastons cleared while the skill runs fill
@@ -26,48 +26,23 @@
 // through it until the gauge reads full. Timed right, only Gastons ever drop
 // after the first activation.
 //
-// ## The chain is a snake from the top, not the longest path
+// ## The chain is the longest path, from wherever it starts
 //
-// Read frame by frame, the human's thirty-chain starts at the top-left corner,
-// sweeps right along the top row, drops a row, sweeps back left, drops, sweeps
-// right -- a boustrophedon down the pile, and it stops where the Gastons run
-// out. `gastonSnake` draws exactly that as a walk on the link-reach graph, and
-// the part that took two tries to get right is **what a row is**. A
-// pile is jumbled: the next tsum along a row sits ten or fifteen px above or
-// below the last, so judging "same row" hop by hop read it as the row below,
-// dropped, turned, found everything behind already visited and dropped again --
-// a staircase down the diagonal, four tsums off the top row and fourteen in all
-// (`debug/gaston_debug_1.mp4`). So the rows are found first, for the whole pile
-// (`gastonRows`): a sweep down the sorted heights that opens a new row at a gap
-// or once the row is a tsum tall. A hex pile's real rows come out as rows; a
-// jumbled one comes out in bands a tsum tall, which is all a horizontal sweep
-// needs. The walk then exhausts its row -- forward, then back for anything it
-// passed -- before it drops, and it drops to the far end of the row below so the
-// sweep back covers that row whole. Tried from both top corners, longest kept.
+// For a while the chain was a snake: a boustrophedon down the pile from a top
+// corner of the biggest component, as the human's thirty-chain in
+// `gaston_correct.mp4` is drawn, on the theory that the drops land at the top
+// and a chain from the top is the one the next drop feeds. On the device the
+// constraint cost more than it bought. Forced to start at the corner, the route
+// ran upward into dead ends, up against a bubble, or back over itself, and the
+// game stopped linking there. So the chain is the longest simple path over the
+// free Gastons (`gastonChain`, on `findLongestTsumPath` -- the play loop's own
+// search, every tsum tried as a start, under `searchSteps`), starting wherever
+// that path starts. Replayed over 725 logged device boards it plans 15,917
+// tsums to the snake's 15,743, longer on 131 boards and shorter on 5, the whole
+// component on 647. The game takes any hop inside its reach, so the count is
+// the point and the shape is nothing.
 //
-// **The walk backtracks.** Greedy, one hop with no way back, it stranded what
-// it turned away from: on a jumbled pile the hop that looks like the next along
-// the row is sometimes the only bridge to the rest, and the sweep took it,
-// found nothing beyond and stopped. Two device rounds on 2026-09-20, 38 passes
-// with board and route logged, planned 874 tsums where 999 were connected -- a
-// third of the passes at 21 of 32, 20 of 29, 15 of 24. So the sweep is a
-// depth-first search whose branch order is the sweep's preference: its first
-// descent is the greedy walk, and a dead end is backed out of for the next-best
-// hop, under a step budget (`snakeSteps`). Over those 38 boards it plans 980,
-// the best route found inside the first few hundred steps on nearly every one.
-//
-// **The route starts at a top corner of the biggest connected component**,
-// either end of its top row, the longer route kept. The drops land at the
-// top, so a chain from the top is the one the next drop feeds; and it is the
-// component's corner rather than the board's because a stray tsum in the
-// board's own corner, outside the component, strands the chain at one. The
-// longest-path search that used to take over when the snake fell short (992
-// of the 999) is gone: it starts wherever the graph likes, which is a chain
-// from the middle of the pile, and with the corner fixed the snake's own
-// search is the longest route from it. The game takes any hop inside its
-// reach, so the shape is a preference and the count is the point.
-//
-// **The route is Gaston only, and Gaston is learned from the board.** The snake
+// **The route is Gaston only, and Gaston is learned from the board.** The route
 // ran over the whole board array for a while, on the theory that a leftover of
 // another colour the drag crosses is inert. It is not. The game links a tsum
 // only while it is within reach of the chain's *head*, so the first leftover in
@@ -96,14 +71,6 @@
 // keeps his second and third clusters in the board array whatever the
 // leftovers do.
 //
-// Top-down rather than the bottom-first the other long chains use, on purpose.
-// Rapunzel+ starts low because her window opens on a board still falling; this
-// one opens on a board the count gate has just seen full and still. And the
-// order pays for itself at the release: the cleared tsums are the top rows, so
-// the pile below does not move and the refill drops straight into the space --
-// where a chain taken from the bottom collapses the whole pile before anything
-// new can land.
-//
 // ## Nothing here consults the chain settings
 //
 // "Maximum Chain Number" and "Chains per board scan" are tuned for ordinary
@@ -113,7 +80,7 @@
 // out per scan. The second half matters as much as the first -- the extra chains
 // of a batch are planned on a board the first chain has already cleared, and on
 // a Gaston board that is what turns one chain of thirty into a chain of twelve
-// and two of three. Inside the window the snake consults nothing at all.
+// and two of three. Inside the window the pass consults nothing at all.
 //
 // ## The activation animation is 3.4 seconds and the window is 6
 //
@@ -150,15 +117,14 @@
 // square, over the pile's top row, and their glyphs -- the 0, 8, 9 and 2 of
 // "48,202" -- are tsum-sized circles to the Hough pass. Ordinary play never
 // meets them: they land in a small colour cluster the `uniqueTsumCount - 1` cut
-// drops. This snake is colour blind and keeps every cluster, so they were in
-// its board, at the top, which is exactly where it starts. Replayed offline on
-// the boards of `gaston_debug5.mp4`, both routes began on the fever bonus
-// digits and hopped through the combo counter; on the device those drags
-// linked one tsum, then five. `gastonFreeBoard` cuts everything with its centre
-// in the top `hudBand` of the square. That costs a real tsum or two on a pile
-// stacked into the band (`corpus/GamePlaying/last_seconds1.png` has three
-// there), and the snake then starts a row lower; every fever capture in the
-// corpus has two to four glyph circles in the band.
+// drops. This skill keeps every cluster (`extraClusterSlots`), so they were in
+// its board, along the top. Replayed offline on the boards of
+// `gaston_debug5.mp4`, both routes began on the fever bonus digits and hopped
+// through the combo counter; on the device those drags linked one tsum, then
+// five. `gastonFreeBoard` cuts everything with its centre in the top `hudBand`
+// of the square. That costs a real tsum or two on a pile stacked into the band
+// (`corpus/GamePlaying/last_seconds1.png` has three there); every fever capture
+// in the corpus has two to four glyph circles in the band.
 //
 // ## The last chain is held past the close, then the button is spammed
 //
@@ -178,8 +144,8 @@
 // passes, or any chain whose drag ends inside `noCancelTailMs` of the close,
 // since a cancel there refills a board the window will not chain again. A
 // window that finds nothing to chain by `fillWaitMs` past the close hands
-// the board back as it stands -- nothing later is Gaston, and a colour-blind
-// snake over a mixed board links one tsum (the "1" chains after the fever in
+// the board back as it stands -- nothing later is Gaston, and a route over a
+// mixed board links one tsum (the "1" chains after the fever in
 // `gaston_debug5.mp4`).
 //
 // From the release the skill button is tapped over and over
@@ -338,28 +304,14 @@ var GastonConfig = {
   // A pass that found no chain waits this long before looking again.
   rescanIdleMs: 120,
 
-  // --- the snake -----------------------------------------------------------
+  // --- the chain -----------------------------------------------------------
   //
-  // How the pile is cut into rows (`gastonRows`), in tsum widths. Sorted by
-  // height, a new row opens where two neighbouring tsums are more than `rowGap`
-  // apart, or once the row is `rowHeight` tall. A hex pile's rows sit ~0.87
-  // widths apart and jitter a few px within, so the gap alone finds them; the
-  // height cap is for a jumbled pile whose heights run together, and bands it
-  // -- which is all a horizontal sweep needs. 0.75 rather than a whole tsum so
-  // a band opened at the top of one row cannot reach the highest tsums of the
-  // row below it (0.87 down, less their jitter); a row too jittered for the cap
-  // is swept as two bands, which is a second pass over the same ground rather
-  // than a zigzag between two rows. Both swept offline over jittered hex piles
-  // (gap 0.4/0.5 against height 0.75/1.0): the height is what matters, and
-  // 0.75 took 98% of a jumbled single-colour pile against 94%.
-  rowGap: 0.4,
-  rowHeight: 0.75,
   minChain: 3,
-  // Steps one corner's snake may spend backtracking (`gastonSnake`). Its best
-  // route is found inside the first few hundred on nearly every board, and
-  // 50,000 planned nothing more than 3,000 over 38 device boards; the bench
+  // Steps the longest-path search may spend over one component
+  // (`findLongestTsumPath`). Replayed over 725 device boards, 10,000 planned
+  // 12 tsums more than 3,000 in all and 30,000 one more than that; the bench
   // prices 3,000 pruned steps at ~12ms on the device.
-  snakeSteps: 3000,
+  searchSteps: 3000,
   // The two round HUD buttons under the bowl -- the skill button and the one
   // across from it -- in play-square coordinates. The hem brings them into the
   // bubble capture, and a circle within `hemButtonAvoid` tsum widths of one is
@@ -824,220 +776,37 @@ function gastonFreeBoard(board: BoardPoint[], bubbles: GameBubble[]): BoardPoint
   return out;
 }
 
-// --- The snake --------------------------------------------------------------
+// --- The chain --------------------------------------------------------------
 
 /**
- * Which row each point is in, top row 0. See `rowGap` for how the pile is cut.
+ * The chain to draw over `board` -- the Gastons the drag may touch: the longest
+ * path `findLongestTsumPath` finds in any of its connected components, from
+ * whichever tsum it starts at. See the header for why nothing anchors it.
  *
- * Decided for the whole pile before the walk, not hop by hop: a pile is
- * jumbled enough that two neighbours along one row can sit half a tsum apart in
- * height, and a per-hop test read that as the row below -- see the header.
- */
-function gastonRows(points: BoardPoint[]): Int32Array {
-  const cfg = GastonConfig;
-  const n = points.length;
-  const order: number[] = [];
-  for (let i = 0; i < n; i++) { order.push(i); }
-  order.sort(function(a, b) { return points[a].y - points[b].y; });
-  const gap = Config.tsumWidth * cfg.rowGap;
-  const height = Config.tsumWidth * cfg.rowHeight;
-  const rows = new Int32Array(n);
-  let row = 0;
-  let top = points[order[0]].y;
-  let prev = top;
-  for (let k = 0; k < n; k++) {
-    const y = points[order[k]].y;
-    if (y - prev > gap || y - top > height) { row++; top = y; }
-    rows[order[k]] = row;
-    prev = y;
-  }
-  return rows;
-}
-
-/** A hop the snake may take next, and the sweep direction it leaves the walk heading in. */
-interface GastonHop {
-  to: number;
-  dir: number;
-  /** Rule order: 1 ahead along the row, 2 back along it, 3 and up the rows below, nearest row first. */
-  tier: number;
-  /** Order within the tier, ascending. */
-  key: number;
-}
-
-/**
- * The hops open from `cur`, in the sweep's order of preference -- see
- * `gastonSnake`. Every unvisited neighbour is one: the row and above split
- * between ahead (rule 1) and behind (rule 2), and the rows below are rule 3.
- */
-function gastonHops(points: BoardPoint[], neighbors: number[][], rows: Int32Array,
-                    seen: Int32Array, visited: Uint8Array, cur: number, dir: number): GastonHop[] {
-  const row = rows[cur];
-  const nbrs = neighbors[cur];
-  const hops: GastonHop[] = [];
-  for (let k = 0; k < nbrs.length; k++) {
-    const u = nbrs[k];
-    if (visited[u]) { continue; }
-    const dx = points[u].x - points[cur].x;
-    if (rows[u] <= row) {
-      const ahead = dx * dir;
-      if (ahead > 0) {
-        hops.push({ to: u, dir: dir, tier: 1, key: ahead });
-      } else {
-        hops.push({ to: u, dir: -dir, tier: 2, key: gastonDistance(points[u], points[cur]) });
-      }
-    } else {
-      // A fresh row at its far end ahead; a row the walk has been in at its nearest.
-      const key = seen[rows[u]] === 0 ? -dx * dir : gastonDistance(points[u], points[cur]);
-      hops.push({ to: u, dir: dir, tier: 2 + rows[u] - row, key: key });
-    }
-  }
-  hops.sort(function(a, b) { return a.tier - b.tier || a.key - b.key; });
-  return hops;
-}
-
-/**
- * A boustrophedon over one colour's points, as indices into `points`: start at
- * a corner of the top row, sweep it, drop a row, sweep back, and so on down the
- * pile until no unvisited tsum is within reach.
- *
- * A depth-first search over `neighbors` (the link-reach graph), with the rows
- * already decided (`rows`), whose branch order at every tsum is the sweep's
- * preference -- so the first descent is the plain sweep, and a dead end is
- * backed out of for the next-best hop. From the current tsum the branches are,
- * in strict order:
- *
- *   1. the next tsum along the row in the current direction -- the one the
- *      least far ahead, so the row is walked tsum by tsum. "The row" here is
- *      this row *or any above it*: the sweep goes down, so an unvisited tsum
- *      above is one an earlier sweep could not reach, and it is taken in
- *      passing rather than left for the climb back;
- *   2. the nearest tsum back along the row (or above), turning round -- what
- *      the sweep passed over because it was out of reach at the time;
- *   3. the nearest row below that has anything in reach. A row not yet
- *      entered is landed on at its far end in the current direction, so the
- *      sweep back covers it whole from a clean end -- landing one short and
- *      stepping to the end leaves a visited tsum in the middle of the row,
- *      and two tsums is 50px against a 47.5px reach, so everything past it is
- *      lost. A row the walk has already been in (it stepped out for a
- *      straggler) is re-entered at its nearest tsum, which is where the sweep
- *      left off. Nothing turns here: rule 1 first takes whatever lies further
- *      along, and rule 2 is the turn.
- *
- * Two prunings: a branch that cannot beat the best route even by taking every
- * tsum still reachable is dropped, and a route through the whole of the
- * start's component ends the search, since nothing beats it. `budget` caps the
- * steps; a capped search answers with the best route it found. `startRight`
- * picks the corner; the caller tries both and keeps the longer.
- */
-function gastonSnake(points: BoardPoint[], neighbors: number[][], rows: Int32Array,
-                     startRight: boolean, budget: number): number[] {
-  const n = points.length;
-  let start = -1;
-  for (let i = 0; i < n; i++) {
-    if (rows[i] !== 0) { continue; }
-    if (start < 0 || (startRight ? points[i].x > points[start].x
-                                 : points[i].x < points[start].x)) {
-      start = i;
-    }
-  }
-  if (start < 0) { return []; }
-
-  let rowCount = 0;
-  for (let i = 0; i < n; i++) { if (rows[i] >= rowCount) { rowCount = rows[i] + 1; } }
-  // Visited tsums per row, kept down and back up the search: whether a row
-  // rule 3 drops into is fresh or one the walk has been in before.
-  const seen = new Int32Array(rowCount);
-  const visited = new Uint8Array(n);
-
-  // Unvisited tsums reachable from `v` through unvisited ones. A stamp marks
-  // what one count has queued, so nothing is cleared between counts.
-  const stampOf = new Int32Array(n);
-  const queue = new Int32Array(n);
-  let stamp = 0;
-  function reach(v: number): number {
-    stamp++;
-    let head = 0;
-    let tail = 0;
-    const nbrs = neighbors[v];
-    for (let k = 0; k < nbrs.length; k++) {
-      const u = nbrs[k];
-      if (visited[u] === 0) { stampOf[u] = stamp; queue[tail++] = u; }
-    }
-    while (head < tail) {
-      const wn = neighbors[queue[head++]];
-      for (let k = 0; k < wn.length; k++) {
-        const u = wn[k];
-        if (visited[u] === 0 && stampOf[u] !== stamp) { stampOf[u] = stamp; queue[tail++] = u; }
-      }
-    }
-    return tail;
-  }
-
-  // The start's whole component: a route through all of it ends the search.
-  const ceiling = 1 + reach(start);
-  const path: number[] = [];
-  let best: number[] = [];
-  let steps = 0;
-  let stop = false;
-  function walk(cur: number, dir: number): void {
-    steps++;
-    visited[cur] = 1;
-    seen[rows[cur]]++;
-    path.push(cur);
-    if (path.length > best.length) { best = path.slice(); }
-    if (best.length >= ceiling || steps >= budget) { stop = true; }
-    if (!stop && path.length + reach(cur) > best.length) {
-      const hops = gastonHops(points, neighbors, rows, seen, visited, cur, dir);
-      for (let k = 0; k < hops.length && !stop; k++) {
-        walk(hops[k].to, hops[k].dir);
-      }
-    }
-    path.pop();
-    seen[rows[cur]]--;
-    visited[cur] = 0;
-  }
-  // Heading along the row: from the right corner the sweep goes left.
-  walk(start, startRight ? -1 : 1);
-  return best;
-}
-
-function gastonDistance(a: Point, b: Point): number {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-/**
- * The chain to draw over `board` -- the Gastons the drag may touch: the longer
- * snake from the two top corners of the biggest connected component. See the
- * header for why the component is cut first and why nothing else plans.
+ * Components biggest first, each searched over its own points so the search's
+ * memo applies (it keys on 31 tsums or fewer), and a route through the whole
+ * of one ends the search: no smaller component can beat it.
  */
 function gastonChain(board: BoardPoint[]): TsumPath | null {
   const cfg = GastonConfig;
   if (board.length < cfg.minChain) { return null; }
   const reachSq = Config.tsumWidth * Config.linkReach * Config.tsumWidth * Config.linkReach;
   const comps = findTsumComponents(buildTsumNeighbors(board, reachSq));
-  let biggest: number[] = [];
-  for (let i = 0; i < comps.length; i++) {
-    if (comps[i].length > biggest.length) { biggest = comps[i]; }
+  comps.sort(function(a, b) { return b.length - a.length; });
+  let best: TsumPath = [] as TsumPath;
+  for (let c = 0; c < comps.length; c++) {
+    const comp = comps[c];
+    if (comp.length <= best.length || comp.length < cfg.minChain) { break; }
+    const points: BoardPoint[] = [];
+    const all: number[] = [];
+    for (let i = 0; i < comp.length; i++) { points.push(board[comp[i]]); all.push(i); }
+    const route = findLongestTsumPath(buildTsumNeighbors(points, reachSq), all, cfg.searchSteps).path;
+    if (route.length > best.length) {
+      best = [] as TsumPath;
+      for (let i = 0; i < route.length; i++) { best.push(points[route[i]]); }
+    }
   }
-  if (biggest.length < cfg.minChain) { return null; }
-  // The component's own points, so its top row's ends are the corners.
-  const points: BoardPoint[] = [];
-  for (let i = 0; i < biggest.length; i++) { points.push(board[biggest[i]]); }
-  const neighbors = buildTsumNeighbors(points, reachSq);
-  const rows = gastonRows(points);
-  // Nothing beats a route through the whole component, so the second corner
-  // runs only while short of it; at equal length the first corner's is kept.
-  let best: number[] = [];
-  for (let side = 0; side < 2 && best.length < points.length; side++) {
-    const route = gastonSnake(points, neighbors, rows, side === 1, cfg.snakeSteps);
-    if (route.length > best.length) { best = route; }
-  }
-  if (best.length < cfg.minChain) { return null; }
-  const path: TsumPath = [] as TsumPath;
-  for (let i = 0; i < best.length; i++) { path.push(points[best[i]]); }
-  return path;
+  return best.length >= cfg.minChain ? best : null;
 }
 
 /** Tsums in the board's biggest colour cluster, for the log. */
@@ -1170,8 +939,8 @@ function gastonCancelBubble(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): nu
 // --- The window -------------------------------------------------------------
 
 /**
- * Scan, snake the board from the top, draw it, and either cancel it with a
- * bubble -- when the head lands before `cancelBefore` -- or hold it until
+ * Scan, plan the longest chain over the board, draw it, and either cancel it
+ * with a bubble -- when the head lands before `cancelBefore` -- or hold it until
  * `holdUntil` and leave it to pop, which makes it the closing chain (`held`).
  * `cancelBefore` 0 always holds.
  *
@@ -1366,7 +1135,7 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // Per pass: how many tsums the scan put in the board array, and how many
     // of them its biggest colour cluster holds. `biggest` well under `read`
     // on a board that looks like solid Gaston is the scan reading him as
-    // several colours -- the reason the snake is colour blind.
+    // several colours, and the route is drawn over the biggest alone.
     read: read,
     biggest: biggest,
     // Bubbles tapped into the window's clears. At least one a chain bar the

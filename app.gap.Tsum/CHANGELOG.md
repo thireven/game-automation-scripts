@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by chaining every reachable Gaston in each window pass, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), and by keeping its chains clear of the fever's end, where the game briefly stops linking; bubbles are popped as normal until his first activation, then saved for the windows.
+- Gaston skill improved by drawing the longest chain the board allows in each window pass, from wherever it starts, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), and by keeping its chains clear of the fever's end, where the game briefly stops linking; bubbles are popped as normal until his first activation, then saved for the windows.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 
 ### Added
@@ -78,24 +78,23 @@ release note; they fold back in here when she ships.
   `tallyPlayShown`) and the stats read (`roundMedalsRow` is gone) all read that.
   Each tap logs `page.scorePage.skipping` and is followed by a settle, so the
   next look reads the finished row; `stats.tallySkipped` still sums them.
-- **Gaston's snake backtracks.** `gastonSnake` is a depth-first search whose
-  branch order is the sweep's rule order, under `GastonConfig.snakeSteps`,
-  rather than a greedy walk: the greedy one stranded what it turned away from,
-  and 38 logged device passes planned 874 tsums of 999 connected (980
-  backtracking, 992 with the search behind it). `snakeMinShare` is gone: the
-  longest-path search runs whenever the snake is short of the biggest
-  component. `skill.gaston.pass` carries `bubbleAt`, the bubble centres, so a
-  hop across one can be checked offline.
+- **Gaston's route is the longest path over the Gastons, from wherever it
+  starts.** `gastonChain` runs `findLongestTsumPath` over every component of
+  the free board under `GastonConfig.searchSteps`. The snake from a top corner
+  (`gastonSnake`, `gastonRows`, `gastonHops`, `rowGap`, `rowHeight`,
+  `snakeSteps`) is gone: on the device a route forced from the corner ran
+  upward into dead ends, into bubbles and back over itself, and the game
+  stopped linking there. Replayed over 725 logged boards it plans 15,917 tsums
+  to the snake's 15,743. `skill.gaston.pass` carries `bubbleAt`, the bubble
+  centres, so a hop across one can be checked offline.
 - **Gaston's window is two cancelled chains, then one held through the
   close.** A chain released while the skill still runs charges nothing, even
   the part of its clear that pops after the close, so after `passesBeforeHold`
   cancelled passes the next chain's finger stays on its last tsum until
   `holdPastCloseMs` past the estimated close (`gastonLinkChain`), and from the
   release the button is spammed until the gauge reads full (`gastonSpamSkill`,
-  replacing `gastonAwaitGauge` and the chain drawn after the close). The
-  route is the biggest connected Gaston component from either of its top
-  corners; the `findLongestTsumPath` fallback, which could start mid-board, is
-  gone. Bubbles are the skill's from the first activation to the tally
+  replacing `gastonAwaitGauge` and the chain drawn after the close). Bubbles
+  are the skill's from the first activation to the tally
   (`claimsBubbles` off `roundStartedAt`) and the Bubble Strategy's before it;
   the cancel spends every bubble (`bubbleReserve` 0, since each activation
   leaves one), the one over the most leftovers first (`gastonBubbleWorth`,
