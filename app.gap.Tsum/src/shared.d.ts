@@ -81,9 +81,10 @@ declare const enum SkillType {
   RapunzelPlus = 'rapunzelplus',
   /**
    * Gaston. His activation makes every tsum that *drops* a Gaston for a window
-   * his skill level sets, so the choreography plays it: chain every Gaston,
-   * cancel the pop animation with a bubble so the next batch drops at once, and
-   * again -- see `src/skills/gaston.ts`.
+   * his skill level sets, so the choreography plays it: chain every Gaston and
+   * cancel the pop with a bubble so the next batch drops at once, twice, then
+   * hold a third chain through the close so its clear charges the next
+   * activation -- see `src/skills/gaston.ts`.
    */
   Gaston = 'gaston',
   /**

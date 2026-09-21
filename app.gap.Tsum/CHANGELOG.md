@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by chaining every reachable Gaston in each window pass, where the sweep used to stop short on a jumbled pile.
+- Gaston skill improved by chaining every reachable Gaston in each window pass, and by holding the window's last chain until the skill has run out so its clear charges the next activation; bubbles are popped as normal until his first activation, then saved for the windows.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 
 ### Added
@@ -86,6 +86,21 @@ release note; they fold back in here when she ships.
   longest-path search runs whenever the snake is short of the biggest
   component. `skill.gaston.pass` carries `bubbleAt`, the bubble centres, so a
   hop across one can be checked offline.
+- **Gaston's window is two cancelled chains, then one held through the
+  close.** A chain released while the skill still runs charges nothing, even
+  the part of its clear that pops after the close, so after `passesBeforeHold`
+  cancelled passes the next chain's finger stays on its last tsum until
+  `holdPastCloseMs` past the estimated close (`gastonLinkChain`), and from the
+  release the button is spammed until the gauge reads full (`gastonSpamSkill`,
+  replacing `gastonAwaitGauge` and the chain drawn after the close). The
+  route is the biggest connected Gaston component from either of its top
+  corners; the `findLongestTsumPath` fallback, which could start mid-board, is
+  gone. Bubbles are the skill's from the first activation to the tally
+  (`claimsBubbles` off `roundStartedAt`) and the Bubble Strategy's before it;
+  the cancel spends every bubble (`bubbleReserve` 0, since each activation
+  leaves one), the one over the most leftovers first (`gastonBubbleWorth`,
+  logged as `near`). `skill.gaston.pass` carries `heldMs`; the done record
+  carries `heldMs`, `releaseLeadMs` and `spamTaps` in place of `charged`.
 - **The hold after a skill activation is two seconds from the tap, not one
   scan.** `GameBubbleConfig.holdAfterSkillMs` replaces `settleScansAfterSkill`.
   `useSkill` stamps it at the activation, so an auto-tapped skill is covered
