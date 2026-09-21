@@ -109,9 +109,11 @@ release note; they fold back in here when she ships.
   meanwhile as one, at wherever the finger was by then -- out of the head's
   reach, so the chain died there: `gaston_4.mp4` had 33 planned register 11
   with the drawn line frozen for 1.1s, and a third of its chains lost their
-  tail so. The host now injects each MOVE synchronously (`moveTo` returns once
-  the game has taken it), so the drag pauses with the game instead of piling
-  up behind it. A probe of the coin the game draws on a linked tsum, with a
+  tail so. The host's `moveTo` now takes a `wait` flag that injects the MOVE
+  synchronously (the call returns once the game has taken it), and Gaston's
+  drag alone sets it (`pacedMoves`), so that drag pauses with the game instead
+  of piling up behind it while every other drag stays on the quicker queued
+  move it always had. A probe of the coin the game draws on a linked tsum, with a
   hold on a miss, was tried first and lost more than it saved (`gaston_5.mp4`:
   13 chains in a round where the one before drew 23, nearly every drag held
   1.5s): the scan's centres sit ~14px off the sprites on median, so a miss was

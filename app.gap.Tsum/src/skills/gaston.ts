@@ -190,9 +190,12 @@
 //     by then: two hops from the head, out of reach, and the chain is dead
 //     (`gaston_4.mp4`: 33 planned registered 11, the drawn line frozen for
 //     1.1s while the finger crossed the board; a third of its chains lost
-//     their tail so). The host answers that: `moveTo` returns once the game
-//     has taken the move, so nothing piles up and the drag simply pauses
-//     with the game and resumes with every point delivered. The pass record's
+//     their tail so). The host answers that on request: `moveTo` with `wait`
+//     returns once the game has taken the move, so nothing piles up and the
+//     drag simply pauses with the game and resumes with every point delivered.
+//     This drag is the one that asks -- it is thirty hops long and crosses
+//     the switch; the play loop's three-tsum chains are done before a block
+//     could matter and stay on the quicker queued move. The pass record's
 //     `overMs` is what that pacing cost beyond the dwells -- a frame a hop
 //     when the game is well, the block's length on top when it was not.
 //
@@ -329,13 +332,15 @@ var GastonConfig = {
   // reach needs no crossing -- and a midpoint sample that lands on a neighbour
   // links it out of order, which leaves planned tsums unlinked behind a
   // healthy head (`gaston_4.mp4`, three chains over their plan by 1-5 that
-  // way). Each `moveTo` also waits for the game to take the move (see the
-  // header), about a frame, on top of the dwell.
+  // way). With `pacedMoves` each `moveTo` also waits for the game to take the
+  // move (see the header), about a frame, on top of the dwell; off, the moves
+  // are queued as every other drag's are.
   grabMs: 30,
   dwellMs: 40,
   stepMs: 5,
   stepsPerHop: 0,
   releaseMs: 20,
+  pacedMoves: true,
 
   // --- the cancel ----------------------------------------------------------
   //
@@ -815,7 +820,7 @@ interface GastonDrag {
   overMs: number;
 }
 
-/** Draw the chain, dwelling on each tsum. See `dwellMs`. */
+/** Draw the chain, dwelling on each tsum, each move paced to the game. See `dwellMs` and `pacedMoves`. */
 function gastonLinkChain(ts: Tsum, path: TsumPath): GastonDrag {
   const drag: GastonDrag = { ms: 0, overMs: 0 };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
@@ -825,14 +830,14 @@ function gastonLinkChain(ts: Tsum, path: TsumPath): GastonDrag {
   const pts: Point[] = [];
   for (let i = 0; i < path.length; i++) { pts.push(gastonToScreen(ts, path[i])); }
   tapDown(pts[0].x, pts[0].y, cfg.grabMs);
-  moveTo(pts[0].x, pts[0].y, cfg.dwellMs);
+  moveTo(pts[0].x, pts[0].y, cfg.dwellMs, cfg.pacedMoves);
   for (let i = 1; i < pts.length; i++) {
     for (let s = 1; s <= cfg.stepsPerHop; s++) {
       const f = s / (cfg.stepsPerHop + 1);
       moveTo(Math.floor(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f),
-        Math.floor(pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f), cfg.stepMs);
+        Math.floor(pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f), cfg.stepMs, cfg.pacedMoves);
     }
-    moveTo(pts[i].x, pts[i].y, cfg.dwellMs);
+    moveTo(pts[i].x, pts[i].y, cfg.dwellMs, cfg.pacedMoves);
   }
   const last = pts[pts.length - 1];
   tapUp(last.x, last.y, cfg.releaseMs);

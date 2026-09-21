@@ -1153,7 +1153,8 @@ interface Tsum {
   toRealXYs(xy: Coord): Point;
   tap(xy: Coord, during?: number): void;
   tapDown(xy: Coord, during?: number): void;
-  moveTo(xy: Coord, during?: number): void;
+  /** `wait` is the native `moveTo`'s: return once the game has taken the move. */
+  moveTo(xy: Coord, during?: number, wait?: boolean): void;
   tapUp(xy: Coord, during?: number): void;
   /**
    * Drag one column of the screen and answer how many of `sample`'s points the
@@ -1650,7 +1651,13 @@ declare function sleep(ms: number): void;
 declare function tap(x: number, y: number, during?: number): void;
 declare function tapDown(x: number, y: number, during?: number): void;
 declare function tapUp(x: number, y: number, during?: number): void;
-declare function moveTo(x: number, y: number, during?: number): void;
+/**
+ * `wait` (default false) returns only once the game has taken the move, about
+ * a frame, so a long drag across a stalled game pauses instead of batching into
+ * one point. Off, the move is queued and the call returns at once; a short drag
+ * is faster that way. See `gastonLinkChain` for the one drag that asks for it.
+ */
+declare function moveTo(x: number, y: number, during?: number, wait?: boolean): void;
 declare function tapMove(id: number, x: number, y: number): void;
 declare function press(key: string | number): void;
 declare function keycode(code: KeyCode, during?: number): void;

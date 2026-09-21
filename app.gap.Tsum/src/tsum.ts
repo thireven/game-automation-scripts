@@ -697,14 +697,14 @@ Tsum.prototype.tapDown = function(xy, during) {
   tapDown(rxy.x, rxy.y, during);
 }
 
-Tsum.prototype.moveTo = function(xy, during) {
+Tsum.prototype.moveTo = function(xy, during, wait) {
   // Only inside a gesture this object began: a dropped tapDown drops its drag.
   if (!this.gestureOpen) { return; }
   if (during === undefined) {
     during = 50;
   }
   const rxy = this.toRealXYs(xy);
-  moveTo(rxy.x, rxy.y, during);
+  moveTo(rxy.x, rxy.y, during, !!wait);
 }
 
 Tsum.prototype.tapUp = function(xy, during) {
