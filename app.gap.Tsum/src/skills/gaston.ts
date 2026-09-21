@@ -1070,8 +1070,8 @@ interface GastonDrag {
   ms: number;
   /**
    * Over the dwells and settles: the time `moveTo` spent waiting for the game
-   * to take each move. About a frame a hop on a game that is well; the block's
-   * length on top when it stalled (see the header).
+   * to take each move -- ~2ms a hop measured, the acks come straight back
+   * (see the header).
    */
   overMs: number;
   /** The finger stayed on the last tsum until the window had closed. */
