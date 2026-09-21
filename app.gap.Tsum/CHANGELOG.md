@@ -104,18 +104,22 @@ release note; they fold back in here when she ships.
   planned; a fever-tinted board also left one window scanning 18 passes at 4
   matched tsums. A route over one cluster is at worst a chain of one leftover
   colour.
-- **Gaston's drag is closed-loop.** The game's UI thread blocks for 0.6-1.2s
-  at the fever switch (a music change) and delivers the moves made meanwhile
-  as one, at wherever the finger is by then -- out of the head's reach, so
-  the chain died there: `gaston_4.mp4` had 33 planned register 11 with the
-  drawn line frozen for 1.1s, and a third of its chains lost their tail so.
-  `gastonLinkChain` now confirms each hop off the coin the game draws on a
-  linked tsum once the head has moved on (`gastonReadsLinked`, one
-  `getColors` a hop), and a hop that does not read linked is held on until it
-  does (`holdMaxMs`), then the route resumes from it. `stepsPerHop` is 0: a
-  midpoint sample linked neighbours out of order, which the probe would read
-  as a stall. `skill.gaston.pass` carries `holds`, `heldMs`, `holdAt` and
-  `holdFailed`; the done record sums `holds` and `heldMs`.
+- **Gaston's drag survives the game's stall at the fever switch.** The game's
+  UI thread blocks for 0.6-1.2s there (a music change) and took the moves made
+  meanwhile as one, at wherever the finger was by then -- out of the head's
+  reach, so the chain died there: `gaston_4.mp4` had 33 planned register 11
+  with the drawn line frozen for 1.1s, and a third of its chains lost their
+  tail so. The host now injects each MOVE synchronously (`moveTo` returns once
+  the game has taken it), so the drag pauses with the game instead of piling
+  up behind it. A probe of the coin the game draws on a linked tsum, with a
+  hold on a miss, was tried first and lost more than it saved (`gaston_5.mp4`:
+  13 chains in a round where the one before drew 23, nearly every drag held
+  1.5s): the scan's centres sit ~14px off the sprites on median, so a miss was
+  as often a real coin off the disc, and the game reads a finger returning to
+  the previous tsum as undoing the last link. `stepsPerHop` is 0: a midpoint
+  sample linked neighbours out of order.
+  `skill.gaston.pass` carries `dragMs` and `overMs` (the wait on the game
+  beyond the dwells); the done record sums `overMs`.
 - **Gaston's drag dwells 40ms on each tsum, not 18.** Android hands the game
   one MOVE per frame, the latest one, and a recorded round showed the game
   dropping a frame in five under fever: at 18ms the tsum under a dropped frame

@@ -179,21 +179,32 @@
 //     read as bubbles on every board of `gaston_2.mp4` and the cancels tapped
 //     instead of the bubble in play; `hemButtons` names them and they are
 //     dropped.
-//   - **the drag is closed-loop, and each sample outlasts a dropped frame.**
-//     Android hands the game one MOVE per frame, the latest one, so a tsum's
-//     centre is seen only while it is still the latest event at a frame
-//     boundary: `dwellMs` outlasts two frames, because the game drops one in
-//     five under fever (`gaston_3.mp4`, 2026-09-21: at one frame and 1.3ms,
-//     279 of 456 planned tsums registered). And the game's UI thread blocks
-//     for 0.6-1.2s at the fever switch -- a music change -- and delivers the
-//     moves made meanwhile as one, at wherever the finger is by then: two hops
-//     from the head, out of reach, and the chain is dead. `gaston_4.mp4` had
-//     33 planned register 11 that way, the drawn line frozen for 1.1s while
-//     the finger crossed the board, and a third of its chains lost their tail
-//     to it. So every hop is confirmed off the coin the game draws on a linked
-//     tsum once the head has moved on, and a hop that does not read linked is
-//     held: the finger goes back to it and stays until the coin behind it
-//     appears, then the route resumes from there. See `probeFrom`.
+//   - **each sample outlasts a dropped frame, and the host paces the drag to
+//     the game.** Android hands the game one MOVE per frame, the latest one,
+//     so a tsum's centre is seen only while it is still the latest event at a
+//     frame boundary: `dwellMs` outlasts two frames, because the game drops
+//     one in five under fever (`gaston_3.mp4`, 2026-09-21: at one frame and
+//     1.3ms, 279 of 456 planned tsums registered). And the game's UI thread
+//     blocks for 0.6-1.2s at the fever switch -- a music change -- during
+//     which the moves pile up and reach it as one, at wherever the finger is
+//     by then: two hops from the head, out of reach, and the chain is dead
+//     (`gaston_4.mp4`: 33 planned registered 11, the drawn line frozen for
+//     1.1s while the finger crossed the board; a third of its chains lost
+//     their tail so). The host answers that: `moveTo` returns once the game
+//     has taken the move, so nothing piles up and the drag simply pauses
+//     with the game and resumes with every point delivered. The pass record's
+//     `overMs` is what that pacing cost beyond the dwells -- a frame a hop
+//     when the game is well, the block's length on top when it was not.
+//
+//     A closed loop in the script was tried first (`gaston_5.mp4`): each hop
+//     confirmed off the coin the game draws on a linked tsum, a miss held by
+//     sending the finger back. It lost more than it saved, for two reasons
+//     worth keeping. The scan's centres sit ~14px off the game's sprites on
+//     median (up to 30; Hough on a packed pile, and the pile keeps sliding
+//     after a pop), so a read at the planned centre missed real coins on a
+//     tsum in three. And the game takes the finger returning to the previous
+//     tsum as *undoing* the last link, so every false miss cut the head off
+//     and the rest of the route with it.
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -317,45 +328,14 @@ var GastonConfig = {
   // links by where the finger *is*, not the path it took, so a hop inside its
   // reach needs no crossing -- and a midpoint sample that lands on a neighbour
   // links it out of order, which leaves planned tsums unlinked behind a
-  // healthy head and would read as a stall to the probe below (`gaston_4.mp4`,
-  // three chains over their plan by 1-5 that way).
+  // healthy head (`gaston_4.mp4`, three chains over their plan by 1-5 that
+  // way). Each `moveTo` also waits for the game to take the move (see the
+  // header), about a frame, on top of the dwell.
   grabMs: 30,
   dwellMs: 40,
   stepMs: 5,
   stepsPerHop: 0,
   releaseMs: 20,
-
-  // --- the drag's probe ----------------------------------------------------
-  //
-  // The game draws a coin on a linked tsum once the finger has moved on from
-  // it -- the head is drawn dark, and so are the first three links -- so after
-  // the hop to tsum i, a coin on tsum i-2 says the hop to i-1 registered, and
-  // no coin says the game has stopped taking the finger (see the header). The
-  // hop is then held: the finger goes back to the tsum that did not link and
-  // keeps re-sending it, so the one move the game takes on waking is that
-  // tsum, in reach of the head; the coin behind it is the all-clear.
-  //
-  // The coin is read on a disc of screen points inside `probeRadius` px of the
-  // centre, `probeStep` apart -- 13 points, inside the coin (radius ~15) with
-  // the Hough centre a few px off. A point is coin-yellow by `probeYellow`,
-  // which the fever entry's white flash still passes: 0.5-1.0 of the disc on a
-  // linked tsum against 0 on an unlinked Gaston, pale or not (`gaston_4.mp4`);
-  // the emblem and the chain line take a few points, hence `probeCoinPoints`.
-  // One `getColors` a hop, ~2.5ms. A miss is read once more after
-  // `probeRetryMs` before it is a hold, for the coin's grow-in.
-  probeFrom: 5,
-  probeRadius: 8,
-  probeStep: 4,
-  probeYellow: { r: 150, g: 120, gMinusB: 75 },
-  probeCoinPoints: 4,
-  probeRetryMs: 30,
-  // A hold re-sends the tsum every `holdPollMs` for up to `holdMaxMs` -- past
-  // the 1.2s block seen -- and only with `holdMinRemaining` tsums still to
-  // draw, since a hold is worth a pass and a short tail is not. A hold that
-  // times out ends the probing for that chain: the head is lost.
-  holdPollMs: 30,
-  holdMaxMs: 1500,
-  holdMinRemaining: 4,
 
   // --- the cancel ----------------------------------------------------------
   //
@@ -399,9 +379,8 @@ interface GastonPass {
   read: number;
   /** Tsums in the board's biggest colour cluster -- how far short of `read` the scan reads Gaston. */
   biggest: number;
-  /** Hops the drag held for a game that had stopped taking the finger, and the time held. */
-  holds: number;
-  heldMs: number;
+  /** Time the drag spent waiting on the game beyond its dwells. See `GastonDrag`. */
+  overMs: number;
   /** The board was there to be scanned; false is a round that ended under the window. */
   onBoard: boolean;
 }
@@ -824,98 +803,43 @@ function gastonToScreen(ts: Tsum, p: BoardPoint): Point {
   };
 }
 
-/** What a drag came to: the holds it made for a game that stopped taking the finger. See `probeFrom`. */
+/** What a drag came to: its length, and how much of that was the game's. */
 interface GastonDrag {
-  /** Hops held for the game to catch up. */
-  holds: number;
-  /** Time spent held, in ms. */
-  heldMs: number;
-  /** Route index of the first tsum held on, -1 for none. */
-  holdAt: number;
-  /** Holds that ran to `holdMaxMs` with the hop still unregistered. */
-  holdFailed: number;
+  /** Grab to release, in ms. */
+  ms: number;
+  /**
+   * Over the dwells and settles: the time `moveTo` spent waiting for the game
+   * to take each move. About a frame a hop on a game that is well; the block's
+   * length on top when it stalled (see the header).
+   */
+  overMs: number;
 }
 
-/** The screen points of the probe's disc round `c`. See `probeRadius`. */
-function gastonProbeDisc(c: Point): Point[] {
-  const cfg = GastonConfig;
-  const out: Point[] = [];
-  for (let dy = -cfg.probeRadius; dy <= cfg.probeRadius; dy += cfg.probeStep) {
-    for (let dx = -cfg.probeRadius; dx <= cfg.probeRadius; dx += cfg.probeStep) {
-      if (dx * dx + dy * dy <= cfg.probeRadius * cfg.probeRadius) {
-        out.push({ x: c.x + dx, y: c.y + dy });
-      }
-    }
-  }
-  return out;
-}
-
-/** Whether the tsum at screen point `c` wears a coin: linked, and the head moved on. */
-function gastonReadsLinked(c: Point): boolean {
-  const cfg = GastonConfig;
-  const colors = getColors(gastonProbeDisc(c));
-  let coin = 0;
-  for (let k = 0; k < colors.length; k++) {
-    const col = colors[k];
-    if (col.r > cfg.probeYellow.r && col.g > cfg.probeYellow.g
-        && col.g - col.b > cfg.probeYellow.gMinusB) {
-      coin++;
-    }
-  }
-  return coin >= cfg.probeCoinPoints;
-}
-
-/**
- * Draw the chain, dwelling on each tsum, and from `probeFrom` on confirm each
- * hop off the coin two tsums back -- a hop that does not read linked is held
- * on until it does, or `holdMaxMs`. See `dwellMs` and `probeFrom`.
- */
+/** Draw the chain, dwelling on each tsum. See `dwellMs`. */
 function gastonLinkChain(ts: Tsum, path: TsumPath): GastonDrag {
-  const drag: GastonDrag = { holds: 0, heldMs: 0, holdAt: -1, holdFailed: 0 };
+  const drag: GastonDrag = { ms: 0, overMs: 0 };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.isRunning || path.length < 2) { return drag; }
   const cfg = GastonConfig;
+  const from = Date.now();
   const pts: Point[] = [];
   for (let i = 0; i < path.length; i++) { pts.push(gastonToScreen(ts, path[i])); }
   tapDown(pts[0].x, pts[0].y, cfg.grabMs);
   moveTo(pts[0].x, pts[0].y, cfg.dwellMs);
-  let i = 1;
-  while (i < pts.length) {
+  for (let i = 1; i < pts.length; i++) {
     for (let s = 1; s <= cfg.stepsPerHop; s++) {
       const f = s / (cfg.stepsPerHop + 1);
       moveTo(Math.floor(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f),
         Math.floor(pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f), cfg.stepMs);
     }
     moveTo(pts[i].x, pts[i].y, cfg.dwellMs);
-    // The hop to i-1 registered once i-2 wears its coin. A lost head is not
-    // probed for again, and a short tail is not worth a hold.
-    if (i >= cfg.probeFrom && drag.holdFailed === 0 && ts.isRunning
-        && pts.length - i >= cfg.holdMinRemaining) {
-      let linked = gastonReadsLinked(pts[i - 2]);
-      if (!linked) {
-        ts.sleep(cfg.probeRetryMs);
-        linked = gastonReadsLinked(pts[i - 2]);
-      }
-      if (!linked) {
-        // Hold on the tsum that did not link: the game's one move on waking is
-        // then that tsum, in reach of the head, and the route resumes with the
-        // hop to i.
-        const from = Date.now();
-        drag.holds++;
-        if (drag.holdAt < 0) { drag.holdAt = i - 1; }
-        while (!linked && ts.isRunning && Date.now() - from < cfg.holdMaxMs) {
-          moveTo(pts[i - 1].x, pts[i - 1].y, cfg.holdPollMs);
-          linked = gastonReadsLinked(pts[i - 2]);
-        }
-        drag.heldMs += Date.now() - from;
-        if (linked) { continue; }
-        drag.holdFailed++;
-      }
-    }
-    i++;
   }
   const last = pts[pts.length - 1];
   tapUp(last.x, last.y, cfg.releaseMs);
+  drag.ms = Date.now() - from;
+  const slept = cfg.grabMs + cfg.dwellMs * pts.length
+    + cfg.stepMs * cfg.stepsPerHop * (pts.length - 1) + cfg.releaseMs;
+  drag.overMs = Math.max(0, drag.ms - slept);
   return drag;
 }
 
@@ -966,7 +890,7 @@ function gastonCancelBubble(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): nu
  */
 function gastonPass(ts: Tsum, cancelBefore: number): GastonPass {
   if (gPages.detect(1, 0) !== PageName.GamePlaying) {
-    return { chain: 0, cancelled: 0, held: false, read: 0, biggest: 0, holds: 0, heldMs: 0, onBoard: false };
+    return { chain: 0, cancelled: 0, held: false, read: 0, biggest: 0, overMs: 0, onBoard: false };
   }
   const board = ts.scanBoardQuick();
   // Its own bubble read, not the scan's `ts.gameBubbles`: the scan's capture
@@ -988,7 +912,7 @@ function gastonPass(ts: Tsum, cancelBefore: number): GastonPass {
       bubbles: bubbles.length, bubbleAt: bubbleAt,
     });
     return {
-      chain: 0, cancelled: 0, held: false, read: board.length, biggest: biggest, holds: 0, heldMs: 0,
+      chain: 0, cancelled: 0, held: false, read: board.length, biggest: biggest, overMs: 0,
       onBoard: true,
     };
   }
@@ -1013,13 +937,13 @@ function gastonPass(ts: Tsum, cancelBefore: number): GastonPass {
     chain: path.length, read: board.length, gaston: gastons.length, cut: gastons.length - free.length,
     bubbles: bubbles.length,
     held: held, cancelled: cancelled, board: flat, route: route, bubbleAt: bubbleAt,
-    // The drag's holds: `holdAt` is the route index the game stopped taking
-    // the finger at, `holdFailed` a hold it never came back from.
-    holds: drag.holds, heldMs: drag.heldMs, holdAt: drag.holdAt, holdFailed: drag.holdFailed,
+    // The drag's length, and the part of it the game held it for: a frame a
+    // hop when well, the block's length on top when it stalled.
+    dragMs: drag.ms, overMs: drag.overMs,
   });
   return {
     chain: path.length, cancelled: cancelled, held: held, read: board.length, biggest: biggest,
-    holds: drag.holds, heldMs: drag.heldMs, onBoard: true,
+    overMs: drag.overMs, onBoard: true,
   };
 }
 
@@ -1064,8 +988,7 @@ registerSkill({
     // the close is Gaston, and the closing chain wants it landed.
     let passes = 0;
     let cancels = 0;
-    let holds = 0;
-    let heldMs = 0;
+    let overMs = 0;
     let onBoard = true;
     // The chain popping as the window closes, 0 when none is.
     let clearing = 0;
@@ -1081,8 +1004,7 @@ registerSkill({
       if (pass.chain > 0) {
         drawn.push(pass.chain);
         cancels += pass.cancelled;
-        holds += pass.holds;
-        heldMs += pass.heldMs;
+        overMs += pass.overMs;
         if (pass.held) { clearing = pass.chain; break; }
         // A cancelled clear is gone at once; one left to pop takes its time
         // off the board tsum by tsum. See `popPerTsumMs`.
@@ -1117,8 +1039,7 @@ registerSkill({
         if (!pass.onBoard) { onBoard = false; }
         charged = pass.chain;
         clearing = pass.chain;
-        holds += pass.holds;
-        heldMs += pass.heldMs;
+        overMs += pass.overMs;
       }
     }
     // A short closing chain fills nothing worth waiting on. See `chargeMinChain`.
@@ -1151,11 +1072,11 @@ registerSkill({
       // last is the loop working; well under is a window with no bubble to
       // cancel with, whose refills ran the `fillWaitMs` ceiling.
       cancels: cancels,
-      // Hops the drags held for a game that had stopped taking the finger,
-      // and the time spent held. A hold a window is the fever switch; holds
-      // on every chain with little held is the probe misreading a coin.
-      holds: holds,
-      heldMs: heldMs,
+      // Time the drags spent waiting on the game beyond their dwells, summed.
+      // A frame a hop (~250ms a thirty-chain) is the host's pacing at work;
+      // a second more in one pass is the fever switch's block, taken without
+      // losing the chain -- `skill.gaston.pass` has it per drag.
+      overMs: overMs,
       // The chain drawn after the close when none was clearing (0 otherwise),
       // and how long the charge took. `ready` is whether the gauge was seen
       // full; false at `gaugeWaitMs` hands the board to the play loop with the
