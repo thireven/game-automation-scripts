@@ -187,11 +187,40 @@
 // the tap that lands first after it fills is the one that fires, and the
 // tsums still popping spill their count into the fresh gauge -- the overload
 // `Tsum.link` is built around. The first read of the button that says full
-// hands back to `useSkill`, which reads it again and taps: a no-op if this
-// loop's tap already fired it, the activation if not, and the next window's
-// clock starts there either way. A held chain under `chargeMinChain` fills
-// nothing worth waiting on; the board goes straight back to the play loop,
-// whose chains fill the rest.
+// is the next activation, and **the next window opens from here**
+// (`afterActivate` runs `gastonWindow` after `gastonWindow`): one more tap in
+// case the read was the gauge full under the next tap rather than the flash
+// of this loop's own, and the window is anchored at the read. Handing back to
+// `useSkill` for that tap was tried and lost two windows of `gaston_6.mp4`:
+// once the button has fired, the empty gauge behind its flash reads empty a
+// few reads later, `useSkill` saw no activation to make, and the play loop
+// chained a Gaston board for eleven seconds -- and, the moment the overflow
+// filled the gauge, fired a second activation four seconds into the first's
+// window, which threw the rest of it away. `stillRunning` is the guard for
+// whatever else hands the play loop a full gauge inside a window: no tap
+// before the window can have closed. A held chain under `chargeMinChain`
+// fills nothing worth waiting on; the board goes straight back to the play
+// loop, whose chains fill the rest.
+//
+// ## The fever switch freezes the game, and it lands on the held chain
+//
+// The game stops taking links for 0.5-0.75s when the fever backdrop switches,
+// and a drag under way at that moment loses its head: the finger is ten hops
+// on when links resume, out of reach. `gaston_6.mp4` had the exit land inside
+// four of eight held drags, which registered 13, 9, 14 and 24 of 32, 22, 24
+// and 30 planned; two of those windows then never filled the gauge. It is
+// structural: every activation's clear filled the fever gauge, so the
+// backdrop came on 1.3s after the tap as the face faded (`faceMs`), stayed
+// exactly 8.35s (`feverMs`, nine of nine) and went off at tap + 9.65s -- when
+// the third pass's drag is out. The exit is therefore predicted from the
+// backdrop coming on and a drag that would straddle it waits for the switch
+// and the freeze behind it (`gastonAwaitSwitch`); a switch seen within
+// `switchFreezeMs` of any drag holds it the rest. The backdrop is read as the
+// chrome beside the score not being its plain-board colour (`plainChrome`),
+// because each fever theme paints its own -- `FeverProbes` expects one
+// theme's dimmed teal and reads no fever at all on the antlered theme of that
+// recording. A fever that enters mid-window off a cancelled pass is not
+// predicted, only seen when it switches; none did there.
 //
 // Two smaller things the window has to get right:
 //
@@ -217,27 +246,24 @@
 //     as bubbles on every board of `gaston_2.mp4` and the cancels tapped
 //     instead of the bubble in play; `hemButtons` names them and they are
 //     dropped.
-//   - **each sample outlasts a dropped frame, and the host paces the drag to
-//     the game.** Android hands the game one MOVE per frame, the latest one,
-//     so a tsum's centre is seen only while it is still the latest event at a
-//     frame boundary: `dwellMs` outlasts two frames, because the game drops
-//     one in five under fever (`gaston_3.mp4`, 2026-09-21: at one frame and
-//     1.3ms, 279 of 456 planned tsums registered). And the game's UI thread
-//     blocks for 0.6-1.2s at the fever switch -- a music change -- during
-//     which the moves pile up and reach it as one, at wherever the finger is
-//     by then: two hops from the head, out of reach, and the chain is dead
-//     (`gaston_4.mp4`: 33 planned registered 11, the drawn line frozen for
-//     1.1s while the finger crossed the board; a third of its chains lost
-//     their tail so). The host answers that on request: `moveTo` with `wait`
-//     returns once the game has taken the move, so nothing piles up and the
-//     drag simply pauses with the game and resumes with every point delivered.
-//     This drag is the one that asks -- it is thirty hops long and crosses
-//     the switch; the play loop's three-tsum chains are done before a block
-//     could matter and stay on the quicker queued move. The pass record's
-//     `overMs` is what that pacing cost beyond the dwells -- a frame a hop
-//     when the game is well, the block's length on top when it was not.
+//   - **each sample outlasts a dropped frame.** Android hands the game one
+//     MOVE per frame, the latest one, so a tsum's centre is seen only while
+//     it is still the latest event at a frame boundary: `dwellMs` outlasts
+//     two frames, because the game drops one in five under fever
+//     (`gaston_3.mp4`, 2026-09-21: at one frame and 1.3ms, 279 of 456 planned
+//     tsums registered). The freeze at the fever switch (above) was first
+//     read as the game's UI thread blocking with the moves piling up behind
+//     it (`gaston_4.mp4`: 33 planned registered 11, the drawn line frozen for
+//     1.1s), and the host was given a paced MOVE for it -- `moveTo` with
+//     `wait` returns once the game has taken the move (`pacedMoves`). Measured
+//     in `gaston_6.mp4` it costs ~2ms a hop, the acks come back at once, and
+//     the chains died at the switch all the same: the game takes the moves
+//     and links none of them while it switches, so the freeze is the game's
+//     own and the drag has to stay out of it. The pacing stays on -- it costs
+//     nothing -- and the pass record's `overMs` is what it cost beyond the
+//     dwells.
 //
-//     A closed loop in the script was tried first (`gaston_5.mp4`): each hop
+//     A closed loop in the script was tried too (`gaston_5.mp4`): each hop
 //     confirmed off the coin the game draws on a linked tsum, a miss held by
 //     sending the finger back. It lost more than it saved, for two reasons
 //     worth keeping. The scan's centres sit ~14px off the game's sprites on
@@ -371,8 +397,8 @@ var GastonConfig = {
   // links it out of order, which leaves planned tsums unlinked behind a
   // healthy head (`gaston_4.mp4`, three chains over their plan by 1-5 that
   // way). With `pacedMoves` each `moveTo` also waits for the game to take the
-  // move (see the header), about a frame, on top of the dwell; off, the moves
-  // are queued as every other drag's are.
+  // move (see the header): ~2ms a hop measured, and no help at the fever
+  // switch; off, the moves are queued as every other drag's are.
   grabMs: 30,
   dwellMs: 40,
   stepMs: 5,
@@ -421,6 +447,45 @@ var GastonConfig = {
   // The spam tap's `during`. The host holds every tap 40ms on its own, so with
   // the gauge read between taps the loop runs at about one tap a frame pair.
   spamTapMs: 10,
+  // How often the spam loop checks the board is still there: the round can end
+  // under it, and the taps would go on into the tally.
+  spamPageCheckMs: 500,
+
+  // --- the fever switch ----------------------------------------------------
+  //
+  // The game stops linking for a moment when the fever backdrop switches, and
+  // a drag under way loses its head there (see the header). The exit is
+  // predictable: the backdrop stays up `feverMs` from the moment it comes on
+  // -- nine of nine fevers in `gaston_6.mp4`, to the frame -- and it comes on
+  // `faceMs` after the activation tap, as the face animation fades, when the
+  // activation's clear has filled the fever gauge (every activation there). A
+  // drag that would straddle the predicted exit waits for the switch to show
+  // and `switchFreezeMs` more, the freeze measured 0.5-0.75s past the switch;
+  // `switchLeadMs` is how far ahead of the switch the freeze can begin.
+  feverMs: 8350,
+  faceMs: 1300,
+  switchFreezeMs: 800,
+  switchLeadMs: 250,
+  // How long past the predicted exit to keep waiting for it. The fever clock
+  // pauses under a skill animation, so a fever already running at the tap
+  // outlives the estimate by the animation; past this the drag goes out anyway.
+  switchLateMs: 1500,
+  // The chrome either side of the score capsule on a plain board (`normal.png`
+  // and `last_seconds*.png`, the same points as `FeverProbes`' dimmed pair).
+  // The fever backdrop recolours it and a skill animation darkens it, so the
+  // backdrop is read as "not plain": each fever theme paints its own colour
+  // there, and `FeverProbes` -- one theme's dimmed teal -- reads nothing on
+  // the antlered theme of `gaston_6.mp4`.
+  plainChrome: [
+    { x: 300, y: 250, r: 24, g: 207, b: 239 },
+    { x: 800, y: 250, r: 16, g: 190, b: 231 },
+  ],
+  plainChromeTolerance: 90,
+
+  // A pass whose scan reads this far under a board the gate just saw full is
+  // under a flash -- the fever label's, `gaston_6.mp4` read 29 of 40 -- and
+  // rescans for up to this long.
+  flashRetryMs: 600,
 };
 
 // The `roundStartedAt` of the round whose first activation has gone out, or 0.
@@ -428,6 +493,18 @@ var GastonConfig = {
 // Bubble Strategy's before it -- see `claimsBubbles`. A round's start stamp is
 // unique and the play loop clears it at the tally, so nothing here resets.
 var gastonClaimRound = 0;
+
+// The window now open -- its round and the earliest it can close -- for
+// `stillRunning`: a full gauge inside it waits (see the header).
+var gastonWindowRound = 0;
+var gastonWindowUntil = 0;
+
+// The fever backdrop as the window last saw it (`gastonWatchFever`): whether
+// the chrome read plain (-1 before the first look), when the backdrop came on
+// (0 while off) for the exit prediction, and the last change either way for
+// the freeze. Nothing resets between rounds: a stale `onAt` predicts an exit
+// long past, which waits for nothing.
+var gastonFever = { plain: -1, onAt: 0, switchedAt: 0 };
 
 /** What one pass of the window came to. */
 interface GastonPass {
@@ -455,6 +532,91 @@ interface GastonPass {
 interface GastonWait {
   /** The fullest the board was seen. */
   peak: number;
+  /** It left on a full count, not the ceiling. */
+  full: boolean;
+}
+
+/** What the charge after the held chain came to. */
+interface GastonCharge {
+  /** Taps sent to the button. */
+  taps: number;
+  /** The gauge read full -- the next activation fired, or is about to on the next tap. */
+  ready: boolean;
+  /** The board was still there; false is a round that ended under the charge. */
+  onBoard: boolean;
+}
+
+/**
+ * Whether a round-over screen has replaced the board -- the play loop's own
+ * sweep, so the pause menu or an animation over the HUD does not count.
+ */
+function gastonRoundOver(): boolean {
+  return isRoundOverPage(gPages.detect(1, 0, inRoundPages()));
+}
+
+// --- The fever switch --------------------------------------------------------
+
+/**
+ * Whether the chrome beside the score reads plain: no fever backdrop and no
+ * animation over it. One crop of the row through both probes (`plainChrome`).
+ */
+function gastonChromePlain(ts: Tsum): boolean {
+  const cfg = GastonConfig;
+  const a = ts.toRealXY(cfg.plainChrome[0].x, cfg.plainChrome[0].y);
+  const b = ts.toRealXY(cfg.plainChrome[1].x, cfg.plainChrome[1].y);
+  const x = Math.max(0, Math.min(a.x, b.x));
+  const y = Math.max(0, Math.min(a.y, b.y) - 1);
+  const img = getScreenshotModify(x, y, Math.abs(b.x - a.x) + 1, Math.abs(b.y - a.y) + 3, 0, 0, 100);
+  try {
+    return absColor(getImageColor(img, a.x - x, a.y - y), cfg.plainChrome[0]) < cfg.plainChromeTolerance
+      && absColor(getImageColor(img, b.x - x, b.y - y), cfg.plainChrome[1]) < cfg.plainChromeTolerance;
+  } finally {
+    releaseImage(img);
+  }
+}
+
+/**
+ * One look at the backdrop, recording the switch if it changed. Called from
+ * every poll of the window, so a switch is seen within a poll of the frame.
+ */
+function gastonWatchFever(ts: Tsum): void {
+  const plain = gastonChromePlain(ts) ? 1 : 0;
+  if (plain === gastonFever.plain) { return; }
+  if (gastonFever.plain !== -1) {
+    const now = Date.now();
+    gastonFever.switchedAt = now;
+    gastonFever.onAt = plain ? 0 : now;
+  }
+  gastonFever.plain = plain;
+}
+
+/**
+ * Hold a drag of `dragMs` back from the fever switch: the freeze after one
+ * just seen, and the exit the running fever's clock puts inside the drag (see
+ * `feverMs`). Answers the ms spent waiting.
+ */
+function gastonAwaitSwitch(ts: Tsum, dragMs: number): number {
+  const cfg = GastonConfig;
+  const from = Date.now();
+  if (gastonFever.onAt > 0) {
+    const exitIn = gastonFever.onAt + cfg.feverMs - from;
+    if (exitIn > -cfg.switchFreezeMs && exitIn < dragMs + cfg.switchLeadMs) {
+      const until = from + exitIn + cfg.switchLateMs;
+      while (ts.isRunning && gastonFever.onAt > 0 && Date.now() < until) {
+        ts.sleep(cfg.pollMs);
+        gastonWatchFever(ts);
+      }
+    }
+  }
+  const rest = gastonFever.switchedAt + cfg.switchFreezeMs - Date.now();
+  if (gastonFever.switchedAt > 0 && rest > 0) { ts.sleep(rest); }
+  return Date.now() - from;
+}
+
+/** About how long a drag over `chain` tsums takes, for the switch wait. */
+function gastonDragEstimate(chain: number): number {
+  const cfg = GastonConfig;
+  return cfg.grabMs + cfg.releaseMs + chain * (cfg.dwellMs + 5);
 }
 
 // --- Reading the board ------------------------------------------------------
@@ -504,30 +666,39 @@ function gastonAwaitBoard(ts: Tsum, until: number, notBefore: number): GastonWai
     held = now > count + cfg.countNoise ? 0 : held + 1;
     count = now;
     if (count > peak) { peak = count; }
+    gastonWatchFever(ts);
   }
   // Full is not landed: the last of the refill is still falling. See `landMs`.
   if (full) { ts.sleep(cfg.landMs); }
-  return { peak: peak };
+  return { peak: peak, full: full };
 }
 
 /**
  * Spam the skill button from the held chain's release until the gauge reads
  * full: its Gastons fill the gauge as they pop, a tap on a filling gauge is a
  * no-op the game ignores, and the tap that lands first after it fills is the
- * one that fires. The activation animation reads full too, so the first such
- * read is either the gauge full under the next tap or this loop's own tap
- * having fired it; `useSkill` takes it from there either way (see the
- * header). Answers the taps sent, or -1 once `until` passes with the gauge
- * still filling.
+ * one that fires. The read that says full is either the gauge full under the
+ * next tap or this loop's own tap having just fired it -- the button flashes
+ * as it goes, and the empty gauge behind the flash reads empty a moment later
+ * -- so the window that follows is opened from here, not by `useSkill` (see
+ * the header). Stops once `until` passes with the gauge still filling, or the
+ * round ends under it.
  */
-function gastonSpamSkill(ts: Tsum, until: number): number {
-  let taps = 0;
+function gastonSpamSkill(ts: Tsum, until: number): GastonCharge {
+  const cfg = GastonConfig;
+  const charge: GastonCharge = { taps: 0, ready: false, onBoard: true };
+  let checkedAt = Date.now();
   while (ts.isRunning && Date.now() < until) {
-    ts.tap(Button.gameSkill1, GastonConfig.spamTapMs);
-    taps++;
-    if (ts.checkSkillReadinessFast() === SkillReadiness.Active) { return taps; }
+    if (Date.now() - checkedAt >= cfg.spamPageCheckMs) {
+      checkedAt = Date.now();
+      if (gastonRoundOver()) { charge.onBoard = false; return charge; }
+    }
+    ts.tap(Button.gameSkill1, cfg.spamTapMs);
+    charge.taps++;
+    if (ts.checkSkillReadinessFast() === SkillReadiness.Active) { charge.ready = true; return charge; }
+    gastonWatchFever(ts);
   }
-  return -1;
+  return charge;
 }
 
 /**
@@ -1006,16 +1177,27 @@ function gastonCancelBubble(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): nu
  *
  * The board is checked for first: this runs blind for ten seconds and more,
  * and a round that ends under it would otherwise have chains dragged across
- * whatever screen came next.
+ * whatever screen came next. `fullBoard` is the gate's verdict: a scan that
+ * then reads well short is under a flash and is taken again (`flashRetryMs`).
  */
-function gastonPass(ts: Tsum, cancelBefore: number, holdUntil: number): GastonPass {
+function gastonPass(ts: Tsum, cancelBefore: number, holdUntil: number, fullBoard: boolean): GastonPass {
+  const cfg = GastonConfig;
   if (gPages.detect(1, 0) !== PageName.GamePlaying) {
     return {
       chain: 0, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: 0, biggest: 0,
       overMs: 0, onBoard: false,
     };
   }
-  const board = ts.scanBoardQuick();
+  gastonWatchFever(ts);
+  let board = ts.scanBoardQuick();
+  let rescans = 0;
+  const retryUntil = Date.now() + cfg.flashRetryMs;
+  while (fullBoard && board.length < cfg.enoughTsums - cfg.countNoise && ts.isRunning
+         && Date.now() < retryUntil) {
+    ts.sleep(cfg.pollMs);
+    board = ts.scanBoardQuick();
+    rescans++;
+  }
   // Its own bubble read, not the scan's `ts.gameBubbles`: the scan's capture
   // cuts the bottom row of bubbles in half. See `bubbleHem`.
   const bubbles = gastonBubbles(ts);
@@ -1035,14 +1217,16 @@ function gastonPass(ts: Tsum, cancelBefore: number, holdUntil: number): GastonPa
   }
   if (!path) {
     logInfo(Log.Skill.GastonPass, {
-      chain: 0, read: board.length, gaston: gastons.length, cut: gastons.length - free.length,
-      bubbles: bubbles.length, bubbleAt: bubbleAt, near: near,
+      chain: 0, read: board.length, rescans: rescans, gaston: gastons.length,
+      cut: gastons.length - free.length, bubbles: bubbles.length, bubbleAt: bubbleAt, near: near,
     });
     return {
       chain: 0, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: board.length,
       biggest: biggest, overMs: 0, onBoard: true,
     };
   }
+  // Not into the fever switch: the game takes no link through it.
+  const waitedMs = gastonAwaitSwitch(ts, gastonDragEstimate(path.length));
   // Its own drag, not `linkTsums` and emphatically not `link`: the pacing and
   // the hold are the point, and `link`'s `maybeAutoTapSkill` would re-enter
   // this choreography.
@@ -1058,12 +1242,15 @@ function gastonPass(ts: Tsum, cancelBefore: number, holdUntil: number): GastonPa
   const route: number[] = [];
   for (let i = 0; i < path.length; i++) { route.push(free.indexOf(path[i])); }
   logInfo(Log.Skill.GastonPass, {
-    chain: path.length, read: board.length, gaston: gastons.length, cut: gastons.length - free.length,
-    bubbles: bubbles.length,
+    chain: path.length, read: board.length, rescans: rescans, gaston: gastons.length,
+    cut: gastons.length - free.length, bubbles: bubbles.length,
     held: drag.held, heldMs: drag.heldMs, cancelled: cancelled,
     board: flat, route: route, bubbleAt: bubbleAt, near: near,
-    // The drag's length, and the part of it the game held it for: a frame a
-    // hop when well, the block's length on top when it stalled.
+    // How long the drag was held back from a fever switch, and whether the
+    // backdrop was up when it went out.
+    waitedMs: waitedMs, fever: gastonFever.onAt > 0,
+    // The drag's length, and the part of it spent waiting on the game's
+    // MOVE acks beyond the dwells.
     dragMs: drag.ms, overMs: drag.overMs,
   });
   return {
@@ -1071,6 +1258,145 @@ function gastonPass(ts: Tsum, cancelBefore: number, holdUntil: number): GastonPa
     releasedAt: drag.releasedAt, read: board.length, biggest: biggest,
     overMs: drag.overMs, onBoard: true,
   };
+}
+
+/**
+ * One window, from the activation at `t0` to the charge after it: the gate,
+ * the passes and the spam that fires the next activation. Answers when that
+ * activation went (the read that saw the gauge full), or 0 when the charge
+ * never filled it, the held chain was too short to try, or the round ended.
+ */
+function gastonWindow(ts: Tsum, level: number, t0: number): number {
+  const cfg = GastonConfig;
+  // The earliest the window can close, for `stillRunning`: the animation's
+  // floor and the window itself.
+  gastonWindowRound = ts.roundStartedAt;
+  gastonWindowUntil = t0 + cfg.openMinMs + cfg.durationMs[level - 1];
+  // The animation and the first fill are one wait, behind a floor: the
+  // animation is never under three seconds, and a board that was full at the
+  // tap counts as full under it. See `openMinMs`.
+  const opened = gastonAwaitBoard(ts, t0 + cfg.openWaitMs, t0 + cfg.openMinMs);
+  const openMs = Date.now() - t0;
+  // The backdrop up as the board comes live is the fever this activation's
+  // clear brought on, and its clock started as the face faded. See `faceMs`.
+  gastonWatchFever(ts);
+  if (gastonFever.plain === 0) { gastonFever.onAt = t0 + cfg.faceMs; }
+  // The clock starts here, not at the tap. See `durationMs`.
+  const closesAt = Date.now() + cfg.durationMs[level - 1];
+  const holdUntil = closesAt + cfg.holdPastCloseMs;
+
+  // The window: chain, cancel, wait for the drop, `passesBeforeHold` times;
+  // then chain and hold through the close -- that one ends the window and
+  // is the charge. So is any chain whose head lands in the tail. The refill
+  // gate is not cut at the close: what is falling at the close is Gaston,
+  // and the held chain wants it landed.
+  let passes = 0;
+  let cancels = 0;
+  let overMs = 0;
+  let onBoard = true;
+  let fullBoard = opened.full;
+  let passesLeft = cfg.passesBeforeHold;
+  // The held chain, 0 when the window closed without one.
+  let clearing = 0;
+  let heldMs = 0;
+  let releasedAt = 0;
+  const drawn: number[] = [];
+  const read: number[] = [];
+  const biggest: number[] = [];
+  while (ts.isRunning) {
+    const cancelBefore = passesLeft > 0 ? closesAt - cfg.noCancelTailMs : 0;
+    const pass = gastonPass(ts, cancelBefore, holdUntil, fullBoard);
+    passes++;
+    if (!pass.onBoard) { onBoard = false; break; }
+    read.push(pass.read);
+    biggest.push(pass.biggest);
+    if (pass.chain > 0) {
+      drawn.push(pass.chain);
+      cancels += pass.cancelled;
+      overMs += pass.overMs;
+      if (pass.held) {
+        clearing = pass.chain;
+        heldMs = pass.heldMs;
+        releasedAt = pass.releasedAt;
+        break;
+      }
+      passesLeft--;
+      // A cancelled clear is gone at once; one left to pop takes its time
+      // off the board tsum by tsum. See `popPerTsumMs`.
+      const floor = pass.cancelled > 0 ? cfg.fillMinMs
+        : Math.max(cfg.fillMinMs, pass.chain * cfg.popPerTsumMs + cfg.popTailMs);
+      const at = Date.now();
+      fullBoard = gastonAwaitBoard(ts, at + floor + cfg.fillWaitMs, at + floor).full;
+    } else {
+      // Nothing to chain, and the close well past: the board is not coming
+      // back as Gaston. A ceiling, not the close itself, because a pass that
+      // finds nothing right at the close is a refill still landing.
+      if (Date.now() >= closesAt + cfg.fillWaitMs) { break; }
+      ts.sleep(cfg.rescanIdleMs);
+      fullBoard = false;
+    }
+  }
+
+  // The charge: the held chain is popping past the close, so every Gaston
+  // in it fills the gauge. The button is spammed through the clear, and the
+  // moment it reads full the next window opens from here -- see the header.
+  // A short held chain fills nothing worth waiting on (`chargeMinChain`).
+  const chargeFrom = Date.now();
+  let charge: GastonCharge = { taps: 0, ready: false, onBoard: onBoard };
+  if (onBoard && clearing >= cfg.chargeMinChain) {
+    charge = gastonSpamSkill(ts, chargeFrom + cfg.gaugeWaitMs);
+  }
+  const firedAt = charge.ready ? Date.now() : 0;
+
+  logInfo(Log.Skill.GastonDone, {
+    skillLevel: level,
+    windowMs: cfg.durationMs[level - 1],
+    // The field to read first. `openMs` near 3900 with `openTsums` at a full
+    // board is the gate working; `openMs` at the `openWaitMs` ceiling with
+    // `openTsums` low is a board that never filled, and everything after it
+    // was planned under the animation.
+    openMs: openMs,
+    openTsums: opened.peak,
+    passes: passes,
+    // Every chain the window drew, in order, the last of them the held
+    // chain left to pop. Thirty, thirty, thirty is the skill playing; a short
+    // one is a board read before it had filled, or a route the game did not
+    // follow -- `skill.gaston.pass` has the board and the route to replay.
+    chains: drawn,
+    // Per pass: how many tsums the scan put in the board array, and how many
+    // of them its biggest colour cluster holds. `biggest` well under `read`
+    // on a board that looks like solid Gaston is the scan reading him as
+    // several colours -- the reason the snake is colour blind.
+    read: read,
+    biggest: biggest,
+    // Bubbles tapped into the window's clears. At least one a chain bar the
+    // last is the loop working; well under is a window with no bubble to
+    // cancel with, whose refills ran the `fillWaitMs` ceiling.
+    cancels: cancels,
+    // Time the drags spent waiting on the game's MOVE acks beyond their
+    // dwells, summed -- `skill.gaston.pass` has it per drag.
+    overMs: overMs,
+    // The held chain: how long the finger sat on its last tsum, and how far
+    // past the estimated close it was released. `releaseLeadMs` under 0 is
+    // a release inside the window, which charges nothing -- the bug to look
+    // for; near `holdPastCloseMs` is the hold working, and well over it is
+    // a third drag that ended past the close on its own. Both 0 when the
+    // window closed with no chain to hold.
+    heldMs: heldMs,
+    releaseLeadMs: clearing > 0 ? releasedAt - closesAt : 0,
+    // Taps on the button through the clear until it read full, -1 when it
+    // never did by `gaugeWaitMs`, 0 when the held chain was too short to
+    // charge. `ready` is whether the gauge was seen full, which is the next
+    // activation and the next window; false hands the board to the play
+    // loop with the gauge still filling. `chargeMs` is release to full.
+    // `onBoard: false` is a round that ended under the window.
+    spamTaps: charge.ready ? charge.taps : (charge.taps > 0 ? -1 : 0),
+    chargeMs: Date.now() - chargeFrom,
+    ready: charge.ready,
+    onBoard: onBoard && charge.onBoard,
+    totalMs: Date.now() - t0,
+  });
+  return firedAt;
 }
 
 registerSkill({
@@ -1099,137 +1425,38 @@ registerSkill({
   // the first chain has already cleared, which is what turned that thirty into
   // a twelve and two threes in `gaston_wrong.mp4`.
   chainLimits: { maxChain: 0, maxChainsPerScan: 1 },
+  // A full gauge inside a window waits for it: an activation there restarts
+  // the animation over the seconds the window had left (see the header).
+  stillRunning: function(ts) {
+    return ts.roundStartedAt !== 0 && gastonWindowRound === ts.roundStartedAt
+      && Date.now() < gastonWindowUntil;
+  },
   afterActivate: function(ts, _board, activatedAt) {
     const cfg = GastonConfig;
-    const t0 = activatedAt || Date.now();
+    let t0 = activatedAt || Date.now();
     // From here to the tally the bubbles are the window's. See `claimsBubbles`.
     gastonClaimRound = ts.roundStartedAt;
     const level = Math.min(Math.max(ts.skillLevel, 1), cfg.durationMs.length);
-    // The animation and the first fill are one wait, behind a floor: the
-    // animation is never under three seconds, and a board that was full at the
-    // tap counts as full under it. See `openMinMs`.
-    const opened = gastonAwaitBoard(ts, t0 + cfg.openWaitMs, t0 + cfg.openMinMs);
-    const openMs = Date.now() - t0;
-    // The clock starts here, not at the tap. See `durationMs`.
-    const closesAt = Date.now() + cfg.durationMs[level - 1];
-    const holdUntil = closesAt + cfg.holdPastCloseMs;
-
-    // The window: chain, cancel, wait for the drop, `passesBeforeHold` times;
-    // then chain and hold through the close -- that one ends the window and
-    // is the charge. So is any chain whose head lands in the tail. The refill
-    // gate is not cut at the close: what is falling at the close is Gaston,
-    // and the held chain wants it landed.
-    let passes = 0;
-    let cancels = 0;
-    let overMs = 0;
-    let onBoard = true;
-    let passesLeft = cfg.passesBeforeHold;
-    // The held chain, 0 when the window closed without one.
-    let clearing = 0;
-    let heldMs = 0;
-    let releasedAt = 0;
-    const drawn: number[] = [];
-    const read: number[] = [];
-    const biggest: number[] = [];
+    // Window after window while each one's charge fires the next. The charge
+    // reads the gauge full either under its own tap or just before the next,
+    // so one more tap makes sure -- a no-op on a gauge already spent -- and
+    // the window is anchored at the read. What `useSkill` does at every
+    // activation is done here too, and logged the same, marked `charged`.
     while (ts.isRunning) {
-      const cancelBefore = passesLeft > 0 ? closesAt - cfg.noCancelTailMs : 0;
-      const pass = gastonPass(ts, cancelBefore, holdUntil);
-      passes++;
-      if (!pass.onBoard) { onBoard = false; break; }
-      read.push(pass.read);
-      biggest.push(pass.biggest);
-      if (pass.chain > 0) {
-        drawn.push(pass.chain);
-        cancels += pass.cancelled;
-        overMs += pass.overMs;
-        if (pass.held) {
-          clearing = pass.chain;
-          heldMs = pass.heldMs;
-          releasedAt = pass.releasedAt;
-          break;
-        }
-        passesLeft--;
-        // A cancelled clear is gone at once; one left to pop takes its time
-        // off the board tsum by tsum. See `popPerTsumMs`.
-        const floor = pass.cancelled > 0 ? cfg.fillMinMs
-          : Math.max(cfg.fillMinMs, pass.chain * cfg.popPerTsumMs + cfg.popTailMs);
-        const at = Date.now();
-        gastonAwaitBoard(ts, at + floor + cfg.fillWaitMs, at + floor);
-      } else {
-        // Nothing to chain, and the close well past: the board is not coming
-        // back as Gaston. A ceiling, not the close itself, because a pass that
-        // finds nothing right at the close is a refill still landing.
-        if (Date.now() >= closesAt + cfg.fillWaitMs) { break; }
-        ts.sleep(cfg.rescanIdleMs);
-      }
+      const firedAt = gastonWindow(ts, level, t0);
+      if (firedAt === 0) { break; }
+      logInfo(Log.Skill.Use, { skill: ts.skillType, skillLevel: ts.skillLevel, settleMs: 0,
+        charged: true });
+      ts.holdBubblesAfterSkill(firedAt);
+      lorcanaNoteSkillFired();
+      ts.tap(Button.gameSkill1);
+      ts.sleep(30);
+      t0 = firedAt;
     }
-
-    // The charge: the held chain is popping past the close, so every Gaston
-    // in it fills the gauge. The button is spammed through the clear, and the
-    // moment it reads full this returns -- `useSkill` fires within a read or
-    // two, while the chain that filled it is still popping. See the header.
-    // A short held chain fills nothing worth waiting on (`chargeMinChain`).
-    const chargeFrom = Date.now();
-    let spamTaps = 0;
-    if (onBoard && clearing >= cfg.chargeMinChain) {
-      spamTaps = gastonSpamSkill(ts, chargeFrom + cfg.gaugeWaitMs);
-    }
-    const ready = spamTaps > 0;
-
-    logInfo(Log.Skill.GastonDone, {
-      skillLevel: level,
-      windowMs: cfg.durationMs[level - 1],
-      // The field to read first. `openMs` near 3900 with `openTsums` at a full
-      // board is the gate working; `openMs` at the `openWaitMs` ceiling with
-      // `openTsums` low is a board that never filled, and everything after it
-      // was planned under the animation.
-      openMs: openMs,
-      openTsums: opened.peak,
-      passes: passes,
-      // Every chain the window drew, in order, the last of them the held
-      // chain left to pop. Thirty, thirty, thirty is the skill playing; a short
-      // one is a board read before it had filled, or a route the game did not
-      // follow -- `skill.gaston.pass` has the board and the route to replay.
-      chains: drawn,
-      // Per pass: how many tsums the scan put in the board array, and how many
-      // of them its biggest colour cluster holds. `biggest` well under `read`
-      // on a board that looks like solid Gaston is the scan reading him as
-      // several colours -- the reason the snake is colour blind.
-      read: read,
-      biggest: biggest,
-      // Bubbles tapped into the window's clears. At least one a chain bar the
-      // last is the loop working; well under is a window with no bubble to
-      // cancel with, whose refills ran the `fillWaitMs` ceiling.
-      cancels: cancels,
-      // Time the drags spent waiting on the game beyond their dwells, summed.
-      // A frame a hop (~250ms a thirty-chain) is the host's pacing at work;
-      // a second more in one pass is the fever switch's block, taken without
-      // losing the chain -- `skill.gaston.pass` has it per drag.
-      overMs: overMs,
-      // The held chain: how long the finger sat on its last tsum, and how far
-      // past the estimated close it was released. `releaseLeadMs` under 0 is
-      // a release inside the window, which charges nothing -- the bug to look
-      // for; near `holdPastCloseMs` is the hold working, and well over it is
-      // a third drag that ended past the close on its own. Both 0 when the
-      // window closed with no chain to hold.
-      heldMs: heldMs,
-      releaseLeadMs: clearing > 0 ? releasedAt - closesAt : 0,
-      // Taps on the button through the clear until it read full, -1 when it
-      // never did by `gaugeWaitMs`, 0 when the held chain was too short to
-      // charge. `ready` is whether the gauge was seen full; false hands the
-      // board to the play loop with the gauge still filling. `chargeMs` is
-      // release to full. `onBoard: false` is a round that ended under the
-      // window.
-      spamTaps: spamTaps,
-      chargeMs: Date.now() - chargeFrom,
-      ready: ready,
-      onBoard: onBoard,
-      totalMs: Date.now() - t0,
-    });
     // "It fired", which is what ends the play loop's link batch: the paths
     // still to draw were planned ten seconds ago on a board this window has
-    // since cleared several times over. It is also what re-enters `useSkill`
-    // at once, which is the tap the charge above was spamming for.
+    // since cleared several times over. The play loop's next `useSkill` finds
+    // the gauge filling, or the round over.
     return true;
   }
 });

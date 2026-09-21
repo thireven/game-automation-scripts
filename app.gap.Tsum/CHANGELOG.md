@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by chaining every reachable Gaston in each window pass, and by holding the window's last chain until the skill has run out so its clear charges the next activation; bubbles are popped as normal until his first activation, then saved for the windows.
+- Gaston skill improved by chaining every reachable Gaston in each window pass, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), and by keeping its chains clear of the fever's end, where the game briefly stops linking; bubbles are popped as normal until his first activation, then saved for the windows.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 
 ### Added
@@ -130,24 +130,45 @@ release note; they fold back in here when she ships.
   planned; a fever-tinted board also left one window scanning 18 passes at 4
   matched tsums. A route over one cluster is at worst a chain of one leftover
   colour.
-- **Gaston's drag survives the game's stall at the fever switch.** The game's
-  UI thread blocks for 0.6-1.2s there (a music change) and took the moves made
-  meanwhile as one, at wherever the finger was by then -- out of the head's
-  reach, so the chain died there: `gaston_4.mp4` had 33 planned register 11
-  with the drawn line frozen for 1.1s, and a third of its chains lost their
-  tail so. The host's `moveTo` now takes a `wait` flag that injects the MOVE
-  synchronously (the call returns once the game has taken it), and Gaston's
-  drag alone sets it (`pacedMoves`), so that drag pauses with the game instead
-  of piling up behind it while every other drag stays on the quicker queued
-  move it always had. A probe of the coin the game draws on a linked tsum, with a
-  hold on a miss, was tried first and lost more than it saved (`gaston_5.mp4`:
-  13 chains in a round where the one before drew 23, nearly every drag held
-  1.5s): the scan's centres sit ~14px off the sprites on median, so a miss was
-  as often a real coin off the disc, and the game reads a finger returning to
-  the previous tsum as undoing the last link. `stepsPerHop` is 0: a midpoint
-  sample linked neighbours out of order.
-  `skill.gaston.pass` carries `dragMs` and `overMs` (the wait on the game
-  beyond the dwells); the done record sums `overMs`.
+- **Gaston's drags stay out of the fever switch, where the game stops
+  linking.** The game takes no link for 0.5-0.75s as the fever backdrop
+  switches, and a drag under way loses its head there: `gaston_4.mp4` had 33
+  planned register 11 with the drawn line frozen for 1.1s, and `gaston_6.mp4`
+  had the fever's exit land inside four of eight held chains (13, 9, 14 and 24
+  of 32, 22, 24 and 30 planned), two of which then never filled the gauge. The
+  exit is predictable -- the backdrop comes on 1.3s after the tap as the face
+  fades (`faceMs`) and stays exactly 8.35s (`feverMs`, nine of nine) -- so a
+  drag that would straddle it waits for the switch and the freeze behind it
+  (`gastonAwaitSwitch`, `switchFreezeMs`), and a switch seen just before any
+  drag holds it the rest; the backdrop is read as the chrome beside the score
+  not being its plain-board colour (`plainChrome`), since each fever theme
+  paints its own there. Two approaches to the freeze came first. A synchronous
+  MOVE at the host (`moveTo`'s `wait` flag, Gaston's `pacedMoves`) on the
+  theory that the UI thread blocked and the moves batched: measured at ~2ms a
+  hop with the chains dying all the same, so the freeze is the game's own; the
+  flag stays, costing nothing. And a probe of the coin the game draws on a
+  linked tsum, with a hold on a miss, which lost more than it saved
+  (`gaston_5.mp4`: 13 chains in a round where the one before drew 23) -- the
+  scan's centres sit ~14px off the sprites, and the game reads a finger
+  returning to the previous tsum as undoing the last link. `stepsPerHop` is 0:
+  a midpoint sample linked neighbours out of order. `skill.gaston.pass`
+  carries `dragMs`, `overMs` (the wait on the game beyond the dwells),
+  `waitedMs` (the hold-back from a switch) and `fever`.
+- **Gaston's charge opens the next window itself, and no activation goes out
+  inside a window.** The spam tap's read of a full gauge was handed to
+  `useSkill` for the tap, but once the button has fired the empty gauge
+  behind its flash reads empty, so `useSkill` saw no activation and the play
+  loop played the window: `gaston_6.mp4` had it chain a Gaston board for
+  eleven seconds, and once fire a second activation four seconds into a
+  window, wasting the rest of it. `afterActivate` now runs `gastonWindow`
+  after `gastonWindow` while each charge fires the next, anchoring each at
+  the read that saw the gauge full and logging `skill.use` with `charged`;
+  and `SkillHandler.stillRunning`, which Gaston answers until the window can
+  have closed, makes `useSkill` and `maybeAutoTapSkill` leave a full gauge
+  alone (`skill.stillRunning`). The spam loop stops when the round ends under
+  it, and a pass whose scan reads well under the board the gate just saw full
+  rescans for up to `flashRetryMs` (`rescans` in the pass record) -- the fever
+  label's flash read 29 of 40 and drew a chain of 5.
 - **Gaston's drag dwells 40ms on each tsum, not 18.** Android hands the game
   one MOVE per frame, the latest one, and a recorded round showed the game
   dropping a frame in five under fever: at 18ms the tsum under a dropped frame

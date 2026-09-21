@@ -24,6 +24,7 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Bubble.Generated]: '產生泡泡',
   [Log.Skill.Use]: '使用技能',
   [Log.Skill.ReadyAgain]: '技能再次集滿，清泡泡後再發動',
+  [Log.Skill.StillRunning]: '技能仍在發動中，暫不點擊',
   [Log.Skill.TiaraNoDream]: '[皇冠米妮] 沒有想像泡泡',
   [Log.Skill.TiaraDimDream]: '[皇冠米妮] 泡泡讀取前已消失',
   [Log.Skill.TiaraBusy]: '[皇冠米妮] 畫面仍在變動，仍然發動',

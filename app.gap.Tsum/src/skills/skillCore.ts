@@ -119,6 +119,12 @@ interface SkillHandler {
   // between the scan and the first drag of the batch -- so whatever it does
   // comes out of combo time and has to stay cheap.
   orderPaths?: (ts: Tsum, paths: TsumPath[], board: BoardPoint[]) => TsumPath[];
+  // The last activation is still in effect, so a tap now would waste the
+  // gauge: Gaston's window is a timed mode, and an activation inside it only
+  // restarts the animation over the seconds it had left. While this answers
+  // true the play loop neither reads the gauge nor taps; the choreography that
+  // knows the window's clock is the one to answer.
+  stillRunning?: (ts: Tsum) => boolean;
   // Runs after the gauge check but before the activation tap -- settle waits and
   // pre-taps that have to land while the skill is not yet running.
   beforeActivate?: (ts: Tsum) => void;
@@ -164,6 +170,13 @@ function skillBareTapActivates(skillType: SkillType): boolean {
 function skillSweepsBubbles(skillType: SkillType): boolean {
   const handler = SkillHandlers[skillType];
   return !!(handler && handler.sweepsBubbles);
+}
+
+// Whether the skill's last activation is still running, so a tap would be
+// wasted. See `SkillHandler.stillRunning`; every other skill is never running.
+function skillStillRunning(ts: Tsum): boolean {
+  const handler = SkillHandlers[ts.skillType];
+  return !!(handler && handler.stillRunning && handler.stillRunning(ts));
 }
 
 // Whether bubbles on the board belong to the skill rather than to the Bubble
@@ -367,6 +380,9 @@ const SkillOverloadCooldownMs = 1500;
 // -- nothing here knows whether it fired, which is the whole point of that path.
 Tsum.prototype.maybeAutoTapSkill = function(board) {
   if (!this.skillAutoTap) { return false; }
+  // Before the interval stamp, so the first probe after the window closes is
+  // not put off by one more interval.
+  if (skillStillRunning(this)) { return false; }
   const now = Date.now();
   const handler = SkillHandlers[this.skillType];
   const overload = !!(handler && handler.overloadProbe);
@@ -504,6 +520,14 @@ Tsum.prototype.useSkill = function(board, fast) {
   // Continue (`dismiss.resumeGame`), so returning false here hands the loop a
   // board again rather than parking it.
   if (gPages.detect(1, 0) !== PageName.GamePlaying) {
+    return false;
+  }
+
+  // A skill whose last activation is still running says so, and a full gauge
+  // waits for it: the tap would only restart the animation over the window's
+  // remaining seconds. See `SkillHandler.stillRunning`.
+  if (skillStillRunning(this)) {
+    logDebug(Log.Skill.StillRunning, { skill: this.skillType });
     return false;
   }
 

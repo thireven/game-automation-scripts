@@ -197,6 +197,8 @@ namespace Log {
     OverloadProbe         = 'skill.overloadProbe',
     RapunzelDone          = 'skill.rapunzel.done',
     ReadyAgain            = 'skill.readyAgain',
+    /** A tap withheld: the skill's last activation is still running. */
+    StillRunning          = 'skill.stillRunning',
     TiaraBubbleRead       = 'skill.tiara.bubbleRead',
     TiaraBusy             = 'skill.tiara.busy',
     TiaraDimDream         = 'skill.tiara.dimDream',

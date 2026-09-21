@@ -26,6 +26,7 @@ var LogsEn = {
   [Log.Bubble.Generated]: 'Bubble generated',
   [Log.Skill.Use]: 'Use skill',
   [Log.Skill.ReadyAgain]: 'Skill full again; sweeping bubbles and repeating',
+  [Log.Skill.StillRunning]: 'Skill still running; not tapping',
   [Log.Skill.TiaraNoDream]: '[Tiara] No thought bubble',
   [Log.Skill.TiaraDimDream]: '[Tiara] Bubble gone before read',
   [Log.Skill.TiaraBusy]: '[Tiara] Board still moving, firing anyway',
