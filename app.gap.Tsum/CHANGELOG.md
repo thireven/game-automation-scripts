@@ -94,14 +94,16 @@ release note; they fold back in here when she ships.
 
 ### Fixed
 
-- **Gaston's palette no longer takes a second cluster by size.** On a window
-  that opened on a board still half leftovers, the second-biggest cluster was
-  a leftover colour, and a route that started on one linked a single tsum:
-  five chains of a recorded round, 127 planned, 10 registered
-  (`gaston_2.mp4`). `gastonGastons` takes the biggest cluster only, and
-  relearns when the palette matches under `paletteMinShare` of the board --
-  fever tints the board past a palette learned outside it, which left one
-  window scanning 18 passes at 4 matched tsums. `paletteShare` is gone.
+- **Gaston's route is the board's biggest colour cluster, and nothing else.**
+  The palette -- learned by size on the window's first board, matched by colour
+  after -- is gone with `gastonPalette`, `paletteShare`, `paletteMinShare`,
+  `paletteDistance` and the pass record's `palette`. A recorded round read
+  chain by chain (`gaston_2.mp4`) had ten of 21 chains start on a leftover the
+  palette had admitted, by size on a board still half leftovers or by colour
+  within the scan's merge distance, and link one to four tsums of 17-33
+  planned; a fever-tinted board also left one window scanning 18 passes at 4
+  matched tsums. A route over one cluster is at worst a chain of one leftover
+  colour.
 - **Gaston's cancels no longer tap the HUD buttons.** The hem the bubble
   capture runs below the play square brings in the two round buttons under the
   bowl, read as bubbles on every pass; `hemButtons` names them and

@@ -53,24 +53,26 @@
 // stalls there for good: `gaston_debug6.mp4` registered 14, 17, 2, 1 and 8 of
 // routes planned at 29, 35, 15, 22 and 28, every stall on an ordinary 23-33px
 // hop, while 43-44px hops inside the same chains linked fine. So the route is
-// drawn over his tsums alone, and which clusters are his is decided by size and
-// remembered by colour (`gastonGastons`). Gaston is one colour to the game and
-// two or three to the scan -- a tan face under black hair, and the Hough centre
-// lands on either -- but on a board the window has just filled the biggest
-// cluster is his: it goes on `gastonPalette` for the window, every board after
-// is matched by colour, and a board the palette no longer matches (fever tints
-// it) relearns. **One cluster, never a second by size.** The palette used to
-// take the biggest clusters until they held 60% of the board, to bring his hair
-// in; `gaston_2.mp4` (2026-09-20) showed what that does on a window that opens
-// on a board still half leftovers -- the second cluster was the reds, and a
-// route that starts on a red links one tsum. Five chains of that recording went
-// that way, 127 planned and 10 registered. What the scan merges *into* his
-// cluster this file cannot tell apart: Marie's pale face sat in it on every
-// board she was on, and chains planned through her stopped at her, 20 of 26 and
-// 19 of 23. That is the colour model's to fix. Matching the skill-button
-// portrait was tried first and drew nothing: his face on blue is not his sprite
-// on the board. `extraClusterSlots` keeps his second and third clusters in the
-// board array whatever the leftovers do.
+// drawn over his tsums alone, and **his tsums are the board's biggest colour
+// cluster, nothing else** (`gastonGastons`). Gaston is one colour to the game
+// and two or three to the scan -- a tan face under black hair, and the Hough
+// centre lands on either -- and on any board the window has cleared once the
+// face cluster is the biggest by a distance. A palette was kept for a while,
+// learned by size on the window's first board and matched by colour after, to
+// bring his hair cluster in; `gaston_2.mp4` (2026-09-20, aligned to its log and
+// read chain by chain) showed both halves fail. Learned on a board still half
+// leftovers it took the reds and the blues as his second cluster, and matching
+// within the scan's own merge distance it admitted Marie's cluster beside his
+// face: ten of the round's 21 chains started on a leftover and linked one to
+// four tsums of 17-33 planned. A route over one cluster is at worst a chain of
+// one leftover colour, which still clears and drops Gastons. What the scan
+// merges *into* that cluster this file cannot tell apart -- Marie's pale face
+// beside his, the navy tsums beside his hair -- and a chain planned through one
+// stops there (20 of 26, 19 of 23, the same recording). That is the colour
+// model's to fix. Matching the skill-button portrait was tried first and drew
+// nothing: his face on blue is not his sprite on the board. `extraClusterSlots`
+// keeps his second and third clusters in the board array whatever the
+// leftovers do.
 //
 // Top-down rather than the bottom-first the other long chains use, on purpose.
 // Rapunzel+ starts low because her window opens on a board still falling; this
@@ -269,16 +271,6 @@ var GastonConfig = {
   // 50,000 planned nothing more than 3,000 over 38 device boards; the bench
   // prices 3,000 pruned steps at ~12ms on the device.
   snakeSteps: 3000,
-  // Which clusters are Gaston (`gastonGastons`): the biggest cluster of the
-  // board the palette is learned on, remembered on `gastonPalette`, and on
-  // every board after the clusters within `paletteDistance` of a remembered
-  // centre -- `ChromaMergeDistance`, what the scan itself calls one colour.
-  // The palette is relearned on a board it matches less than `paletteMinShare`
-  // of: fever tints the board enough that a palette learned outside it matched
-  // 4 tsums of 44 for eighteen passes running (`gaston_2.mp4`). One cluster,
-  // never a second by size -- see the header.
-  paletteMinShare: 0.2,
-  paletteDistance: 40,
   // The two round HUD buttons under the bowl -- the skill button and the one
   // across from it -- in play-square coordinates. The hem brings them into the
   // bubble capture, and a circle within `hemButtonAvoid` tsum widths of one is
@@ -353,10 +345,6 @@ var GastonConfig = {
   gaugePollMs: 40,
   chargeMinChain: 12,
 };
-
-// The colour centres of Gaston's clusters, learned per window -- see
-// `gastonGastons`. Chroma features, the space the scan clusters in.
-var gastonPalette: Color[] = [];
 
 /** What one pass of the window came to. */
 interface GastonPass {
@@ -456,56 +444,23 @@ function gastonAwaitGauge(ts: Tsum, until: number): boolean {
 }
 
 /**
- * The Gastons on the board: the points of the colour clusters that are his --
- * the biggest cluster of the board the palette was learned on, remembered by
- * colour, see the header and `paletteMinShare`. The clusters' colours are
- * `ts.boardClusters`, as the scan that made `board` left them.
+ * The Gastons on the board: the points of its biggest colour cluster, and
+ * nothing else -- see the header for the palette that used to add to it.
  */
 function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
-  const cfg = GastonConfig;
-  const clusters = ts.boardClusters;
   const sizes: number[] = [];
-  for (let c = 0; c < clusters.length; c++) { sizes.push(0); }
+  for (let c = 0; c < ts.boardClusters.length; c++) { sizes.push(0); }
   for (let i = 0; i < board.length; i++) {
     const c = +board[i].tsumIdx;
     if (c >= 0 && c < sizes.length) { sizes[c]++; }
   }
-  const his: boolean[] = [];
-  for (let c = 0; c < sizes.length; c++) { his.push(false); }
-  // By colour, once the window has a palette: a cluster near a remembered
-  // centre is his. Size decides nothing then -- on a later board a leftover
-  // colour can outnumber his hair, and taking it would put it on the palette.
-  let found = 0;
-  for (let c = 0; c < sizes.length && gastonPalette.length > 0; c++) {
-    if (sizes[c] === 0) { continue; }
-    const feature = chromaFeature(clusters[c]);
-    for (let p = 0; p < gastonPalette.length; p++) {
-      if (distance3D(feature, gastonPalette[p]) <= cfg.paletteDistance) {
-        his[c] = true;
-        found += sizes[c];
-        break;
-      }
-    }
-  }
-  // By size, for the window's first board or one the palette no longer
-  // matches: the biggest cluster alone is his, and it joins the palette. What
-  // the stale palette did match is dropped -- a few tsums near an old centre
-  // are as likely a leftover as his.
-  if (found < cfg.paletteMinShare * board.length) {
-    let biggest = -1;
-    for (let c = 0; c < sizes.length; c++) {
-      his[c] = false;
-      if (sizes[c] > 0 && (biggest < 0 || sizes[c] > sizes[biggest])) { biggest = c; }
-    }
-    if (biggest >= 0) {
-      his[biggest] = true;
-      gastonPalette.push(chromaFeature(clusters[biggest]));
-    }
+  let biggest = -1;
+  for (let c = 0; c < sizes.length; c++) {
+    if (sizes[c] > 0 && (biggest < 0 || sizes[c] > sizes[biggest])) { biggest = c; }
   }
   const out: BoardPoint[] = [];
   for (let i = 0; i < board.length; i++) {
-    const c = +board[i].tsumIdx;
-    if (c >= 0 && c < his.length && his[c]) { out.push(board[i]); }
+    if (+board[i].tsumIdx === biggest) { out.push(board[i]); }
   }
   return out;
 }
@@ -912,7 +867,7 @@ function gastonPass(ts: Tsum, cancelBefore: number): GastonPass {
   if (!path) {
     logInfo(Log.Skill.GastonPass, {
       chain: 0, read: board.length, gaston: gastons.length, cut: gastons.length - free.length,
-      bubbles: bubbles.length, palette: gastonPalette.length, bubbleAt: bubbleAt,
+      bubbles: bubbles.length, bubbleAt: bubbleAt,
     });
     return { chain: 0, cancelled: 0, held: false, read: board.length, biggest: biggest, onBoard: true };
   }
@@ -935,7 +890,7 @@ function gastonPass(ts: Tsum, cancelBefore: number): GastonPass {
   for (let i = 0; i < path.length; i++) { route.push(free.indexOf(path[i])); }
   logInfo(Log.Skill.GastonPass, {
     chain: path.length, read: board.length, gaston: gastons.length, cut: gastons.length - free.length,
-    bubbles: bubbles.length, palette: gastonPalette.length,
+    bubbles: bubbles.length,
     held: held, cancelled: cancelled, board: flat, route: route, bubbleAt: bubbleAt,
   });
   return {
@@ -971,9 +926,6 @@ registerSkill({
     const cfg = GastonConfig;
     const t0 = activatedAt || Date.now();
     const level = Math.min(Math.max(ts.skillLevel, 1), cfg.durationMs.length);
-    // His colours are learned afresh off this window's boards. See `gastonGastons`.
-    gastonPalette = [];
-
     // The animation and the first fill are one wait, behind a floor: the
     // animation is never under three seconds, and a board that was full at the
     // tap counts as full under it. See `openMinMs`.
