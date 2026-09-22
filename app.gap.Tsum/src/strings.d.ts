@@ -123,6 +123,7 @@ declare const enum UiText {
   BoxPremiumPlus = 'box.premiumPlus',
   BoxPremium = 'box.premium',
   BoxSelect = 'box.select',
+  BoxCapsule = 'box.capsule',
   BoxHappiness = 'box.happiness',
   BoxSizeOne = 'boxSize.one',
   BoxSizeTen = 'boxSize.ten',

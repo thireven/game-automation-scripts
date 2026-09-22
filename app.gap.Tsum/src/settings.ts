@@ -621,6 +621,7 @@ var tabs: TabSpec[] = [
                             {key: BoxType.PremiumPlus, share: 'P', title: UiText.BoxPremiumPlus},
                             {key: BoxType.Premium, share: 'p', title: UiText.BoxPremium},
                             {key: BoxType.Select, share: 's', title: UiText.BoxSelect},
+                            {key: BoxType.Capsule, share: 'c', title: UiText.BoxCapsule},
                             {key: BoxType.Happiness, share: 'h', title: UiText.BoxHappiness}
                         ] satisfies { key: BoxType; share: string; title: UiText }[])
                     },

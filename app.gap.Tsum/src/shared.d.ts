@@ -173,8 +173,8 @@ declare const enum MaxRoundAction {
  * The store draws its boxes as a row of tabs, and the row is three or four wide
  * depending on whether a limited-time box is running -- so a box is found by its
  * place in that row rather than by a fixed coordinate (`BoxStore`, src/data.ts).
- * `Select` is the limited-time slot, and it is the one that is only sometimes
- * there.
+ * `Select` and `Capsule` share the limited-time slot, which is only sometimes
+ * there and holds one of them at a time; the tab's icon says which.
  *
  * A `const enum` for the reason `SkillType` is one: the value crosses the
  * `start({...})` bridge between two runtimes that share no memory, so it is
@@ -185,6 +185,11 @@ declare const enum BoxType {
   Premium = 'premium',
   /** The limited-time box: present only while one is running. */
   Select = 'select',
+  /**
+   * The Pick-Up Capsule, in the same slot while one is running. Sells singly
+   * only, and its prize can be an item rather than a tsum.
+   */
+  Capsule = 'capsule',
   Happiness = 'happiness',
 }
 
@@ -195,8 +200,8 @@ declare const enum BoxType {
  * ("You can't use 10-Time Purchases", `PageName.BoxTenTimeRefused`), and the
  * two ten-sized settings differ only in what the sweep does then: `Ten` ends
  * it, `TenThenOne` carries on singly until the box sells out. Neither ever
- * buys ten on a box that only draws a 1-Time button -- Happiness always -- and
- * `One` never buys ten at all.
+ * buys ten on a box that only draws a 1-Time button -- Happiness and the
+ * Pick-Up Capsule always -- and `One` never buys ten at all.
  */
 declare const enum BoxPurchaseSize {
   One = 'one',

@@ -1220,20 +1220,32 @@ var Page = {
     back: {x: 310, y: 1070},  // Cancel button
     next: {x: 760, y: 1070}   // OK button
   },
+  // "Pick-Up Capsule Purchase": the machine, "Left: N", the price, Cancel / OK
+  // and a List button in the footer. A taller panel than the box confirmation,
+  // so its button row sits 370px lower -- which is what keeps the two entries
+  // apart -- and its cyan footer band reaches where every other dialog here
+  // shows dimmed background. The machine's dome used to be a probe; it is a
+  // gradient that read 30 off between two captures, so the bands carry it now.
   ConfirmPurchaseCapsulePage: {
     name: PageName.ConfirmPurchasePage,
     colors: [
-      {x: 200, y: 1444, r: 247, g: 178, b: 8, match: true, threshold: 30},  // left of Cancel button
-      {x: 426, y: 1444, r: 247, g: 178, b: 8, match: true, threshold: 30},  // right of Cancel button
-      {x: 540, y: 1444, r: 54, g: 93, b: 146, match: true, threshold: 30},  // between buttons
-      {x: 660, y: 1444, r: 247, g: 174, b: 8, match: true, threshold: 30},  // left of OK button
-      {x: 860, y: 1444, r: 247, g: 178, b: 8, match: true, threshold: 30},  // right of OK button
-      {x: 940, y: 1444, r: 33, g: 65, b: 107, match: true, threshold: 30},  // right next to OK button
-      {x: 416, y: 790, r: 239, g: 28, b: 49, match: true, threshold: 40}    // red top of big pickup capsule image
+      {x: 200, y: 1444, r: 247, g: 178, b:   8, match: true, threshold: 30},  // left of Cancel button
+      {x: 426, y: 1444, r: 247, g: 178, b:   8, match: true, threshold: 30},  // right of Cancel button
+      {x: 540, y: 1444, r:  54, g:  93, b: 146, match: true, threshold: 30},  // between buttons
+      {x: 660, y: 1444, r: 247, g: 174, b:   8, match: true, threshold: 30},  // left of OK button
+      {x: 860, y: 1444, r: 247, g: 178, b:   8, match: true, threshold: 30},  // right of OK button
+      {x: 940, y: 1444, r:  33, g:  65, b: 107, match: true, threshold: 30},  // right next to OK button
+      {x: 200, y:  560, r:  30, g: 199, b: 236, match: true, threshold: 40},  // cyan header band, left
+      {x: 880, y:  560, r:  33, g: 201, b: 238, match: true, threshold: 40},  // cyan header band, right
+      {x: 120, y: 1600, r:  33, g: 194, b: 234, match: true, threshold: 40},  // cyan footer band, left of the wording
+      {x: 960, y: 1600, r:  32, g: 194, b: 231, match: true, threshold: 40}   // cyan footer band, above List
     ],
     back: {x: 320, y: 1444},  // Cancel button
     next: {x: 766, y: 1444}   // OK button
   },
+  // The same dialog with the stock drawn as "N/N" rather than "Left: N". No
+  // corpus frame shows it any more; kept until one does or the game plainly
+  // never draws it again.
   Confirm2025PurchaseCapsulePage: {
     name: PageName.ConfirmPurchasePage,
     colors: [
@@ -1992,9 +2004,11 @@ var Page = {
     next: {x: 540, y: 1000}
   },
   // The GET! gift dialog -- cyan header, dark body, "Claim your gift from your
-  // mailbox", a Close button -- which the event raises after a card reveal.
+  // mailbox", a Close button -- which the event raises after a card reveal,
+  // and the Pick-Up Capsule when its prize is an item rather than a tsum.
   // Probed on the dialog's own chrome, not on the amount or the item, so it
-  // reads the same wherever the game shows it.
+  // reads the same wherever the game shows it: the capsule's ticket frame
+  // passes at 0.85 with nothing in the entry written for it.
   //
   // A joint fingerprint, deliberately: this is the game's shared dialog sprite,
   // drawn where `GiftHeart` and `ReceiveHeart` draw theirs, so the header and
@@ -2225,7 +2239,8 @@ var PageProfiles: PageProfileMap = {
     roles: [PageRole.PreTally],
     note: 'The GET! gift dialog ("Claim your gift from your mailbox") with its '
         + 'Close. The game\'s generic reward dialog; the event raises it after a '
-        + 'card reveal.'
+        + 'card reveal, and the Pick-Up Capsule ends on it when the prize is an '
+        + 'item rather than a tsum.'
   },
   MagicalTime: {
     kind: PageKind.Permanent,
@@ -2273,7 +2288,12 @@ var PageProfiles: PageProfileMap = {
         + 'the standard close button at centre bottom (events, My Info, settings).'
   },
   TapOpenPage: {kind: PageKind.Permanent, note: 'Waits for the "TAP!" it asks for.'},
-  TapOpenPageDeprecated: {kind: PageKind.Permanent, note: 'Older capsule art for the same screen.'},
+  TapOpenPageDeprecated: {
+    kind: PageKind.Permanent,
+    note: 'Older capsule art for the same screen. Also what the capsule machine '
+        + 'reads as while it turns after the tap -- the same art without the '
+        + 'prompt -- which the Box Buying sweep taps through blind.'
+  },
 
   // --- Tsum collection and store ---
   TsumsPage: {kind: PageKind.Permanent, roles: [PageRole.GameUp]},
@@ -2289,11 +2309,11 @@ var PageProfiles: PageProfileMap = {
   ConfirmPurchasePage: {kind: PageKind.Permanent, note: 'OK / Cancel.'},
   BoxPurchasedPage: {
     kind: PageKind.Permanent,
-    note: 'One box\'s reveal card, with Close. What a 1-Time purchase ends on; a '
-        + '10-Time one shows ten of these without the Close and then '
-        + '`BoxPurchaseResult`. Also the "You got a Patch!" popup (the `patch` '
-        + 'configuration), which a purchase carrying a patch shows after its '
-        + 'reveals, with a Close of its own.'
+    note: 'One box\'s reveal card, with Close. What a 1-Time purchase ends on -- '
+        + 'a Pick-Up Capsule that drops a tsum too; a 10-Time one shows ten of '
+        + 'these without the Close and then `BoxPurchaseResult`. Also the "You '
+        + 'got a Patch!" popup (the `patch` configuration), which a purchase '
+        + 'carrying a patch shows after its reveals, with a Close of its own.'
   },
   BoxPurchaseResult: {
     kind: PageKind.Permanent,
@@ -2659,6 +2679,13 @@ var CollectionSortDialog = {
 //   from the ends of the row: with three tabs the panel background shows at
 //   both, with four a tab reaches into each.
 //
+//   THE FOURTH TAB IS ONE OF TWO BOXES.  The limited-time slot holds the Select
+//   Box or the Pick-Up Capsule, drawn in the same place with the same label
+//   band, so the slot alone cannot say which is on sale. The icon can: the
+//   capsule's is a gumball machine on a red base, the box's a blue gift with a
+//   pink bow, and the base is read on both flanks of the machine's gold plate,
+//   below where a "Sold Out" ribbon or the "Limited!" badge reaches.
+//
 //   SO DO THE BUTTONS.  A box with both purchase sizes draws them side by side;
 //   one with only a 1-Time purchase -- Happiness always, and any box whose
 //   10-Time has gone -- draws that one centred instead, over the gap the pair
@@ -2683,15 +2710,28 @@ var BoxStore = {
    * The boxes in the order the tab row draws them, per row width.
    *
    * The limited-time box sits third, between Premium Box and Happiness Box --
-   * true of every four-tab frame in the corpus. A four-tab row whose third box
-   * is some *other* limited box would be bought as `Select`, which is why only
-   * a player who picked Select can reach it.
+   * true of every four-tab frame in the corpus. `order4` names it `Select`;
+   * `readBoxTabs` reads the icon at `limitedSlot` and `openBoxTab` puts what
+   * it found there, so a capsule is bought only by a player who picked the
+   * capsule and a Select Box only by one who picked that. A four-tab row whose
+   * third box is some *other* limited box reads as `Select`.
    */
   order3: [BoxType.PremiumPlus, BoxType.Premium, BoxType.Happiness] as BoxType[],
   order4: [BoxType.PremiumPlus, BoxType.Premium, BoxType.Select, BoxType.Happiness] as BoxType[],
+  limitedSlot: 2,
   /** Tab centres for each row width. Measured across all seven corpus store frames. */
   tabX3: [232, 540, 847],
   tabX4: [141, 406, 673, 938],
+  /**
+   * The Pick-Up Capsule's icon on the limited-time tab: the red base of the
+   * gumball machine, either side of its gold plate. Both must read red. The
+   * Select Box's icon puts its pink ribbon on the left point (255/117/198) and
+   * its blue body on the right (74/146/239), each 70+ off in a channel; the
+   * capsule reads 197-229/33-47/18-58 across every capsule frame.
+   */
+  capsuleIcon: [{x: 650, y: 1160}, {x: 700, y: 1160}],
+  capsuleIconColor: {r: 212, g: 40, b: 54},
+  capsuleIconDiff: 50,
 
   /**
    * The band a tab is read on: below its label, above its bottom edge, and clear
@@ -3060,8 +3100,11 @@ var PageRoutes: PageRouteMap = {
   EventCardReveal: [
     { via: PageAnchor.Back, to: PageName.EventGift, source: RouteSource.Handler }
   ],
+  // Two destinations for one Close, by what raised it: the event's card reveal
+  // leads back to the event, the Pick-Up Capsule's item prize to the store.
   EventGift: [
-    { via: PageAnchor.Back, to: PageName.EventMain, source: RouteSource.Handler }
+    { via: PageAnchor.Back, to: PageName.EventMain, source: RouteSource.Handler },
+    { via: PageAnchor.Back, to: PageName.TsumTsumStorePage, source: RouteSource.Declared }
   ],
   // Declared, not implemented: `nav.move.back` is what closes it, and the tally
   // is what `record.baseCoins` and `finishRoundStats` expect behind it.

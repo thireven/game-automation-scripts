@@ -47,8 +47,23 @@ release note; they fold back in here when she ships.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
 - Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain as fast as ordinary play so three fit the window, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead, and popping them after a chain like any other; bubbles are popped as normal until his first activation, then saved for the windows.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
+- Box Buying can buy the Pick-Up Capsule: pick it under "Box to buy" and the sweep buys from the capsule while one is on sale, opening each and closing its prize, whether a tsum or an item.
 
 ### Added
+
+- **`BoxType.Capsule` -- the Pick-Up Capsule under "Box to buy".** It shares
+  the store's limited-time tab with the Select Box, so `readBoxTabs` reads
+  the tab's icon (`BoxStore.capsuleIcon`: the machine's red base, either side
+  of its gold plate) and reports `limited` -- `capsule` or `select` -- which
+  `openBoxTab` puts in the slot; a player who picked one never buys the
+  other. The capsule sells singly, so any size buys one at a time. Its
+  confirmation (`ConfirmPurchaseCapsulePage`) is retuned to today's "Left: N"
+  dialog on the cyan bands instead of the dome gradient; the reveal loop taps
+  through "TAP! OPEN!" and the ~9s spin blind, and closes either the reveal
+  card (a tsum) or the game's GET! dialog, `EventGift` (an item), which it
+  now treats like the card. Proven on one screenshot and two recordings from
+  MuMu, never on a device: read `box.tabRead`'s `limited` and `box.bought`'s
+  `cleared` on the first log.
 
 - **`src/chainCounter.ts`: every measured drag reads the game's own chain
   counter.** The number the game draws beside a chain's head is its outline

@@ -103,7 +103,7 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.SettingBuyBox]: '購買BOX時間(時)',
     [UiText.SettingBuyBoxHelp]: '0 表示關閉。會在 Tsum Tsum 商店一路買到售完或金幣不足為止，絕不會花掉紅寶石。「立即」會馬上跑一次；腳本停止時會先啟動腳本。',
     [UiText.SettingBuyBoxType]: '要買的BOX',
-    [UiText.SettingBuyBoxTypeHelp]: '只買這一種BOX，不會買別的。Select Box 是期間限定，多數時候並沒有在賣。',
+    [UiText.SettingBuyBoxTypeHelp]: '只買這一種BOX，不會買別的。Select Box 和 Pick-Up Capsule 共用期間限定的位置，多數時候都沒有在賣，而且一次只會有其中一種。',
     [UiText.SettingBuyBoxSize]: '每次購買數量',
     [UiText.SettingBuyBoxSizeHelp]: '十連會按有提供的「10次購買」；只賣單抽的BOX會改成一次買一個。BOX快售完、商店拒絕十連時，「十連」就停，「先十連再單抽」會改成單抽一路買到售完。',
     [UiText.BoxSizeOne]: '一次買一個',

@@ -165,6 +165,11 @@ interface BoxTabRow {
   tabs: number;
   /** Which tab is the open (gold) one, as an index into that width's order. */
   selected: number;
+  /**
+   * Which box the limited-time slot holds -- `Select` or `Capsule`, read off
+   * the tab's icon -- or null on a three-tab row, which has no such slot.
+   */
+  limited: BoxType | null;
 }
 
 /** Where to tap for each purchase size on the open box, and what is sold out. */

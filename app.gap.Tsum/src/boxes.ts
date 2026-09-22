@@ -9,6 +9,16 @@
 // of those is something a chore that spends the player's coins may rely on
 // arriving (DRIVING_SCREENS.md § 8).
 //
+// The Pick-Up Capsule goes through the same flow as a box. It shares the
+// store's limited-time tab with the Select Box -- the tab's icon says which is
+// on sale (`BoxStore.capsuleIcon`) -- draws a 1-Time button only, and its own
+// confirmation (`Page.ConfirmPurchaseCapsulePage`, under the box dialog's
+// name). What the reveal loop taps through differs: "TAP! OPEN!", the machine
+// turning for up to ~9s, and then either the reveal card a box ends on or,
+// for a prize that is an item, the game's GET! dialog (`EventGift`). Never
+// run on a device: read `box.tabRead`'s `limited` and the reveal loop's
+// `closes` on the first log.
+//
 // The refusal is a toast, not a blue button: the store keeps the 10-Time button
 // gold once the box holds fewer than ten and answers a press with "You can't
 // use 10-Time Purchases" (`Page.BoxTenTimeRefused`). What the sweep does then is
@@ -102,6 +112,11 @@ const enum BoxReveals {
  * loading store reads the panel at both ends exactly as a three-box row does,
  * and only the gold tells them apart (`BoxStore`, src/data.ts). One capture
  * either way.
+ *
+ * A four-tab row also says which limited box its third slot holds: the
+ * Pick-Up Capsule when its icon's red base reads at both `capsuleIcon` points,
+ * the Select Box otherwise. The icon is drawn the same whether the tab is
+ * open or not, so this reads off the same capture as the rest.
  */
 Tsum.prototype.readBoxTabs = function() {
   const img = this.screenshot();
@@ -109,6 +124,7 @@ Tsum.prototype.readBoxTabs = function() {
   let gold = 0;
   let selected = -1;
   let tabs: number;
+  let limited: BoxType | null = null;
   try {
     const ends = this.getColors(img, BoxStore.rowEnds);
     for (let i = 0; i < ends.length; i++) {
@@ -129,14 +145,24 @@ Tsum.prototype.readBoxTabs = function() {
         selected = i;
       }
     }
+    if (tabs === BoxStore.order4.length) {
+      const icon = this.getColors(img, BoxStore.capsuleIcon);
+      let red = 0;
+      for (let i = 0; i < icon.length; i++) {
+        if (isSameColor(BoxStore.capsuleIconColor, icon[i], BoxStore.capsuleIconDiff)) {
+          red++;
+        }
+      }
+      limited = red === icon.length ? BoxType.Capsule : BoxType.Select;
+    }
   } finally {
     releaseImage(img);
   }
   logDebug(Log.Box.TabRead,
-    {tabs: tabs, panelEnds: panelEnds, selected: selected, gold: gold});
+    {tabs: tabs, panelEnds: panelEnds, selected: selected, gold: gold, limited: limited});
   // Two gold tabs is a frame caught mid-repaint, and is no more a reading than
   // none is.
-  return gold === 1 ? {tabs: tabs, selected: selected} : null;
+  return gold === 1 ? {tabs: tabs, selected: selected, limited: limited} : null;
 }
 
 /**
@@ -165,7 +191,9 @@ Tsum.prototype.awaitBoxTabs = function(timeoutMs) {
  * Put the store on `box`, and say whether it is there.
  *
  * Null means the store is not selling that box today, which is not a fault --
- * the limited-time slot is empty most of the time -- and ends the sweep quietly.
+ * the limited-time slot is empty most of the time, and when it is filled it
+ * holds the Select Box or the Pick-Up Capsule, not both -- and ends the sweep
+ * quietly.
  *
  * The tab is confirmed by reading it back rather than by waiting: a tap that
  * lands while the panel above is still redrawing is swallowed by the animation
@@ -180,7 +208,12 @@ Tsum.prototype.openBoxTab = function(box) {
     return null;
   }
   const tabs = row.tabs;
-  const order = tabs === 3 ? BoxStore.order3 : BoxStore.order4;
+  // The four-tab order names the limited slot `Select`; the row read off the
+  // icon which box is really there.
+  const order = tabs === 3 ? BoxStore.order3 : BoxStore.order4.slice();
+  if (row.limited !== null) {
+    order[BoxStore.limitedSlot] = row.limited;
+  }
   let index = -1;
   for (let i = 0; i < order.length; i++) {
     if (order[i] === box) {
@@ -188,7 +221,7 @@ Tsum.prototype.openBoxTab = function(box) {
     }
   }
   if (index < 0) {
-    logInfo(Log.Box.NotOffered, {box: box, tabs: tabs});
+    logInfo(Log.Box.NotOffered, {box: box, tabs: tabs, limited: row.limited});
     return null;
   }
   if (row.selected === index) {
@@ -311,13 +344,15 @@ Tsum.prototype.awaitBoxPurchase = function(timeoutMs) {
  * Close; a 10-Time one shows ten reveals and then the tally, which has its own
  * Close. A purchase carrying a patch puts a "You got a Patch!" popup between
  * the reveals and the rest, with a Close of its own (`Page.BoxPatchPurchasedPage`,
- * under the reveal card's name). All are dismissed here, and so is "Not enough
- * Coins!" -- which is what OK raises when the price could not be paid, and
- * which ends the whole sweep.
+ * under the reveal card's name). A capsule shows "TAP! OPEN!", turns for up to
+ * ~9s, and ends on the same reveal card for a tsum or on the game's GET!
+ * dialog (`EventGift`) for an item, whose Close is the way back to the store.
+ * All are dismissed here, and so is "Not enough Coins!" -- which is what OK
+ * raises when the price could not be paid, and which ends the whole sweep.
  *
  * One `peek` a pass rather than a `matches` per page: it is one capture against
- * four, it must not broadcast (a `dismiss` handler acting here would be tapping
- * the same screen from two places), and the four screens worth telling apart are
+ * five, it must not broadcast (a `dismiss` handler acting here would be tapping
+ * the same screen from two places), and the screens worth telling apart are
  * all in the table. The destination is checked before anything is tapped, so no
  * tap is ever spent on the store (DRIVING_SCREENS.md § 4).
  */
@@ -337,7 +372,8 @@ Tsum.prototype.clearBoxReveals = function(deadline) {
     if (name === PageName.TsumTsumStorePage) {
       return BoxReveals.Done;
     }
-    if (name === PageName.BoxPurchaseResult || name === PageName.BoxPurchasedPage) {
+    if (name === PageName.BoxPurchaseResult || name === PageName.BoxPurchasedPage
+        || name === PageName.EventGift) {
       this.tap(seen!.back);
       this.settleScreen(BuyBoxPanelSettleMs);
       closes++;

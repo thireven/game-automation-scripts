@@ -169,7 +169,7 @@ roles put it in and in no other.
 | `MagicalTime` | permanent | `preTally` `interrupt` | — | — | — | The offer to play on for a time ticket, and the one page here that plainly runs a countdown: left alone it cancels itself. The script cancels it anyway (accepting spends tickets and then rubies), so the window is only used to keep the navigation band from tapping into the screen behind it. Ten seconds is the observed order of magnitude, not a timed figure -- see DEVELOPMENT.md on how to measure it. |
 | `EventMain` | permanent | `preTally` | — | — | — | The event's own page, reached by tapping the result overlay away. Close is what puts the score tally back in front. |
 | `EventCardReveal` | permanent | `preTally` | — | — | — | The event's card reveal, "Tap to Next" -- put up at its milestones on the way to the tally. Waits for input; any tap moves it on. |
-| `EventGift` | permanent | `preTally` | — | — | — | The GET! gift dialog ("Claim your gift from your mailbox") with its Close. The game's generic reward dialog; the event raises it after a card reveal. |
+| `EventGift` | permanent | `preTally` | — | — | — | The GET! gift dialog ("Claim your gift from your mailbox") with its Close. The game's generic reward dialog; the event raises it after a card reveal, and the Pick-Up Capsule ends on it when the prize is an item rather than a tsum. |
 | `StartPage` | permanent | `gameUp` | — | — | — | Pre-round screen: items, Start, Tsums. |
 | `FriendPage` | permanent | `heartSweep` | — | — | — | The hub the script navigates back to. |
 | `FriendInfo` | permanent | `heartSweep` | — | — | — | A friend card, or the settings social panel. |
@@ -177,14 +177,14 @@ roles put it in and in no other.
 | `SquarePage` | permanent | — | — | — | — |  |
 | `ClosePage` | permanent | — | — | — | — | Not one screen: a deliberate single-pixel catch-all for anything with the standard close button at centre bottom (events, My Info, settings). |
 | `TapOpenPage` | permanent | — | — | — | — | Waits for the "TAP!" it asks for. |
-| `TapOpenPageDeprecated` | permanent | — | — | — | — | Older capsule art for the same screen. |
+| `TapOpenPageDeprecated` | permanent | — | — | — | — | Older capsule art for the same screen. Also what the capsule machine reads as while it turns after the tap -- the same art without the prompt -- which the Box Buying sweep taps through blind. |
 | `TsumsPage` | permanent | `gameUp` | — | — | — |  |
 | `TsumSortOrder` | permanent | — | — | — | — | The collection's Change Order dialog; Close is the only exit. |
 | `RaiseLevelCap` | permanent | — | — | — | — | Cancel / OK, and OK spends the coins. |
 | `LevelCapRaised` | permanent | — | — | — | — | The "level cap has been raised" toast. Like `HeartSent` -- whose sprite it is -- it carries no button and does not clear itself; a tap anywhere is the only way past it. |
 | `TsumTsumStorePage` | permanent | `gameUp` | — | — | — |  |
 | `ConfirmPurchasePage` | permanent | — | — | — | — | OK / Cancel. |
-| `BoxPurchasedPage` | permanent | — | — | — | — | One box's reveal card, with Close. What a 1-Time purchase ends on; a 10-Time one shows ten of these without the Close and then `BoxPurchaseResult`. Also the "You got a Patch!" popup (the `patch` configuration), which a purchase carrying a patch shows after its reveals, with a Close of its own. |
+| `BoxPurchasedPage` | permanent | — | — | — | — | One box's reveal card, with Close. What a 1-Time purchase ends on -- a Pick-Up Capsule that drops a tsum too; a 10-Time one shows ten of these without the Close and then `BoxPurchaseResult`. Also the "You got a Patch!" popup (the `patch` configuration), which a purchase carrying a patch shows after its reveals, with a Close of its own. |
 | `BoxPurchaseResult` | permanent | — | — | — | — | The 10-box tally: all ten in a grid, and Close. Only a 10-Time purchase reaches it. |
 | `NotEnoughCoins` | permanent | — | — | — | — | Cancel / Buy with Rubies, over whatever asked for the coins. Both anchors are Cancel -- see the `Page` entry. |
 | `BoxTenTimeRefused` | permanent | — | — | — | — | The "You can't use 10-Time Purchases" toast: the box holds fewer than ten. Like `HeartSent`, whose sprite it is, it carries no button and waits for a tap anywhere. Targeted -- only the Box Buying sweep asks for it, right after pressing 10-Time Purchase. |
