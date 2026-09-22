@@ -336,6 +336,35 @@
 // leaves the next tsum out of reach, which is what a chain stopping at a
 // "wall" looks like. Measure 10 against 20 and 34 before changing anything
 // else here.
+//
+// ## A route into a bubble dies there
+//
+// Measured, 2026-09-21, four recordings at dwell 10/20/34
+// (`round-1-20260921-*.mp4`) aligned to the log by the activation cut-in and
+// the planned route drawn over the frames. The counter read found 8 of 48
+// drags -- the count is drawn pink, yellow-filled or rainbow-filled as often
+// as navy -- so the numbers came off the release popups. Where the route was
+// clean the 10ms drag registered whole: 24 of 24, 34 of 36 held, 19 of 19,
+// 19 of 21, 19 of 20, 11 of 11. Where it died it died at a bubble: the
+// 33-chain that read 7 linked 1-7 as planned and its eighth tsum was a bubble
+// resting on the bowl; the one that read 13 ran into the bottom row of them
+// at 14; a 14-chain stopped at 9 on a tsum 1.1 widths from a bubble the pass
+// had read. The pass had read no bubble on the first two, with three in
+// plain sight: the Hough pass loses the resting ones under the rim lights and
+// the fever tint, the scan reads a bubble's icons as a tsum circle, and the
+// paint read passes it (its `rise` is logged per circle now, to say by how
+// much). So bubbles come from three sources (`gastonBubbles`): the pass
+// proper, a second pass at a lower threshold over the bowl's bottom, and the
+// round's memory of every read -- the last two `soft`, planned round and
+// never tapped -- and `bubbleAvoid` grew to a bubble's radius plus a tsum's.
+// Dwell is not the lever; the passes that registered short did so at 10, 20
+// and 34 alike.
+//
+// The same recordings showed the carry starving whole windows: 221 of 291
+// passes planned nothing, all on a carry that had marked the board's
+// leftovers before the first clear slid them into new positions. A pass whose
+// carry leaves nothing to chain now plans from the cluster and drops the
+// carry until the next read (`starved` on the pass record).
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -458,9 +487,33 @@ var GastonConfig = {
   // every pass.
   hemButtons: [{ x: 30, y: 214 }, { x: 170, y: 214 }],
   hemButtonAvoid: 1.0,
-  // How far a planned tsum must stay from a bubble, in tsum widths. A bubble is
-  // about 1.4 tsums across, so this is "not touching".
-  bubbleAvoid: 1.0,
+  // How far a planned tsum must stay from a bubble's centre, in tsum widths.
+  // A bubble is about 1.4 tsums across and floats over the pile, so a tsum
+  // whose centre is within its radius plus half a width has the bubble over
+  // its edge, and the game does not link it: a 14-chain died at 9 on a tsum
+  // 1.1 widths from a bubble it had read (`round-1-20260921-215654.mp4`,
+  // 04:58:17). This was 1.0.
+  bubbleAvoid: 1.4,
+  // The bubbles the Hough pass misses are the ones resting on the bowl's
+  // bottom: the rim lights and the fever tint leave their outline under
+  // `GameBubbleConfig.param2`, and a route that runs into one dies there --
+  // two 33-chains registered 7 and 13 that way on 2026-09-21, with the pass
+  // reading no bubble at all and three in plain sight. A second pass at
+  // `bandParam2` over the bottom of the capture, from `bubbleBandFrom` of its
+  // height down (y 150 of a 220-tall hemmed capture: the resting ones centre
+  // at 150-185), takes those; its finds are `soft` -- kept out of the route,
+  // never tapped as a cancel -- because at 18 it also takes a tsum now and
+  // then. Replayed in cv2 over the scan frames of that day's four recordings:
+  // the band pass found two of two, three of three and two of three bottom
+  // bubbles at 20, more at 18, with one false circle in 18 frames.
+  bubbleBandFrom: 0.68,
+  bandParam2: 18,
+  // Bubbles a read found stay known for this long, matched by position within
+  // `bubbleMatch` widths on later reads: one that sank under the rim lights
+  // and dropped out of the Hough is still there, and only a cancel's tap
+  // removes one. Remembered bubbles are `soft` too.
+  bubbleMemoryMs: 12000,
+  bubbleMatch: 1.2,
   // How far below the play square the bubble capture runs, as a share of its
   // height. The bowl is deeper at the middle than the square is tall, and a
   // bubble resting there has its lower third cut off the square: four sat so
@@ -611,6 +664,12 @@ var gastonFever = { plain: -1, onAt: 0, switchedAt: 0 };
 // a cancel's blast takes out what it cleared.
 var gastonCarry: Point[] = [];
 var gastonCarryRead = false;
+
+// Every bubble a read of this round has found, by position, with when it was
+// last seen (`gastonRememberBubbles`): the ones the Hough loses under the rim
+// lights are still there. Keyed to the round; a cancel's tap drops one.
+var gastonBubbleMemory: GameBubble[] = [];
+var gastonBubbleRound = 0;
 
 /** What one pass of the window came to. */
 interface GastonPass {
@@ -843,21 +902,105 @@ function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
  * square -- see `bubbleHem` for the ones the square cuts in half. The same
  * Hough pass as `findGameBubbles`, in play-square scale; a centre below the
  * square has y past `playResizeHeight`, which the taps map like any other.
+ *
+ * Then two more sources, both `soft` (planned round, never tapped): a second
+ * Hough at `bandParam2` over the bottom `bubbleBandFrom` of the capture, for
+ * the bubbles resting on the bowl the first pass reads through, and the
+ * memory of earlier reads (`gastonRememberBubbles`). A soft find within
+ * `minDist` of a hard one is the same bubble and dropped.
  */
 function gastonBubbles(ts: Tsum): GameBubble[] {
-  const hem = GastonConfig.bubbleHem;
+  const cfg = GastonConfig;
+  const bc = GameBubbleConfig;
+  const hem = cfg.bubbleHem;
   const h = Math.min(Math.round(ts.playHeight * (1 + hem)), ts.screenHeight - ts.playOffsetY);
   const outH = Math.round(ts.playResizeHeight * h / ts.playHeight);
   const img = getScreenshotModify(ts.playOffsetX, ts.playOffsetY, ts.playWidth, h,
     ts.playResizeWidth, outH, 100);
   let gray: NativeImage | null = null;
+  let hard: GameBubble[];
+  let band: HoughCircle[];
   try {
     gray = buildBoardGray(img);
-    return gastonNotButtons(findGameBubbles(gray));
+    hard = gastonNotButtons(findGameBubbles(gray));
+    band = houghCircles(gray, 3, 1, bc.minDist, bc.param1, cfg.bandParam2, bc.minRadius, bc.maxRadius);
   } finally {
     if (gray != null) { releaseImage(gray); }
     releaseImage(img);
   }
+  const bandFrom = outH * cfg.bubbleBandFrom;
+  const soft: GameBubble[] = [];
+  for (let k = 0; k < band.length; k++) {
+    const b = band[k];
+    if (b.y < bandFrom) { continue; }
+    soft.push({ x: b.x, y: b.y, r: b.radius, soft: true });
+  }
+  const out = hard.slice();
+  const softKept = gastonNotButtons(soft);
+  for (let k = 0; k < softKept.length; k++) {
+    if (!gastonBubbleNear(softKept[k], out, bc.minDist)) { out.push(softKept[k]); }
+  }
+  return gastonRememberBubbles(ts, out);
+}
+
+/** The bubbles the Hough pass proper found -- the ones a cancel may tap. */
+function gastonHardBubbles(bubbles: GameBubble[]): GameBubble[] {
+  const out: GameBubble[] = [];
+  for (let i = 0; i < bubbles.length; i++) {
+    if (!bubbles[i].soft) { out.push(bubbles[i]); }
+  }
+  return out;
+}
+
+/** Whether `b` is within `dist` (play-square units) of any of `list`. */
+function gastonBubbleNear(b: Point, list: Point[], dist: number): boolean {
+  for (let i = 0; i < list.length; i++) {
+    const dx = list[i].x - b.x;
+    const dy = list[i].y - b.y;
+    if (dx * dx + dy * dy < dist * dist) { return true; }
+  }
+  return false;
+}
+
+/**
+ * Fold this read into the round's bubble memory and hand back the read plus
+ * every remembered bubble it did not find again, as `soft`. A read refreshes
+ * a remembered bubble within `bubbleMatch` widths; one unseen for
+ * `bubbleMemoryMs` is forgotten; a cancel's tap forgets one outright
+ * (`gastonForgetBubble`). A new round starts with nothing.
+ */
+function gastonRememberBubbles(ts: Tsum, read: GameBubble[]): GameBubble[] {
+  const cfg = GastonConfig;
+  const now = Date.now();
+  if (gastonBubbleRound !== ts.roundStartedAt) {
+    gastonBubbleMemory = [];
+    gastonBubbleRound = ts.roundStartedAt;
+  }
+  const match = Config.tsumWidth * cfg.bubbleMatch;
+  const out = read.slice();
+  const next: GameBubble[] = [];
+  for (let i = 0; i < read.length; i++) {
+    next.push({ x: read[i].x, y: read[i].y, r: read[i].r, lastSeen: now });
+  }
+  for (let k = 0; k < gastonBubbleMemory.length; k++) {
+    const old = gastonBubbleMemory[k];
+    if (gastonBubbleNear(old, read, match)) { continue; }
+    if (now - (old.lastSeen || 0) > cfg.bubbleMemoryMs) { continue; }
+    next.push(old);
+    out.push({ x: old.x, y: old.y, r: old.r, soft: true });
+  }
+  gastonBubbleMemory = next;
+  return out;
+}
+
+/** A cancel tapped `b`: it is gone, so the memory drops it. */
+function gastonForgetBubble(b: Point): void {
+  const match = Config.tsumWidth * GastonConfig.bubbleMatch;
+  gastonBubbleMemory = gastonBubbleMemory.filter(function(p) {
+    const dx = p.x - b.x;
+    const dy = p.y - b.y;
+    return dx * dx + dy * dy >= match * match;
+  });
 }
 
 /**
@@ -1153,6 +1296,8 @@ interface GastonDrag {
   gastons: BoardPoint[] | null;
   /** The read's rise: the median over the circles that rose, or over every circle when none did. Null when it did not run. */
   rise: number | null;
+  /** Every circle's rise, in `board` order, for the log: what a bubble or a leftover reads against `paintRise`. Null when the read did not run. */
+  rises: number[] | null;
   /** The circles the read found not to be Gaston, as centres, for `gastonCarry`. Empty without a read. */
   leftovers: Point[];
   /** The game's chain counter, read `settleMs` after the last MOVE with the finger down (chainCounter.ts). Null when nothing was drawn. */
@@ -1240,7 +1385,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     holdUntil: number, oracle: GastonOracle | null): GastonDrag {
   const drag: GastonDrag = {
     path: [] as TsumPath, ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0,
-    dead: false, gastons: null, rise: null, leftovers: [], count: null, countLate: null,
+    dead: false, gastons: null, rise: null, rises: null, leftovers: [], count: null, countLate: null,
   };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.isRunning || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
@@ -1272,6 +1417,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     }
     drag.gastons = gastons;
     drag.rise = gastonMedian(rises.length > 0 ? rises : all);
+    drag.rises = all;
     const planned = gastons.length + 1 >= cfg.minChain ? oracle.plan(path[0], gastons) : null;
     if (planned === null) {
       drag.dead = gastons.length + 1 < cfg.minChain;
@@ -1333,7 +1479,10 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
  * chain was planned off; bubbles are big and drift slowly, so the tap still
  * lands.
  */
-function gastonCancelBubble(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): number {
+function gastonCancelBubble(ts: Tsum, path: TsumPath, all: GameBubble[]): number {
+  // Only what the Hough pass proper found is tapped: a soft bubble may be a
+  // tsum, or gone (see `gastonBubbles`).
+  const bubbles = gastonHardBubbles(all);
   if (!ts.isRunning || bubbles.length === 0) { return 0; }
   const far: { b: GameBubble, d: number }[] = [];
   for (let b = 0; b < bubbles.length; b++) {
@@ -1353,6 +1502,7 @@ function gastonCancelBubble(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): nu
     const x = Math.floor(ts.playOffsetX + far[i].b.x * ts.playWidth / ts.playResizeWidth);
     const y = Math.floor(ts.playOffsetY + far[i].b.y * ts.playHeight / ts.playResizeHeight);
     tap(x, y, GastonConfig.cancelTapMs);
+    gastonForgetBubble(far[i].b);
     // What the blast clears refills as Gaston, so it is no longer a leftover.
     const reach = far[i].b.r + blast;
     gastonCarry = gastonCarry.filter(function(p) {
@@ -1451,26 +1601,47 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     // His tsums as far as the pass can tell without a read: the carry, or
     // the cluster.
     const carry = gastonCarryRead ? gastonCarryOut(board) : null;
-    const source = carry !== null ? carry.kept : gastons;
-    const origin = carry !== null ? 'carry' : 'cluster';
+    let source = carry !== null ? carry.kept : gastons;
+    let origin = carry !== null ? 'carry' : 'cluster';
     let free = gastonFreeBoard(source, bubbles);
     for (let k = 0; k < avoid.length; k++) { free = gastonWithout(free, avoid[k]); }
-    const path = gastonOrient(gastonChain(free, bubbles), gastonLeftovers(board, source));
+    let path = gastonOrient(gastonChain(free, bubbles), gastonLeftovers(board, source));
+    // A carry that leaves nothing to chain is stale, not a board with nothing
+    // on it: the first read of a window finds a board of leftovers, the
+    // chain's clear slides them down into the positions it remembered, and
+    // the Gastons that landed on top read as leftovers too. Every pass after
+    // that planned nothing, for the rest of the window -- 221 of 291 passes on
+    // 2026-09-21, six windows of 23 lost whole. So the pass falls back to the
+    // cluster, and the carry is dropped until the next read replaces it.
+    let starved = false;
+    if (!path && carry !== null) {
+      starved = true;
+      gastonCarryRead = false;
+      source = gastons;
+      origin = 'cluster';
+      free = gastonFreeBoard(source, bubbles);
+      for (let k = 0; k < avoid.length; k++) { free = gastonWithout(free, avoid[k]); }
+      path = gastonOrient(gastonChain(free, bubbles), gastonLeftovers(board, source));
+    }
     // Bubble centres in play-square scale, beside the board below: whether a
     // hop crossed one is then answerable offline. `near` is each one's
     // leftovers, the order the cancel spends them in.
+    // `soft` counts the ones the band pass or the memory supplied, listed
+    // after the read's own.
     const bubbleAt: number[] = [];
     const near: number[] = [];
+    let softBubbles = 0;
     for (let b = 0; b < bubbles.length; b++) {
       bubbleAt.push(Math.round(bubbles[b].x), Math.round(bubbles[b].y));
       near.push(bubbles[b].near || 0);
+      if (bubbles[b].soft) { softBubbles++; }
     }
     if (!path) {
       logInfo(Log.Skill.GastonPass, {
         chain: 0, read: board.length, rescans: rescans, gaston: gastons.length,
-        source: origin, carried: carry !== null ? carry.left : 0,
-        cut: source.length - free.length, bubbles: bubbles.length, bubbleAt: bubbleAt, near: near,
-        retry: lifted,
+        source: origin, carried: carry !== null ? carry.left : 0, starved: starved,
+        cut: source.length - free.length, bubbles: bubbles.length, soft: softBubbles,
+        bubbleAt: bubbleAt, near: near, retry: lifted,
       });
       return {
         chain: 0, registered: null, cancelled: 0, held: false, heldMs: 0, releasedAt: 0,
@@ -1487,7 +1658,8 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     // Gaston.
     const holds = function(headAt: number, chain: number): boolean {
       if (!mayCancel || headAt >= closesAt - cfg.noCancelTailMs) { return true; }
-      return bubbles.length === 0 && headAt + chain * cfg.popPerTsumMs + cfg.popTailMs >= closesAt;
+      return gastonHardBubbles(bubbles).length === 0
+        && headAt + chain * cfg.popPerTsumMs + cfg.popTailMs >= closesAt;
     };
     // Not into the fever switch: the game takes no link through it.
     const waitedMs = gastonAwaitSwitch(ts, gastonDragEstimate(path.length));
@@ -1519,9 +1691,10 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
       registered: drag.count !== null ? drag.count.value : null,
       counter: drag.count !== null ? chainCountDetail(drag.count) : null,
       registeredLate: drag.countLate !== null ? drag.countLate.value : null,
-      // Where the head came from, and how many circles the carry left out.
-      source: origin, carried: carry !== null ? carry.left : 0,
-      cut: source.length - free.length, bubbles: bubbles.length,
+      // Where the head came from, how many circles the carry left out, and
+      // whether it was dropped for leaving nothing.
+      source: origin, carried: carry !== null ? carry.left : 0, starved: starved,
+      cut: source.length - free.length, bubbles: bubbles.length, soft: softBubbles,
       held: drag.held, heldMs: drag.heldMs, cancelled: cancelled,
       board: flat, route: route, bubbleAt: bubbleAt, near: near,
       // The head the drag started on, as an index into `board`, and which
@@ -1543,6 +1716,10 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
       for (let i = 0; i < drag.gastons.length; i++) { painted.push(board.indexOf(drag.gastons[i])); }
       fields.painted = painted;
     }
+    // And every circle's rise, in `board` order: the pile's bubbles passed the
+    // read on 2026-09-21 (the route ran into one), and this is what says by
+    // how much.
+    if (drag.rises !== null) { fields.rises = drag.rises; }
     logInfo(Log.Skill.GastonPass, fields);
     if (drag.path.length === 0) {
       lifted++;

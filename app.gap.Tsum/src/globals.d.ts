@@ -759,6 +759,11 @@ interface GameBubble {
    * list built without the tsum pass, which pops as it always did.
    */
   near?: number;
+  /**
+   * A bubble to plan round but not to tap: one the bottom-band pass or the
+   * memory supplied rather than the Hough pass proper (`gastonBubbles`).
+   */
+  soft?: boolean;
   /** Epoch ms this bubble was first seen at about this spot (`trackGameBubbles`). */
   firstSeen?: number;
   /** Epoch ms of the scan that last found it. */

@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain as fast as ordinary play so three fit the window, and by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear; bubbles are popped as normal until his first activation, then saved for the windows.
+- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain as fast as ordinary play so three fit the window, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead; bubbles are popped as normal until his first activation, then saved for the windows.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 
 ### Added
@@ -243,6 +243,23 @@ release note; they fold back in here when she ships.
   bowl, read as bubbles on every pass; `hemButtons` names them and
   `gastonNotButtons` drops them, so a cancel lands on a bubble in play and a
   pass with none waits out the pop.
+- **Gaston's routes keep clear of the bubbles resting on the bowl.** Four
+  recordings at dwell 10/20/34 (2026-09-21), the planned route drawn over
+  the frames: every chain that died mid-drag died on a bubble the pass had
+  not read -- the Hough pass loses the resting ones under the rim lights, the
+  scan reads a bubble's icons as a tsum, and the paint read passed it.
+  `gastonBubbles` now adds a second Hough at `bandParam2` over the bowl's
+  bottom and the round's memory of every read (`gastonRememberBubbles`), both
+  `soft` -- planned round, never tapped -- and `bubbleAvoid` is 1.4 widths, a
+  bubble's radius plus a tsum's. The pass record carries `soft` and every
+  circle's paint `rises`. Clean routes registered whole at 10ms, so the dwell
+  was not the lever.
+- **A starved carry falls back to the cluster.** The window's first read
+  finds a board of leftovers; the first clear slides them into the positions
+  the carry remembered and the Gastons that land read as leftovers too, so
+  221 of 291 passes that day planned nothing and six windows of 23 drew no
+  chain at all. A pass whose carry leaves nothing plans from the colour
+  cluster and drops the carry until the next read (`starved` on the record).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
