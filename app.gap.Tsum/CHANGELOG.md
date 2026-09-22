@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by drawing the longest chain the board allows in each window pass, started from its higher end and checked two tsums in so a chain begun on a stray tsum is redrawn at once instead of running its length for nothing, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), and by keeping its chains clear of the fever's end, where the game briefly stops linking; bubbles are popped as normal until his first activation, then saved for the windows.
+- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), and by keeping its chains clear of the fever's end, where the game briefly stops linking; bubbles are popped as normal until his first activation, then saved for the windows.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 
 ### Added
@@ -87,20 +87,30 @@ release note; they fold back in here when she ships.
   stopped linking there. Replayed over 725 logged boards it plans 15,917 tsums
   to the snake's 15,743. `skill.gaston.pass` carries `bubbleAt`, the bubble
   centres, so a hop across one can be checked offline.
-- **Gaston's drag starts from the route's higher end, and its head is
-  checked two tsums in.** `gaston_7.mp4` aligned to its log: five of seven
-  dead drags began on a leftover at the bottom of the pile -- Lumiere merged
-  into his cluster, Chip under a mislanded centre, the Beast -- where a longest
-  path's tip lands. `gastonOrient` draws from the higher end, an end touching a
-  known leftover losing (`frontierAvoid`). `gastonLinkChain` then reads eight
-  far Gastons' floor (darkest channel over a grid, `gastonFloorRead`) before
-  the grab and at `aliveAtHop`: a live head paints the rest of his tsums pale,
-  a rise of ~20 under the fever tint against 0 for a wrong head
-  (`aliveRise`), and a dead one is lifted and replanned without that start
-  (`deadRetries`, `gastonWithout`). Off for the held pass and inside
-  `aliveBlackoutMs` of the close, where the game blinks the Gastons pale
-  itself. `skill.gaston.pass` carries `rise`, `dead`, `deadAt` and `retry`;
-  the done record sums `dead`.
+- **Gaston's route is planned over the tsums the game paints, from the head
+  the finger is on.** `gaston_8.mp4` aligned to its log: the colour cluster
+  held Donald, the Cheshire Cat and an orange tsum on most boards under the
+  fever tint, every route through one stalled or lost its head (the six held
+  chains registered 7-19 of 24-37), and the head check's eight far probes
+  were mostly those same tsums, so it read live heads dead 27 times in 40 and
+  each lift popped a chain of three. Now `gastonLinkChain` lands on the head,
+  waits `paintMs`, and reads every circle's floor rise (`gastonFloorRead`,
+  `paintRise`): what rose is Gaston, the route is `gastonChainFrom` over
+  those, a head that painted nothing is lifted with one tsum under it and the
+  pass tries another (`deadRetries`). No read inside `paintBlackoutMs` of the
+  close; a pass that cannot read plans off the last read's leftovers
+  (`gastonCarry`, `carryMatch`, pruned by each cancel's blast), else the
+  cluster. `skill.gaston.pass` now logs the whole scan as `board`, with
+  `painted`, `head`, `source` and `carried`; `deadAt` is gone.
+- **Gaston's hops cross nothing.** The game links along the line between two
+  MOVEs and takes a line back over the previous link as undoing it (a 37 planned
+  registered 7 that way). `gastonNeighbors` keeps only hops whose segment
+  passes no other tsum's centre within `crossAvoid` nor a bubble; replayed over
+  103 logged boards the routes plan 99.5% of the unfiltered length.
+- **Gaston's drag starts from the route's higher end.** `gaston_7.mp4` aligned
+  to its log: five of seven dead drags began on a leftover at the bottom of
+  the pile, where a longest path's tip lands. `gastonOrient` draws from the
+  higher end, an end touching a known leftover losing (`frontierAvoid`).
 - **Gaston's window is two cancelled chains, then one held through the
   close.** A chain released while the skill still runs charges nothing, even
   the part of its clear that pops after the close, so after `passesBeforeHold`
