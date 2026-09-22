@@ -159,10 +159,10 @@ interface SettingSpec {
    * What the row names. A settings row carries a `SettingKey` -- the contract
    * with `start()`, so nothing else can be typed here -- a value-less row a
    * `RowKey`, and a `dropdown` entry reuses the field for the option's own
-   * value, which is why the skill, bubble, box and round-cap vocabularies are
-   * in the union too.
+   * value, which is why the skill, bubble, box, round-cap and board-model
+   * vocabularies are in the union too.
    */
-  key?: SettingKey | RowKey | SkillType | BubbleStrategy | BoxType | BoxPurchaseSize | MaxRoundAction;
+  key?: SettingKey | RowKey | SkillType | BubbleStrategy | BoxType | BoxPurchaseSize | MaxRoundAction | BoardModel;
   /** A `UiText` key, resolved at render time -- see `src/strings.d.ts`. */
   title?: UiText;
   /**

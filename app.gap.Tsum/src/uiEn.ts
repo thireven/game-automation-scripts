@@ -153,7 +153,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingDebugLogs]: 'Debug logs',
     [UiText.SettingDebugLogsHelp]: 'More detail in the log.',
     [UiText.SettingBoardModel]: 'Board colour model',
-    [UiText.SettingBoardModelHelp]: 'How the scan tells the tsum types apart. Chroma is what every round has played on. Radial also reads how much darker each tsum's rim is than its centre, which tells a face under dark hair from a plain one of the same colour. Experimental.',
+    [UiText.SettingBoardModelHelp]: 'How the scan tells the tsum types apart. Chroma is what every round has played on. Radial also reads how much darker each tsum\'s rim is than its centre, which tells a face under dark hair from a plain one of the same colour. Experimental.',
     [UiText.BoardModelChroma]: 'Chroma (default)',
     [UiText.BoardModelRadial]: 'Radial (experimental)',
     [UiText.SettingClusterFragments]: 'Merge cluster fragments',
