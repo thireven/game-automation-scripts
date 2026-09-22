@@ -15,9 +15,11 @@
 // confirmation (`Page.ConfirmPurchaseCapsulePage`, under the box dialog's
 // name). What the reveal loop taps through differs: "TAP! OPEN!", the machine
 // turning for up to ~9s, and then either the reveal card a box ends on or,
-// for a prize that is an item, the game's GET! dialog (`EventGift`). Never
-// run on a device: read `box.tabRead`'s `limited` and the reveal loop's
-// `closes` on the first log.
+// for a prize that is an item, the game's GET! dialog (`EventGift`). The last
+// capsule adds one more: "Last Prize!" over the store, the same dialog under
+// another title (`EventGift`'s `lastPrize` configuration), closed the same
+// way. The store then draws the capsule sold out -- ribbon on the tab, blue
+// button -- and the next pass ends the sweep on it as it would on a box.
 //
 // The refusal is a toast, not a blue button: the store keeps the 10-Time button
 // gold once the box holds fewer than ten and answers a press with "You can't
@@ -346,9 +348,11 @@ Tsum.prototype.awaitBoxPurchase = function(timeoutMs) {
  * the reveals and the rest, with a Close of its own (`Page.BoxPatchPurchasedPage`,
  * under the reveal card's name). A capsule shows "TAP! OPEN!", turns for up to
  * ~9s, and ends on the same reveal card for a tsum or on the game's GET!
- * dialog (`EventGift`) for an item, whose Close is the way back to the store.
- * All are dismissed here, and so is "Not enough Coins!" -- which is what OK
- * raises when the price could not be paid, and which ends the whole sweep.
+ * dialog (`EventGift`) for an item, whose Close is the way back to the store;
+ * the last capsule follows that with "Last Prize!" over the store, the same
+ * dialog again with its own Close. All are dismissed here, and so is "Not
+ * enough Coins!" -- which is what OK raises when the price could not be paid,
+ * and which ends the whole sweep.
  *
  * One `peek` a pass rather than a `matches` per page: it is one capture against
  * five, it must not broadcast (a `dismiss` handler acting here would be tapping

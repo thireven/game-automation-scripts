@@ -2032,6 +2032,33 @@ var Page = {
     back: {x: 540, y: 1400},
     next: {x: 540, y: 1400}
   },
+  // "Last Prize!" -- the same dialog, raised over the store once the last
+  // Pick-Up Capsule is bought, with the Skill ticket its Last Prize badge
+  // promised. Every chrome probe reads the very pixels the GET! frame does;
+  // the title is the whole difference, so the title is what tells them apart:
+  // the two GET! probes read panel blue here, and two on this title's wider
+  // glyphs -- the L's stem and the a's bowl -- read blue on the GET! frame and
+  // the mail dialogs' white separator dots. Sparkles play over the title, so
+  // the threshold takes their glow (the worst of 35 recording frames reads
+  // 112 off at the L) and a sparkle sitting on a probe costs one look, not
+  // the page; white and panel blue are 270 and 360 off, so nothing is given.
+  EventGiftLastPrize: {
+    name: PageName.EventGift,
+    variant: 'lastPrize',
+    colors: [
+      {x: 431, y:  539, r:  26, g: 193, b: 233, match: true, threshold: 50},  // header band
+      {x: 119, y:  551, r:  26, g: 197, b: 233, match: true, threshold: 50},  // header band
+      {x: 275, y: 1217, r:  31, g: 197, b: 238, match: true, threshold: 50},  // footer band
+      {x: 665, y: 1193, r:  31, g: 199, b: 239, match: true, threshold: 50},  // footer band
+      {x: 290, y:  700, r: 243, g: 186, b:  65, match: true, threshold: 120}, // Last Prize! title, the L's stem -- panel blue on the GET! frame
+      {x: 350, y:  705, r: 246, g: 190, b:  64, match: true, threshold: 120}, // Last Prize! title, the a's bowl -- panel blue on the GET! frame
+      {x: 542, y: 1382, r: 247, g: 174, b:   8, match: true, threshold: 40},  // Close button
+      {x: 524, y: 1388, r: 247, g: 174, b:   8, match: true, threshold: 40},  // Close button
+      {x: 542, y: 1418, r: 247, g: 174, b:   8, match: true, threshold: 40}   // Close button
+    ],
+    back: {x: 540, y: 1400},
+    next: {x: 540, y: 1400}
+  },
   ClosePage: { // including EventPage, MyInfo, SettingPage, others
     name: PageName.ClosePage, // the close button at center bottom
     colors: [
@@ -2240,7 +2267,9 @@ var PageProfiles: PageProfileMap = {
     note: 'The GET! gift dialog ("Claim your gift from your mailbox") with its '
         + 'Close. The game\'s generic reward dialog; the event raises it after a '
         + 'card reveal, and the Pick-Up Capsule ends on it when the prize is an '
-        + 'item rather than a tsum.'
+        + 'item rather than a tsum. Also "Last Prize!" (the `lastPrize` '
+        + 'configuration), the same dialog over the store once the last capsule '
+        + 'is bought.'
   },
   MagicalTime: {
     kind: PageKind.Permanent,
