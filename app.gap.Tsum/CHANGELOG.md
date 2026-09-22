@@ -205,7 +205,9 @@ release note; they fold back in here when she ships.
   returning to the previous tsum as undoing the last link. `stepsPerHop` is 0:
   a midpoint sample linked neighbours out of order. `skill.gaston.pass`
   carries `dragMs`, `overMs` (the wait on the game beyond the dwells),
-  `waitedMs` (the hold-back from a switch) and `fever`.
+  `waitedMs` (the hold-back from a switch) and `fever`. `GastonConfig.dodgeSwitch`
+  false turns the hold-back off while the backdrop is still watched, so `fever`
+  still says which drags went out under one.
 - **Gaston's charge opens the next window itself, and no activation goes out
   inside a window.** The spam tap's read of a full gauge was handed to
   `useSkill` for the tap, but once the button has fired the empty gauge

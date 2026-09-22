@@ -617,6 +617,11 @@ var GastonConfig = {
   // drag that would straddle the predicted exit waits for the switch to show
   // and `switchFreezeMs` more, the freeze measured 0.5-0.75s past the switch;
   // `switchLeadMs` is how far ahead of the switch the freeze can begin.
+  //
+  // `dodgeSwitch` false sends every drag out at once: `gastonAwaitSwitch`
+  // waits for nothing. The backdrop is still watched, so a pass still logs
+  // `fever` -- whether the drag went out under one -- with `waitedMs` 0.
+  dodgeSwitch: true,
   feverMs: 8350,
   faceMs: 1300,
   switchFreezeMs: 800,
@@ -766,10 +771,11 @@ function gastonWatchFever(ts: Tsum): void {
 /**
  * Hold a drag of `dragMs` back from the fever switch: the freeze after one
  * just seen, and the exit the running fever's clock puts inside the drag (see
- * `feverMs`). Answers the ms spent waiting.
+ * `feverMs`). Answers the ms spent waiting; 0 at once with `dodgeSwitch` off.
  */
 function gastonAwaitSwitch(ts: Tsum, dragMs: number): number {
   const cfg = GastonConfig;
+  if (!cfg.dodgeSwitch) { return 0; }
   const from = Date.now();
   if (gastonFever.onAt > 0) {
     const exitIn = gastonFever.onAt + cfg.feverMs - from;
