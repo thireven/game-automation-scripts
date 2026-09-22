@@ -21,6 +21,7 @@ var LogsEn = {
   [Log.Board.PathDone]: 'Calculated path',
   [Log.Board.LinkReach]: 'Link reach',
   [Log.Board.DeadScan]: 'Chain drawn but tsums still standing',
+  [Log.Board.ChainDrawn]: 'Chain drawn; the game counted',
   [Log.Board.Stalled]: 'Board not taking chains; fanning',
   [Log.Bubble.Cleared]: 'Clear bubbles',
   [Log.Bubble.Generated]: 'Bubble generated',

@@ -285,6 +285,7 @@ declare const enum SettingKey {
   DebugLogs = 'debugLogs',
   BoardModel = 'boardModel',
   ClusterFragments = 'clusterFragments',
+  DragDwellMs = 'dragDwellMs',
   DebugGame = 'debugGame',
   CollectUnknownScreens = 'collectUnknownScreens',
   Walkthrough = 'walkthrough',
@@ -366,6 +367,13 @@ interface Settings {
    * never shared.
    */
   [SettingKey.ClusterFragments]: boolean;
+  /**
+   * How long a chain's finger rests on each tsum, in ms, for every drag the
+   * chain counter measures -- Gaston's and the play loop's under him; 0 keeps
+   * each drag's own. The experiment `registered` is for (chainCounter.ts).
+   * Debug tab; never shared.
+   */
+  [SettingKey.DragDwellMs]: number;
   [SettingKey.DebugGame]: boolean;
   /** Save unrecognised screens to tsum_record/corpus for offline work. */
   [SettingKey.CollectUnknownScreens]: boolean;

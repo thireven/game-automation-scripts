@@ -318,6 +318,24 @@
 //   - `gastonAwaitSwitch` held seven of eighteen drags 1.2-3.1s, because the
 //     fever's start is stamped `faceMs` after the tap whenever the chrome reads
 //     dimmed at the open, and one window's fever came on 4.3s after its tap.
+//
+// ## Every drag reads the game's own count
+//
+// Everything above was worked out by aligning a recording to the log and
+// counting, one recording at a time, and none of it moved the number that
+// matters: `gaston_9.mp4` (2026-09-21) still registered 7-15 of chains
+// planned at 20-37, on boards the paint read had right. So the number is in
+// the log now. Every drag reads the counter the game draws beside the head
+// (chainCounter.ts) with the finger still down and logs it as `registered`
+// beside `chain`, per pass and per window, and the play loop's chains between
+// windows read it too (`readsChainCounter`), on the same boards. A drag
+// setting is judged by that table -- `chain:replay` in the development
+// toolkit checks a read against a recording -- and the first thing to settle
+// with it is `dwellMs`: the host hands the game one MOVE a frame and the game
+// links from the head only, so at 10ms every skipped hop that was a corner
+// leaves the next tsum out of reach, which is what a chain stopping at a
+// "wall" looks like. Measure 10 against 20 and 34 before changing anything
+// else here.
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -474,6 +492,7 @@ var GastonConfig = {
   // game to take the move: ~2ms a hop measured, and no help at the fever
   // switch (see the header), so it is off and the moves queue as every other
   // drag's do.
+  // The Debug tab's "Drag dwell" overrides `dwellMs` when set (`gastonDwellMs`).
   grabMs: 10,
   dwellMs: 10,
   stepMs: 5,
@@ -597,6 +616,8 @@ var gastonCarryRead = false;
 interface GastonPass {
   /** Tsums in the chain drawn, 0 when none was. */
   chain: number;
+  /** Tsums the game's counter said it linked (chainCounter.ts); null when nothing was drawn or the counter did not read. */
+  registered: number | null;
   /** Bubbles tapped to cancel the pop animation. */
   cancelled: number;
   /** The chain was held on its last tsum until the window had closed, then left to pop -- the closing chain. */
@@ -702,10 +723,15 @@ function gastonAwaitSwitch(ts: Tsum, dragMs: number): number {
   return Date.now() - from;
 }
 
+/** The dwell on each tsum of a drag: the Debug tab's, when set, else `dwellMs`. */
+function gastonDwellMs(): number {
+  return Config.dragDwellMs > 0 ? Config.dragDwellMs : GastonConfig.dwellMs;
+}
+
 /** About how long a drag over `chain` tsums takes, for the switch wait. */
 function gastonDragEstimate(chain: number): number {
   const cfg = GastonConfig;
-  return cfg.grabMs + cfg.releaseMs + chain * (cfg.dwellMs + 5);
+  return cfg.grabMs + cfg.releaseMs + chain * (gastonDwellMs() + 5);
 }
 
 // --- Reading the board ------------------------------------------------------
@@ -1129,6 +1155,10 @@ interface GastonDrag {
   rise: number | null;
   /** The circles the read found not to be Gaston, as centres, for `gastonCarry`. Empty without a read. */
   leftovers: Point[];
+  /** The game's chain counter, read `settleMs` after the last MOVE with the finger down (chainCounter.ts). Null when nothing was drawn. */
+  count: ChainCount | null;
+  /** The counter again just before a held chain's release, in case the count was still climbing. Null unless held. */
+  countLate: ChainCount | null;
 }
 
 /**
@@ -1210,7 +1240,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     holdUntil: number, oracle: GastonOracle | null): GastonDrag {
   const drag: GastonDrag = {
     path: [] as TsumPath, ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0,
-    dead: false, gastons: null, rise: null, leftovers: [],
+    dead: false, gastons: null, rise: null, leftovers: [], count: null, countLate: null,
   };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.isRunning || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
@@ -1218,11 +1248,12 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   const half = Config.tsumWidth / 2;
   const base = oracle !== null ? gastonFloorRead(ts, oracle.board) : null;
   const from = Date.now();
+  const dwellMs = gastonDwellMs();
   const head = gastonToScreen(ts, path[0]);
   tapDown(head.x, head.y, cfg.grabMs);
-  moveTo(head.x, head.y, cfg.dwellMs, cfg.pacedMoves);
+  moveTo(head.x, head.y, dwellMs, cfg.pacedMoves);
   if (oracle !== null && base !== null) {
-    const rest = cfg.paintMs - cfg.grabMs - cfg.dwellMs;
+    const rest = cfg.paintMs - cfg.grabMs - dwellMs;
     if (rest > 0) { ts.sleep(rest); }
     const now = gastonFloorRead(ts, oracle.board);
     const gastons: BoardPoint[] = [];
@@ -1262,23 +1293,30 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       moveTo(Math.floor(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f),
         Math.floor(pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f), cfg.stepMs, cfg.pacedMoves);
     }
-    moveTo(pts[i].x, pts[i].y, cfg.dwellMs, cfg.pacedMoves);
+    moveTo(pts[i].x, pts[i].y, dwellMs, cfg.pacedMoves);
   }
   const headAt = Date.now();
+  // What the game linked, off its own counter, with the finger still down:
+  // the measurement every drag setting is judged by (chainCounter.ts).
+  const route = chainRouteCentres(path);
+  ts.sleep(ChainCounterConfig.settleMs);
+  drag.count = chainCounterRead(ts, route);
   if (holds(headAt, path.length)) {
     drag.held = true;
     while (ts.isRunning && Date.now() < holdUntil) {
       ts.sleep(Math.min(cfg.holdSliceMs, holdUntil - Date.now()));
     }
+    drag.countLate = chainCounterRead(ts, route);
     drag.heldMs = Date.now() - headAt;
   }
   const last = pts[pts.length - 1];
   drag.releasedAt = Date.now();
   tapUp(last.x, last.y, cfg.releaseMs);
   drag.ms = Date.now() - from - drag.heldMs;
-  const slept = cfg.grabMs + cfg.dwellMs * pts.length
+  const slept = cfg.grabMs + dwellMs * pts.length
     + cfg.stepMs * cfg.stepsPerHop * (pts.length - 1) + cfg.releaseMs
-    + (oracle !== null ? Math.max(0, cfg.paintMs - cfg.grabMs - cfg.dwellMs) : 0);
+    + (oracle !== null ? Math.max(0, cfg.paintMs - cfg.grabMs - dwellMs) : 0)
+    + ChainCounterConfig.settleMs + drag.count.ms;
   drag.overMs = Math.max(0, drag.ms - slept);
   return drag;
 }
@@ -1386,8 +1424,8 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
   const cfg = GastonConfig;
   if (gPages.detect(1, 0) !== PageName.GamePlaying) {
     return {
-      chain: 0, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: 0, biggest: 0,
-      overMs: 0, dead: 0, onBoard: false,
+      chain: 0, registered: null, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: 0,
+      biggest: 0, overMs: 0, dead: 0, onBoard: false,
     };
   }
   gastonWatchFever(ts);
@@ -1435,8 +1473,8 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
         retry: lifted,
       });
       return {
-        chain: 0, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: board.length,
-        biggest: biggest, overMs: 0, dead: lifted, onBoard: true,
+        chain: 0, registered: null, cancelled: 0, held: false, heldMs: 0, releasedAt: 0,
+        read: board.length, biggest: biggest, overMs: 0, dead: lifted, onBoard: true,
       };
     }
     const oracle: GastonOracle | null = paintUntil > 0 && Date.now() < paintUntil ? {
@@ -1473,6 +1511,14 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     for (let i = 0; i < drag.path.length; i++) { route.push(board.indexOf(drag.path[i])); }
     const fields: LogFields = {
       chain: drag.path.length, read: board.length, rescans: rescans, gaston: gastons.length,
+      // What the game's counter said the drag linked, against `chain`: the
+      // field to read first on a drag setting. `counter` is the read itself
+      // -- where the number sat (play-square scale, beside `board`), how sure
+      // the match was, and every other number on the frame. `registeredLate`
+      // is a held chain's count again just before its release.
+      registered: drag.count !== null ? drag.count.value : null,
+      counter: drag.count !== null ? chainCountDetail(drag.count) : null,
+      registeredLate: drag.countLate !== null ? drag.countLate.value : null,
       // Where the head came from, and how many circles the carry left out.
       source: origin, carried: carry !== null ? carry.left : 0,
       cut: source.length - free.length, bubbles: bubbles.length,
@@ -1506,7 +1552,8 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
       }
     }
     return {
-      chain: drag.path.length, cancelled: cancelled, held: drag.held, heldMs: drag.heldMs,
+      chain: drag.path.length, registered: drag.count !== null ? drag.count.value : null,
+      cancelled: cancelled, held: drag.held, heldMs: drag.heldMs,
       releasedAt: drag.releasedAt, read: board.length, biggest: biggest,
       overMs: drag.overMs, dead: lifted, onBoard: true,
     };
@@ -1562,6 +1609,7 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   let heldMs = 0;
   let releasedAt = 0;
   const drawn: number[] = [];
+  const registered: (number | null)[] = [];
   const read: number[] = [];
   const biggest: number[] = [];
   while (ts.isRunning) {
@@ -1574,6 +1622,7 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     biggest.push(pass.biggest);
     if (pass.chain > 0) {
       drawn.push(pass.chain);
+      registered.push(pass.registered);
       cancels += pass.cancelled;
       overMs += pass.overMs;
       if (pass.held) {
@@ -1625,6 +1674,11 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // one is a board read before it had filled, or a route the game did not
     // follow -- `skill.gaston.pass` has the board and the route to replay.
     chains: drawn,
+    // What the game's counter said each of those chains linked, in the same
+    // order (chainCounter.ts); null where the counter did not read. The
+    // table a drag setting is judged by: `registered` well under `chains` is
+    // the drag the game did not follow, whatever the route looked like.
+    registered: registered,
     // Per pass: how many tsums the scan put in the board array, and how many
     // of them its biggest colour cluster holds. `biggest` well under `read`
     // on a board that looks like solid Gaston is the scan reading him as
@@ -1693,6 +1747,9 @@ registerSkill({
   // the first chain has already cleared, which is what turned that thirty into
   // a twelve and two threes in `gaston_wrong.mp4`.
   chainLimits: { maxChain: 0, maxChainsPerScan: 1 },
+  // The play loop's chains between windows read the counter too, so the
+  // same boards say whether its drag registers where the window's did not.
+  readsChainCounter: true,
   // A full gauge inside a window waits for it: an activation there restarts
   // the animation over the seconds the window had left (see the header).
   stillRunning: function(ts) {

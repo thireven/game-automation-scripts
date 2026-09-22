@@ -19,6 +19,7 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Board.PathDone]: '成功計算路徑',
   [Log.Board.LinkReach]: '連線距離',
   [Log.Board.DeadScan]: '已連線但 Tsum 仍在原位',
+  [Log.Board.ChainDrawn]: '已連線；遊戲計數',
   [Log.Board.Stalled]: '盤面無法連線，改用風扇',
   [Log.Bubble.Cleared]: '清除泡泡',
   [Log.Bubble.Generated]: '產生泡泡',

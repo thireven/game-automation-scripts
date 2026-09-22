@@ -50,6 +50,21 @@ release note; they fold back in here when she ships.
 
 ### Added
 
+- **`src/chainCounter.ts`: every measured drag reads the game's own chain
+  counter.** The number the game draws beside a chain's head is its outline
+  (`game_num_48_blue` over the white plate) boxed off a navy mask, sampled to
+  a 20x28 grid and scored against `ChainDigits`, templates the development
+  toolkit's `chain:digits` renders from the sprite itself. Read with the
+  finger still down, `settleMs` after the last MOVE. Gaston's passes log it
+  as `registered` beside `chain` (and `skill.gaston.done` lists both), with
+  `counter` saying where the number sat and what else was on the frame, and
+  `registeredLate` a held chain's count again before its release; the play
+  loop's chains log `board.chainDrawn` under a skill that sets
+  `SkillHandler.readsChainCounter`, which Gaston does. Nine recordings of his
+  drag were tuned without this number ever being in the log; the dwell is the
+  first thing to measure with it, and **`SettingKey.DragDwellMs` on the Debug
+  tab (never shared)** sets it for those drags without a rebuild -- 0 keeps
+  each drag's own. Never run on a device.
 - **`SettingKey.BoardModel` and `SettingKey.ClusterFragments`, on the Debug
   tab, never shared.** Two board-scan experiments, both off by default and
   neither run on a device, measured on `gaston_8.mp4`'s paint-labelled boards

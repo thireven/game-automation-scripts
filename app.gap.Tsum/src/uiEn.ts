@@ -158,6 +158,8 @@ i18nRegister(Locale.English, 'English', {
     [UiText.BoardModelRadial]: 'Radial (experimental)',
     [UiText.SettingClusterFragments]: 'Merge cluster fragments',
     [UiText.SettingClusterFragmentsHelp]: 'A scan often splits one tsum type into a big cluster and a few small ones, and the small ones are thrown away. This merges them back, down to the number of types on the board. Experimental.',
+    [UiText.SettingDragDwell]: 'Drag dwell (ms)',
+    [UiText.SettingDragDwellHelp]: 'How long the finger rests on each tsum of a chain, for the drags the log measures against the chain counter the game draws (Gaston\'s, and the play loop\'s while he is selected). The game takes one move per frame, so 10 skips hops and 34 skips none; 0 keeps each drag\'s own. Experimental.',
     [UiText.SettingDebugGame]: 'Debug game',
     [UiText.SettingDebugGameHelp]: 'Saves the screenshots the script works from, plus one per screen it visits. For development.',
     [UiText.SettingWalkthrough]: 'Walkthrough recorder (tsum_record/walkthrough)',

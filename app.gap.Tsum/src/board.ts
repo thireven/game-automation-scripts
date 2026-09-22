@@ -25,8 +25,13 @@ Tsum.prototype.linkTsums = function(path) {
   // Raise all three together if that ever comes back; a chain drawn faster than
   // the game samples is `DRIVING_SCREENS.md` § 5.
   const grabDuring = 10;
-  const moveDuring = 10;
   const releaseDuring = 10;
+  // Whether to read the game's chain counter before the release, for the
+  // skills that ask (`readsChainCounter`): how much of the chain the game
+  // linked, logged against the plan. Those drags also take the Debug tab's
+  // dwell, so the play loop's chains and the skill's are measured alike.
+  const counted = skillReadsChainCounter(this);
+  const moveDuring = counted && Config.dragDwellMs > 0 ? Config.dragDwellMs : 10;
   for (let j = 0; j < path.length; j++) {
     const point = path[j];
     const x = Math.floor(this.playOffsetX + (point.x + Config.tsumWidth / 2) * this.playWidth / this.playResizeWidth);
@@ -36,6 +41,14 @@ Tsum.prototype.linkTsums = function(path) {
     }
     moveTo(x, y, moveDuring);
     if (j === path.length - 1) {
+      if (counted) {
+        this.sleep(ChainCounterConfig.settleMs);
+        const count = chainCounterRead(this, chainRouteCentres(path));
+        logInfo(Log.Board.ChainDrawn, {
+          chain: path.length, registered: count.value, dwellMs: moveDuring,
+          counter: chainCountDetail(count),
+        });
+      }
       tapUp(x, y, releaseDuring);
     }
   }

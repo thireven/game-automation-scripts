@@ -104,6 +104,8 @@ namespace Log {
 
   /** Reading the board and planning chains. */
   export const enum Board {
+    /** A play-loop chain drawn, with what the game's counter said it linked (`readsChainCounter` skills only). */
+    ChainDrawn       = 'board.chainDrawn',
     Clusters         = 'board.clusters',
     DeadScan         = 'board.deadScan',
     LinkReach        = 'board.linkReach',

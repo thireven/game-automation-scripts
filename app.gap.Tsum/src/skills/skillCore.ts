@@ -124,6 +124,13 @@ interface SkillHandler {
   // between the scan and the first drag of the batch -- so whatever it does
   // comes out of combo time and has to stay cheap.
   orderPaths?: (ts: Tsum, paths: TsumPath[], board: BoardPoint[]) => TsumPath[];
+  // The play loop's chains read the game's chain counter after each drag and
+  // log it (`board.chainDrawn`, chainCounter.ts): what the game linked against
+  // what was planned. For a skill whose own drags are being measured the
+  // same way, so the two can be compared on the same boards; it costs each
+  // chain a capture and `ChainCounterConfig.settleMs`, which is why not every
+  // skill.
+  readsChainCounter?: boolean;
   // The last activation is still in effect, so a tap now would waste the
   // gauge: Gaston's window is a timed mode, and an activation inside it only
   // restarts the animation over the seconds it had left. While this answers
@@ -182,6 +189,13 @@ function skillSweepsBubbles(skillType: SkillType): boolean {
 function skillStillRunning(ts: Tsum): boolean {
   const handler = SkillHandlers[ts.skillType];
   return !!(handler && handler.stillRunning && handler.stillRunning(ts));
+}
+
+// Whether the play loop reads the chain counter after each of its drags. See
+// `SkillHandler.readsChainCounter`; every other skill's drags go unmeasured.
+function skillReadsChainCounter(ts: Tsum): boolean {
+  const handler = SkillHandlers[ts.skillType];
+  return !!(handler && handler.readsChainCounter);
 }
 
 // Whether bubbles on the board belong to the skill rather than to the Bubble
