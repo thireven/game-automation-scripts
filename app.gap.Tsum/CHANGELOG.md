@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), and by keeping its chains clear of the fever's end, where the game briefly stops linking; bubbles are popped as normal until his first activation, then saved for the windows.
+- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain as fast as ordinary play so three fit the window, and by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear; bubbles are popped as normal until his first activation, then saved for the windows.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 
 ### Added
@@ -183,7 +183,7 @@ release note; they fold back in here when she ships.
   MOVE at the host (`moveTo`'s `wait` flag, Gaston's `pacedMoves`) on the
   theory that the UI thread blocked and the moves batched: measured at ~2ms a
   hop with the chains dying all the same, so the freeze is the game's own; the
-  flag stays, costing nothing. And a probe of the coin the game draws on a
+  flag is off. And a probe of the coin the game draws on a
   linked tsum, with a hold on a miss, which lost more than it saved
   (`gaston_5.mp4`: 13 chains in a round where the one before drew 23) -- the
   scan's centres sit ~14px off the sprites, and the game reads a finger
@@ -206,13 +206,23 @@ release note; they fold back in here when she ships.
   it, and a pass whose scan reads well under the board the gate just saw full
   rescans for up to `flashRetryMs` (`rescans` in the pass record) -- the fever
   label's flash read 29 of 40 and drew a chain of 5.
-- **Gaston's drag dwells 40ms on each tsum, not 18.** Android hands the game
-  one MOVE per frame, the latest one, and a recorded round showed the game
-  dropping a frame in five under fever: at 18ms the tsum under a dropped frame
-  was never seen and the chain stalled two hops from its head. Nineteen chains
-  read frame by frame against their logged routes registered 279 of 456
-  planned, sixteen of them stopping at a Gaston on an ordinary 24-33px hop
-  while 42-47px hops linked (`gaston_3.mp4`). A thirty-chain is now 1.4s.
+- **Gaston's drag is the play loop's, 10/10/10 and unpaced.** It dwelt 40ms
+  a tsum with a paced MOVE for a while, on `gaston_3.mp4`'s finding that an
+  18ms dwell registered 279 of 456 planned -- measured on the snake route,
+  whose reach-length hops and back-crossings the crossing-free route has
+  since removed. At 40ms a thirty-chain was 1.3s and the window's three
+  passes outran its six seconds: the device log of 2026-09-21
+  (`muc2hht99b`) had the closing drag out 1.2-3.8s past the close in every
+  window, while the play loop's 10ms chains ran the same Gaston boards
+  whole between windows. A thirty-chain is ~0.35s.
+- **A Gaston chain with no bubble to cancel it is held when its pop would
+  refill past the close.** The pass used to wait out the pop
+  (`chain * popPerTsumMs + popTailMs`, 3.4s for a thirty) and draw the next
+  chain on the refill; past the close that refill is leftovers. Three of six
+  windows in `muc2hht99b` lost their charge that way, and the next
+  activation then opened on a full board of leftovers. `gastonLinkChain`
+  now asks a `holds` rule at the head -- the tail, or no bubble and the pop
+  running past `closesAt` -- in place of `cancelBefore`.
 - **Gaston's cancels no longer tap the HUD buttons.** The hem the bubble
   capture runs below the play square brings in the two round buttons under the
   bowl, read as bubbles on every pass; `hemButtons` names them and
