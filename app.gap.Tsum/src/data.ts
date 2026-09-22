@@ -45,6 +45,9 @@ var Config: TsumConfig = {
   // "no limit", which is what a hand-written start() command can ask for.
   maxChain: 3,
   debugLogs: false,
+  // The Debug tab's board-model rows, both experiments -- see pathfinding.ts.
+  boardModel: BoardModel.Chroma,
+  clusterFragments: false,
   // What an issue report copies, and so what the router keeps -- see report.ts.
   reportTrailFrames: 8,
   // Pure tiebreak until a corpus says otherwise -- see TsumConfig.pageMinMargin.

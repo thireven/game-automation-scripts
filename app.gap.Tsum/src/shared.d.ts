@@ -265,8 +265,26 @@ declare const enum Locale {
  * A `const enum` for the reason `SkillType` is one -- it is erased and inlined,
  * so it costs nothing at runtime and can span both compilations.
  */
+/**
+ * How the board scan groups circles into colours -- see `BoardModelConfig` in
+ * src/pathfinding.ts. A Debug-tab choice today; the plan is for a tsum or a
+ * skill to pick its own (`SkillHandler.boardModel`), which is why it is an
+ * enum and not a switch.
+ */
+declare const enum BoardModel {
+  /** The chroma plane and the gated texture axes: the model every round has played on. */
+  Chroma = 'chroma',
+  /**
+   * Chroma plus the rim drop -- how much darker a tsum's rim is than its
+   * centre -- and a k-means pass over the clusters. Experimental.
+   */
+  Radial = 'radial',
+}
+
 declare const enum SettingKey {
   DebugLogs = 'debugLogs',
+  BoardModel = 'boardModel',
+  ClusterFragments = 'clusterFragments',
   DebugGame = 'debugGame',
   CollectUnknownScreens = 'collectUnknownScreens',
   Walkthrough = 'walkthrough',
@@ -340,6 +358,14 @@ declare const enum SettingKey {
  */
 interface Settings {
   [SettingKey.DebugLogs]: boolean;
+  /** Which board colour model the scan clusters with. Debug tab; never shared. */
+  [SettingKey.BoardModel]: BoardModel;
+  /**
+   * Merge the small clusters a scan splits off a colour back into it, down to
+   * the round's number of tsum types (`mergeClusterFragments`). Debug tab;
+   * never shared.
+   */
+  [SettingKey.ClusterFragments]: boolean;
   [SettingKey.DebugGame]: boolean;
   /** Save unrecognised screens to tsum_record/corpus for offline work. */
   [SettingKey.CollectUnknownScreens]: boolean;

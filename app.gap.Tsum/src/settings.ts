@@ -721,6 +721,29 @@ var tabs: TabSpec[] = [
                         neverShared: true
                     },
                     {
+                        // The board colour model, while it is an experiment:
+                        // the plan is for the tsum or the skill to pick it
+                        // (`SkillHandler.boardModel`), and this row is how a
+                        // candidate is tried on a device first. `satisfies`
+                        // for the reason the other enum dropdowns have it.
+                        key: SettingKey.BoardModel,
+                        title: UiText.SettingBoardModel,
+                        help: UiText.SettingBoardModelHelp,
+                        default: BoardModel.Chroma as BoardModel,
+                        dropdown: ([
+                            {key: BoardModel.Chroma, title: UiText.BoardModelChroma},
+                            {key: BoardModel.Radial, title: UiText.BoardModelRadial}
+                        ] satisfies { key: BoardModel; title: UiText }[]),
+                        neverShared: true
+                    },
+                    {
+                        key: SettingKey.ClusterFragments,
+                        title: UiText.SettingClusterFragments,
+                        help: UiText.SettingClusterFragmentsHelp,
+                        default: false,
+                        neverShared: true
+                    },
+                    {
                         key: SettingKey.DebugGame,
                         title: UiText.SettingDebugGame,
                         help: UiText.SettingDebugGameHelp,

@@ -672,6 +672,13 @@ interface Forecast {
 interface TsumTexture {
   contrast: number;
   peak: number;
+  /**
+   * The rim drop: how much darker the tsum's rim is than its centre, in HSV
+   * value off the light blur (`RimDisc`). A face under dark hair reads ~90, a
+   * plain tsum ~30-50, whatever the theme tints the board. Absent on a colour
+   * that was never sampled off a board -- a library colour, a palette entry.
+   */
+  drop?: number;
 }
 
 /**
@@ -702,6 +709,7 @@ interface TsumCluster extends TsumTexture {
   sumr: number;
   sumContrast: number;
   sumPeak: number;
+  sumDrop: number;
   b: number;
   g: number;
   r: number;
@@ -1097,6 +1105,10 @@ interface TsumConfig {
   linkReach: number;
   maxChain: number;
   debugLogs: boolean;
+  /** Which colour model the board scan clusters with -- see `BoardModelConfig`. */
+  boardModel: BoardModel;
+  /** Merge the fragments a scan splits off a colour back into it -- see `mergeClusterFragments`. */
+  clusterFragments: boolean;
   /**
    * Page-history frames an issue report copies, and so the number the router
    * keeps on disk (`PageRouter.shotDepth`).

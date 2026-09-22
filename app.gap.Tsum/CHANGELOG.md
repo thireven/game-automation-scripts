@@ -50,6 +50,20 @@ release note; they fold back in here when she ships.
 
 ### Added
 
+- **`SettingKey.BoardModel` and `SettingKey.ClusterFragments`, on the Debug
+  tab, never shared.** Two board-scan experiments, both off by default and
+  neither run on a device, measured on `gaston_8.mp4`'s paint-labelled boards
+  (`BoardModelConfig` in `src/pathfinding.ts`). *Radial* adds the rim drop --
+  how much darker a tsum's rim is than its centre, read off the light blur on
+  `RimDisc` -- to `distance3D` at weight 0.5, merges at 50, and runs three
+  k-means passes over the greedy clusters (`refineClusters`): the foreign
+  tsums in Gaston's cluster halved at the same recall. *Merge cluster
+  fragments* folds each small cluster (at most 34% of the larger, centres
+  within 80) into the nearest big one down to the round's type count
+  (`mergeClusterFragments`): on ordinary-play frames the four kept clusters
+  hold 88-94% of the circles instead of 72-82%. `SkillHandler.boardModel`
+  lets a skill name its model over the setting (`skillBoardModel`); nothing
+  does yet. `TsumPoint`/`TsumCluster` carry `drop`.
 - **`SettingKey.SkillSettleMs`.** `useSkill` runs `settleBoard` with the
   setting as the budget and no floor between the gauge read and the activation
   tap, ahead of the fever hold-off and `beforeActivate` -- the tap goes out the
