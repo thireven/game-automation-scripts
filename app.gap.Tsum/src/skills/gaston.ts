@@ -42,6 +42,23 @@
 // component on 647. The game takes any hop inside its reach, so the count is
 // the point and the shape is nothing.
 //
+// **Which end it starts from is not nothing.** `gaston_7.mp4` (2026-09-21),
+// aligned to its log and every route overlaid on the frames, had seven of
+// eighteen drags register 1-8 of 14-33 planned, and five of the seven began on
+// a tsum that was not Gaston: Lumiere, whose tan the scan merges with his
+// face; Chip, with the Hough centre landed on the white cup beside him; the
+// Beast, navy beside his hair. All at the *bottom* of the pile. The Gastons
+// drop onto whatever the last clear left, so the frontier where his mass meets
+// the leftovers is the bottom edge, and a longest path runs tip to tip -- one
+// end of it is nearly always on that frontier. A wrong head links nothing for
+// the whole drag (the game links from the head only), the cancel spends a
+// bubble on nothing, and the refill gate then waits its floor for a clear that
+// never happened: 2.75s of a 6s window, twice in some windows. So the drag
+// starts from the higher end, and an end touching a known leftover loses
+// whatever its height (`gastonOrient`); four of the five had a Gaston at the
+// other end. What the scan cannot see -- a leftover merged into his cluster --
+// the head check below catches.
+//
 // **The route is Gaston only, and Gaston is learned from the board.** The route
 // ran over the whole board array for a while, on the theory that a leftover of
 // another colour the drag crosses is inert. It is not. The game links a tsum
@@ -238,6 +255,35 @@
 //     tsum in three. And the game takes the finger returning to the previous
 //     tsum as *undoing* the last link, so every false miss cut the head off
 //     and the rest of the route with it.
+//
+// ## The head is checked once, off the whole board
+//
+// Not a closed loop: one read, two tsums in, of something the game draws
+// everywhere at once. With a Gaston under the finger every other Gaston is
+// painted pale, translucent over a light layer; with a leftover under it the
+// board stays as it was. That is position-proof -- eight of his tsums far from
+// the head, read as a grid each, the median of medians -- and theme-proof when
+// read as a *rise*, the same tsums before the grab and at the hop: the fever
+// backdrop tints the pale to salmon and it still rises ~20 where a wrong head
+// moves it 0 (`aliveRise`, `gastonFloorRead`). The link line itself was tried
+// first and sits off the scan's midpoints too often to read. A dead head is
+// lifted at the second tsum, ~110ms in, and the pass replans without it
+// (`deadRetries`), so a wrong start costs a quarter second instead of the
+// drag, the bubble and the refill floor. The one thing it cannot read through
+// is the game's own blink: from ~1.7s before the window closes every Gaston
+// pulses pale three times and then stays so until the close, finger or no
+// finger, which is why the held pass and anything near the close go unchecked
+// (`aliveBlackoutMs`).
+//
+// Two things that recording measured and nothing here uses yet:
+//
+//   - the blink above is the game's own clock. It began at tap+9.0-9.7s and
+//     went solid at ~9.7-10.4s in every window, where `closesAt` estimated
+//     tap+10.7-11.2: the held chain went out 1-3s after the real close and
+//     `heldMs` was 0 on every window. Safe, but window time.
+//   - `gastonAwaitSwitch` held seven of eighteen drags 1.2-3.1s, because the
+//     fever's start is stamped `faceMs` after the tap whenever the chrome reads
+//     dimmed at the open, and one window's fever came on 4.3s after its tap.
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -312,6 +358,35 @@ var GastonConfig = {
   // 12 tsums more than 3,000 in all and 30,000 one more than that; the bench
   // prices 3,000 pruned steps at ~12ms on the device.
   searchSteps: 3000,
+  // An end of the route within this of a leftover, in tsum widths centre to
+  // centre, is the frontier and the drag starts from the other end (see
+  // `gastonOrient`). Adjacent tsums sit one width apart, so this is
+  // "touching".
+  frontierAvoid: 1.2,
+
+  // --- the head check ------------------------------------------------------
+  //
+  // With a Gaston under the finger the game paints every other Gaston pale;
+  // with a leftover under it the board stays as it was. Read as the rise in
+  // each sampled tsum's floor -- its darkest channel, the median over a
+  // (2*aliveGrid+1)^2 grid at `aliveStep` around its centre -- from a read
+  // just before the grab to one with the finger on tsum `aliveAtHop`, the
+  // median over `aliveSamples` Gastons furthest from the head. Measured off
+  // `gaston_7.mp4`: live drags rose 18-24 under the fever tint and 36-56 on a
+  // plain board, the five wrong heads -2 to 0, and the reads were stable
+  // from the first hop. Under `aliveRise` the head is dead: the finger comes
+  // up and the pass replans without that start, `deadRetries` times. Only a
+  // pass that will be cancelled is checked, and none inside `aliveBlackoutMs`
+  // of the close: the game blinks the Gastons pale itself as the window ends,
+  // from ~1.7s before it, which reads either way.
+  aliveAtHop: 2,
+  aliveSamples: 8,
+  aliveMinSamples: 4,
+  aliveGrid: 3,
+  aliveStep: 2,
+  aliveRise: 10,
+  aliveBlackoutMs: 3000,
+  deadRetries: 1,
   // The two round HUD buttons under the bowl -- the skill button and the one
   // across from it -- in play-square coordinates. The hem brings them into the
   // bubble capture, and a circle within `hemButtonAvoid` tsum widths of one is
@@ -476,6 +551,8 @@ interface GastonPass {
   biggest: number;
   /** Time the drag spent waiting on the game beyond its dwells. See `GastonDrag`. */
   overMs: number;
+  /** Drags the head check lifted for a dead head, replanned or not. */
+  dead: number;
   /** The board was there to be scanned; false is a round that ended under the window. */
   onBoard: boolean;
 }
@@ -776,6 +853,32 @@ function gastonFreeBoard(board: BoardPoint[], bubbles: GameBubble[]): BoardPoint
   return out;
 }
 
+/**
+ * The board's leftovers: every point outside the Gaston cluster, less the HUD
+ * glyphs across the top (`hudBand`), which are not tsums.
+ */
+function gastonLeftovers(board: BoardPoint[], gastons: BoardPoint[]): BoardPoint[] {
+  const hud = Config.tsumWidth * GastonConfig.hudBand - Config.tsumWidth / 2;
+  const out: BoardPoint[] = [];
+  for (let i = 0; i < board.length; i++) {
+    if (board[i].y >= hud && gastons.indexOf(board[i]) < 0) { out.push(board[i]); }
+  }
+  return out;
+}
+
+/** `board` less every point within half a tsum of `avoid` -- the dead start of a replan. */
+function gastonWithout(board: BoardPoint[], avoid: Point): BoardPoint[] {
+  const near = Config.tsumWidth / 2;
+  const nearSq = near * near;
+  const out: BoardPoint[] = [];
+  for (let i = 0; i < board.length; i++) {
+    const dx = board[i].x - avoid.x;
+    const dy = board[i].y - avoid.y;
+    if (dx * dx + dy * dy >= nearSq) { out.push(board[i]); }
+  }
+  return out;
+}
+
 // --- The chain --------------------------------------------------------------
 
 /**
@@ -807,6 +910,38 @@ function gastonChain(board: BoardPoint[]): TsumPath | null {
     }
   }
   return best.length >= cfg.minChain ? best : null;
+}
+
+/**
+ * Which end the drag starts from. A path links the same tsums drawn either
+ * way, and a longest path runs tip to tip; on a refilled board the tips are
+ * the bottom frontier, where the Gaston mass meets what it landed on and the
+ * scan is least to be trusted -- a leftover of his colour merged into his
+ * cluster, a centre landed on the neighbour. Five of the seven dead drags of
+ * `gaston_7.mp4` began on one, four of them at the bottom end with a Gaston at
+ * the top end. So the start is the higher end, and an end touching a known
+ * leftover (`frontierAvoid`) loses whatever its height. The opposite of
+ * Rapunzel+'s rule, whose board is still landing at the top; this one has
+ * landed (`landMs`) and the trouble is at the bottom.
+ */
+function gastonOrient(path: TsumPath | null, leftovers: BoardPoint[]): TsumPath | null {
+  if (!path || path.length < 2) { return path; }
+  if (gastonEndRisk(path[path.length - 1], leftovers) < gastonEndRisk(path[0], leftovers)) {
+    path.reverse();
+  }
+  return path;
+}
+
+/** An end's risk as a start: its y, plus the board's height if it touches a leftover. */
+function gastonEndRisk(end: BoardPoint, leftovers: BoardPoint[]): number {
+  const avoid = Config.tsumWidth * GastonConfig.frontierAvoid;
+  const avoidSq = avoid * avoid;
+  for (let i = 0; i < leftovers.length; i++) {
+    const dx = leftovers[i].x - end.x;
+    const dy = leftovers[i].y - end.y;
+    if (dx * dx + dy * dy < avoidSq) { return end.y + Config.screenResize; }
+  }
+  return end.y;
 }
 
 /** Tsums in the board's biggest colour cluster, for the log. */
@@ -849,6 +984,88 @@ interface GastonDrag {
   heldMs: number;
   /** Epoch ms of the release, 0 when nothing was drawn. */
   releasedAt: number;
+  /** The head check lifted the finger: nothing under it was linking. */
+  dead: boolean;
+  /** Tsums the finger had visited when it was lifted, 0 when it was not. */
+  deadAt: number;
+  /** What the head check read (see `aliveRise`), null when it did not run. */
+  rise: number | null;
+}
+
+/** The lower median of `values`. */
+function gastonMedian(values: number[]): number {
+  const sorted = values.slice().sort(function(a, b) { return a - b; });
+  return sorted[(sorted.length - 1) >> 1];
+}
+
+/**
+ * Each tsum's floor: the median, over a grid around its centre, of the pixel's
+ * darkest channel, off one capture of the play square. The pale paint the game
+ * puts on a live chain's Gastons lifts it by ~20 whatever the theme tints the
+ * board, where the sprite's own colours barely move it -- see `aliveRise`.
+ */
+function gastonFloorRead(ts: Tsum, centres: Point[]): number[] {
+  const cfg = GastonConfig;
+  const pts: Point[] = [];
+  for (let c = 0; c < centres.length; c++) {
+    for (let i = -cfg.aliveGrid; i <= cfg.aliveGrid; i++) {
+      for (let j = -cfg.aliveGrid; j <= cfg.aliveGrid; j++) {
+        pts.push({
+          x: Math.round(centres[c].x + i * cfg.aliveStep),
+          y: Math.round(centres[c].y + j * cfg.aliveStep),
+        });
+      }
+    }
+  }
+  const img = ts.playScreenshotSquare();
+  let colors: Color[];
+  try {
+    colors = getImageColors(img, pts);
+  } finally {
+    releaseImage(img);
+  }
+  const per = (2 * cfg.aliveGrid + 1) * (2 * cfg.aliveGrid + 1);
+  const out: number[] = [];
+  for (let c = 0; c < centres.length; c++) {
+    const floors: number[] = [];
+    for (let k = 0; k < per; k++) {
+      const col = colors[c * per + k];
+      floors.push(Math.min(col.r, col.g, col.b));
+    }
+    out.push(gastonMedian(floors));
+  }
+  return out;
+}
+
+/**
+ * The Gastons the head check reads: `aliveSamples` of `free` furthest from
+ * where the finger will be at the check, none of them the route's first few
+ * (those are linked, and drawn differently). Centres, in play-square scale.
+ * Null when the board has too few to read.
+ */
+function gastonProbePoints(free: BoardPoint[], path: TsumPath): Point[] | null {
+  const cfg = GastonConfig;
+  const half = Config.tsumWidth / 2;
+  const skip = Math.min(path.length, cfg.aliveAtHop + 3);
+  const head = path[Math.min(cfg.aliveAtHop, path.length - 1)];
+  const far: { p: BoardPoint, d: number }[] = [];
+  for (let i = 0; i < free.length; i++) {
+    let onRoute = false;
+    for (let k = 0; k < skip; k++) {
+      if (path[k] === free[i]) { onRoute = true; break; }
+    }
+    if (onRoute) { continue; }
+    const dx = free[i].x - head.x;
+    const dy = free[i].y - head.y;
+    far.push({ p: free[i], d: dx * dx + dy * dy });
+  }
+  if (far.length < cfg.aliveMinSamples) { return null; }
+  far.sort(function(a, b) { return b.d - a.d; });
+  const out: Point[] = [];
+  for (let i = 0; i < far.length && i < cfg.aliveSamples; i++) {
+    out.push({ x: far[i].p.x + half, y: far[i].p.y + half });
+  }
+  return out;
 }
 
 /**
@@ -858,16 +1075,25 @@ interface GastonDrag {
  * clear falls after the window's close (see the header). `cancelBefore` 0
  * always holds.
  *
+ * With `probe` -- the Gastons to read, see `gastonProbePoints` -- the head is
+ * checked at `aliveAtHop`: read before the grab and again there, and lifted at
+ * once when the board has not gone pale (`aliveRise`). Two or three tsums under
+ * a finger that comes up pop nothing.
+ *
  * Decided at the head, not at the plan: the drag is a second and a half, and
  * it is where the release falls against the close that matters. The finger
  * comes up whatever happens to the run, since the host lifts nothing on its
  * own; a stopped run cuts the hold short and releases.
  */
-function gastonLinkChain(ts: Tsum, path: TsumPath, cancelBefore: number, holdUntil: number): GastonDrag {
-  const drag: GastonDrag = { ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0 };
+function gastonLinkChain(ts: Tsum, path: TsumPath, cancelBefore: number, holdUntil: number,
+    probe: Point[] | null): GastonDrag {
+  const drag: GastonDrag = {
+    ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0, dead: false, deadAt: 0, rise: null,
+  };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.isRunning || path.length < 2) { return drag; }
   const cfg = GastonConfig;
+  const base = probe !== null && path.length > cfg.aliveAtHop ? gastonFloorRead(ts, probe) : null;
   const from = Date.now();
   const pts: Point[] = [];
   for (let i = 0; i < path.length; i++) { pts.push(gastonToScreen(ts, path[i])); }
@@ -880,6 +1106,20 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, cancelBefore: number, holdUnt
         Math.floor(pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f), cfg.stepMs, cfg.pacedMoves);
     }
     moveTo(pts[i].x, pts[i].y, cfg.dwellMs, cfg.pacedMoves);
+    if (base !== null && probe !== null && i === cfg.aliveAtHop) {
+      const now = gastonFloorRead(ts, probe);
+      const rises: number[] = [];
+      for (let k = 0; k < now.length; k++) { rises.push(now[k] - base[k]); }
+      drag.rise = gastonMedian(rises);
+      if (drag.rise < cfg.aliveRise) {
+        drag.dead = true;
+        drag.deadAt = i + 1;
+        drag.releasedAt = Date.now();
+        tapUp(pts[i].x, pts[i].y, cfg.releaseMs);
+        drag.ms = Date.now() - from;
+        return drag;
+      }
+    }
   }
   const headAt = Date.now();
   if (headAt >= cancelBefore) {
@@ -948,85 +1188,115 @@ function gastonCancelBubble(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): nu
  * and a round that ends under it would otherwise have chains dragged across
  * whatever screen came next. `fullBoard` is the gate's verdict: a scan that
  * then reads well short is under a flash and is taken again (`flashRetryMs`).
+ *
+ * A drag begun before `probeUntil` has its head checked (`aliveAtHop`), and
+ * one lifted for a dead head is planned again without that start, up to
+ * `deadRetries` times; 0 checks nothing. A pass whose last drag was dead
+ * answers `chain` 0, so the window looks again at once rather than waiting
+ * out a refill that is not coming.
  */
-function gastonPass(ts: Tsum, cancelBefore: number, holdUntil: number, fullBoard: boolean): GastonPass {
+function gastonPass(ts: Tsum, cancelBefore: number, holdUntil: number, fullBoard: boolean,
+    probeUntil: number): GastonPass {
   const cfg = GastonConfig;
   if (gPages.detect(1, 0) !== PageName.GamePlaying) {
     return {
       chain: 0, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: 0, biggest: 0,
-      overMs: 0, onBoard: false,
+      overMs: 0, dead: 0, onBoard: false,
     };
   }
   gastonWatchFever(ts);
-  let board = ts.scanBoardQuick();
-  let rescans = 0;
-  const retryUntil = Date.now() + cfg.flashRetryMs;
-  while (fullBoard && board.length < cfg.enoughTsums - cfg.countNoise && ts.isRunning
-         && Date.now() < retryUntil) {
-    ts.sleep(cfg.pollMs);
-    board = ts.scanBoardQuick();
-    rescans++;
-  }
-  // Its own bubble read, not the scan's `ts.gameBubbles`: the scan's capture
-  // cuts the bottom row of bubbles in half. See `bubbleHem`.
-  const bubbles = gastonBubbles(ts);
-  const biggest = gastonBiggestCluster(board);
-  const gastons = gastonGastons(ts, board);
-  gastonBubbleWorth(bubbles, board, gastons);
-  const free = gastonFreeBoard(gastons, bubbles);
-  const path = gastonChain(free);
-  // Bubble centres in play-square scale, beside the board below: whether a
-  // hop crossed one is then answerable offline. `near` is each one's
-  // leftovers, the order the cancel spends them in.
-  const bubbleAt: number[] = [];
-  const near: number[] = [];
-  for (let b = 0; b < bubbles.length; b++) {
-    bubbleAt.push(Math.round(bubbles[b].x), Math.round(bubbles[b].y));
-    near.push(bubbles[b].near || 0);
-  }
-  if (!path) {
+  // The start the head check found dead, left out of the replan.
+  let avoid: Point | null = null;
+  let dead = 0;
+  for (;;) {
+    let board = ts.scanBoardQuick();
+    let rescans = 0;
+    const retryUntil = Date.now() + cfg.flashRetryMs;
+    while (fullBoard && board.length < cfg.enoughTsums - cfg.countNoise && ts.isRunning
+           && Date.now() < retryUntil) {
+      ts.sleep(cfg.pollMs);
+      board = ts.scanBoardQuick();
+      rescans++;
+    }
+    // Its own bubble read, not the scan's `ts.gameBubbles`: the scan's capture
+    // cuts the bottom row of bubbles in half. See `bubbleHem`.
+    const bubbles = gastonBubbles(ts);
+    const biggest = gastonBiggestCluster(board);
+    const gastons = gastonGastons(ts, board);
+    gastonBubbleWorth(bubbles, board, gastons);
+    let free = gastonFreeBoard(gastons, bubbles);
+    if (avoid !== null) { free = gastonWithout(free, avoid); }
+    const path = gastonOrient(gastonChain(free), gastonLeftovers(board, gastons));
+    // Bubble centres in play-square scale, beside the board below: whether a
+    // hop crossed one is then answerable offline. `near` is each one's
+    // leftovers, the order the cancel spends them in.
+    const bubbleAt: number[] = [];
+    const near: number[] = [];
+    for (let b = 0; b < bubbles.length; b++) {
+      bubbleAt.push(Math.round(bubbles[b].x), Math.round(bubbles[b].y));
+      near.push(bubbles[b].near || 0);
+    }
+    if (!path) {
+      logInfo(Log.Skill.GastonPass, {
+        chain: 0, read: board.length, rescans: rescans, gaston: gastons.length,
+        cut: gastons.length - free.length, bubbles: bubbles.length, bubbleAt: bubbleAt, near: near,
+        retry: dead,
+      });
+      return {
+        chain: 0, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: board.length,
+        biggest: biggest, overMs: 0, dead: dead, onBoard: true,
+      };
+    }
+    const probe = probeUntil > 0 && Date.now() < probeUntil ? gastonProbePoints(free, path) : null;
+    // Not into the fever switch: the game takes no link through it.
+    const waitedMs = gastonAwaitSwitch(ts, gastonDragEstimate(path.length));
+    // Its own drag, not `linkTsums` and emphatically not `link`: the pacing and
+    // the hold are the point, and `link`'s `maybeAutoTapSkill` would re-enter
+    // this choreography.
+    const drag = gastonLinkChain(ts, path, cancelBefore, holdUntil, probe);
+    // A dead drag cleared nothing, so there is no pop to cut short.
+    const cancelled = drag.held || drag.dead ? 0 : gastonCancelBubble(ts, path, bubbles);
+    // The board the route was planned on and the route over it, so a short chain
+    // on a recording can be replayed offline. Logged after the drag and the
+    // cancel, which are what the window's time is for.
+    const flat: number[] = [];
+    for (let i = 0; i < free.length; i++) {
+      flat.push(Math.round(free[i].x + Config.tsumWidth / 2), Math.round(free[i].y + Config.tsumWidth / 2));
+    }
+    const route: number[] = [];
+    for (let i = 0; i < path.length; i++) { route.push(free.indexOf(path[i])); }
     logInfo(Log.Skill.GastonPass, {
-      chain: 0, read: board.length, rescans: rescans, gaston: gastons.length,
-      cut: gastons.length - free.length, bubbles: bubbles.length, bubbleAt: bubbleAt, near: near,
+      chain: path.length, read: board.length, rescans: rescans, gaston: gastons.length,
+      cut: gastons.length - free.length, bubbles: bubbles.length,
+      held: drag.held, heldMs: drag.heldMs, cancelled: cancelled,
+      board: flat, route: route, bubbleAt: bubbleAt, near: near,
+      // How long the drag was held back from a fever switch, and whether the
+      // backdrop was up when it went out.
+      waitedMs: waitedMs, fever: gastonFever.onAt > 0,
+      // The drag's length, and the part of it spent waiting on the game's
+      // MOVE acks beyond the dwells.
+      dragMs: drag.ms, overMs: drag.overMs,
+      // The head check: what it read (null when it did not run), whether it
+      // lifted the finger and after how many tsums, and which replan this is.
+      rise: drag.rise, dead: drag.dead, deadAt: drag.deadAt, retry: dead,
     });
+    if (drag.dead) {
+      dead++;
+      if (dead <= cfg.deadRetries && ts.isRunning) {
+        avoid = { x: path[0].x, y: path[0].y };
+        continue;
+      }
+      return {
+        chain: 0, cancelled: 0, held: false, heldMs: 0, releasedAt: drag.releasedAt,
+        read: board.length, biggest: biggest, overMs: drag.overMs, dead: dead, onBoard: true,
+      };
+    }
     return {
-      chain: 0, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: board.length,
-      biggest: biggest, overMs: 0, onBoard: true,
+      chain: path.length, cancelled: cancelled, held: drag.held, heldMs: drag.heldMs,
+      releasedAt: drag.releasedAt, read: board.length, biggest: biggest,
+      overMs: drag.overMs, dead: dead, onBoard: true,
     };
   }
-  // Not into the fever switch: the game takes no link through it.
-  const waitedMs = gastonAwaitSwitch(ts, gastonDragEstimate(path.length));
-  // Its own drag, not `linkTsums` and emphatically not `link`: the pacing and
-  // the hold are the point, and `link`'s `maybeAutoTapSkill` would re-enter
-  // this choreography.
-  const drag = gastonLinkChain(ts, path, cancelBefore, holdUntil);
-  const cancelled = drag.held ? 0 : gastonCancelBubble(ts, path, bubbles);
-  // The board the route was planned on and the route over it, so a short chain
-  // on a recording can be replayed offline. Logged after the drag and the
-  // cancel, which are what the window's time is for.
-  const flat: number[] = [];
-  for (let i = 0; i < free.length; i++) {
-    flat.push(Math.round(free[i].x + Config.tsumWidth / 2), Math.round(free[i].y + Config.tsumWidth / 2));
-  }
-  const route: number[] = [];
-  for (let i = 0; i < path.length; i++) { route.push(free.indexOf(path[i])); }
-  logInfo(Log.Skill.GastonPass, {
-    chain: path.length, read: board.length, rescans: rescans, gaston: gastons.length,
-    cut: gastons.length - free.length, bubbles: bubbles.length,
-    held: drag.held, heldMs: drag.heldMs, cancelled: cancelled,
-    board: flat, route: route, bubbleAt: bubbleAt, near: near,
-    // How long the drag was held back from a fever switch, and whether the
-    // backdrop was up when it went out.
-    waitedMs: waitedMs, fever: gastonFever.onAt > 0,
-    // The drag's length, and the part of it spent waiting on the game's
-    // MOVE acks beyond the dwells.
-    dragMs: drag.ms, overMs: drag.overMs,
-  });
-  return {
-    chain: path.length, cancelled: cancelled, held: drag.held, heldMs: drag.heldMs,
-    releasedAt: drag.releasedAt, read: board.length, biggest: biggest,
-    overMs: drag.overMs, onBoard: true,
-  };
 }
 
 /**
@@ -1062,6 +1332,7 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   let passes = 0;
   let cancels = 0;
   let overMs = 0;
+  let dead = 0;
   let onBoard = true;
   let fullBoard = opened.full;
   let passesLeft = cfg.passesBeforeHold;
@@ -1074,8 +1345,12 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   const biggest: number[] = [];
   while (ts.isRunning) {
     const cancelBefore = passesLeft > 0 ? closesAt - cfg.noCancelTailMs : 0;
-    const pass = gastonPass(ts, cancelBefore, holdUntil, fullBoard);
+    // The head check runs on the cancelled passes only, and clear of the
+    // game's own blink at the close. See `aliveBlackoutMs`.
+    const probeUntil = passesLeft > 0 ? closesAt - cfg.aliveBlackoutMs : 0;
+    const pass = gastonPass(ts, cancelBefore, holdUntil, fullBoard, probeUntil);
     passes++;
+    dead += pass.dead;
     if (!pass.onBoard) { onBoard = false; break; }
     read.push(pass.read);
     biggest.push(pass.biggest);
@@ -1145,6 +1420,11 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // Time the drags spent waiting on the game's MOVE acks beyond their
     // dwells, summed -- `skill.gaston.pass` has it per drag.
     overMs: overMs,
+    // Drags the head check lifted for a start that was not linking -- each
+    // one is a `skill.gaston.pass` with `dead: true` and the route to replay.
+    // One a window or so is the scan's frontier being caught; every drag is
+    // the check misreading, and `rise` on those entries says why.
+    dead: dead,
     // The held chain: how long the finger sat on its last tsum, and how far
     // past the estimated close it was released. `releaseLeadMs` under 0 is
     // a release inside the window, which charges nothing -- the bug to look
