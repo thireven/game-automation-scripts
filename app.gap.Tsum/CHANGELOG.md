@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain as fast as ordinary play so three fit the window, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead; bubbles are popped as normal until his first activation, then saved for the windows.
+- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by holding the window's last chain until the skill has run out so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain as fast as ordinary play so three fit the window, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead, and popping them after a chain like any other; bubbles are popped as normal until his first activation, then saved for the windows.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 
 ### Added
@@ -251,12 +251,20 @@ release note; they fold back in here when she ships.
   not read -- the Hough pass loses the resting ones under the rim lights, the
   scan reads a bubble's icons as a tsum, and the paint read passed it.
   `gastonBubbles` now adds a second Hough at `bandParam2` over the bowl's
-  bottom and the round's memory of every read (`gastonRememberBubbles`), both
-  `soft` -- planned round, never tapped. The pass record carries `soft` and
-  every circle's paint `rises`. Clean routes registered whole at 10ms, so
-  the dwell was not the lever. The first run on this charged 13 windows of
-  18 (5 of 23 before); `bubbleAvoid` was 1.4 widths for that run and cut a
-  full board into routes of 4-13, so it is back at 1.0.
+  bottom (`band`) and the round's memory of every read
+  (`gastonRememberBubbles`, `soft`), both planned round. The pass record
+  carries `band`, `soft` and every circle's paint `rises`. Clean routes
+  registered whole at 10ms, so the dwell was not the lever. The first run on
+  this charged 13 windows of 18 (5 of 23 before); `bubbleAvoid` was 1.4
+  widths for that run and cut a full board into routes of 4-13, so it is
+  back at 1.0.
+- **The band's bubbles are tapped as cancels.** They were `soft` too at
+  first, and the resting ones stood untouched: over six runs on 2026-09-22,
+  30 of the 35 chains released without a cancel had bubbles on the board,
+  all soft, 66 of the 78 in the band and read hard by the next pass often
+  enough. `gastonCancelBubble` and the no-bubble hold now count the band's
+  finds (`gastonTappableBubbles`); only the memory's stay untapped, since a
+  remembered bubble may have rolled when a clear went out from under it.
 - **A starved carry falls back to the cluster.** The window's first read
   finds a board of leftovers; the first clear slides them into the positions
   the carry remembered and the Gastons that land read as leftovers too, so

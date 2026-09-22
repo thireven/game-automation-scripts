@@ -354,14 +354,21 @@
 // the fever tint, the scan reads a bubble's icons as a tsum circle, and the
 // paint read passes it (its `rise` is logged per circle now, to say by how
 // much). So bubbles come from three sources (`gastonBubbles`): the pass
-// proper, a second pass at a lower threshold over the bowl's bottom, and the
-// round's memory of every read -- the last two `soft`, planned round and
-// never tapped. The first run on them (`mucbceu4xy`) charged 13 windows of
-// 18 against 5 of 23 the day before, and showed the other edge: every
-// bubble's avoid disc and crossing disc takes tsums out of the route, and at
+// proper, a second pass at a lower threshold over the bowl's bottom (`band`),
+// and the round's memory of every read (`soft`, planned round and never
+// tapped). The first run on them (`mucbceu4xy`) charged 13 windows of 18
+// against 5 of 23 the day before, and showed the other edge: every bubble's
+// avoid disc and crossing disc takes tsums out of the route, and at
 // `bubbleAvoid` 1.4 four bubbles cut a full Gaston board into pieces (see
 // the table). Dwell is not the lever; the passes that registered short did
 // so at 10, 20 and 34 alike.
+//
+// The band's finds were `soft` too at first, and that left the resting
+// bubbles standing: over six runs on 2026-09-22, 30 of the 35 chains released
+// without a cancel had bubbles on the board, every one of them soft, and 66
+// of those 78 sat in the band -- real ones, still there pass after pass and
+// read hard by the next pass often enough. So the band's finds are tapped
+// now, and only the memory's are not.
 //
 // The same recordings showed the carry starving whole windows: 221 of 291
 // passes planned nothing, all on a carry that had marked the board's
@@ -505,9 +512,11 @@ var GastonConfig = {
   // reading no bubble at all and three in plain sight. A second pass at
   // `bandParam2` over the bottom of the capture, from `bubbleBandFrom` of its
   // height down (y 150 of a 220-tall hemmed capture: the resting ones centre
-  // at 150-185), takes those; its finds are `soft` -- kept out of the route,
-  // never tapped as a cancel -- because at 18 it also takes a tsum now and
-  // then. Replayed in cv2 over the scan frames of that day's four recordings:
+  // at 150-185), takes those; its finds are `band` -- kept out of the route
+  // and tapped as cancels like the pass proper's. At 18 it also takes a tsum
+  // now and then, and a tap on one is a tap the game ignores; the cost is
+  // the pass counting it cancelled and waiting `fillMinMs` on a pop that ran
+  // long. Replayed in cv2 over the scan frames of that day's four recordings:
   // the band pass found two of two, three of three and two of three bottom
   // bubbles at 20, more at 18, with one false circle in 18 frames.
   bubbleBandFrom: 0.68,
@@ -515,7 +524,9 @@ var GastonConfig = {
   // Bubbles a read found stay known for this long, matched by position within
   // `bubbleMatch` widths on later reads: one that sank under the rim lights
   // and dropped out of the Hough is still there, and only a cancel's tap
-  // removes one. Remembered bubbles are `soft` too.
+  // removes one. Remembered bubbles are `soft`: planned round, never tapped,
+  // since one that rolled when a clear went out from under it is a phantom
+  // at the old spot.
   bubbleMemoryMs: 12000,
   bubbleMatch: 1.2,
   // How far below the play square the bubble capture runs, as a share of its
@@ -913,11 +924,12 @@ function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
  * Hough pass as `findGameBubbles`, in play-square scale; a centre below the
  * square has y past `playResizeHeight`, which the taps map like any other.
  *
- * Then two more sources, both `soft` (planned round, never tapped): a second
- * Hough at `bandParam2` over the bottom `bubbleBandFrom` of the capture, for
- * the bubbles resting on the bowl the first pass reads through, and the
- * memory of earlier reads (`gastonRememberBubbles`). A soft find within
- * `minDist` of a hard one is the same bubble and dropped.
+ * Then two more sources: a second Hough at `bandParam2` over the bottom
+ * `bubbleBandFrom` of the capture, for the bubbles resting on the bowl the
+ * first pass reads through (`band`, tapped like the first pass's), and the
+ * memory of earlier reads (`gastonRememberBubbles`; `soft`, planned round
+ * and never tapped). A band find within `minDist` of a hard one is the same
+ * bubble and dropped. The list is ordered hard, band, soft.
  */
 function gastonBubbles(ts: Tsum): GameBubble[] {
   const cfg = GastonConfig;
@@ -939,22 +951,25 @@ function gastonBubbles(ts: Tsum): GameBubble[] {
     releaseImage(img);
   }
   const bandFrom = outH * cfg.bubbleBandFrom;
-  const soft: GameBubble[] = [];
+  const low: GameBubble[] = [];
   for (let k = 0; k < band.length; k++) {
     const b = band[k];
     if (b.y < bandFrom) { continue; }
-    soft.push({ x: b.x, y: b.y, r: b.radius, soft: true });
+    low.push({ x: b.x, y: b.y, r: b.radius, band: true });
   }
   const out = hard.slice();
-  const softKept = gastonNotButtons(soft);
-  for (let k = 0; k < softKept.length; k++) {
-    if (!gastonBubbleNear(softKept[k], out, bc.minDist)) { out.push(softKept[k]); }
+  const lowKept = gastonNotButtons(low);
+  for (let k = 0; k < lowKept.length; k++) {
+    if (!gastonBubbleNear(lowKept[k], out, bc.minDist)) { out.push(lowKept[k]); }
   }
   return gastonRememberBubbles(ts, out);
 }
 
-/** The bubbles the Hough pass proper found -- the ones a cancel may tap. */
-function gastonHardBubbles(bubbles: GameBubble[]): GameBubble[] {
+/**
+ * The bubbles a cancel may tap: the Hough pass proper's and the band's, not
+ * the memory's (`soft`).
+ */
+function gastonTappableBubbles(bubbles: GameBubble[]): GameBubble[] {
   const out: GameBubble[] = [];
   for (let i = 0; i < bubbles.length; i++) {
     if (!bubbles[i].soft) { out.push(bubbles[i]); }
@@ -1490,9 +1505,9 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
  * lands.
  */
 function gastonCancelBubble(ts: Tsum, path: TsumPath, all: GameBubble[]): number {
-  // Only what the Hough pass proper found is tapped: a soft bubble may be a
-  // tsum, or gone (see `gastonBubbles`).
-  const bubbles = gastonHardBubbles(all);
+  // What this capture found is tapped; a remembered bubble may have rolled
+  // since (see `gastonBubbles`).
+  const bubbles = gastonTappableBubbles(all);
   if (!ts.isRunning || bubbles.length === 0) { return 0; }
   const far: { b: GameBubble, d: number }[] = [];
   for (let b = 0; b < bubbles.length; b++) {
@@ -1636,21 +1651,23 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     // Bubble centres in play-square scale, beside the board below: whether a
     // hop crossed one is then answerable offline. `near` is each one's
     // leftovers, the order the cancel spends them in.
-    // `soft` counts the ones the band pass or the memory supplied, listed
-    // after the read's own.
+    // `band` counts the band pass's finds and `soft` the memory's; the list
+    // runs the pass proper's, then the band's, then the memory's.
     const bubbleAt: number[] = [];
     const near: number[] = [];
     let softBubbles = 0;
+    let bandBubbles = 0;
     for (let b = 0; b < bubbles.length; b++) {
       bubbleAt.push(Math.round(bubbles[b].x), Math.round(bubbles[b].y));
       near.push(bubbles[b].near || 0);
       if (bubbles[b].soft) { softBubbles++; }
+      if (bubbles[b].band) { bandBubbles++; }
     }
     if (!path) {
       logInfo(Log.Skill.GastonPass, {
         chain: 0, read: board.length, rescans: rescans, gaston: gastons.length,
         source: origin, carried: carry !== null ? carry.left : 0, starved: starved,
-        cut: source.length - free.length, bubbles: bubbles.length, soft: softBubbles,
+        cut: source.length - free.length, bubbles: bubbles.length, band: bandBubbles, soft: softBubbles,
         bubbleAt: bubbleAt, near: near, retry: lifted,
       });
       return {
@@ -1668,7 +1685,7 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     // Gaston.
     const holds = function(headAt: number, chain: number): boolean {
       if (!mayCancel || headAt >= closesAt - cfg.noCancelTailMs) { return true; }
-      return gastonHardBubbles(bubbles).length === 0
+      return gastonTappableBubbles(bubbles).length === 0
         && headAt + chain * cfg.popPerTsumMs + cfg.popTailMs >= closesAt;
     };
     // Not into the fever switch: the game takes no link through it.
@@ -1704,7 +1721,7 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
       // Where the head came from, how many circles the carry left out, and
       // whether it was dropped for leaving nothing.
       source: origin, carried: carry !== null ? carry.left : 0, starved: starved,
-      cut: source.length - free.length, bubbles: bubbles.length, soft: softBubbles,
+      cut: source.length - free.length, bubbles: bubbles.length, band: bandBubbles, soft: softBubbles,
       held: drag.held, heldMs: drag.heldMs, cancelled: cancelled,
       board: flat, route: route, bubbleAt: bubbleAt, near: near,
       // The head the drag started on, as an index into `board`, and which

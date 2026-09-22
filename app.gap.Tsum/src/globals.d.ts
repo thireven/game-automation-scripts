@@ -760,8 +760,13 @@ interface GameBubble {
    */
   near?: number;
   /**
-   * A bubble to plan round but not to tap: one the bottom-band pass or the
-   * memory supplied rather than the Hough pass proper (`gastonBubbles`).
+   * Found by the bottom-band pass rather than the Hough pass proper
+   * (`gastonBubbles`): planned round and tapped like any other, logged apart.
+   */
+  band?: boolean;
+  /**
+   * A bubble to plan round but not to tap: one the memory supplied, which may
+   * have rolled since (`gastonRememberBubbles`).
    */
   soft?: boolean;
   /** Epoch ms this bubble was first seen at about this spot (`trackGameBubbles`). */
