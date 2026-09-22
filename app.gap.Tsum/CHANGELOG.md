@@ -250,10 +250,11 @@ release note; they fold back in here when she ships.
   scan reads a bubble's icons as a tsum, and the paint read passed it.
   `gastonBubbles` now adds a second Hough at `bandParam2` over the bowl's
   bottom and the round's memory of every read (`gastonRememberBubbles`), both
-  `soft` -- planned round, never tapped -- and `bubbleAvoid` is 1.4 widths, a
-  bubble's radius plus a tsum's. The pass record carries `soft` and every
-  circle's paint `rises`. Clean routes registered whole at 10ms, so the dwell
-  was not the lever.
+  `soft` -- planned round, never tapped. The pass record carries `soft` and
+  every circle's paint `rises`. Clean routes registered whole at 10ms, so
+  the dwell was not the lever. The first run on this charged 13 windows of
+  18 (5 of 23 before); `bubbleAvoid` was 1.4 widths for that run and cut a
+  full board into routes of 4-13, so it is back at 1.0.
 - **A starved carry falls back to the cluster.** The window's first read
   finds a board of leftovers; the first clear slides them into the positions
   the carry remembered and the Gastons that land read as leftovers too, so

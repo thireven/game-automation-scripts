@@ -356,9 +356,12 @@
 // much). So bubbles come from three sources (`gastonBubbles`): the pass
 // proper, a second pass at a lower threshold over the bowl's bottom, and the
 // round's memory of every read -- the last two `soft`, planned round and
-// never tapped -- and `bubbleAvoid` grew to a bubble's radius plus a tsum's.
-// Dwell is not the lever; the passes that registered short did so at 10, 20
-// and 34 alike.
+// never tapped. The first run on them (`mucbceu4xy`) charged 13 windows of
+// 18 against 5 of 23 the day before, and showed the other edge: every
+// bubble's avoid disc and crossing disc takes tsums out of the route, and at
+// `bubbleAvoid` 1.4 four bubbles cut a full Gaston board into pieces (see
+// the table). Dwell is not the lever; the passes that registered short did
+// so at 10, 20 and 34 alike.
 //
 // The same recordings showed the carry starving whole windows: 221 of 291
 // passes planned nothing, all on a carry that had marked the board's
@@ -488,12 +491,13 @@ var GastonConfig = {
   hemButtons: [{ x: 30, y: 214 }, { x: 170, y: 214 }],
   hemButtonAvoid: 1.0,
   // How far a planned tsum must stay from a bubble's centre, in tsum widths.
-  // A bubble is about 1.4 tsums across and floats over the pile, so a tsum
-  // whose centre is within its radius plus half a width has the bubble over
-  // its edge, and the game does not link it: a 14-chain died at 9 on a tsum
-  // 1.1 widths from a bubble it had read (`round-1-20260921-215654.mp4`,
-  // 04:58:17). This was 1.0.
-  bubbleAvoid: 1.4,
+  // A bubble is about 1.4 tsums across, so this is "not touching". It was
+  // 1.4 for one run (`mucbceu4xy`, 2026-09-22) on the strength of a 14-chain
+  // that died at 9 on a tsum 1.1 widths from a bubble: with three or four
+  // bubbles on the board that disc cut the pile into pieces no route could
+  // cross -- routes of 4, 6 and 13 over 24-33 painted Gastons, 758 planned
+  // over the run's 33 read passes against 898 at 1.0, replayed offline.
+  bubbleAvoid: 1.0,
   // The bubbles the Hough pass misses are the ones resting on the bowl's
   // bottom: the rim lights and the fever tint leave their outline under
   // `GameBubbleConfig.param2`, and a route that runs into one dies there --
