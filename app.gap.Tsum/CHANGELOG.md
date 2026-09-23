@@ -319,6 +319,15 @@ release note; they fold back in here when she ships.
   now rescans, and an unconfirmed cancel taps whatever a fresh read finds
   (`freshTaps`). The refill gate after an uncancelled pass now also waits
   out the extra chains' pops (`popMs`).
+- **Gaston's no-bubble hold is judged against the earliest close, and a read
+  route keeps his tsums along the top.** `gaston_102.mp4` (2026-09-23)
+  charged 6 of 7 windows. The skill closes at tap+9.65s (the antler backdrop
+  went at 9.60-9.72 in all seven); `closesAt` puts it 1.0-1.65s later. The
+  one miss was a 29-chain with no bubble, judged to pop out before that late
+  close: it went unheld and refilled with leftovers. Both holds now use
+  `refillBy` (tap + `openMinMs` + duration). The HUD band also cut the
+  Gastons joining a pile's halves (6 planned of 14 painted); painted circles
+  are now cut only above `paintedHudBand`, 8% more planned over 153 passes.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

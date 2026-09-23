@@ -164,7 +164,10 @@
 // five. `gastonFreeBoard` cuts everything with its centre in the top `hudBand`
 // of the square. That costs a real tsum or two on a pile stacked into the band
 // (`corpus/GamePlaying/last_seconds1.png` has three there); every fever capture
-// in the corpus has two to four glyph circles in the band.
+// in the corpus has two to four glyph circles in the band. On BlueStacks the
+// pile stacks further in, and the Gastons there were what joined its halves,
+// so a route off the paint read keeps what it found painted down to the glyph
+// rows (`paintedHudBand`).
 //
 // ## The last chain is held past the close, then the button is spammed
 //
@@ -189,7 +192,8 @@
 // `gaston_debug5.mp4`).
 //
 // A chain with no bubble to cancel it is held too, whatever pass it is, when
-// its own pop would refill past the close. Left to pop it takes ~90ms a tsum
+// its own pop would refill past the earliest close (`refillBy`, not the late
+// `closesAt`). Left to pop it takes ~90ms a tsum
 // and the refill lands behind that, so a thirty-chain uncancelled at four
 // seconds in refills after the close -- with leftovers. The device log of
 // 2026-09-21 (`muc2hht99b`) had three windows of six whose second pass found
@@ -238,6 +242,19 @@
 // theme's dimmed teal and reads no fever at all on the antlered theme of that
 // recording. A fever that enters mid-window off a cancelled pass is not
 // predicted, only seen when it switches; none did there.
+//
+// **The antlers are not a fever theme; they are his skill.** `gaston_102.mp4`
+// (2026-09-23), sampled at the chrome probe every 40-50ms: the antlers come
+// up at tap+1.15-1.25s, never drop out before the close, and go at
+// tap+9.60-9.72s in seven windows of seven, whatever the fever does. A fever
+// behind them reads (0,55,65), a plain board (0,221,244), the antlers ~(248,
+// 128,60). So `faceMs` + `feverMs` is the skill's clock, and the "exit" the
+// switch wait predicts is the close, fixed at tap+9.65s -- where `closesAt`
+// put it at 10.6-11.3. What the chrome
+// cannot see is a fever under the antlers: one that ends mid-window ends
+// unseen, and in that window a first pass planned at 37 linked 3 across it.
+// When the antlers give way to a fever the wait sees no switch at all and
+// runs to `switchLateMs`, which is where the held passes' 1.4-2.2s went.
 //
 // Two smaller things the window has to get right:
 //
@@ -395,6 +412,8 @@
 //     planning over it;
 //   - a pass held back from the fever switch scans again before it draws
 //     (`replanAfterWaitMs`), since the pile moves under a stale plan;
+//   - a chain left to pop is held when its refill would land past the
+//     earliest close (`refillBy`), not the late estimate the hold runs to;
 //   - the charge stops spamming once the held chain's clear is over
 //     (`chargeTailMs`), and the play loop's chains fill the rest;
 //   - a pass whose Gaston chain is short draws other colours' chains too
@@ -568,6 +587,12 @@ var GastonConfig = {
   // at up to ~1.15 (`gaston_debug5.mp4`); a full pile's top row centres at
   // 1.25-2.0.
   hudBand: 1.25,
+  // Where the band ends for circles the paint read found painted: those are
+  // tsums, so only the glyph rows stay cut. On BlueStacks the glyphs centre
+  // at 0.2-0.45 and the pile's top row at 0.5 and down, and the full band cut
+  // the Gastons that joined a pile's two halves (`gaston_102.mp4`: 6 planned
+  // of 14 painted, 11 with them; over 153 read passes, 8% more planned).
+  paintedHudBand: 0.6,
 
   // --- the drag ------------------------------------------------------------
   //
@@ -623,10 +648,10 @@ var GastonConfig = {
   cancelCheckMs: 400,
   cancelPollMs: 40,
   cancelCheckMin: 10,
-  // A chain whose drag ends within this of the close is held rather than
-  // cancelled, whatever pass it is: a cancel there refills a board the window
-  // has no time to chain again, and a release there charges nothing. With no
-  // bubble to cancel with the tail is the pop itself (`popPerTsumMs`,
+  // A chain whose drag ends within this of the earliest close is held rather
+  // than cancelled, whatever pass it is: a cancel there refills a board the
+  // window has no time to chain again, and a release there charges nothing.
+  // With no bubble to cancel with the tail is the pop itself (`popPerTsumMs`,
   // `popTailMs`): a clear left to pop refills that much later, and drops
   // past the close are not Gaston.
   noCancelTailMs: 800,
@@ -1150,15 +1175,16 @@ function gastonBubbleWorth(bubbles: GameBubble[], board: BoardPoint[], gastons: 
 /**
  * The board minus what the drag must not touch: every tsum sitting on a bubble,
  * since a bubble the drag crosses pops and ends the chain there, and every
- * circle with its centre in the HUD band across the top, which is the fever
- * bonus and the combo counter read as tsums -- see the header.
+ * circle with its centre in the HUD band across the top, `band` tsum widths
+ * deep, which is the fever bonus and the combo counter read as tsums -- see
+ * the header.
  *
  * Board points are top-left corners and bubbles are centres, so the half-width
  * goes back on before either test.
  */
-function gastonFreeBoard(board: BoardPoint[], bubbles: GameBubble[]): BoardPoint[] {
+function gastonFreeBoard(board: BoardPoint[], bubbles: GameBubble[], band: number): BoardPoint[] {
   const half = Config.tsumWidth / 2;
-  const hud = Config.tsumWidth * GastonConfig.hudBand;
+  const hud = Config.tsumWidth * band;
   const avoid = Config.tsumWidth * GastonConfig.bubbleAvoid;
   const avoidSq = avoid * avoid;
   const out: BoardPoint[] = [];
@@ -1724,7 +1750,7 @@ function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[],
   const cfg = GastonConfig;
   const out: number[] = [];
   if (cfg.mixedChains <= 0 || drawn.length === 0 || drawn.length >= cfg.mixedBelow) { return out; }
-  const free = gastonFreeBoard(board, bubbles).filter(function(p) { return drawn.indexOf(p) < 0; });
+  const free = gastonFreeBoard(board, bubbles, cfg.hudBand).filter(function(p) { return drawn.indexOf(p) < 0; });
   const paths = calculatePaths(free, -1, false, 0);
   const half = Config.tsumWidth / 2;
   const match = Config.tsumWidth * cfg.carryMatch;
@@ -1777,11 +1803,13 @@ function gastonCarryOut(board: BoardPoint[]): { kept: BoardPoint[], left: number
  * Scan, plan the longest chain over the board, draw it, and either cancel it
  * with a bubble or hold it until `holdUntil` and leave it to pop, which makes
  * it the closing chain (`held`). Held when `mayCancel` is off, when the head
- * lands inside `noCancelTailMs` of `closesAt`, or when there is no bubble to
- * cancel with and the clear's own pop would refill past the close: those
- * drops are not Gaston, so the next pass would plan over leftovers -- and a
- * window whose second pass waited out such a pop lost its charge and the
- * window after it (`muc2hht99b`, 2026-09-21, three of six windows). A chain
+ * lands inside `noCancelTailMs` of `refillBy`, or when there is no bubble to
+ * cancel with and the clear's own pop would refill past it: those drops are
+ * not Gaston, so the next pass would plan over leftovers -- and a window
+ * whose second pass waited out such a pop lost its charge and the window
+ * after it (`muc2hht99b`, 2026-09-21, three of six windows). `refillBy` is
+ * the earliest the window can close, not the late estimate the hold runs to
+ * (see `gastonWindow`). A chain
  * released short draws other colours' chains after it (`gastonMixedChains`),
  * and the cancel is checked off the tsum count (`gastonCancelBubble`).
  *
@@ -1801,7 +1829,7 @@ function gastonCarryOut(board: BoardPoint[]): { kept: BoardPoint[], left: number
  * answers `chain` 0 with `dead` counting them, so the window looks again at
  * once rather than waiting out a refill that is not coming.
  */
-function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: number,
+function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: number,
     fullBoard: boolean, paintUntil: number): GastonPass {
   const cfg = GastonConfig;
   if (gPages.detect(1, 0) !== PageName.GamePlaying) {
@@ -1844,7 +1872,7 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     const carry = gastonCarryRead ? gastonCarryOut(gastons) : null;
     let source = carry !== null ? carry.kept : gastons;
     let origin = carry !== null ? 'carry' : 'cluster';
-    let free = gastonFreeBoard(source, bubbles);
+    let free = gastonFreeBoard(source, bubbles, cfg.hudBand);
     for (let k = 0; k < avoid.length; k++) { free = gastonWithout(free, avoid[k]); }
     let path = gastonOrient(gastonChain(free, bubbles), gastonLeftovers(board, source));
     // A carry that leaves nothing to chain is stale, not a board with nothing
@@ -1860,7 +1888,7 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
       gastonCarryRead = false;
       source = gastons;
       origin = 'cluster';
-      free = gastonFreeBoard(source, bubbles);
+      free = gastonFreeBoard(source, bubbles, cfg.hudBand);
       for (let k = 0; k < avoid.length; k++) { free = gastonWithout(free, avoid[k]); }
       path = gastonOrient(gastonChain(free, bubbles), gastonLeftovers(board, source));
     }
@@ -1894,16 +1922,19 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     }
     const oracle: GastonOracle | null = paintUntil > 0 && Date.now() < paintUntil ? {
       board: board,
-      plan: function(head, found) { return gastonChainFrom(head, gastonFreeBoard(found, bubbles), bubbles); },
+      // Painted circles are tsums, so only the glyph rows are cut (`paintedHudBand`).
+      plan: function(head, found) {
+        return gastonChainFrom(head, gastonFreeBoard(found, bubbles, cfg.paintedHudBand), bubbles);
+      },
     } : null;
     // Whether the chain drawn is the closing one, asked at its head (see the
     // doc comment). No bubble: its pop runs `popPerTsumMs` a tsum and the
     // refill drops `popTailMs` behind, and only drops before the close are
     // Gaston.
     const holds = function(headAt: number, chain: number): boolean {
-      if (!mayCancel || headAt >= closesAt - cfg.noCancelTailMs) { return true; }
+      if (!mayCancel || headAt >= refillBy - cfg.noCancelTailMs) { return true; }
       return gastonTappableBubbles(bubbles).length === 0
-        && headAt + chain * cfg.popPerTsumMs + cfg.popTailMs >= closesAt;
+        && headAt + chain * cfg.popPerTsumMs + cfg.popTailMs >= refillBy;
     };
     // Not into the fever switch: the game takes no link through it.
     const waited = gastonAwaitSwitch(ts, gastonDragEstimate(path.length));
@@ -2036,6 +2067,12 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   // The clock starts here, not at the tap. See `durationMs`.
   const closesAt = Date.now() + cfg.durationMs[level - 1];
   const holdUntil = closesAt + cfg.holdPastCloseMs;
+  // What a refill has to land before: the close as early as it can come.
+  // `closesAt` errs late for the hold, and judged against it
+  // `gaston_102.mp4`'s first window let a 29-chain with no bubble pop from
+  // tap+7.3s, due done by 10.3 against 10.8; the game closed at 9.65 and
+  // the refill was leftovers.
+  const refillBy = gastonWindowUntil;
   // What the last window's reads learned is the last window's.
   gastonCarry = [];
   gastonCarryRead = false;
@@ -2068,7 +2105,7 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   const read: number[] = [];
   const biggest: number[] = [];
   while (ts.isRunning) {
-    const pass = gastonPass(ts, closesAt, passesLeft > 0, holdUntil, fullBoard, paintUntil);
+    const pass = gastonPass(ts, refillBy, passesLeft > 0, holdUntil, fullBoard, paintUntil);
     passes++;
     dead += pass.dead;
     if (!pass.onBoard) { onBoard = false; break; }
