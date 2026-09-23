@@ -348,7 +348,10 @@ release note; they fold back in here when she ships.
   capture looks for the game's gold coin on the tsums behind the finger; with
   none on four, the finger walks the route back to the last coin (the undo
   unwinds the chain to there) and draws on (`rewind`, `rewinds` and `coins` on
-  the pass record).
+  the pass record). A stall that comes back at the same place is the route's
+  (`gaston_111.mp4`: three of four redraws stalled where the first had), so it
+  is planned afresh from the chain's end without the failing tsum, or the drag
+  stops there; no walk back runs into the close.
 - **Gaston's closing chain goes out at once and lets go as the antlers leave.**
   The switch wait held it 0.8-2.6s past the close on `gaston_108`/`109.mp4`,
   and the hold ran to `closesAt`, 1.0-1.6s late. The antlers stay up 8.4-8.6s,

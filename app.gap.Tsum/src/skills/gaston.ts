@@ -688,7 +688,13 @@ var GastonConfig = {
   coinGrid: 3,
   coinStep: 2,
   coinShare: 0.2,
-  maxRewinds: 2,
+  maxRewinds: 3,
+  // A second stall at the same place is the route's, not chance -- on
+  // `gaston_111.mp4` all three redraws stalled where the first had, one on a
+  // tsum linked early as the third link. So it is planned afresh from the
+  // chain's end without the next tsum, over a first hop no longer than this in
+  // tsum widths; with no such route the drag stops there.
+  replanFirstHop: 1.5,
 
   // --- the cancel, and the hold --------------------------------------------
   //
@@ -1877,7 +1883,26 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       finger = pts[b];
       hops++;
     };
-    const tail = pts.length - 1;
+    // A route on from `path[back]` over the read's Gastons, less every tsum
+    // of `path` up to `skip` -- in the chain, or the one that keeps failing --
+    // whose first hop is one the game takes (`replanFirstHop`). Null with none.
+    const replan = function(back: number, skip: number): TsumPath | null {
+      if (oracle === null || drag.gastons === null) { return null; }
+      const out: BoardPoint[] = path.slice(0, skip + 1);
+      const reach = cfg.replanFirstHop * Config.tsumWidth;
+      for (let t = 0; t < 3; t++) {
+        const left = drag.gastons.filter(function(g) { return out.indexOf(g) < 0; });
+        const next = oracle.plan(path[back], left);
+        if (next === null || next.length < 2) { return null; }
+        const dx = next[1].x - next[0].x;
+        const dy = next[1].y - next[0].y;
+        if (dx * dx + dy * dy <= reach * reach) { return next; }
+        out.push(next[1]);
+      }
+      return null;
+    };
+    let tail = pts.length - 1;
+    let lastBack = -1;
     let i = 1;
     while (i <= tail) {
       hop(i - 1, i);
@@ -1891,8 +1916,29 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
         }
         const back = gastonStalled(ts, path, i, end, drag);
         if (back >= 0 && spare) {
-          drag.rewinds.push([i, back]);
+          // Stuck at the same place again: that hop fails every time -- a tsum
+          // linked early, or one out of the game's reach -- so the rest is
+          // planned afresh without it, or the drag stops there. And no walk
+          // back into the close, whose freeze would take it too.
+          const again = lastBack >= 0 && back <= lastBack + 1;
+          lastBack = back;
+          const next = again ? replan(back, back + 1) : null;
+          const late = Date.now() < closeAt && Date.now() + 2 * (i - back) * perHop > closeAt - cfg.closeLeadMs;
+          if (late || (again && next === null)) {
+            drag.rewinds.push([i, back, 0]);
+            break;
+          }
           for (let k = i - 1; k >= back; k--) { hop(k + 1, k); }
+          if (next !== null) {
+            drag.rewinds.push([i, back, next.length - 1]);
+            path = path.slice(0, back).concat(next) as TsumPath;
+            pts.length = back + 1;
+            for (let k = 1; k < next.length; k++) { pts.push(gastonToScreen(ts, next[k])); }
+            tail = pts.length - 1;
+            drag.path = path;
+          } else {
+            drag.rewinds.push([i, back]);
+          }
           i = back + 1;
           continue;
         }
@@ -1922,10 +1968,10 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       drag.countLate = chainCounterRead(ts, route);
       drag.heldMs = Date.now() - headAt;
     }
-    const last = pts[pts.length - 1];
+    // Where the finger is: the route's end, or where a stalled drag stopped.
     drag.releasedAt = Date.now();
     down = false;
-    tapUp(last.x, last.y, cfg.releaseMs);
+    tapUp(finger.x, finger.y, cfg.releaseMs);
     drag.ms = Date.now() - from - drag.heldMs;
     const slept = cfg.grabMs + dwellMs * (hops + 1)
       + cfg.stepMs * cfg.stepsPerHop * hops + cfg.releaseMs + settled
