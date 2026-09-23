@@ -375,6 +375,30 @@
 // leftovers before the first clear slid them into new positions. A pass whose
 // carry leaves nothing to chain now plans from the cluster and drops the
 // carry until the next read (`starved` on the pass record).
+//
+// ## Every step is checked, not assumed
+//
+// The window used to take each step on trust: a bubble tapped was a cancel,
+// a held chain was a charge. Two rounds on 2026-09-23 (`mudehgre4r`, 16
+// windows) showed what that costs. Three passes went out uncancelled while
+// the memory knew a bubble. Six charges failed, three on a held chain the
+// counter read stalled (19 of 39, 19 of 27, 16 of 21), each spamming 4.5s
+// over a board that had stopped clearing. And a failed charge is what ruins
+// the windows after it: the play loop fills the gauge on the leftovers the
+// clear refilled with, so the next activation opens on 17-20 Gastons of
+// 36-45, and three windows in a row drew 3-14 on their first pass. So:
+//
+//   - a cancel is checked off the tsum count (`cancelDrop`); one the count
+//     does not confirm taps the remembered bubbles too, and failing that the
+//     refill gate waits out the pop rather than planning over it;
+//   - the charge stops spamming once the held chain's clear is over
+//     (`chargeTailMs`), and the play loop's chains fill the rest;
+//   - a pass whose Gaston chain is short draws other colours' chains too
+//     (`mixedChains`), so a board of leftovers turns Gaston within a window.
+//
+// None of it sees a drag stall with the finger still down. The counter read
+// one drag in six there, and its first read can be early (1 at the head, 16
+// at the release), so a stall is judged by what the pass cleared instead.
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -584,6 +608,17 @@ var GastonConfig = {
   // a bubble spent here refills as Gaston where one kept sits where the chain
   // would go.
   bubbleReserve: 0,
+  // A cancelled clear leaves the board at once; one left to pop loses a tsum
+  // every `popPerTsumMs`. So a cancel is confirmed when the tsum count drops
+  // `cancelDrop` within `cancelCheckMs` of the tap (a pop manages ~4 in that
+  // time). Unconfirmed, the remembered (`soft`) bubbles are tapped too -- one
+  // that has rolled away leaves a tsum under the tap, which the game ignores
+  // -- and the refill gate waits out the pop. Chains under `cancelCheckMin`
+  // are not checked: their pop is over inside `fillMinMs` either way.
+  cancelDrop: 8,
+  cancelCheckMs: 400,
+  cancelPollMs: 40,
+  cancelCheckMin: 10,
   // A chain whose drag ends within this of the close is held rather than
   // cancelled, whatever pass it is: a cancel there refills a board the window
   // has no time to chain again, and a release there charges nothing. With no
@@ -610,6 +645,12 @@ var GastonConfig = {
   // the Gastons it left is worth more than the wait.
   gaugeWaitMs: 4500,
   chargeMinChain: 12,
+  // The spam also stops this long after the held chain's clear should be over
+  // (`popPerTsumMs` a tsum, of its late count when the counter read one). On
+  // 2026-09-23 every charge that fired read full within 0.9s of that; the ones
+  // that did not spammed the whole `gaugeWaitMs` over a board that had
+  // stopped clearing, and the play loop's first chains after filled the gauge.
+  chargeTailMs: 1500,
   // The spam tap's `during`. The host holds every tap 40ms on its own, so with
   // the gauge read between taps the loop runs at about one tap a frame pair.
   spamTapMs: 10,
@@ -657,6 +698,17 @@ var GastonConfig = {
   // under a flash -- the fever label's, `gaston_6.mp4` read 29 of 40 -- and
   // rescans for up to this long.
   flashRetryMs: 600,
+
+  // --- a board of leftovers ------------------------------------------------
+  //
+  // A pass whose Gaston chain is under `mixedBelow` also draws up to
+  // `mixedChains` chains of any colour off the same scan, while inside
+  // `mixedChainMs` of its release and before the cancel: whatever the window
+  // clears refills as Gaston, and one short chain a pass converts too little
+  // (see the header). 0 turns it off.
+  mixedBelow: 15,
+  mixedChains: 4,
+  mixedChainMs: 600,
 };
 
 // The `roundStartedAt` of the round whose first activation has gone out, or 0.
@@ -697,8 +749,14 @@ interface GastonPass {
   chain: number;
   /** Tsums the game's counter said it linked (chainCounter.ts); null when nothing was drawn or the counter did not read. */
   registered: number | null;
+  /** The counter again just before a held chain's release; null unless held and read. */
+  registeredLate: number | null;
   /** Bubbles tapped to cancel the pop animation. */
   cancelled: number;
+  /** Whether the tsum count showed the cancel take; null when unchecked (see `cancelCheckMin`). */
+  confirmed: boolean | null;
+  /** Other colours' chains drawn beside a short one (`mixedChains`). */
+  extra: number;
   /** The chain was held on its last tsum until the window had closed, then left to pop -- the closing chain. */
   held: boolean;
   /** How long the finger stayed on the last tsum past the drag, in ms. */
@@ -1492,10 +1550,68 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   return drag;
 }
 
+/** What a cancel came to. */
+interface GastonCancel {
+  /** Bubbles tapped, remembered ones included. */
+  tapped: number;
+  /** Of those, remembered (`soft`) ones, tapped because the others did not take. */
+  soft: number;
+  /** The count showed the clear leave at once; null when unchecked. */
+  confirmed: boolean | null;
+  /** How far the count fell after the taps; 0 when unchecked. */
+  cleared: number;
+}
+
 /**
- * Cancel the pop animation: tap a bubble, and the surplus above the reserve
- * with it -- the one over the most leftovers first (`gastonBubbleWorth`),
- * then the one furthest from the chain. Answers how many went.
+ * Cancel the pop animation, and check it took (`cancelDrop`): the bubbles
+ * this capture found first, then -- with nothing found, or when those did not
+ * take -- the ones the memory holds, which may have rolled since (see
+ * `gastonBubbles`). `check` false taps the first set and trusts it, as every
+ * cancel did before the check.
+ */
+function gastonCancelBubble(ts: Tsum, path: TsumPath, all: GameBubble[], check: boolean): GastonCancel {
+  const out: GastonCancel = { tapped: 0, soft: 0, confirmed: null, cleared: 0 };
+  const hard = gastonTappableBubbles(all);
+  const soft = all.filter(function(b) { return !!b.soft; });
+  if (!ts.isRunning || (hard.length === 0 && soft.length === 0)) { return out; }
+  const tiers = [hard, soft];
+  for (let t = 0; t < tiers.length; t++) {
+    if (tiers[t].length === 0) { continue; }
+    // Read right before the taps, so a pop running since cannot pass for them.
+    const before = check ? gastonCountTsums(ts) : -1;
+    const n = gastonTapBubbles(ts, path, tiers[t]);
+    out.tapped += n;
+    if (t === 1) { out.soft += n; }
+    if (before < 0) { break; }
+    const drop = before - gastonAwaitDrop(ts, before);
+    out.cleared = Math.max(out.cleared, drop);
+    out.confirmed = drop >= GastonConfig.cancelDrop;
+    if (out.confirmed) { break; }
+  }
+  // The board has moved, so every other position in the list is stale too.
+  ts.gameBubbles = [];
+  return out;
+}
+
+/**
+ * The lowest tsum count within `cancelCheckMs`, stopping once it is
+ * `cancelDrop` under `before`.
+ */
+function gastonAwaitDrop(ts: Tsum, before: number): number {
+  const cfg = GastonConfig;
+  const until = Date.now() + cfg.cancelCheckMs;
+  let low = before;
+  while (ts.isRunning && Date.now() < until && before - low < cfg.cancelDrop) {
+    ts.sleep(cfg.cancelPollMs);
+    low = Math.min(low, gastonCountTsums(ts));
+  }
+  return low;
+}
+
+/**
+ * Tap `bubbles`, all but the reserve -- the one over the most leftovers first
+ * (`gastonBubbleWorth`), then the one furthest from the chain. Answers how
+ * many went.
  *
  * Leftovers because a pop there clears what no Gaston chain can and refills
  * it as Gaston. Furthest because the chain's own tsums are already clearing
@@ -1504,11 +1620,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
  * chain was planned off; bubbles are big and drift slowly, so the tap still
  * lands.
  */
-function gastonCancelBubble(ts: Tsum, path: TsumPath, all: GameBubble[]): number {
-  // What this capture found is tapped; a remembered bubble may have rolled
-  // since (see `gastonBubbles`).
-  const bubbles = gastonTappableBubbles(all);
-  if (!ts.isRunning || bubbles.length === 0) { return 0; }
+function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): number {
   const far: { b: GameBubble, d: number }[] = [];
   for (let b = 0; b < bubbles.length; b++) {
     let nearest = Infinity;
@@ -1536,9 +1648,70 @@ function gastonCancelBubble(ts: Tsum, path: TsumPath, all: GameBubble[]): number
       return dx * dx + dy * dy > reach * reach;
     });
   }
-  // The board has moved, so every other position in the list is stale too.
-  ts.gameBubbles = [];
-  return count;
+  return Math.min(count, far.length);
+}
+
+// --- A board of leftovers ---------------------------------------------------
+
+/** Whether any hop of `path` passes inside a bubble -- a drag across one pops it and ends there. */
+function gastonCrossesBubble(path: TsumPath, bubbles: GameBubble[]): boolean {
+  const half = Config.tsumWidth / 2;
+  for (let i = 1; i < path.length; i++) {
+    const a = { x: path[i - 1].x + half, y: path[i - 1].y + half };
+    const b = { x: path[i].x + half, y: path[i].y + half };
+    for (let k = 0; k < bubbles.length; k++) {
+      if (gastonSegmentNear(a, b, bubbles[k], bubbles[k].r * bubbles[k].r)) { return true; }
+    }
+  }
+  return false;
+}
+
+/** A plain drag at the window's pace: no paint read, no counter, no hold. */
+function gastonDrawPlain(ts: Tsum, path: TsumPath): void {
+  const cfg = GastonConfig;
+  const dwellMs = gastonDwellMs();
+  let p = gastonToScreen(ts, path[0]);
+  tapDown(p.x, p.y, cfg.grabMs);
+  moveTo(p.x, p.y, dwellMs, cfg.pacedMoves);
+  for (let i = 1; i < path.length; i++) {
+    p = gastonToScreen(ts, path[i]);
+    moveTo(p.x, p.y, dwellMs, cfg.pacedMoves);
+  }
+  tapUp(p.x, p.y, cfg.releaseMs);
+}
+
+/**
+ * After a short Gaston chain, more of a board that is not his cleared: up to
+ * `mixedChains` chains of any colour off the pass's scan, longest first,
+ * while inside `mixedChainMs` of `releasedAt`. Planned over the free board
+ * less the chain just drawn, skipping any that would cross a bubble. What
+ * they clear refills as Gaston, so it leaves the carry. Answers each length.
+ */
+function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[], drawn: TsumPath,
+    releasedAt: number): number[] {
+  const cfg = GastonConfig;
+  const out: number[] = [];
+  if (cfg.mixedChains <= 0 || drawn.length === 0 || drawn.length >= cfg.mixedBelow) { return out; }
+  const free = gastonFreeBoard(board, bubbles).filter(function(p) { return drawn.indexOf(p) < 0; });
+  const paths = calculatePaths(free, -1, false, 0);
+  const half = Config.tsumWidth / 2;
+  const match = Config.tsumWidth * cfg.carryMatch;
+  for (let i = 0; i < paths.length && out.length < cfg.mixedChains; i++) {
+    if (!ts.isRunning || Date.now() - releasedAt > cfg.mixedChainMs) { break; }
+    const path = paths[i];
+    if (gastonCrossesBubble(path, bubbles)) { continue; }
+    gastonDrawPlain(ts, path);
+    out.push(path.length);
+    gastonCarry = gastonCarry.filter(function(c) {
+      for (let k = 0; k < path.length; k++) {
+        const dx = c.x - (path[k].x + half);
+        const dy = c.y - (path[k].y + half);
+        if (dx * dx + dy * dy < match * match) { return false; }
+      }
+      return true;
+    });
+  }
+  return out;
 }
 
 /**
@@ -1576,7 +1749,9 @@ function gastonCarryOut(board: BoardPoint[]): { kept: BoardPoint[], left: number
  * cancel with and the clear's own pop would refill past the close: those
  * drops are not Gaston, so the next pass would plan over leftovers -- and a
  * window whose second pass waited out such a pop lost its charge and the
- * window after it (`muc2hht99b`, 2026-09-21, three of six windows).
+ * window after it (`muc2hht99b`, 2026-09-21, three of six windows). A chain
+ * released short draws other colours' chains after it (`gastonMixedChains`),
+ * and the cancel is checked off the tsum count (`gastonCancelBubble`).
  *
  * The board is checked for first: this runs blind for ten seconds and more,
  * and a round that ends under it would otherwise have chains dragged across
@@ -1599,8 +1774,8 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
   const cfg = GastonConfig;
   if (gPages.detect(1, 0) !== PageName.GamePlaying) {
     return {
-      chain: 0, registered: null, cancelled: 0, held: false, heldMs: 0, releasedAt: 0, read: 0,
-      biggest: 0, overMs: 0, dead: 0, onBoard: false,
+      chain: 0, registered: null, registeredLate: null, cancelled: 0, confirmed: null, extra: 0,
+      held: false, heldMs: 0, releasedAt: 0, read: 0, biggest: 0, overMs: 0, dead: 0, onBoard: false,
     };
   }
   gastonWatchFever(ts);
@@ -1671,8 +1846,9 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
         bubbleAt: bubbleAt, near: near, retry: lifted,
       });
       return {
-        chain: 0, registered: null, cancelled: 0, held: false, heldMs: 0, releasedAt: 0,
-        read: board.length, biggest: biggest, overMs: 0, dead: lifted, onBoard: true,
+        chain: 0, registered: null, registeredLate: null, cancelled: 0, confirmed: null, extra: 0,
+        held: false, heldMs: 0, releasedAt: 0, read: board.length, biggest: biggest, overMs: 0, dead: lifted,
+        onBoard: true,
       };
     }
     const oracle: GastonOracle | null = paintUntil > 0 && Date.now() < paintUntil ? {
@@ -1697,7 +1873,15 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     // What the read learned is the window's until the next read.
     if (drag.gastons !== null && !drag.dead) { gastonCarry = drag.leftovers; gastonCarryRead = true; }
     // A drag that drew nothing cleared nothing, so there is no pop to cut short.
-    const cancelled = drag.held || drag.path.length === 0 ? 0 : gastonCancelBubble(ts, drag.path, bubbles);
+    const released = !drag.held && drag.path.length > 0;
+    // A short chain on a board of leftovers: clear more of it before the cancel.
+    const extra = released ? gastonMixedChains(ts, board, bubbles, drag.path, drag.releasedAt) : [];
+    let drawnTsums = drag.path.length;
+    for (let k = 0; k < extra.length; k++) { drawnTsums += extra[k]; }
+    const cancel: GastonCancel = released
+      ? gastonCancelBubble(ts, drag.path, bubbles, drawnTsums >= cfg.cancelCheckMin)
+      : { tapped: 0, soft: 0, confirmed: null, cleared: 0 };
+    const cancelled = cancel.tapped;
     // The scan the route was planned on and the route over it, so a short
     // chain on a recording can be replayed offline: every circle, which of
     // them the read found painted, and the route as indexes into it. Logged
@@ -1723,6 +1907,11 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
       source: origin, carried: carry !== null ? carry.left : 0, starved: starved,
       cut: source.length - free.length, bubbles: bubbles.length, band: bandBubbles, soft: softBubbles,
       held: drag.held, heldMs: drag.heldMs, cancelled: cancelled,
+      // Whether the count saw the cancel take (null: unchecked), how far it
+      // fell, and how many of the taps went to remembered bubbles.
+      confirmed: cancel.confirmed, cleared: cancel.cleared, softTaps: cancel.soft,
+      // Other colours' chains drawn after a short one (`mixedChains`).
+      extra: extra,
       board: flat, route: route, bubbleAt: bubbleAt, near: near,
       // The head the drag started on, as an index into `board`, and which
       // try this is.
@@ -1757,7 +1946,9 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     }
     return {
       chain: drag.path.length, registered: drag.count !== null ? drag.count.value : null,
-      cancelled: cancelled, held: drag.held, heldMs: drag.heldMs,
+      registeredLate: drag.countLate !== null ? drag.countLate.value : null,
+      cancelled: cancelled, confirmed: cancel.confirmed, extra: extra.length,
+      held: drag.held, heldMs: drag.heldMs,
       releasedAt: drag.releasedAt, read: board.length, biggest: biggest,
       overMs: drag.overMs, dead: lifted, onBoard: true,
     };
@@ -1803,6 +1994,8 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   // Gaston, and the held chain wants it landed.
   let passes = 0;
   let cancels = 0;
+  let missed = 0;
+  let extra = 0;
   let overMs = 0;
   let dead = 0;
   let onBoard = true;
@@ -1810,6 +2003,7 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   let passesLeft = cfg.passesBeforeHold;
   // The held chain, 0 when the window closed without one.
   let clearing = 0;
+  let clearingLate: number | null = null;
   let heldMs = 0;
   let releasedAt = 0;
   const drawn: number[] = [];
@@ -1828,20 +2022,25 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
       drawn.push(pass.chain);
       registered.push(pass.registered);
       cancels += pass.cancelled;
+      if (pass.confirmed === false) { missed++; }
+      extra += pass.extra;
       overMs += pass.overMs;
       if (pass.held) {
         clearing = pass.chain;
+        clearingLate = pass.registeredLate;
         heldMs = pass.heldMs;
         releasedAt = pass.releasedAt;
         break;
       }
       passesLeft--;
-      // A cancelled clear is gone at once; one left to pop takes its time
-      // off the board tsum by tsum. See `popPerTsumMs`.
-      const floor = pass.cancelled > 0 ? cfg.fillMinMs
-        : Math.max(cfg.fillMinMs, pass.chain * cfg.popPerTsumMs + cfg.popTailMs);
-      const at = Date.now();
-      fullBoard = gastonAwaitBoard(ts, at + floor + cfg.fillWaitMs, at + floor).full;
+      // A cancelled clear is gone at once. One left to pop -- no bubble, or a
+      // cancel the count did not confirm -- takes its tsums off one by one
+      // from the release (`popPerTsumMs`), and a chain planned over them
+      // stalls on tsums already going.
+      const fast = pass.cancelled > 0 && pass.confirmed !== false;
+      const notBefore = fast ? Date.now() + cfg.fillMinMs : Math.max(Date.now(),
+        pass.releasedAt + Math.max(cfg.fillMinMs, pass.chain * cfg.popPerTsumMs + cfg.popTailMs));
+      fullBoard = gastonAwaitBoard(ts, notBefore + cfg.fillWaitMs, notBefore).full;
     } else {
       // Nothing to chain, and the close well past: the board is not coming
       // back as Gaston. A ceiling, not the close itself, because a pass that
@@ -1855,11 +2054,18 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   // The charge: the held chain is popping past the close, so every Gaston
   // in it fills the gauge. The button is spammed through the clear, and the
   // moment it reads full the next window opens from here -- see the header.
-  // A short held chain fills nothing worth waiting on (`chargeMinChain`).
+  // A short held chain fills nothing worth waiting on (`chargeMinChain`),
+  // and once the clear is over neither does the spam (`chargeTailMs`): the
+  // play loop's chains fill the rest. The late count, when the counter read
+  // one, is what popped; the first read can come before the game caught up.
   const chargeFrom = Date.now();
   let charge: GastonCharge = { taps: 0, ready: false, onBoard: onBoard };
+  let spamUntil = chargeFrom;
   if (onBoard && clearing >= cfg.chargeMinChain) {
-    charge = gastonSpamSkill(ts, chargeFrom + cfg.gaugeWaitMs);
+    const popping = clearingLate !== null && clearingLate > 0 && clearingLate < clearing ? clearingLate : clearing;
+    spamUntil = Math.min(chargeFrom + cfg.gaugeWaitMs,
+      releasedAt + popping * cfg.popPerTsumMs + cfg.chargeTailMs);
+    charge = gastonSpamSkill(ts, spamUntil);
   }
   const firedAt = charge.ready ? Date.now() : 0;
 
@@ -1893,6 +2099,11 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // last is the loop working; well under is a window with no bubble to
     // cancel with, whose refills ran the `fillWaitMs` ceiling.
     cancels: cancels,
+    // Passes whose cancel the tsum count did not confirm (`cancelDrop`); their
+    // refill gates waited out the pop. `skill.gaston.pass` has `confirmed`.
+    missed: missed,
+    // Other colours' chains drawn beside short Gaston ones (`mixedChains`).
+    extra: extra,
     // Time the drags spent waiting on the game's MOVE acks beyond their
     // dwells, summed -- `skill.gaston.pass` has it per drag.
     overMs: overMs,
@@ -1917,6 +2128,9 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // loop with the gauge still filling. `chargeMs` is release to full.
     // `onBoard: false` is a round that ended under the window.
     spamTaps: charge.ready ? charge.taps : (charge.taps > 0 ? -1 : 0),
+    // How long the spam was allowed: `gaugeWaitMs`, or less once the held
+    // chain's clear should be over (`chargeTailMs`).
+    spamBudgetMs: spamUntil - chargeFrom,
     chargeMs: Date.now() - chargeFrom,
     ready: charge.ready,
     onBoard: onBoard && charge.onBoard,
