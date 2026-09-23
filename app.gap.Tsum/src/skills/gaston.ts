@@ -755,17 +755,23 @@ var GastonConfig = {
   // after it), which starts here and follows what the round measures
   // (`gastonCycleMs`). The cancelled passes left share the time to that
   // release evenly, each chain cut to its share; a share that cannot fit
-  // `cancelMinChain` means one pass fewer. The closing chain is then drawn the
-  // moment the antlers leave, cut to `closeChainMax` so the release follows
-  // within a second, and released at once: the game takes links right after
-  // the close (a 26 whole from it on `gaston_114.mp4`), only not across it.
-  // A closing chain that fits whole before the close is still drawn and held.
+  // `cancelMinChain` means one pass fewer. The closing chain goes out on that
+  // refill: drawn up to `closeLeadMs` before the close, the finger still on
+  // its last tsum through the close (as the hold always has), then on from
+  // the moment the antlers leave (the game links right after the close, a 26
+  // whole from it on `gaston_114.mp4`, only not across it) and released at
+  // once. What it draws past the close is cut to `closeChainMax`, which sets
+  // how soon the release follows. That chain's clear is the only thing that
+  // fills the gauge, and it must fill it whole: at 20 on `gaston_117.mp4`
+  // every charge waited ~2s on its own pop, the gauge stayed empty through
+  // the window after, and five of sixteen never filled; the 23-35 of
+  // `gaston_116.mp4` filled it before the next window's first chain.
   //
   // Holding the second chain whenever a third as long would not fit made
   // every window one cancel and a hold on `gaston_116.mp4`, the hold idle a
   // second into the close.
   nextPassMs: 1500,
-  closeChainMax: 20,
+  closeChainMax: 28,
   // How long past the close the held chain's finger stays down before the
   // release. The close is an estimate (see `durationMs`), and a release inside
   // the window is the whole charge lost, so this errs late. Now only the
@@ -1710,6 +1716,8 @@ interface GastonDrag {
   /** When the schedule wanted the drag done (`nextPassMs`), and whether it was the closing chain's. */
   slotEnd: number;
   closing: boolean;
+  /** How long a closing drag stood still through the close, 0 when it did not cross it. */
+  pausedMs: number;
   /** Tsums cut off the route's end to fit its slot (`nextPassMs`, `closeChainMax`, `closeLeadMs`). */
   trimmed: number;
 }
@@ -1869,7 +1877,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   const drag: GastonDrag = {
     path: [] as TsumPath, ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0,
     dead: false, gastons: null, rise: null, rises: null, leftovers: [], count: null, countLate: null,
-    rewinds: [], coins: null, trimmed: 0, planned: null, startedAt: 0, slotEnd: 0, closing: false,
+    rewinds: [], coins: null, trimmed: 0, planned: null, startedAt: 0, slotEnd: 0, closing: false, pausedMs: 0,
   };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.isRunning || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
@@ -1922,18 +1930,21 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       path = planned;
     }
     // Cut to the schedule's slot: a cancelled pass so the passes after it
-    // fit, keeping `cancelMinChain`; the closing chain to its slot when
-    // `chargeMinChain` still fits, and held.
+    // fit, keeping `cancelMinChain`; the closing chain to what fits before
+    // the close plus `closeChainMax` past it, and held.
     const perHop = dwellMs + cfg.hopOverMs;
     const sl = slot(Date.now());
     drag.slotEnd = sl.end;
     drag.closing = sl.closing;
     const fits = Math.floor((sl.end - Date.now() - cfg.coinSettleMs) / perHop) + 1;
-    const keep = sl.closing ? fits : Math.max(fits, cfg.cancelMinChain);
-    if (keep < path.length && keep >= (sl.closing ? cfg.chargeMinChain : cfg.cancelMinChain)) {
+    const keep = Math.max(fits, sl.closing ? cfg.closeChainMax : cfg.cancelMinChain);
+    if (keep < path.length) {
       drag.trimmed = path.length - keep;
       path = path.slice(0, keep) as TsumPath;
     }
+    // A closing drag that runs into the close stands still on its last tsum
+    // through it, and goes on once the antlers leave (`gastonAwaitClose`).
+    let pauseAt = sl.closing && sl.end > Date.now() ? sl.end : 0;
     drag.path = path;
     const pts: Point[] = [head];
     for (let i = 1; i < path.length; i++) { pts.push(gastonToScreen(ts, path[i])); }
@@ -1971,6 +1982,10 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     let lastBack = -1;
     let i = 1;
     while (i <= tail) {
+      if (pauseAt > 0 && Date.now() + perHop > pauseAt) {
+        drag.pausedMs = gastonAwaitClose(ts, closeAt, holdUntil);
+        pauseAt = 0;
+      }
       hop(i - 1, i);
       const end = i === tail;
       const spare = drag.rewinds.length < cfg.maxRewinds;
@@ -2390,10 +2405,10 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       onBoard: false,
     };
   }
-  // The closing chain goes out as the antlers leave when a chargeable one
-  // would not end before the close: never across it (`nextPassMs`).
-  const late = passesLeft === 0 && Date.now() + cfg.paintMs + cfg.coinSettleMs
-    + gastonDragEstimate(cfg.chargeMinChain) > closeAt - cfg.closeLeadMs;
+  // The closing chain waits for the antlers to leave when not even its head
+  // and paint read fit before the close; otherwise it starts now and stands
+  // still through the close (`nextPassMs`).
+  const late = passesLeft === 0 && Date.now() + cfg.paintMs + gastonDragEstimate(1) > closeAt - cfg.closeLeadMs;
   const closeWaitMs = late ? gastonAwaitClose(ts, closeAt, holdUntil) : 0;
   // The last cancel's release: its refill lands as the antlers go.
   const lastRelease = closeAt + cfg.antlerReleaseMs - gastonCycleMs;
@@ -2406,8 +2421,7 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       const end = now + (lastRelease - now - (k - 1) * (gastonCycleMs + cfg.paintMs)) / k;
       if (end - now >= cfg.coinSettleMs + gastonDragEstimate(cfg.cancelMinChain)) { return { end: end, closing: false }; }
     }
-    return { end: late ? now + cfg.coinSettleMs + gastonDragEstimate(cfg.closeChainMax - 1)
-      : closeAt - cfg.closeLeadMs, closing: true };
+    return { end: late ? 0 : closeAt - cfg.closeLeadMs, closing: true };
   };
   gastonWatchFever(ts);
   // The starts the finger came up from, left out of the next plan.
@@ -2611,7 +2625,8 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       cycleMs: gastonCycleMs, prepMs: drag.startedAt - enteredAt,
       // The slot's end from the tap and whether it closed the window; a
       // closing chain drawn past the close, and how long it waited for it.
-      slotMs: drag.slotEnd - gastonWindowT0, closing: drag.closing, late: late, closeWaitMs: closeWaitMs,
+      slotMs: drag.slotEnd > 0 ? drag.slotEnd - gastonWindowT0 : 0, closing: drag.closing, late: late,
+      closeWaitMs: closeWaitMs, pausedMs: drag.pausedMs,
       // Each walk back from a stalled chain, and the coins the last check read
       // over the route from `coinFrom` (see `rewind`).
       rewinds: drag.rewinds, coins: drag.coins,

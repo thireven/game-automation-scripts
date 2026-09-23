@@ -419,6 +419,14 @@ release note; they fold back in here when she ships.
   moment they leave -- the game links right after the close, only not across
   it -- cut to `closeChainMax` (20) and released at once, about 0.9s later.
   A closing chain that fits before the close is still drawn and held.
+- **Gaston's closing chain is long enough to fill the gauge again.** Only
+  its clear fills the gauge, and the 20 cap of the entry above left it short:
+  on `gaston_117.mp4` every charge waited ~2s on the chain's own pop, the
+  gauge stayed empty through the next window, and five of sixteen never
+  filled, where the 23-35 of `gaston_116.mp4` filled it before the next
+  window's first chain. `closeChainMax` is 28 (release ~1.2s after the
+  antlers), and a closing chain begun before the close stands still through
+  it and finishes after (`pausedMs`).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
