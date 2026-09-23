@@ -2568,17 +2568,20 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     const near: number[] = [];
     let softBubbles = 0;
     let bandBubbles = 0;
+    let goldBubbles = 0;
     for (let b = 0; b < bubbles.length; b++) {
       bubbleAt.push(Math.round(bubbles[b].x), Math.round(bubbles[b].y));
       near.push(bubbles[b].near || 0);
       if (bubbles[b].soft) { softBubbles++; }
       if (bubbles[b].band) { bandBubbles++; }
+      if (bubbles[b].gold) { goldBubbles++; }
     }
     if (!path) {
       logInfo(Log.Skill.GastonPass, {
         chain: 0, read: board.length, rescans: rescans, gaston: gastons.length,
         source: origin, carried: carry !== null ? carry.left : 0, starved: starved,
-        cut: source.length - free.length, bubbles: bubbles.length, band: bandBubbles, soft: softBubbles,
+        cut: source.length - free.length, bubbles: bubbles.length, band: bandBubbles, gold: goldBubbles,
+        soft: softBubbles,
         bubbleAt: bubbleAt, near: near, retry: lifted,
       });
       return {
@@ -2675,7 +2678,8 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       // Where the head came from, how many circles the carry left out, and
       // whether it was dropped for leaving nothing.
       source: origin, carried: carry !== null ? carry.left : 0, starved: starved,
-      cut: source.length - free.length, bubbles: bubbles.length, band: bandBubbles, soft: softBubbles,
+      cut: source.length - free.length, bubbles: bubbles.length, band: bandBubbles, gold: goldBubbles,
+        soft: softBubbles,
       held: drag.held, heldMs: drag.heldMs, cancelled: cancelled,
       // Whether the count saw the cancel take (null: unchecked), how far it
       // fell, and how many of the taps went to remembered bubbles.
