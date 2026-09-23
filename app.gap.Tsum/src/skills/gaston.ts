@@ -326,6 +326,12 @@
 //     tsum as *undoing* the last link, so every false miss cut the head off
 //     and the rest of the route with it.
 //
+//     The rewind (`rewind`, 2026-09-23) is the loop done the other way round.
+//     It reads a grid round each centre, not the centre, and calls a stall
+//     only on four tsums in a row with no coin. It then walks the route back,
+//     so the undo unwinds the chain to the last coin and the route is drawn
+//     on from there.
+//
 // ## A hop links whatever it crosses, and undoes what it crosses back over
 //
 // The host sends one MOVE per tsum and nothing between, and the game still
@@ -344,7 +350,8 @@
 // still break chains (`gaston_108.mp4`: 38 planned linked 4 and 20 that way),
 // but a replay of the game's linking over 98 logged routes, at any touch
 // radius of 0.5-0.9 widths and reach of 1.5-2.1, predicted every chain broken
-// or none: the scan's centres are too rough to say which hop will fail.
+// or none: the scan's centres are too rough to say which hop will fail. So
+// the drag watches for it instead (`rewind`).
 //
 // Two things `gaston_7.mp4` measured and nothing here uses yet:
 //
@@ -642,6 +649,38 @@ var GastonConfig = {
   stepsPerHop: 0,
   releaseMs: 10,
   pacedMoves: false,
+
+  // --- the rewind ----------------------------------------------------------
+  //
+  // About 1.8% of hops fail at random (`gaston_102`-`109.mp4`), and past a
+  // failed hop the finger drags an empty line: the next tsum is out of the
+  // head's reach. So the drag checks as it goes (`gastonStalled`). The game
+  // puts a gold coin on every linked tsum but the first two to four (a blue
+  // dot), within ~2 tsums of the finger. Every `checkEvery` tsums, and once
+  // `coinSettleMs` after the last, one capture reads the `checkSpan` tsums
+  // ending `coinLag` behind the finger; with no coin on any, the finger walks
+  // the route back to the last coin and draws on from there, at most
+  // `maxRewinds` times a drag. Walking back is safe: stepping onto the
+  // previous link undoes the head, so it unwinds the chain to where the
+  // finger stops, and unlinked tsums behind a failed hop are out of reach.
+  // Replayed over 44 held chains, the coins stopped within 3 of the game's
+  // count on 16 of 22 broken ones, and 2 of 21 whole ones had 4 misses in a
+  // row -- a needless rewind, which costs only time.
+  rewind: true,
+  checkEvery: 4,
+  checkSpan: 4,
+  coinLag: 2,
+  // Route index of the first tsum that can carry a coin.
+  coinFrom: 4,
+  coinSettleMs: 80,
+  // The coin test: a (2*coinGrid+1)^2 grid at `coinStep` round the planned
+  // centre, a tsum carrying one when `coinShare` of it is gold (hue 36-60,
+  // saturation over 0.5, value over 0.82 -- the fever lights wash the coins
+  // at the board's edge below 0.7).
+  coinGrid: 3,
+  coinStep: 2,
+  coinShare: 0.2,
+  maxRewinds: 2,
 
   // --- the cancel, and the hold --------------------------------------------
   //
@@ -1555,6 +1594,10 @@ interface GastonDrag {
   count: ChainCount | null;
   /** The counter again just before a held chain's release, in case the count was still climbing. Null unless held. */
   countLate: ChainCount | null;
+  /** Each rewind as [route index the finger was on, index it walked back to] (see `rewind`). */
+  rewinds: number[][];
+  /** The last check's coin read over the route, 'C' or '.' per tsum from `coinFrom`; null when none ran. */
+  coins: string | null;
 }
 
 /**
@@ -1615,6 +1658,74 @@ function gastonFloorRead(ts: Tsum, board: BoardPoint[]): number[] {
 }
 
 /**
+ * Whether each of `path[from..to]` carries the game's gold coin in `img`, a
+ * play-square capture: the mark on a linked tsum (see `rewind`).
+ */
+function gastonCoins(img: NativeImage, path: TsumPath, from: number, to: number): boolean[] {
+  const cfg = GastonConfig;
+  const half = Config.tsumWidth / 2;
+  const maxX = getImageWidth(img) - 1;
+  const maxY = getImageHeight(img) - 1;
+  const pts: Point[] = [];
+  for (let k = from; k <= to; k++) {
+    for (let i = -cfg.coinGrid; i <= cfg.coinGrid; i++) {
+      for (let j = -cfg.coinGrid; j <= cfg.coinGrid; j++) {
+        pts.push({
+          x: Math.min(maxX, Math.max(0, Math.round(path[k].x + half + i * cfg.coinStep))),
+          y: Math.min(maxY, Math.max(0, Math.round(path[k].y + half + j * cfg.coinStep))),
+        });
+      }
+    }
+  }
+  const colors = getImageColors(img, pts);
+  const per = (2 * cfg.coinGrid + 1) * (2 * cfg.coinGrid + 1);
+  const out: boolean[] = [];
+  for (let k = 0; k <= to - from; k++) {
+    let gold = 0;
+    for (let n = 0; n < per; n++) {
+      const c = colors[k * per + n];
+      // Red brightest and over 0.82, saturation over 0.5, hue 36-60.
+      if (c.r >= c.g && c.r > 209 && c.r - c.b > 0.5 * c.r && c.g - c.b > 0.6 * (c.r - c.b)) { gold++; }
+    }
+    out.push(gold >= cfg.coinShare * per);
+  }
+  return out;
+}
+
+/**
+ * Whether the chain stopped growing behind the finger on `path[at]`: -1 when
+ * a coin shows on the `checkSpan` tsums ending `coinLag` behind it (or it is
+ * too early to tell), else the route index to walk back to -- the last coin
+ * before the gap, 0 with none. `end` reads up to the finger itself, for the
+ * check after the last tsum; it also fills `drag.coins`.
+ */
+function gastonStalled(ts: Tsum, path: TsumPath, at: number, end: boolean, drag: GastonDrag): number {
+  const cfg = GastonConfig;
+  const last = end ? at : at - cfg.coinLag;
+  const first = last - cfg.checkSpan + 1;
+  if (first < cfg.coinFrom) { return -1; }
+  const img = ts.playScreenshotSquare();
+  try {
+    const span = gastonCoins(img, path, first, last);
+    let back = -1;
+    if (span.indexOf(true) < 0) {
+      back = 0;
+      const before = first > cfg.coinFrom ? gastonCoins(img, path, cfg.coinFrom, first - 1) : [];
+      for (let k = before.length - 1; k >= 0; k--) {
+        if (before[k]) { back = cfg.coinFrom + k; break; }
+      }
+    }
+    if (end) {
+      const all = gastonCoins(img, path, cfg.coinFrom, last);
+      drag.coins = all.map(function(c) { return c ? 'C' : '.'; }).join('');
+    }
+    return back;
+  } finally {
+    releaseImage(img);
+  }
+}
+
+/**
  * Draw the chain, dwelling on each tsum (see `dwellMs`), and release it -- at
  * once unless `holds` says the chain is the closing one, when the finger
  * stays on the last tsum until `holdUntil` so the clear falls after the
@@ -1637,6 +1748,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   const drag: GastonDrag = {
     path: [] as TsumPath, ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0,
     dead: false, gastons: null, rise: null, rises: null, leftovers: [], count: null, countLate: null,
+    rewinds: [], coins: null,
   };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.isRunning || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
@@ -1684,13 +1796,38 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   drag.path = path;
   const pts: Point[] = [head];
   for (let i = 1; i < path.length; i++) { pts.push(gastonToScreen(ts, path[i])); }
-  for (let i = 1; i < pts.length; i++) {
+  let hops = 0;
+  let settled = 0;
+  const hop = function(a: number, b: number): void {
     for (let s = 1; s <= cfg.stepsPerHop; s++) {
       const f = s / (cfg.stepsPerHop + 1);
-      moveTo(Math.floor(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f),
-        Math.floor(pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f), cfg.stepMs, cfg.pacedMoves);
+      moveTo(Math.floor(pts[a].x + (pts[b].x - pts[a].x) * f),
+        Math.floor(pts[a].y + (pts[b].y - pts[a].y) * f), cfg.stepMs, cfg.pacedMoves);
     }
-    moveTo(pts[i].x, pts[i].y, dwellMs, cfg.pacedMoves);
+    moveTo(pts[b].x, pts[b].y, dwellMs, cfg.pacedMoves);
+    hops++;
+  };
+  const tail = pts.length - 1;
+  let i = 1;
+  while (i <= tail) {
+    hop(i - 1, i);
+    const end = i === tail;
+    const spare = drag.rewinds.length < cfg.maxRewinds;
+    // The end is always read, for the log; a mid-drag check only while a rewind is left.
+    if (cfg.rewind && (end || (spare && i % cfg.checkEvery === 0))) {
+      if (end) {
+        ts.sleep(cfg.coinSettleMs);
+        settled += cfg.coinSettleMs;
+      }
+      const back = gastonStalled(ts, path, i, end, drag);
+      if (back >= 0 && spare) {
+        drag.rewinds.push([i, back]);
+        for (let k = i - 1; k >= back; k--) { hop(k + 1, k); }
+        i = back + 1;
+        continue;
+      }
+    }
+    i++;
   }
   const headAt = Date.now();
   // What the game linked, off its own counter, with the finger still down:
@@ -1710,8 +1847,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   drag.releasedAt = Date.now();
   tapUp(last.x, last.y, cfg.releaseMs);
   drag.ms = Date.now() - from - drag.heldMs;
-  const slept = cfg.grabMs + dwellMs * pts.length
-    + cfg.stepMs * cfg.stepsPerHop * (pts.length - 1) + cfg.releaseMs
+  const slept = cfg.grabMs + dwellMs * (hops + 1)
+    + cfg.stepMs * cfg.stepsPerHop * hops + cfg.releaseMs + settled
     + (oracle !== null ? Math.max(0, cfg.paintMs - cfg.grabMs - dwellMs) : 0)
     + ChainCounterConfig.settleMs + drag.count.ms;
   drag.overMs = Math.max(0, drag.ms - slept);
@@ -2153,6 +2290,9 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
       // The drag's length, and the part of it spent beyond its sleeps: the
       // game's MOVE acks, and the read's two captures on a pass that read.
       dragMs: drag.ms, overMs: drag.overMs,
+      // Each walk back from a stalled chain, and the coins the last check read
+      // over the route from `coinFrom` (see `rewind`).
+      rewinds: drag.rewinds, coins: drag.coins,
     };
     // Which circles the read found painted, as indexes into `board`.
     if (drag.gastons !== null) {
