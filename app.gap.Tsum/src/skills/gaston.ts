@@ -915,6 +915,11 @@ var gastonCarryRead = false;
 var gastonBubbleMemory: GameBubble[] = [];
 var gastonBubbleRound = 0;
 
+/** Whether this round's first activation has gone out: the skill's rules hold from there to the tally. */
+function gastonActivated(ts: Tsum): boolean {
+  return ts.roundStartedAt !== 0 && gastonClaimRound === ts.roundStartedAt;
+}
+
 /** What one pass of the window came to. */
 interface GastonPass {
   /** Tsums in the chain drawn, 0 when none was. */
@@ -2673,9 +2678,7 @@ registerSkill({
   // buy by popping one into a chain. So they are the skill's from the first
   // activation to the round's end (see the header); before it the round is
   // ordinary play and the strategy spends them as set.
-  claimsBubbles: function(ts) {
-    return ts.roundStartedAt !== 0 && gastonClaimRound === ts.roundStartedAt;
-  },
+  claimsBubbles: gastonActivated,
   // No `popBubblesAfterChain`: a bubble popped into a chain between windows
   // cancels a clear that is filling the gauge (see the header). Every bubble
   // goes on the window's own cancels instead (`gastonCancelBubble`).
@@ -2684,17 +2687,23 @@ registerSkill({
   // clusters are there whatever the leftovers do -- see the header. Four, as
   // Coronation Day Elsa keeps, is more than a board of leftovers has colours.
   // It also keeps the HUD glyphs' cluster, which `gastonFreeBoard` cuts.
-  extraClusterSlots: 4,
+  //
+  // This and the two below hold from the first activation only: before it the
+  // round is ordinary play, and with them on from the start the play loop
+  // drew one uncapped chain a scan -- Gaston's, nearly always -- at the Debug
+  // dwell, and on `gaston_112.mp4` redrew the same three short chains for 15s
+  // on a board that never charged.
+  extraClusterSlots: function(ts) { return gastonActivated(ts) ? 4 : 0; },
   // Neither chain setting applies to this skill -- see the header. Uncapped,
   // because right after a window the board is a single colour and the chain on
   // it is worth thirty (`npm run chain:bench -- --only=gaston` costs that
   // search); one per scan, because the rest of a batch is planned on a board
   // the first chain has already cleared, which is what turned that thirty into
   // a twelve and two threes in `gaston_wrong.mp4`.
-  chainLimits: { maxChain: 0, maxChainsPerScan: 1 },
+  chainLimits: function(ts) { return gastonActivated(ts) ? { maxChain: 0, maxChainsPerScan: 1 } : {}; },
   // The play loop's chains between windows read the counter too, so the
   // same boards say whether its drag registers where the window's did not.
-  readsChainCounter: true,
+  readsChainCounter: gastonActivated,
   // A full gauge inside a window waits for it: an activation there restarts
   // the animation over the seconds the window had left (see the header).
   stillRunning: function(ts) {

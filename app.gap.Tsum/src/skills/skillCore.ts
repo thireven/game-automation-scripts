@@ -68,8 +68,10 @@ interface SkillHandler {
   // array at all and no pass can plan over it. Declared rather than set for the
   // duration of a choreography so every scan of the round agrees: the scans
   // between windows are the ones the ice-alike whitelist learns from, and a
-  // colour it never saw there is a colour it cannot exonerate later.
-  extraClusterSlots?: number;
+  // colour it never saw there is a colour it cannot exonerate later. A
+  // function is asked once per scan, for a skill that wants them only part of
+  // the round.
+  extraClusterSlots?: number | ((ts: Tsum) => number);
   // The board colour model this skill's scans cluster with, over the Debug
   // tab's choice: a skill whose tsum a model tells apart better than the
   // default does declares it here. Nothing declares one yet -- the models are
@@ -129,8 +131,8 @@ interface SkillHandler {
   // what was planned. For a skill whose own drags are being measured the
   // same way, so the two can be compared on the same boards; it costs each
   // chain a capture and `ChainCounterConfig.settleMs`, which is why not every
-  // skill.
-  readsChainCounter?: boolean;
+  // skill. A function is asked once per chain.
+  readsChainCounter?: boolean | ((ts: Tsum) => boolean);
   // The last activation is still in effect, so a tap now would waste the
   // gauge: Gaston's window is a timed mode, and an activation inside it only
   // restarts the animation over the seconds it had left. While this answers
@@ -195,7 +197,8 @@ function skillStillRunning(ts: Tsum): boolean {
 // `SkillHandler.readsChainCounter`; every other skill's drags go unmeasured.
 function skillReadsChainCounter(ts: Tsum): boolean {
   const handler = SkillHandlers[ts.skillType];
-  return !!(handler && handler.readsChainCounter);
+  const reads = handler && handler.readsChainCounter;
+  return typeof reads === 'function' ? reads(ts) : !!reads;
 }
 
 // Whether bubbles on the board belong to the skill rather than to the Bubble
@@ -274,7 +277,8 @@ function skillMaxChain(ts: Tsum): number {
 // claimed off the setting instead (`lorcanaExtraClusterSlots`, src/lorcana.ts).
 function skillClusterSlots(ts: Tsum): number {
   const handler = SkillHandlers[ts.skillType];
-  const extra = handler && handler.extraClusterSlots;
+  const slots = handler && handler.extraClusterSlots;
+  const extra = typeof slots === 'function' ? slots(ts) : slots;
   return ts.uniqueTsumCount - 1 + (typeof extra === 'number' ? extra : 0)
     + lorcanaExtraClusterSlots(ts);
 }
