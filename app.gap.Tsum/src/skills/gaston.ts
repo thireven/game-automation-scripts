@@ -99,9 +99,10 @@
 // it, and a pass that reads nothing twice stops reading for the window. A
 // pass without a read plans off what the last read learned: the circles it
 // found not to be Gaston are remembered for the window (`gastonCarry`), less
-// whatever a cancel's blast cleared since, and a scanned circle within
-// `carryMatch` of one is left out. With no read at all it is the cluster, as
-// it was. `extraClusterSlots` keeps his second and third clusters in the
+// whatever a cancel's blast cleared since, and a circle of the cluster within
+// `carryMatch` of one is left out -- the cluster, because the carry knows
+// nothing of what dropped after the read. With no read at all it is the
+// cluster, as it was. `extraClusterSlots` keeps his second and third clusters in the
 // board array whatever the leftovers do, so the cluster pick has them.
 //
 // The read replaced a check that read eight far Gastons at the second hop
@@ -771,6 +772,8 @@ interface GastonPass {
   overMs: number;
   /** Drags the finger came up from at the head: a start that painted nothing, or one no chain reaches from. */
   dead: number;
+  /** Of those, the heads that painted nothing -- the read failing, not the route. */
+  blank: number;
   /** The board was there to be scanned; false is a round that ended under the window. */
   onBoard: boolean;
 }
@@ -1717,8 +1720,8 @@ function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[],
 /**
  * `board` less every circle within `carryMatch` of a leftover the window's
  * last paint read found (`gastonCarry`), and how many that left out. For a
- * pass that cannot read: everything that has dropped since is Gaston, so
- * what remains is his.
+ * pass that cannot read, over his colour cluster: the carry knows nothing of
+ * what dropped since the read, which past the close is not him.
  */
 function gastonCarryOut(board: BoardPoint[]): { kept: BoardPoint[], left: number } {
   const half = Config.tsumWidth / 2;
@@ -1775,13 +1778,15 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
   if (gPages.detect(1, 0) !== PageName.GamePlaying) {
     return {
       chain: 0, registered: null, registeredLate: null, cancelled: 0, confirmed: null, extra: 0,
-      held: false, heldMs: 0, releasedAt: 0, read: 0, biggest: 0, overMs: 0, dead: 0, onBoard: false,
+      held: false, heldMs: 0, releasedAt: 0, read: 0, biggest: 0, overMs: 0, dead: 0, blank: 0,
+      onBoard: false,
     };
   }
   gastonWatchFever(ts);
   // The starts the finger came up from, left out of the next plan.
   const avoid: Point[] = [];
   let lifted = 0;
+  let blank = 0;
   for (;;) {
     let board = ts.scanBoardQuick();
     let rescans = 0;
@@ -1798,9 +1803,12 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     const biggest = gastonBiggestCluster(board);
     const gastons = gastonGastons(ts, board);
     gastonBubbleWorth(bubbles, board, gastons);
-    // His tsums as far as the pass can tell without a read: the carry, or
-    // the cluster.
-    const carry = gastonCarryRead ? gastonCarryOut(board) : null;
+    // His tsums as far as the pass can tell without a read: the cluster, less
+    // what the last read found not to be him (the carry). The carry alone
+    // takes every tsum dropped since that read for Gaston, and past the close
+    // those are leftovers: `gaston_100.mp4` (2026-09-23) had two held chains
+    // planned that way through Lotsos and Stitches, one headed on a Lotso.
+    const carry = gastonCarryRead ? gastonCarryOut(gastons) : null;
     let source = carry !== null ? carry.kept : gastons;
     let origin = carry !== null ? 'carry' : 'cluster';
     let free = gastonFreeBoard(source, bubbles);
@@ -1848,7 +1856,7 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
       return {
         chain: 0, registered: null, registeredLate: null, cancelled: 0, confirmed: null, extra: 0,
         held: false, heldMs: 0, releasedAt: 0, read: board.length, biggest: biggest, overMs: 0, dead: lifted,
-        onBoard: true,
+        blank: blank, onBoard: true,
       };
     }
     const oracle: GastonOracle | null = paintUntil > 0 && Date.now() < paintUntil ? {
@@ -1939,6 +1947,7 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
     logInfo(Log.Skill.GastonPass, fields);
     if (drag.path.length === 0) {
       lifted++;
+      if (drag.dead) { blank++; }
       if (lifted <= cfg.deadRetries && ts.isRunning) {
         avoid.push({ x: path[0].x, y: path[0].y });
         continue;
@@ -1950,7 +1959,7 @@ function gastonPass(ts: Tsum, closesAt: number, mayCancel: boolean, holdUntil: n
       cancelled: cancelled, confirmed: cancel.confirmed, extra: extra.length,
       held: drag.held, heldMs: drag.heldMs,
       releasedAt: drag.releasedAt, read: board.length, biggest: biggest,
-      overMs: drag.overMs, dead: lifted, onBoard: true,
+      overMs: drag.overMs, dead: lifted, blank: blank, onBoard: true,
     };
   }
 }
@@ -2015,7 +2024,11 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     passes++;
     dead += pass.dead;
     if (!pass.onBoard) { onBoard = false; break; }
-    if (pass.chain === 0 && pass.dead > cfg.deadRetries) { paintUntil = 0; }
+    // Only heads that painted nothing say the read has stopped working; one
+    // that painted but had no route from it is the plan's fault. Counting
+    // those switched reads off for `gaston_100.mp4`'s second window, whose
+    // held chain then ran off the cluster into brown tsums at 14 of 32.
+    if (pass.chain === 0 && pass.blank > cfg.deadRetries) { paintUntil = 0; }
     read.push(pass.read);
     biggest.push(pass.biggest);
     if (pass.chain > 0) {

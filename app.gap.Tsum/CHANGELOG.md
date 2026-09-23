@@ -302,6 +302,14 @@ release note; they fold back in here when she ships.
   planning over it. The charge stops spamming once the held clear is over
   (`chargeTailMs`), and a short chain is followed by other colours' chains
   (`mixedChains`).
+- **Gaston's chains without a paint read are planned over his colour cluster,
+  less the carry.** `gaston_100.mp4` (2026-09-23), aligned to its log, had
+  three of four failed charges on held chains planned without a read over
+  tsums that were not his. The carry alone took everything dropped since the
+  read for Gaston, so two ran through Lotsos and Stitches. On the third,
+  reads had been switched off after three lifted heads that *had* painted.
+  Now only heads that painted nothing (`blank`) switch reads off, as the
+  header always said.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
