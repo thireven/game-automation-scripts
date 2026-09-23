@@ -719,18 +719,22 @@ var GastonConfig = {
   // breaks short earns none, and on `gaston_107.mp4` (2026-09-23) two
   // windows spent 2 and 3 bubbles on chains of 4 and 5, so their held chains
   // had none and the next window's 29-chain went out uncancelled. A lone
-  // bubble is still tapped.
+  // bubble is still tapped. Every known bubble counts, the memory's too, and
+  // the one kept is one a read saw, out toward the rim (`gastonTapBubbles`).
   bubbleReserve: 1,
   // A chain under this is not cancelled at all: its pop is over inside
   // `fillMinMs` anyway, and the bubble is worth more to the next long chain.
   cancelMinChain: 10,
-  // From this many tappable bubbles they are not scarce: every release is
-  // cancelled whatever its length, and a pass with no chain pops all but the
-  // reserve, whose blasts refill as Gaston. The play loop keeps bubbles
+  // From this many known bubbles (the memory's included) they are not
+  // scarce: every release is cancelled whatever its length, and a pass with
+  // no chain pops all but the reserve, whose blasts refill as Gaston. Two, so
+  // one bubble is all that lives from cancel to cancel: on `gaston_119.mp4`,
+  // at three and with only the read's own bubbles tapped, passes saw four to
+  // seven, and each one cuts the routes round it (`bubbleAvoid`). The play loop keeps bubbles
   // between windows (`claimsBubbles`), and on `gaston_113.mp4` (2026-09-23)
   // uncharged windows piled ten along the bottom: the refills had no room,
   // every route was cut, and 29 of 44 passes drew nothing.
-  surplusBubbles: 3,
+  surplusBubbles: 2,
   // A cancelled clear leaves the board at once; one left to pop loses a tsum
   // every `popPerTsumMs`. So a cancel is confirmed when the tsum count drops
   // `cancelDrop` within `cancelCheckMs` of the tap (a pop manages ~4 in that
@@ -2091,12 +2095,12 @@ interface GastonCancel {
 }
 
 /**
- * Cancel the pop animation, and check it took (`cancelDrop`): the bubbles
- * this capture found first, then -- with nothing found, or when those did not
- * take -- the ones the memory holds, which may have rolled since (see
- * `gastonBubbles`), then any a fresh read finds that neither list had.
- * `check` false taps the first set and trusts it, as every cancel did before
- * the check.
+ * Cancel the pop animation, and check it took (`cancelDrop`): every bubble
+ * known but the reserve (`gastonTapBubbles`) -- the ones this capture found
+ * first, then the ones the memory holds, which may have rolled since (see
+ * `gastonBubbles`) -- then, when those did not take, any a fresh read finds
+ * that the list had not. `check` false taps the first set and trusts it, as
+ * every cancel did before the check.
  *
  * The fresh read is for a bubble the pre-drag read got wrong: in
  * `gaston_101.mp4` (2026-09-23) the band pass took a tsum beside the real
@@ -2108,11 +2112,10 @@ function gastonCancelBubble(ts: Tsum, path: TsumPath, all: GameBubble[], check: 
   if (!ts.isRunning) { return out; }
   const match = Config.tsumWidth * GastonConfig.bubbleMatch;
   const tapped: GameBubble[] = [];
-  const tiers = [gastonTappableBubbles(all), all.filter(function(b) { return !!b.soft; })];
-  for (let t = 0; t < 3; t++) {
+  for (let t = 0; t < 2; t++) {
     let tier: GameBubble[];
-    if (t < 2) {
-      tier = tiers[t];
+    if (t === 0) {
+      tier = all;
     } else {
       // Only worth a capture when the count can say whether it took.
       if (!check || !ts.isRunning) { break; }
@@ -2123,11 +2126,11 @@ function gastonCancelBubble(ts: Tsum, path: TsumPath, all: GameBubble[], check: 
     if (tier.length === 0) { continue; }
     // Read right before the taps, so a pop running since cannot pass for them.
     const before = check ? gastonCountTsums(ts) : -1;
-    const n = gastonTapBubbles(ts, path, tier);
+    const went = gastonTapBubbles(ts, path, tier);
     for (let k = 0; k < tier.length; k++) { tapped.push(tier[k]); }
-    out.tapped += n;
-    if (t === 1) { out.soft += n; }
-    if (t === 2) { out.fresh += n; }
+    out.tapped += went.length;
+    for (let k = 0; k < went.length; k++) { if (went[k].soft) { out.soft++; } }
+    if (t === 1) { out.fresh += went.length; }
     if (before < 0) { break; }
     const drop = before - gastonAwaitDrop(ts, before);
     out.cleared = Math.max(out.cleared, drop);
@@ -2155,9 +2158,12 @@ function gastonAwaitDrop(ts: Tsum, before: number): number {
 }
 
 /**
- * Tap `bubbles`, all but the reserve -- the one over the most leftovers first
- * (`gastonBubbleWorth`), then the one furthest from the chain. Answers how
- * many went.
+ * Tap `bubbles`, all but the reserve (`bubbleReserve`) -- the ones a read saw
+ * first, then the remembered ones; in each, the one over the most leftovers
+ * first (`gastonBubbleWorth`), then the one furthest from the chain. The
+ * reserve is one a read saw, as far out from the board's middle as there is,
+ * where it cuts the fewest routes; a lone bubble is still tapped. Answers the
+ * ones that went.
  *
  * Leftovers because a pop there clears what no Gaston chain can and refills
  * it as Gaston. Furthest because the chain's own tsums are already clearing
@@ -2166,7 +2172,7 @@ function gastonAwaitDrop(ts: Tsum, before: number): number {
  * chain was planned off; bubbles are big and drift slowly, so the tap still
  * lands.
  */
-function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): number {
+function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): GameBubble[] {
   const far: { b: GameBubble, d: number }[] = [];
   for (let b = 0; b < bubbles.length; b++) {
     // With no chain, leftovers alone set the order.
@@ -2179,13 +2185,29 @@ function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): numb
     }
     far.push({ b: bubbles[b], d: nearest });
   }
-  far.sort(function(p, q) { return (q.b.near || 0) - (p.b.near || 0) || q.d - p.d; });
-  const count = Math.max(1, bubbles.length - GastonConfig.bubbleReserve);
+  far.sort(function(p, q) {
+    return (p.b.soft ? 1 : 0) - (q.b.soft ? 1 : 0) || (q.b.near || 0) - (p.b.near || 0) || q.d - p.d;
+  });
+  if (far.length > 1 && GastonConfig.bubbleReserve > 0) {
+    const mx = ts.playResizeWidth / 2;
+    const my = ts.playResizeHeight / 2;
+    let keep = -1;
+    let out = -1;
+    for (let i = 0; i < far.length; i++) {
+      const dx = far[i].b.x - mx;
+      const dy = far[i].b.y - my;
+      const d = (far[i].b.soft ? 0 : 1e9) + dx * dx + dy * dy;
+      if (d > out) { out = d; keep = i; }
+    }
+    far.splice(keep, 1);
+  }
+  const went: GameBubble[] = [];
   const blast = GameBubbleConfig.blastReach * Config.tsumWidth;
-  for (let i = 0; i < count && i < far.length; i++) {
+  for (let i = 0; i < far.length; i++) {
     const x = Math.floor(ts.playOffsetX + far[i].b.x * ts.playWidth / ts.playResizeWidth);
     const y = Math.floor(ts.playOffsetY + far[i].b.y * ts.playHeight / ts.playResizeHeight);
     tap(x, y, GastonConfig.cancelTapMs);
+    went.push(far[i].b);
     gastonForgetBubble(far[i].b);
     // What the blast clears refills as Gaston, so it is no longer a leftover.
     const reach = far[i].b.r + blast;
@@ -2195,7 +2217,7 @@ function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): numb
       return dx * dx + dy * dy > reach * reach;
     });
   }
-  return Math.min(count, far.length);
+  return went;
 }
 
 /** What a pass with no Gaston chain cleared instead. */
@@ -2233,12 +2255,11 @@ function gastonClearLeftovers(ts: Tsum, until: number): GastonClear {
     tsums += chains[k];
     longest = Math.max(longest, chains[k]);
   }
-  const tappable = gastonTappableBubbles(bubbles);
-  const tapped = tappable.length >= cfg.surplusBubbles || (tappable.length > 0 && tsums >= cfg.cancelMinChain)
-    ? gastonTapBubbles(ts, [] as TsumPath, tappable) : 0;
+  const tapped = bubbles.length >= cfg.surplusBubbles || (bubbles.length > 0 && tsums >= cfg.cancelMinChain)
+    ? gastonTapBubbles(ts, [] as TsumPath, bubbles).length : 0;
   ts.gameBubbles = [];
   logInfo(Log.Skill.GastonClear, {
-    read: board.length, gaston: gastons.length, leftovers: left, chains: chains, bubbles: tappable.length,
+    read: board.length, gaston: gastons.length, leftovers: left, chains: chains, bubbles: bubbles.length,
     tapped: tapped,
   });
   return { chains: chains, tsums: tsums, longest: longest, tapped: tapped };
@@ -2565,7 +2586,7 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     // A short clear keeps the bubbles for the next long one (`cancelMinChain`),
     // unless there are plenty (`surplusBubbles`).
     const spared = released && drawnTsums < cfg.cancelMinChain
-      && gastonTappableBubbles(bubbles).length < cfg.surplusBubbles;
+      && bubbles.length < cfg.surplusBubbles;
     const cancel: GastonCancel = released && !spared
       ? gastonCancelBubble(ts, drag.path, bubbles, drawnTsums >= cfg.cancelCheckMin)
       : { tapped: 0, soft: 0, fresh: 0, confirmed: null, cleared: 0 };
