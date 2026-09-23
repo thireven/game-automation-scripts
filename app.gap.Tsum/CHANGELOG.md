@@ -310,6 +310,15 @@ release note; they fold back in here when she ships.
   reads had been switched off after three lifted heads that *had* painted.
   Now only heads that painted nothing (`blank`) switch reads off, as the
   header always said.
+- **Gaston's pass scans again after waiting out the fever switch, and a missed
+  cancel reads the board again.** `gaston_101.mp4` (2026-09-23) charged 5 of 7
+  windows. One failure was a held chain drawn 1.5s after its scan: the pile
+  had moved, and it linked 7 of 19. The other was a cancel tapped on a tsum
+  the band pass took for a bubble. The real bubble sat beside it, and the
+  36-chain popped slowly through the close. A wait over `replanAfterWaitMs`
+  now rescans, and an unconfirmed cancel taps whatever a fresh read finds
+  (`freshTaps`). The refill gate after an uncancelled pass now also waits
+  out the extra chains' pops (`popMs`).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
