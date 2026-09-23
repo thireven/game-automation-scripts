@@ -265,7 +265,8 @@
 // (`gastonAwaitFever`, `dodgeFever`). A fever that starts after the drag has
 // begun is not caught: the start comes off the clear before it, not a clock.
 // The wait is off: `gaston_105.mp4`, the round it ran, broke as many chains,
-// so the coincidence was not the cause.
+// so the coincidence was not the cause. Over `gaston_102`-`108.mp4` only 6 of
+// 98 drags ran over a fever's end (4 broke); 44 broke with none near.
 //
 // Two smaller things the window has to get right:
 //
@@ -292,8 +293,10 @@
 //     as bubbles on every board of `gaston_2.mp4` and the cancels tapped
 //     instead of the bubble in play; `hemButtons` names them and they are
 //     dropped.
-//   - **the drag is the play loop's.** `linkTsums`' 10ms a tsum, unpaced.
-//     For a while it dwelt 40ms on each, on `gaston_3.mp4` (2026-09-21):
+//   - **the drag dwells 30ms a tsum, unpaced** (`dwellMs`). It was the play
+//     loop's 10ms until `gaston_102`-`108.mp4` (2026-09-23): 17 of 41 chains
+//     linked whole at 10, 44 of 75 at 30. The history before that:
+//     for a while it dwelt 40ms on each, on `gaston_3.mp4` (2026-09-21):
 //     Android hands the game one MOVE per frame and the game drops one in
 //     five under fever, and at an 18ms dwell 279 of 456 planned tsums
 //     registered. That was the snake route, whose hops ran to `linkReach`
@@ -611,13 +614,12 @@ var GastonConfig = {
 
   // --- the drag ------------------------------------------------------------
   //
-  // `linkTsums`' 10/10/10, unpaced: the play loop's own drag, which runs a
-  // whole Gaston board as one chain between windows. It was 30/40/20 with a
-  // paced MOVE for a while, on `gaston_3.mp4`'s finding that an 18ms dwell
-  // lost a third of every chain -- measured on the snake route, whose long
-  // hops and back-crossings the crossing-free route has since removed (see
-  // the header). At 40 a thirty-chain was 1.3s, and three of them plus their
-  // refill gates outran the window. A thirty-chain is now ~0.35s.
+  // 30ms on each tsum, unpaced. At the play loop's 10ms, `gaston_102`-`103.mp4`
+  // (BlueStacks, 2026-09-23) linked 17 of 41 chains whole and 57-67% of the
+  // planned tsums; at 30, `gaston_104`-`108.mp4` linked 44 of 75 whole and
+  // 73-87%. A thirty-chain is ~1s. An earlier 40ms was dropped because three
+  // passes outran the window, but that was the snake route of `gaston_3.mp4`,
+  // whose hops ran to `linkReach` (see the header).
   //
   // No step between tsums (`stepsPerHop` 0), unlike Rapunzel+'s two: the game
   // links along the line between two MOVEs on its own (see the header), so a
@@ -630,7 +632,7 @@ var GastonConfig = {
   // drag's do.
   // The Debug tab's "Drag dwell" overrides `dwellMs` when set (`gastonDwellMs`).
   grabMs: 10,
-  dwellMs: 10,
+  dwellMs: 30,
   stepMs: 5,
   stepsPerHop: 0,
   releaseMs: 10,
