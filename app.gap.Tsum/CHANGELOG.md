@@ -393,8 +393,8 @@ release note; they fold back in here when she ships.
   0.5-1.8s late, each window 1.5s longer. Now a chain is held when the next
   pass (`nextPassMs`, 1.5s, plus a drag as long) could not end before the
   close. A drag stopped mid-route also reports what it linked, not what was
-  planned, so its pop wait and the charge are judged on that (one window
-  there waited 4s on a 33-chain that had linked 12).
+  planned, so the log, its pop wait and the charge go by that (`gaston_114`
+  logged 33, 28 and 23 for drags that had linked about 5, 13 and 9).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
