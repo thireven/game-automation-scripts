@@ -427,6 +427,13 @@ release note; they fold back in here when she ships.
   window's first chain. `closeChainMax` is 28 (release ~1.2s after the
   antlers), and a closing chain begun before the close stands still through
   it and finishes after (`pausedMs`).
+- **Gaston's closing chain reads the paint when it starts past the close.**
+  The read was off from `paintBlackoutMs` before the close, so a closing
+  chain begun once the antlers had gone was planned off the colour cluster:
+  on `gaston_118.mp4` one linked 1 and others broke at 16-24 of 28, charging
+  the gauge in 1.3-2.1s instead of at once. Past the close a touched Gaston
+  paints the rest as it does inside the window, so that chain reads again,
+  and a stall in it can replan.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

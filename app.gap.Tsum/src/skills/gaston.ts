@@ -567,8 +567,9 @@ var GastonConfig = {
   // pass tries another start, `deadRetries` times, one tsum under it popping
   // nothing. No read inside `paintBlackoutMs` of the close, where the game
   // paints every Gaston pale on its own -- solid from 0.8-1.8s past the
-  // estimated close on that recording -- and none for the rest of a window
-  // once a pass has read nothing twice.
+  // estimated close on that recording -- bar a closing chain begun once the
+  // antlers have gone, and none for the rest of a window once a pass has read
+  // nothing twice.
   paintMs: 80,
   paintGrid: 3,
   paintStep: 2,
@@ -2506,7 +2507,9 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
         blank: blank, onBoard: true,
       };
     }
-    const oracle: GastonOracle | null = paintUntil > 0 && Date.now() < paintUntil ? {
+    // A closing chain begun past the close reads too: the antlers gone, a
+    // touched Gaston paints the rest as it does in the window (`gaston_118.mp4`).
+    const oracle: GastonOracle | null = paintUntil > 0 && (Date.now() < paintUntil || late) ? {
       board: board,
       // Painted circles are tsums, so only the glyph rows are cut (`paintedHudBand`).
       plan: function(head, found) {
