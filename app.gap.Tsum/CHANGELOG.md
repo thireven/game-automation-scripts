@@ -403,6 +403,13 @@ release note; they fold back in here when she ships.
   walk back now goes to the tsum before the last coin, the end in either
   case, and plans a fresh route from there clear of what is linked. A stopped
   drag logs its whole route again.
+- **Gaston's refill gate starts at the release.** Its floor ran from after the
+  cancel's check, adding that check to every pass; it now runs `fillMinMs`
+  (800) from the release, and the full, still count decides the rest. The
+  hold judges the next pass on the round's measured refill cycle, and each
+  pass logs its timings (`headMs`, `releaseMs`, `prepMs`, `cycleMs`): on
+  `gaston_116.mp4` a cancel's refill landed 0.95s after the release and the
+  next grab came 0.65s after that.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
