@@ -1687,6 +1687,9 @@ declare const enum KeyCode {
 }
 
 // --- Native runtime (provided by the host environment) ---
+// Only what the host registers (`defFn` in its api_*.cpp). A declaration with
+// no native behind it typechecks and throws ReferenceError at run time: the
+// old API's getImageWidth/Height did, mid-drag, on 2026-09-23.
 declare function sleep(ms: number): void;
 declare function tap(x: number, y: number, during?: number): void;
 declare function tapDown(x: number, y: number, during?: number): void;
@@ -1698,8 +1701,6 @@ declare function tapUp(x: number, y: number, during?: number): void;
  * is faster that way. See `gastonLinkChain` for the one drag that asks for it.
  */
 declare function moveTo(x: number, y: number, during?: number, wait?: boolean): void;
-declare function tapMove(id: number, x: number, y: number): void;
-declare function press(key: string | number): void;
 declare function keycode(code: KeyCode, during?: number): void;
 declare function swipe(x1: number, y1: number, x2: number, y2: number, steps?: number): void;
 declare function getColor(x: number, y: number): Color;
@@ -1711,7 +1712,6 @@ declare function getScreenshotModify(
 declare function releaseImage(img: NativeImage): void;
 declare function openImage(path: string): NativeImage;
 declare function saveImage(img: NativeImage, path: string): void;
-declare function cloneImage(img: NativeImage): NativeImage;
 declare function clone(img: NativeImage): NativeImage;
 declare function cropImage(img: NativeImage, x: number, y: number, w: number, h: number): NativeImage;
 declare function getBase64FromImage(img: NativeImage): string;
@@ -1723,11 +1723,8 @@ declare function getImageColor(img: NativeImage, x: number, y: number): Color;
  * without first filtering it against the frame being sampled.
  */
 declare function getImageColors(img: NativeImage, points: Point[]): Color[];
-declare function getImageWidth(img: NativeImage): number;
-declare function getImageHeight(img: NativeImage): number;
 declare function getImageSize(img: NativeImage): { width: number; height: number };
 declare function getScreenSize(): { width: number; height: number };
-declare function getDeviceSize(): { width: number; height: number };
 declare function getStoragePath(): string;
 /**
  * The loaded script's own folder -- where `tsums.dat` sits, beside `index.js`.
@@ -1759,15 +1756,9 @@ declare function getDeviceId(): string;
  * `Tsum.prototype.declareReadTop` is the one caller.
  */
 declare function setReadTop(y: number): void;
-declare function getCurrentPackage(): string;
-declare function launchApp(pkg: string): void;
-declare function killCurrentPackage(): void;
-declare function killApp(pkg: string): void;
 declare function execute(cmd: string): string;
 declare function readFile(path: string): string;
 declare function writeFile(path: string, content: string): void;
-declare function setScreenOrientation(orientation: number): void;
-declare function keepScreenAwake(enabled?: boolean): void;
 
 // --- Image-processing helpers (OpenCV-backed) ---
 declare function smooth(img: NativeImage, type: number, size: number): void;

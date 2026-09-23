@@ -1718,8 +1718,9 @@ function gastonFloorRead(ts: Tsum, board: BoardPoint[]): number[] {
 function gastonCoins(img: NativeImage, path: TsumPath, from: number, to: number): boolean[] {
   const cfg = GastonConfig;
   const half = Config.tsumWidth / 2;
-  const maxX = getImageWidth(img) - 1;
-  const maxY = getImageHeight(img) - 1;
+  const size = getImageSize(img);
+  const maxX = size.width - 1;
+  const maxY = size.height - 1;
   const pts: Point[] = [];
   for (let k = from; k <= to; k++) {
     for (let i = -cfg.coinGrid; i <= cfg.coinGrid; i++) {
@@ -1813,117 +1814,129 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   const dwellMs = gastonDwellMs();
   const head = gastonToScreen(ts, path[0]);
   tapDown(head.x, head.y, cfg.grabMs);
-  moveTo(head.x, head.y, dwellMs, cfg.pacedMoves);
-  if (oracle !== null && base !== null) {
-    const rest = cfg.paintMs - cfg.grabMs - dwellMs;
-    if (rest > 0) { ts.sleep(rest); }
-    const now = gastonFloorRead(ts, oracle.board);
-    const gastons: BoardPoint[] = [];
-    const rises: number[] = [];
-    const all: number[] = [];
-    for (let k = 0; k < now.length; k++) {
-      const rise = now[k] - base[k];
-      all.push(rise);
-      if (oracle.board[k] === path[0]) { continue; }
-      if (rise >= cfg.paintRise) {
-        gastons.push(oracle.board[k]);
-        rises.push(rise);
-      } else {
-        drag.leftovers.push({ x: oracle.board[k].x + half, y: oracle.board[k].y + half });
+  // The host lifts nothing on its own, so a throw from here on lifts the
+  // finger before it goes up: left down, it drags into the next screen.
+  let finger: Point = head;
+  let down = true;
+  try {
+    moveTo(head.x, head.y, dwellMs, cfg.pacedMoves);
+    if (oracle !== null && base !== null) {
+      const rest = cfg.paintMs - cfg.grabMs - dwellMs;
+      if (rest > 0) { ts.sleep(rest); }
+      const now = gastonFloorRead(ts, oracle.board);
+      const gastons: BoardPoint[] = [];
+      const rises: number[] = [];
+      const all: number[] = [];
+      for (let k = 0; k < now.length; k++) {
+        const rise = now[k] - base[k];
+        all.push(rise);
+        if (oracle.board[k] === path[0]) { continue; }
+        if (rise >= cfg.paintRise) {
+          gastons.push(oracle.board[k]);
+          rises.push(rise);
+        } else {
+          drag.leftovers.push({ x: oracle.board[k].x + half, y: oracle.board[k].y + half });
+        }
       }
-    }
-    drag.gastons = gastons;
-    drag.rise = gastonMedian(rises.length > 0 ? rises : all);
-    drag.rises = all;
-    const planned = gastons.length + 1 >= cfg.minChain ? oracle.plan(path[0], gastons) : null;
-    if (planned === null) {
-      drag.dead = gastons.length + 1 < cfg.minChain;
-      // A head that painted nothing said nothing about the rest.
-      if (drag.dead) { drag.leftovers = []; }
-      drag.releasedAt = Date.now();
-      tapUp(head.x, head.y, cfg.releaseMs);
-      drag.ms = Date.now() - from;
-      return drag;
-    }
-    path = planned;
-  }
-  // A drag that would run into the close is the closing chain: cut to end
-  // `closeLeadMs` before it when `chargeMinChain` still fits, and held.
-  const perHop = dwellMs + cfg.hopOverMs;
-  const fits = Math.floor((closeAt - cfg.closeLeadMs - Date.now() - cfg.coinSettleMs) / perHop) + 1;
-  if (closeAt > 0 && fits < path.length && fits >= cfg.chargeMinChain) {
-    drag.trimmed = path.length - fits;
-    path = path.slice(0, fits) as TsumPath;
-  }
-  drag.path = path;
-  const pts: Point[] = [head];
-  for (let i = 1; i < path.length; i++) { pts.push(gastonToScreen(ts, path[i])); }
-  let hops = 0;
-  let settled = 0;
-  const hop = function(a: number, b: number): void {
-    for (let s = 1; s <= cfg.stepsPerHop; s++) {
-      const f = s / (cfg.stepsPerHop + 1);
-      moveTo(Math.floor(pts[a].x + (pts[b].x - pts[a].x) * f),
-        Math.floor(pts[a].y + (pts[b].y - pts[a].y) * f), cfg.stepMs, cfg.pacedMoves);
-    }
-    moveTo(pts[b].x, pts[b].y, dwellMs, cfg.pacedMoves);
-    hops++;
-  };
-  const tail = pts.length - 1;
-  let i = 1;
-  while (i <= tail) {
-    hop(i - 1, i);
-    const end = i === tail;
-    const spare = drag.rewinds.length < cfg.maxRewinds;
-    // The end is always read, for the log; a mid-drag check only while a rewind is left.
-    if (cfg.rewind && (end || (spare && i % cfg.checkEvery === 0))) {
-      if (end) {
-        ts.sleep(cfg.coinSettleMs);
-        settled += cfg.coinSettleMs;
+      drag.gastons = gastons;
+      drag.rise = gastonMedian(rises.length > 0 ? rises : all);
+      drag.rises = all;
+      const planned = gastons.length + 1 >= cfg.minChain ? oracle.plan(path[0], gastons) : null;
+      if (planned === null) {
+        drag.dead = gastons.length + 1 < cfg.minChain;
+        // A head that painted nothing said nothing about the rest.
+        if (drag.dead) { drag.leftovers = []; }
+        drag.releasedAt = Date.now();
+        down = false;
+        tapUp(head.x, head.y, cfg.releaseMs);
+        drag.ms = Date.now() - from;
+        return drag;
       }
-      const back = gastonStalled(ts, path, i, end, drag);
-      if (back >= 0 && spare) {
-        drag.rewinds.push([i, back]);
-        for (let k = i - 1; k >= back; k--) { hop(k + 1, k); }
-        i = back + 1;
-        continue;
-      }
+      path = planned;
     }
-    i++;
-  }
-  const headAt = Date.now();
-  // What the game linked, off its own counter, with the finger still down:
-  // the measurement every drag setting is judged by (chainCounter.ts).
-  const route = chainRouteCentres(path);
-  ts.sleep(ChainCounterConfig.settleMs);
-  drag.count = chainCounterRead(ts, route);
-  if (drag.trimmed > 0 || holds(headAt, path.length)) {
-    drag.held = true;
-    // Until the antlers go, read off twice `antlerReleaseMs` apart and no
-    // earlier than `antlerEarlyMs` before the predicted close -- a misread
-    // there would lose the charge. `holdUntil` is the ceiling, and the whole
-    // hold in a window that never saw them.
-    while (ts.isRunning && Date.now() < holdUntil) {
-      if (gastonFever.antlersOnAt > 0) {
-        gastonWatchFever(ts);
-        if (gastonFever.antlers === 0 && Date.now() >= gastonFever.antlersOffAt + cfg.antlerReleaseMs
-            && Date.now() >= closeAt - cfg.antlerEarlyMs) { break; }
-      }
-      ts.sleep(Math.min(cfg.holdSliceMs, holdUntil - Date.now()));
+    // A drag that would run into the close is the closing chain: cut to end
+    // `closeLeadMs` before it when `chargeMinChain` still fits, and held.
+    const perHop = dwellMs + cfg.hopOverMs;
+    const fits = Math.floor((closeAt - cfg.closeLeadMs - Date.now() - cfg.coinSettleMs) / perHop) + 1;
+    if (closeAt > 0 && fits < path.length && fits >= cfg.chargeMinChain) {
+      drag.trimmed = path.length - fits;
+      path = path.slice(0, fits) as TsumPath;
     }
-    drag.countLate = chainCounterRead(ts, route);
-    drag.heldMs = Date.now() - headAt;
+    drag.path = path;
+    const pts: Point[] = [head];
+    for (let i = 1; i < path.length; i++) { pts.push(gastonToScreen(ts, path[i])); }
+    let hops = 0;
+    let settled = 0;
+    const hop = function(a: number, b: number): void {
+      for (let s = 1; s <= cfg.stepsPerHop; s++) {
+        const f = s / (cfg.stepsPerHop + 1);
+        moveTo(Math.floor(pts[a].x + (pts[b].x - pts[a].x) * f),
+          Math.floor(pts[a].y + (pts[b].y - pts[a].y) * f), cfg.stepMs, cfg.pacedMoves);
+      }
+      moveTo(pts[b].x, pts[b].y, dwellMs, cfg.pacedMoves);
+      finger = pts[b];
+      hops++;
+    };
+    const tail = pts.length - 1;
+    let i = 1;
+    while (i <= tail) {
+      hop(i - 1, i);
+      const end = i === tail;
+      const spare = drag.rewinds.length < cfg.maxRewinds;
+      // The end is always read, for the log; a mid-drag check only while a rewind is left.
+      if (cfg.rewind && (end || (spare && i % cfg.checkEvery === 0))) {
+        if (end) {
+          ts.sleep(cfg.coinSettleMs);
+          settled += cfg.coinSettleMs;
+        }
+        const back = gastonStalled(ts, path, i, end, drag);
+        if (back >= 0 && spare) {
+          drag.rewinds.push([i, back]);
+          for (let k = i - 1; k >= back; k--) { hop(k + 1, k); }
+          i = back + 1;
+          continue;
+        }
+      }
+      i++;
+    }
+    const headAt = Date.now();
+    // What the game linked, off its own counter, with the finger still down:
+    // the measurement every drag setting is judged by (chainCounter.ts).
+    const route = chainRouteCentres(path);
+    ts.sleep(ChainCounterConfig.settleMs);
+    drag.count = chainCounterRead(ts, route);
+    if (drag.trimmed > 0 || holds(headAt, path.length)) {
+      drag.held = true;
+      // Until the antlers go, read off twice `antlerReleaseMs` apart and no
+      // earlier than `antlerEarlyMs` before the predicted close -- a misread
+      // there would lose the charge. `holdUntil` is the ceiling, and the whole
+      // hold in a window that never saw them.
+      while (ts.isRunning && Date.now() < holdUntil) {
+        if (gastonFever.antlersOnAt > 0) {
+          gastonWatchFever(ts);
+          if (gastonFever.antlers === 0 && Date.now() >= gastonFever.antlersOffAt + cfg.antlerReleaseMs
+              && Date.now() >= closeAt - cfg.antlerEarlyMs) { break; }
+        }
+        ts.sleep(Math.min(cfg.holdSliceMs, holdUntil - Date.now()));
+      }
+      drag.countLate = chainCounterRead(ts, route);
+      drag.heldMs = Date.now() - headAt;
+    }
+    const last = pts[pts.length - 1];
+    drag.releasedAt = Date.now();
+    down = false;
+    tapUp(last.x, last.y, cfg.releaseMs);
+    drag.ms = Date.now() - from - drag.heldMs;
+    const slept = cfg.grabMs + dwellMs * (hops + 1)
+      + cfg.stepMs * cfg.stepsPerHop * hops + cfg.releaseMs + settled
+      + (oracle !== null ? Math.max(0, cfg.paintMs - cfg.grabMs - dwellMs) : 0)
+      + ChainCounterConfig.settleMs + drag.count.ms;
+    drag.overMs = Math.max(0, drag.ms - slept);
+    return drag;
+  } catch (e) {
+    if (down) { tapUp(finger.x, finger.y, cfg.releaseMs); }
+    throw e;
   }
-  const last = pts[pts.length - 1];
-  drag.releasedAt = Date.now();
-  tapUp(last.x, last.y, cfg.releaseMs);
-  drag.ms = Date.now() - from - drag.heldMs;
-  const slept = cfg.grabMs + dwellMs * (hops + 1)
-    + cfg.stepMs * cfg.stepsPerHop * hops + cfg.releaseMs + settled
-    + (oracle !== null ? Math.max(0, cfg.paintMs - cfg.grabMs - dwellMs) : 0)
-    + ChainCounterConfig.settleMs + drag.count.ms;
-  drag.overMs = Math.max(0, drag.ms - slept);
-  return drag;
 }
 
 /** What a cancel came to. */

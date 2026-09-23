@@ -355,6 +355,12 @@ release note; they fold back in here when she ships.
   so the close is timed off them (`antlerMs`); the chain is cut to end
   `closeLeadMs` before it (drags over the close broke 5 of 7), held, and let go
   `antlerReleaseMs` after the antlers leave the chrome. `dodgeSwitch` is off.
+- **Gaston's coin check no longer throws mid-drag, and a throw lifts the finger.**
+  It called `getImageWidth`, which `globals.d.ts` declared but the host does
+  not have: every drag of 12+ threw with the finger down (`gaston_110.mp4`),
+  and five in a row restarted the app. `globals.d.ts` now declares only what
+  the host registers (12 phantom natives dropped), and `gastonLinkChain` lifts
+  the finger on any throw.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
