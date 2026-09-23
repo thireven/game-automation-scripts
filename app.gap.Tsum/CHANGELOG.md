@@ -335,6 +335,11 @@ release note; they fold back in here when she ships.
   lighting, and for it to go dark when the fill says the fever ends inside
   the drag (`dodgeFever`, `feverWaitMs` on the pass record). Off by default:
   `gaston_105.mp4` broke as many chains with it on, and its waits cost time.
+- **Gaston keeps a bubble for the next cancel.** `gaston_107.mp4` spent 2 and
+  3 bubbles cancelling chains of 4 and 5; two held chains then had none and
+  the next window's 29-chain went out uncancelled. A chain under
+  `cancelMinChain` now spends no bubble, and a cancel leaves one standing
+  (`bubbleReserve` 1; `spared` on the pass record).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

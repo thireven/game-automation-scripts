@@ -277,9 +277,10 @@
 //     Gastons drops at once. Which bubble: the one whose blast holds the most
 //     leftovers (`gastonBubbleWorth`), since a pop there clears ground the
 //     chain could not take and refills it with Gaston, where a pop over
-//     Gastons clears what the next chain would have. Every bubble on the
-//     board goes -- each activation leaves one, so the next window always has
-//     its cancel with nothing held back. That is why bubbles are the skill's
+//     Gastons clears what the next chain would have. Every bubble but one
+//     goes (`bubbleReserve`), and a short chain spends none
+//     (`cancelMinChain`), so the next pass has its cancel even when this
+//     chain broke too short to earn one. That is why bubbles are the skill's
 //     rather than the Bubble Strategy's from the first activation on
 //     (`claimsBubbles`): a pop between windows cuts a clear that is filling
 //     the gauge, and the refill it brings is mixed. Before the first
@@ -425,6 +426,9 @@
 //     (`replanAfterWaitMs`), since the pile moves under a stale plan;
 //   - a chain left to pop is held when its refill would land past the
 //     earliest close (`refillBy`), not the late estimate the hold runs to;
+//   - a chain under `cancelMinChain` spends no bubble, and a cancel leaves
+//     one standing (`bubbleReserve`), so a chain that breaks short does not
+//     leave the next pass without its cancel;
 //   - the charge stops spamming once the held chain's clear is over
 //     (`chargeTailMs`), and the play loop's chains fill the rest;
 //   - a pass whose Gaston chain is short draws other colours' chains too
@@ -643,11 +647,16 @@ var GastonConfig = {
   // Tapped the moment the drag releases: the pop animation is what it cuts
   // short, so a late tap spends a bubble on nothing.
   cancelTapMs: 10,
-  // Bubbles left standing for the next window. None: every activation leaves
-  // a bubble, so the next window has its cancel whatever this one spends, and
-  // a bubble spent here refills as Gaston where one kept sits where the chain
-  // would go.
-  bubbleReserve: 0,
+  // Bubbles a cancel leaves standing for the next pass. It used to tap them
+  // all, on the theory that every long chain earns one back; but a chain that
+  // breaks short earns none, and on `gaston_107.mp4` (2026-09-23) two
+  // windows spent 2 and 3 bubbles on chains of 4 and 5, so their held chains
+  // had none and the next window's 29-chain went out uncancelled. A lone
+  // bubble is still tapped.
+  bubbleReserve: 1,
+  // A chain under this is not cancelled at all: its pop is over inside
+  // `fillMinMs` anyway, and the bubble is worth more to the next long chain.
+  cancelMinChain: 10,
   // A cancelled clear leaves the board at once; one left to pop loses a tsum
   // every `popPerTsumMs`. So a cancel is confirmed when the tsum count drops
   // `cancelDrop` within `cancelCheckMs` of the tap (a pop manages ~4 in that
@@ -2082,7 +2091,9 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
     for (let k = 0; k < extra.length; k++) { popMs = Math.max(popMs, extraAt + extra[k] * cfg.popPerTsumMs); }
     let drawnTsums = drag.path.length;
     for (let k = 0; k < extra.length; k++) { drawnTsums += extra[k]; }
-    const cancel: GastonCancel = released
+    // A short chain keeps the bubbles for the next long one (`cancelMinChain`).
+    const spared = released && drag.path.length < cfg.cancelMinChain;
+    const cancel: GastonCancel = released && !spared
       ? gastonCancelBubble(ts, drag.path, bubbles, drawnTsums >= cfg.cancelCheckMin)
       : { tapped: 0, soft: 0, fresh: 0, confirmed: null, cleared: 0 };
     const cancelled = cancel.tapped;
@@ -2114,6 +2125,8 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
       // Whether the count saw the cancel take (null: unchecked), how far it
       // fell, and how many of the taps went to remembered bubbles.
       confirmed: cancel.confirmed, cleared: cancel.cleared, softTaps: cancel.soft, freshTaps: cancel.fresh,
+      // Released uncancelled because it was too short to be worth a bubble.
+      spared: spared,
       // Other colours' chains drawn after a short one (`mixedChains`).
       extra: extra,
       board: flat, route: route, bubbleAt: bubbleAt, near: near,
