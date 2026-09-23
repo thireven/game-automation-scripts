@@ -621,9 +621,10 @@ var GastonConfig = {
   // 30ms on each tsum, unpaced. At the play loop's 10ms, `gaston_102`-`103.mp4`
   // (BlueStacks, 2026-09-23) linked 17 of 41 chains whole and 57-67% of the
   // planned tsums; at 30, `gaston_104`-`108.mp4` linked 44 of 75 whole and
-  // 73-87%. A thirty-chain is ~1s. An earlier 40ms was dropped because three
-  // passes outran the window, but that was the snake route of `gaston_3.mp4`,
-  // whose hops ran to `linkReach` (see the header).
+  // 73-87%. A thirty-chain is ~1s. At 50 (`gaston_109.mp4`) hops broke about
+  // as often (1.6% against 1.8%) and a window fit two passes, not three. An
+  // earlier 40ms was dropped because three passes outran the window, but that
+  // was the snake route of `gaston_3.mp4`, whose hops ran to `linkReach`.
   //
   // No step between tsums (`stepsPerHop` 0), unlike Rapunzel+'s two: the game
   // links along the line between two MOVEs on its own (see the header), so a
