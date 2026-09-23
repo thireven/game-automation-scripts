@@ -744,6 +744,13 @@ var GastonConfig = {
   // `popTailMs`): a clear left to pop refills that much later, and drops
   // past the close are not Gaston.
   noCancelTailMs: 800,
+  // A chain is held, too, when another pass could not draw one as long before
+  // the close: this long from a cancelled pass's release to the next head
+  // (the refill gate and a scan; 1.3-1.6s on `gaston_114.mp4`), plus the
+  // drag. With only the tail above, a second chain ending just under it was
+  // cancelled and a third drawn after the antlers had gone -- four windows of
+  // ten there, each 1.5s longer than a window that held its second chain.
+  nextPassMs: 1500,
   // How long past the close the held chain's finger stays down before the
   // release. The close is an estimate (see `durationMs`), and a release inside
   // the window is the whole charge lost, so this errs late. Now only the
@@ -1942,6 +1949,9 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           const late = Date.now() < closeAt && Date.now() + 2 * (i - back) * perHop > closeAt - cfg.closeLeadMs;
           if (late || (again && next === null)) {
             drag.rewinds.push([i, back, 0]);
+            // What it linked, for the pop, the hold and the log.
+            path = path.slice(0, back + 1) as TsumPath;
+            drag.path = path;
             break;
           }
           for (let k = i - 1; k >= back; k--) { hop(k + 1, k); }
@@ -2403,6 +2413,8 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
     // Gaston.
     const holds = function(headAt: number, chain: number): boolean {
       if (!mayCancel || headAt >= refillBy - cfg.noCancelTailMs) { return true; }
+      // No room for another as long before the close: this one closes it.
+      if (headAt + cfg.nextPassMs + gastonDragEstimate(chain) > closeAt - cfg.closeLeadMs) { return true; }
       return gastonTappableBubbles(bubbles).length === 0
         && headAt + chain * cfg.popPerTsumMs + cfg.popTailMs >= refillBy;
     };

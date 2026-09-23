@@ -386,6 +386,15 @@ release note; they fold back in here when she ships.
   chain clears them instead (`gastonClearLeftovers`, `skill.gaston.clear`),
   all while their refill still lands as Gaston. A cancel is judged on the
   whole clear, not the Gaston chain alone.
+- **Gaston's window holds its closing chain whenever another would not fit.**
+  A chain was held only when it ended inside 800ms of the earliest close, so
+  on `gaston_114.mp4` four windows of ten cancelled a second chain that ended
+  just short of that and drew a third after the antlers had gone -- released
+  0.5-1.8s late, each window 1.5s longer. Now a chain is held when the next
+  pass (`nextPassMs`, 1.5s, plus a drag as long) could not end before the
+  close. A drag stopped mid-route also reports what it linked, not what was
+  planned, so its pop wait and the charge are judged on that (one window
+  there waited 4s on a 33-chain that had linked 12).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
