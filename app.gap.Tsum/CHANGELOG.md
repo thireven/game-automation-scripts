@@ -395,6 +395,14 @@ release note; they fold back in here when she ships.
   close. A drag stopped mid-route also reports what it linked, not what was
   planned, so the log, its pop wait and the charge go by that (`gaston_114`
   logged 33, 28 and 23 for drags that had linked about 5, 13 and 9).
+- **Gaston's stalled chains walk back to the chain's real end.** Most stalls
+  came back on every redraw: on `gaston_114.mp4` a tsum was linked early,
+  from one three before its turn, so the chain ended one short of the last
+  coin and the next hop was out of that tsum's reach -- the walk back to the
+  last coin, the redraw and the replan all started from the wrong tsum. The
+  walk back now goes to the tsum before the last coin, the end in either
+  case, and plans a fresh route from there clear of what is linked. A stopped
+  drag logs its whole route again.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

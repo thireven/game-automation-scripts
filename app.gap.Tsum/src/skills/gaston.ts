@@ -336,9 +336,9 @@
 //
 //     The rewind (`rewind`, 2026-09-23) is the loop done the other way round.
 //     It reads a grid round each centre, not the centre, and calls a stall
-//     only on four tsums in a row with no coin. It then walks the route back,
-//     so the undo unwinds the chain to the last coin and the route is drawn
-//     on from there.
+//     only on four tsums in a row with no coin. It then walks the route back
+//     to the tsum before the last coin -- the chain's end whether the last
+//     link was missed or made early -- and plans on from there.
 //
 // ## A hop links whatever it crosses, and undoes what it crosses back over
 //
@@ -669,8 +669,8 @@ var GastonConfig = {
   // dot), within ~2 tsums of the finger. Every `checkEvery` tsums, and once
   // `coinSettleMs` after the last, one capture reads the `checkSpan` tsums
   // ending `coinLag` behind the finger; with no coin on any, the finger walks
-  // the route back to the last coin and draws on from there, at most
-  // `maxRewinds` times a drag. Walking back is safe: stepping onto the
+  // the route back to the tsum before the last coin and draws on from there,
+  // at most `maxRewinds` times a drag. Walking back is safe: stepping onto the
   // previous link undoes the head, so it unwinds the chain to where the
   // finger stops, and unlinked tsums behind a failed hop are out of reach.
   // Replayed over 44 held chains, the coins stopped within 3 of the game's
@@ -691,11 +691,13 @@ var GastonConfig = {
   coinStep: 2,
   coinShare: 0.2,
   maxRewinds: 3,
-  // A second stall at the same place is the route's, not chance -- on
-  // `gaston_111.mp4` all three redraws stalled where the first had, one on a
-  // tsum linked early as the third link. So it is planned afresh from the
-  // chain's end without the next tsum, over a first hop no longer than this in
-  // tsum widths; with no such route the drag stops there.
+  // A stall is mostly the route's, not chance -- on `gaston_111.mp4` all
+  // three redraws stalled where the first had, and on `gaston_114.mp4` the
+  // last coin had been linked early, from a tsum three before it, so the
+  // chain ended one short of it. So the rest is planned afresh from where
+  // the finger walked back to, clear of every linked tsum, over a first hop
+  // no longer than this in tsum widths; a repeat leaves out the failing tsum
+  // too, and with no route the drag stops there.
   replanFirstHop: 1.5,
 
   // --- the cancel, and the hold --------------------------------------------
@@ -1679,6 +1681,8 @@ interface GastonDrag {
   rewinds: number[][];
   /** The last check's coin read over the route, 'C' or '.' per tsum from `coinFrom`; null when none ran. */
   coins: string | null;
+  /** The route a stopped drag was on, before `path` was cut to what it linked; null otherwise. */
+  planned: TsumPath | null;
   /** Tsums cut off the route's end so the drag ends before the close (`closeLeadMs`). */
   trimmed: number;
 }
@@ -1832,7 +1836,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   const drag: GastonDrag = {
     path: [] as TsumPath, ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0,
     dead: false, gastons: null, rise: null, rises: null, leftovers: [], count: null, countLate: null,
-    rewinds: [], coins: null, trimmed: 0,
+    rewinds: [], coins: null, trimmed: 0, planned: null,
   };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.isRunning || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
@@ -1939,33 +1943,39 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
         }
         const back = gastonStalled(ts, path, i, end, drag);
         if (back >= 0 && spare) {
-          // Stuck at the same place again: that hop fails every time -- a tsum
-          // linked early, or one out of the game's reach -- so the rest is
-          // planned afresh without it, or the drag stops there. And no walk
-          // back into the close, whose freeze would take it too.
+          // Back to the tsum before the last coin: the chain's end either way.
+          // A missed link is undone by the walk over it; a last coin linked
+          // early, from a tsum before its turn, left its predecessor the end
+          // and the route's next hop out of that one's reach -- the stall that
+          // came back on every redraw of `gaston_114.mp4`. From there a fresh
+          // route clear of what is linked (on a repeat, of the failing tsum
+          // too), else the old one; a repeat with no route stops the drag, and
+          // so does a walk back that would run into the close's freeze.
           const again = lastBack >= 0 && back <= lastBack + 1;
           lastBack = back;
-          const next = again ? replan(back, back + 1) : null;
-          const late = Date.now() < closeAt && Date.now() + 2 * (i - back) * perHop > closeAt - cfg.closeLeadMs;
+          const to = back > 0 ? back - 1 : 0;
+          const next = to > 0 ? replan(to, again ? back + 1 : back) : null;
+          const late = Date.now() < closeAt && Date.now() + 2 * (i - to) * perHop > closeAt - cfg.closeLeadMs;
           if (late || (again && next === null)) {
             drag.rewinds.push([i, back, 0]);
-            // What it linked, for the pop, the hold and the log.
+            // What it linked, for the pop, the hold and the charge.
+            drag.planned = path;
             path = path.slice(0, back + 1) as TsumPath;
             drag.path = path;
             break;
           }
-          for (let k = i - 1; k >= back; k--) { hop(k + 1, k); }
+          for (let k = i - 1; k >= to; k--) { hop(k + 1, k); }
           if (next !== null) {
-            drag.rewinds.push([i, back, next.length - 1]);
-            path = path.slice(0, back).concat(next) as TsumPath;
-            pts.length = back + 1;
+            drag.rewinds.push([i, to, next.length - 1]);
+            path = path.slice(0, to).concat(next) as TsumPath;
+            pts.length = to + 1;
             for (let k = 1; k < next.length; k++) { pts.push(gastonToScreen(ts, next[k])); }
             tail = pts.length - 1;
             drag.path = path;
           } else {
-            drag.rewinds.push([i, back]);
+            drag.rewinds.push([i, to]);
           }
-          i = back + 1;
+          i = to + 1;
           continue;
         }
       }
@@ -2470,8 +2480,10 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
     for (let i = 0; i < board.length; i++) {
       flat.push(Math.round(board[i].x + Config.tsumWidth / 2), Math.round(board[i].y + Config.tsumWidth / 2));
     }
+    // The whole route, a stopped drag's included: the stall is in what it cut.
     const route: number[] = [];
-    for (let i = 0; i < drag.path.length; i++) { route.push(board.indexOf(drag.path[i])); }
+    const routed = drag.planned !== null ? drag.planned : drag.path;
+    for (let i = 0; i < routed.length; i++) { route.push(board.indexOf(routed[i])); }
     const fields: LogFields = {
       chain: drag.path.length, read: board.length, rescans: rescans, gaston: gastons.length,
       // What the game's counter said the drag linked, against `chain`: the
