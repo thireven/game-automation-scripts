@@ -189,6 +189,7 @@ namespace Log {
     FormalBeastModeEnd    = 'skill.formalBeast.modeEnd',
     FormalBeastModeStart  = 'skill.formalBeast.modeStart',
     FormalBeastSteer      = 'skill.formalBeast.steer',
+    GastonClear           = 'skill.gaston.clear',
     GastonDone            = 'skill.gaston.done',
     GastonPass            = 'skill.gaston.pass',
     LorcanaAuroraDone     = 'skill.lorcanaAurora.done',

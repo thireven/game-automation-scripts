@@ -453,8 +453,10 @@
 //     leave the next pass without its cancel;
 //   - the charge stops spamming once the held chain's clear is over
 //     (`chargeTailMs`), and the play loop's chains fill the rest;
-//   - a pass whose Gaston chain is short draws other colours' chains too
-//     (`mixedChains`), so a board of leftovers turns Gaston within a window.
+//   - a pass whose Gaston chain is short, or whose board is mostly
+//     leftovers, draws other colours' chains too, and a pass with no Gaston
+//     chain draws only those (`mixedFrom`), so a board of leftovers turns
+//     Gaston within a window.
 //
 // None of it sees a drag stall with the finger still down. The counter read
 // one drag in six there, and its first read can be early (1 at the head, 16
@@ -872,14 +874,16 @@ var GastonConfig = {
 
   // --- a board of leftovers ------------------------------------------------
   //
-  // A pass whose Gaston chain is under `mixedBelow` also draws up to
-  // `mixedChains` chains of any colour off the same scan, while inside
-  // `mixedChainMs` of its release and before the cancel: whatever the window
-  // clears refills as Gaston, and one short chain a pass converts too little
-  // (see the header). 0 turns it off.
+  // Whatever the window clears refills as Gaston, so a pass whose Gaston
+  // chain is under `mixedBelow`, or whose board has `mixedFrom` or more
+  // leftovers, also clears every chain of the other colours off the same
+  // scan, for up to `mixedChainMs` after its release and before the cancel.
+  // A pass with no Gaston chain at all does the same (`gastonClearLeftovers`):
+  // `gaston_113.mp4` had 26 of them lift the finger and draw nothing on
+  // boards of 20-odd leftovers. 0 turns it off.
   mixedBelow: 15,
-  mixedChains: 4,
-  mixedChainMs: 600,
+  mixedFrom: 15,
+  mixedChainMs: 1000,
 };
 
 // The `roundStartedAt` of the round whose first activation has gone out, or 0.
@@ -939,7 +943,7 @@ interface GastonPass {
   cancelled: number;
   /** Whether the tsum count showed the cancel take; null when unchecked (see `cancelCheckMin`). */
   confirmed: boolean | null;
-  /** Other colours' chains drawn beside a short one (`mixedChains`). */
+  /** Other colours' chains drawn beside it (`mixedFrom`). */
   extra: number;
   /** From the release to the last tsum of it and its extras popping, uncancelled. */
   popMs: number;
@@ -2119,17 +2123,50 @@ function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): numb
   return Math.min(count, far.length);
 }
 
+/** What a pass with no Gaston chain cleared instead. */
+interface GastonClear {
+  /** Each leftover chain drawn. */
+  chains: number[];
+  /** Tsums in them. */
+  tsums: number;
+  /** The longest, whose pop the refill waits on when nothing cancelled it. */
+  longest: number;
+  /** Bubbles tapped. */
+  tapped: number;
+}
+
 /**
- * On a board with no chain to draw, pop the bubbles when there are
- * `surplusBubbles` or more, all but the reserve: their blasts clear leftovers
- * and the holes refill as Gaston. Answers how many went.
+ * A pass with no Gaston chain clears the leftovers instead, until `until`
+ * (`gastonMixedChains`), then cancels their pops with all bubbles but the
+ * reserve -- unless the bubbles are scarce and the clear was short
+ * (`surplusBubbles`, `cancelMinChain`). Spare bubbles go even with nothing
+ * drawn: their blasts refill as Gaston too.
  */
-function gastonPopSurplus(ts: Tsum): number {
-  const bubbles = gastonTappableBubbles(gastonBubbles(ts));
-  if (bubbles.length < GastonConfig.surplusBubbles) { return 0; }
-  const n = gastonTapBubbles(ts, [] as TsumPath, bubbles);
+function gastonClearLeftovers(ts: Tsum, until: number): GastonClear {
+  const cfg = GastonConfig;
+  const board = ts.scanBoardQuick();
+  const bubbles = gastonBubbles(ts);
+  const gastons = gastonGastons(ts, board);
+  gastonBubbleWorth(bubbles, board, gastons);
+  const left = gastonLeftovers(board, gastons).length;
+  const chains = cfg.mixedChainMs > 0
+    ? gastonMixedChains(ts, board, bubbles, [] as TsumPath, gastons, Math.min(until, Date.now() + cfg.mixedChainMs))
+    : [];
+  let tsums = 0;
+  let longest = 0;
+  for (let k = 0; k < chains.length; k++) {
+    tsums += chains[k];
+    longest = Math.max(longest, chains[k]);
+  }
+  const tappable = gastonTappableBubbles(bubbles);
+  const tapped = tappable.length >= cfg.surplusBubbles || (tappable.length > 0 && tsums >= cfg.cancelMinChain)
+    ? gastonTapBubbles(ts, [] as TsumPath, tappable) : 0;
   ts.gameBubbles = [];
-  return n;
+  logInfo(Log.Skill.GastonClear, {
+    read: board.length, gaston: gastons.length, leftovers: left, chains: chains, bubbles: tappable.length,
+    tapped: tapped,
+  });
+  return { chains: chains, tsums: tsums, longest: longest, tapped: tapped };
 }
 
 // --- A board of leftovers ---------------------------------------------------
@@ -2162,25 +2199,33 @@ function gastonDrawPlain(ts: Tsum, path: TsumPath): void {
 }
 
 /**
- * After a short Gaston chain, more of a board that is not his cleared: up to
- * `mixedChains` chains of any colour off the pass's scan, longest first,
- * while inside `mixedChainMs` of `releasedAt`. Planned over the free board
- * less the chain just drawn, skipping any that would cross a bubble. What
- * they clear refills as Gaston, so it leaves the carry. Answers each length.
+ * Clear what is not Gaston: every chain of the other colours off `board`
+ * that fits before `until`, top of the pile first so a clear never drops
+ * the pile onto a route still to come. Planned over the free board less
+ * `drawn` and `gastons`, skipping any that would cross a bubble. What they
+ * clear refills as Gaston, so it leaves the carry. Answers each length.
  */
 function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[], drawn: TsumPath,
-    releasedAt: number): number[] {
+    gastons: BoardPoint[], until: number): number[] {
   const cfg = GastonConfig;
   const out: number[] = [];
-  if (cfg.mixedChains <= 0 || drawn.length === 0 || drawn.length >= cfg.mixedBelow) { return out; }
-  const free = gastonFreeBoard(board, bubbles, cfg.hudBand).filter(function(p) { return drawn.indexOf(p) < 0; });
+  const free = gastonFreeBoard(board, bubbles, cfg.hudBand).filter(function(p) {
+    return drawn.indexOf(p) < 0 && gastons.indexOf(p) < 0;
+  });
   const paths = calculatePaths(free, -1, false, 0);
+  // Each path's lowest tsum, the highest on the board first.
+  const bottom = function(path: TsumPath): number {
+    let y = -Infinity;
+    for (let k = 0; k < path.length; k++) { y = Math.max(y, path[k].y); }
+    return y;
+  };
+  paths.sort(function(a, b) { return bottom(a) - bottom(b); });
   const half = Config.tsumWidth / 2;
   const match = Config.tsumWidth * cfg.carryMatch;
-  for (let i = 0; i < paths.length && out.length < cfg.mixedChains; i++) {
-    if (!ts.isRunning || Date.now() - releasedAt > cfg.mixedChainMs) { break; }
+  for (let i = 0; i < paths.length; i++) {
+    if (!ts.isRunning || Date.now() >= until) { break; }
     const path = paths[i];
-    if (gastonCrossesBubble(path, bubbles)) { continue; }
+    if (Date.now() + gastonDragEstimate(path.length) > until || gastonCrossesBubble(path, bubbles)) { continue; }
     gastonDrawPlain(ts, path);
     out.push(path.length);
     gastonCarry = gastonCarry.filter(function(c) {
@@ -2382,8 +2427,14 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
     if (drag.gastons !== null && !drag.dead) { gastonCarry = drag.leftovers; gastonCarryRead = true; }
     // A drag that drew nothing cleared nothing, so there is no pop to cut short.
     const released = !drag.held && drag.path.length > 0;
-    // A short chain on a board of leftovers: clear more of it before the cancel.
-    const extra = released ? gastonMixedChains(ts, board, bubbles, drag.path, drag.releasedAt) : [];
+    // A short chain, or a board of leftovers: clear more of it before the
+    // cancel, while its refill still lands before the close (`mixedFrom`).
+    // His tsums are the read's where it ran, else the pass's.
+    const his = drag.gastons !== null ? drag.gastons : source;
+    const mixed = released && cfg.mixedChainMs > 0 && (drag.path.length < cfg.mixedBelow
+      || gastonLeftovers(board, his).filter(function(p) { return drag.path.indexOf(p) < 0; }).length >= cfg.mixedFrom);
+    const extra = mixed ? gastonMixedChains(ts, board, bubbles, drag.path, his,
+      Math.min(drag.releasedAt + cfg.mixedChainMs, refillBy - cfg.noCancelTailMs)) : [];
     // When the last of it pops if nothing cancels it: the extras pop from
     // their own releases, the last of them about now.
     const extraAt = Date.now() - drag.releasedAt;
@@ -2391,9 +2442,9 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
     for (let k = 0; k < extra.length; k++) { popMs = Math.max(popMs, extraAt + extra[k] * cfg.popPerTsumMs); }
     let drawnTsums = drag.path.length;
     for (let k = 0; k < extra.length; k++) { drawnTsums += extra[k]; }
-    // A short chain keeps the bubbles for the next long one (`cancelMinChain`),
+    // A short clear keeps the bubbles for the next long one (`cancelMinChain`),
     // unless there are plenty (`surplusBubbles`).
-    const spared = released && drag.path.length < cfg.cancelMinChain
+    const spared = released && drawnTsums < cfg.cancelMinChain
       && gastonTappableBubbles(bubbles).length < cfg.surplusBubbles;
     const cancel: GastonCancel = released && !spared
       ? gastonCancelBubble(ts, drag.path, bubbles, drawnTsums >= cfg.cancelCheckMin)
@@ -2429,7 +2480,7 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
       confirmed: cancel.confirmed, cleared: cancel.cleared, softTaps: cancel.soft, freshTaps: cancel.fresh,
       // Released uncancelled because it was too short to be worth a bubble.
       spared: spared,
-      // Other colours' chains drawn after a short one (`mixedChains`).
+      // Other colours' chains drawn after it (`mixedFrom`).
       extra: extra,
       board: flat, route: route, bubbleAt: bubbleAt, near: near,
       // The head the drag started on, as an index into `board`, and which
@@ -2596,12 +2647,15 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
       // back as Gaston. A ceiling, not the close itself, because a pass that
       // finds nothing right at the close is a refill still landing.
       if (Date.now() >= closesAt + cfg.fillWaitMs) { break; }
-      // Spare bubbles become Gaston while a refill still lands before the
-      // close, so the next pass waits for it (`surplusBubbles`).
-      const pops = Date.now() < refillBy - cfg.noCancelTailMs ? gastonPopSurplus(ts) : 0;
-      popped += pops;
-      if (pops > 0) {
-        const notBefore = Date.now() + cfg.fillMinMs;
+      // Leftovers and spare bubbles become Gaston while their refill still
+      // lands before the close, so the next pass waits for it.
+      const lastRefill = refillBy - cfg.noCancelTailMs;
+      const clear = Date.now() < lastRefill ? gastonClearLeftovers(ts, lastRefill) : null;
+      if (clear !== null && (clear.tsums > 0 || clear.tapped > 0)) {
+        popped += clear.tapped;
+        extra += clear.chains.length;
+        const notBefore = Date.now() + (clear.tapped > 0 ? cfg.fillMinMs
+          : Math.max(cfg.fillMinMs, clear.longest * cfg.popPerTsumMs + cfg.popTailMs));
         fullBoard = gastonAwaitBoard(ts, notBefore + cfg.fillWaitMs, notBefore).full;
       } else {
         ts.sleep(cfg.rescanIdleMs);
@@ -2658,12 +2712,13 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // last is the loop working; well under is a window with no bubble to
     // cancel with, whose refills ran the `fillWaitMs` ceiling.
     cancels: cancels,
-    // Bubbles popped on passes with no chain (`surplusBubbles`).
+    // Bubbles tapped on passes with no Gaston chain (`gastonClearLeftovers`).
     popped: popped,
     // Passes whose cancel the tsum count did not confirm (`cancelDrop`); their
     // refill gates waited out the pop. `skill.gaston.pass` has `confirmed`.
     missed: missed,
-    // Other colours' chains drawn beside short Gaston ones (`mixedChains`).
+    // Other colours' chains drawn beside Gaston ones, or instead of one
+    // (`mixedFrom`; `skill.gaston.clear` has the latter).
     extra: extra,
     // Time the drags spent waiting on the game's MOVE acks beyond their
     // dwells, summed -- `skill.gaston.pass` has it per drag.

@@ -39,6 +39,7 @@ var LogsEn = {
   [Log.Skill.ElsaDone]: '[Coronation Elsa] Freeze window closed',
   [Log.Skill.ElsaRoundOver]: '[Coronation Elsa] Round ended inside the window',
   [Log.Skill.ElsaLegacyDone]: '[Coronation Elsa Legacy] Freeze window closed',
+  [Log.Skill.GastonClear]: '[Gaston] Leftovers cleared',
   [Log.Skill.GastonDone]: '[Gaston] Window closed',
   [Log.Skill.GastonPass]: '[Gaston] Chain drawn',
   [Log.Skill.RapunzelDone]: '[Rapunzel+] Mixed-colour chain drawn',
