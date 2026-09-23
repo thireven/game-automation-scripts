@@ -340,7 +340,11 @@
 // time on a packed pile, so the route is planned over hops that cross nothing:
 // an edge is kept only when its segment passes no other tsum's centre, nor a
 // bubble's, within `crossAvoid` (`gastonNeighbors`). That is the adjacency
-// graph and little more, which is what a finger draws anyway.
+// graph and little more, which is what a finger draws anyway. Early links
+// still break chains (`gaston_108.mp4`: 38 planned linked 4 and 20 that way),
+// but a replay of the game's linking over 98 logged routes, at any touch
+// radius of 0.5-0.9 widths and reach of 1.5-2.1, predicted every chain broken
+// or none: the scan's centres are too rough to say which hop will fail.
 //
 // Two things `gaston_7.mp4` measured and nothing here uses yet:
 //
