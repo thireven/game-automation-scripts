@@ -333,7 +333,8 @@ release note; they fold back in here when she ships.
   fever's start or end, which the antlers hide from the chrome probe. The ring
   round the fever gauge shows both: a drag now waits `feverStartMs` past it
   lighting, and for it to go dark when the fill says the fever ends inside
-  the drag (`dodgeFever`, `feverWaitMs` on the pass record).
+  the drag (`dodgeFever`, `feverWaitMs` on the pass record). Off by default:
+  `gaston_105.mp4` broke as many chains with it on, and its waits cost time.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

@@ -264,6 +264,8 @@
 // says when the fever runs out. So every drag also waits out those
 // (`gastonAwaitFever`, `dodgeFever`). A fever that starts after the drag has
 // begun is not caught: the start comes off the clear before it, not a clock.
+// The wait is off: `gaston_105.mp4`, the round it ran, broke as many chains,
+// so the coincidence was not the cause.
 //
 // Two smaller things the window has to get right:
 //
@@ -739,8 +741,11 @@ var GastonConfig = {
   // `FeverBar`'s every ~440ms (`feverSliceMs`) and reads empty 0.3-0.9s
   // before the ring goes dark (`feverTailMs` the least of that);
   // `feverEndLeadMs` is how far ahead of the dark the end already breaks a
-  // drag. Independent of `dodgeSwitch`.
-  dodgeFever: true,
+  // drag. Independent of `dodgeSwitch`. Off: on `gaston_105.mp4` it broke as
+  // many chains as 104 without it (8 of 18 whole), one held 1.0s past the
+  // ring still broke at 9 of 35, and the waits cost a window its cancel and
+  // pushed held chains past the close.
+  dodgeFever: false,
   feverStartMs: 1800,
   feverSliceMs: 440,
   feverTailMs: 300,
