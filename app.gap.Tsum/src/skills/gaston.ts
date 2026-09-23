@@ -717,6 +717,13 @@ var GastonConfig = {
   // A chain under this is not cancelled at all: its pop is over inside
   // `fillMinMs` anyway, and the bubble is worth more to the next long chain.
   cancelMinChain: 10,
+  // From this many tappable bubbles they are not scarce: every release is
+  // cancelled whatever its length, and a pass with no chain pops all but the
+  // reserve, whose blasts refill as Gaston. The play loop keeps bubbles
+  // between windows (`claimsBubbles`), and on `gaston_113.mp4` (2026-09-23)
+  // uncharged windows piled ten along the bottom: the refills had no room,
+  // every route was cut, and 29 of 44 passes drew nothing.
+  surplusBubbles: 3,
   // A cancelled clear leaves the board at once; one left to pop loses a tsum
   // every `popPerTsumMs`. So a cancel is confirmed when the tsum count drops
   // `cancelDrop` within `cancelCheckMs` of the tap (a pop manages ~4 in that
@@ -2083,7 +2090,8 @@ function gastonAwaitDrop(ts: Tsum, before: number): number {
 function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): number {
   const far: { b: GameBubble, d: number }[] = [];
   for (let b = 0; b < bubbles.length; b++) {
-    let nearest = Infinity;
+    // With no chain, leftovers alone set the order.
+    let nearest = path.length > 0 ? Infinity : 0;
     for (let i = 0; i < path.length; i++) {
       const dx = bubbles[b].x - (path[i].x + Config.tsumWidth / 2);
       const dy = bubbles[b].y - (path[i].y + Config.tsumWidth / 2);
@@ -2109,6 +2117,19 @@ function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): numb
     });
   }
   return Math.min(count, far.length);
+}
+
+/**
+ * On a board with no chain to draw, pop the bubbles when there are
+ * `surplusBubbles` or more, all but the reserve: their blasts clear leftovers
+ * and the holes refill as Gaston. Answers how many went.
+ */
+function gastonPopSurplus(ts: Tsum): number {
+  const bubbles = gastonTappableBubbles(gastonBubbles(ts));
+  if (bubbles.length < GastonConfig.surplusBubbles) { return 0; }
+  const n = gastonTapBubbles(ts, [] as TsumPath, bubbles);
+  ts.gameBubbles = [];
+  return n;
 }
 
 // --- A board of leftovers ---------------------------------------------------
@@ -2370,8 +2391,10 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
     for (let k = 0; k < extra.length; k++) { popMs = Math.max(popMs, extraAt + extra[k] * cfg.popPerTsumMs); }
     let drawnTsums = drag.path.length;
     for (let k = 0; k < extra.length; k++) { drawnTsums += extra[k]; }
-    // A short chain keeps the bubbles for the next long one (`cancelMinChain`).
-    const spared = released && drag.path.length < cfg.cancelMinChain;
+    // A short chain keeps the bubbles for the next long one (`cancelMinChain`),
+    // unless there are plenty (`surplusBubbles`).
+    const spared = released && drag.path.length < cfg.cancelMinChain
+      && gastonTappableBubbles(bubbles).length < cfg.surplusBubbles;
     const cancel: GastonCancel = released && !spared
       ? gastonCancelBubble(ts, drag.path, bubbles, drawnTsums >= cfg.cancelCheckMin)
       : { tapped: 0, soft: 0, fresh: 0, confirmed: null, cleared: 0 };
@@ -2516,6 +2539,7 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   // Gaston, and the held chain wants it landed.
   let passes = 0;
   let cancels = 0;
+  let popped = 0;
   let missed = 0;
   let extra = 0;
   let overMs = 0;
@@ -2572,8 +2596,17 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
       // back as Gaston. A ceiling, not the close itself, because a pass that
       // finds nothing right at the close is a refill still landing.
       if (Date.now() >= closesAt + cfg.fillWaitMs) { break; }
-      ts.sleep(cfg.rescanIdleMs);
-      fullBoard = false;
+      // Spare bubbles become Gaston while a refill still lands before the
+      // close, so the next pass waits for it (`surplusBubbles`).
+      const pops = Date.now() < refillBy - cfg.noCancelTailMs ? gastonPopSurplus(ts) : 0;
+      popped += pops;
+      if (pops > 0) {
+        const notBefore = Date.now() + cfg.fillMinMs;
+        fullBoard = gastonAwaitBoard(ts, notBefore + cfg.fillWaitMs, notBefore).full;
+      } else {
+        ts.sleep(cfg.rescanIdleMs);
+        fullBoard = false;
+      }
     }
   }
 
@@ -2625,6 +2658,8 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // last is the loop working; well under is a window with no bubble to
     // cancel with, whose refills ran the `fillWaitMs` ceiling.
     cancels: cancels,
+    // Bubbles popped on passes with no chain (`surplusBubbles`).
+    popped: popped,
     // Passes whose cancel the tsum count did not confirm (`cancelDrop`); their
     // refill gates waited out the pop. `skill.gaston.pass` has `confirmed`.
     missed: missed,
