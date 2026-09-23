@@ -450,6 +450,12 @@ release note; they fold back in here when she ships.
   planned round, and tapped. A chain with no bubble to cancel it is judged
   on every known bubble, remembered ones included, since the cancel taps
   those too now.
+- **A Gaston closing chain that stops short is followed by another.** Only
+  the closing chain charges the gauge, and one that stalled and stopped at 9
+  or 8 (two of ten windows on `gaston_121.mp4`) left the window uncharged
+  and the play loop to fill it. While the closing chains total under
+  `gaugeChain` (24), another is drawn once the last one's pop has landed --
+  every clear past the close fills the gauge -- up to `closeRetries` (2).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

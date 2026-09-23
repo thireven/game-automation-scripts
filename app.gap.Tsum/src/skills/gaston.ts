@@ -829,6 +829,13 @@ var GastonConfig = {
   // the Gastons it left is worth more than the wait.
   gaugeWaitMs: 4500,
   chargeMinChain: 12,
+  // The closing chains' total the charge wants: the gauge takes ~23 tsums
+  // (`gaston_117.mp4`), so a closing chain that stops short of this is
+  // followed by another once its pop has landed -- every clear past the
+  // close fills the gauge -- at most `closeRetries` more. Two of ten windows
+  // on `gaston_121.mp4` stopped theirs at 9 and 8 and never charged.
+  gaugeChain: 24,
+  closeRetries: 2,
   // The spam also stops this long after the held chain's clear should be over
   // (`popPerTsumMs` a tsum, of its late count when the counter read one). On
   // 2026-09-23 every charge that fired read full within 0.9s of that; the ones
@@ -2823,6 +2830,8 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   let cycleFrom = 0;
   // The held chain, 0 when the window closed without one.
   let clearing = 0;
+  // Closing chains drawn after one that stopped short (`gaugeChain`).
+  let retries = 0;
   let clearingLate: number | null = null;
   let heldMs = 0;
   let releasedAt = 0;
@@ -2857,10 +2866,19 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
       extra += pass.extra;
       overMs += pass.overMs;
       if (pass.held) {
-        clearing = pass.chain;
-        clearingLate = pass.registeredLate;
-        heldMs = pass.heldMs;
+        clearing += pass.chain;
+        clearingLate = retries === 0 ? pass.registeredLate : null;
+        heldMs += pass.heldMs;
         releasedAt = pass.releasedAt;
+        // Short of the gauge: another closing chain, on the board its pop
+        // leaves (`gaugeChain`).
+        if (clearing < cfg.gaugeChain && retries < cfg.closeRetries && ts.isRunning) {
+          retries++;
+          passesLeft = 0;
+          const landed = pass.releasedAt + pass.chain * cfg.popPerTsumMs + cfg.popTailMs;
+          fullBoard = gastonAwaitBoard(ts, Math.max(Date.now(), landed) + cfg.fillWaitMs, landed).full;
+          continue;
+        }
         break;
       }
       passesLeft--;
@@ -2968,6 +2986,8 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // ended past the close on its own. Both 0 when the window closed with no
     // chain to hold.
     heldMs: heldMs,
+    // Closing chains drawn after one that stopped short of `gaugeChain`.
+    closeRetries: retries,
     releaseLeadMs: clearing > 0 ? releasedAt - (gastonFever.antlersOffAt > t0 ? gastonFever.antlersOffAt : closesAt) : 0,
     // When the antlers came up and went, from the tap (0: not seen), and the
     // close the window planned on (`antlerMs`).
