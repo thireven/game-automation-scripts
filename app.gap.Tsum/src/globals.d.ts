@@ -770,10 +770,15 @@ interface GameBubble {
    */
   band?: boolean;
   /**
-   * A bubble to plan round but not to tap: one the memory supplied, which may
-   * have rolled since (`gastonRememberBubbles`).
+   * One the memory supplied, which may have rolled since
+   * (`gastonRememberBubbles`): planned round, and tapped last.
    */
   soft?: boolean;
+  /**
+   * Found by its gold icons over a circle the tsum scan took for a tsum, the
+   * Hough passes having missed it (`gastonBubbles`).
+   */
+  gold?: boolean;
   /** Epoch ms this bubble was first seen at about this spot (`trackGameBubbles`). */
   firstSeen?: number;
   /** Epoch ms of the scan that last found it. */

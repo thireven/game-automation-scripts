@@ -624,6 +624,15 @@ var GastonConfig = {
   // bubble resting there has its lower third cut off the square: four sat so
   // in `gaston_debug6.mp4` and the pass over the square found none of them.
   bubbleHem: 0.1,
+  // Share of a circle's coin grid that must be gold for a tsum-scan circle in
+  // the bottom band (`bubbleBandFrom`) to be a bubble: its icons. The Hough
+  // passes miss bubbles lit by the rim, and the scan then takes one for a
+  // tsum -- the paint read even for Gaston, the one behind it showing
+  // through -- so a route runs into it and it pops the chain there: two of
+  // four late boards on `gaston_120.mp4`. Circles on bubbles read 0.39-0.84
+  // gold there and Gastons near none; higher up the rim lights and coin
+  // showers read gold too, so the band only.
+  bubbleGold: 0.3,
   // The band across the top of the play square the HUD draws into, in tsum
   // widths; a circle with its centre in it is a glyph, not a tsum (see the
   // header). The fever bonus digits centre at 0.7-1.0 and the combo counter's
@@ -1304,14 +1313,16 @@ function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
  * Hough pass as `findGameBubbles`, in play-square scale; a centre below the
  * square has y past `playResizeHeight`, which the taps map like any other.
  *
- * Then two more sources: a second Hough at `bandParam2` over the bottom
+ * Then three more sources: a second Hough at `bandParam2` over the bottom
  * `bubbleBandFrom` of the capture, for the bubbles resting on the bowl the
- * first pass reads through (`band`, tapped like the first pass's), and the
- * memory of earlier reads (`gastonRememberBubbles`; `soft`, planned round
- * and never tapped). A band find within `minDist` of a hard one is the same
- * bubble and dropped. The list is ordered hard, band, soft.
+ * first pass reads through (`band`, tapped like the first pass's); with
+ * `board`, that scan's circles in the same band whose icons read gold
+ * (`bubbleGold`, `gold`); and the memory of earlier reads
+ * (`gastonRememberBubbles`; `soft`, planned round and tapped last). A find
+ * within `minDist` of an earlier one is the same bubble and dropped. The list
+ * is ordered hard, band, gold, soft.
  */
-function gastonBubbles(ts: Tsum): GameBubble[] {
+function gastonBubbles(ts: Tsum, board?: BoardPoint[]): GameBubble[] {
   const cfg = GastonConfig;
   const bc = GameBubbleConfig;
   const hem = cfg.bubbleHem;
@@ -1322,15 +1333,17 @@ function gastonBubbles(ts: Tsum): GameBubble[] {
   let gray: NativeImage | null = null;
   let hard: GameBubble[];
   let band: HoughCircle[];
+  const bandFrom = outH * cfg.bubbleBandFrom;
+  let gold: Point[] = [];
   try {
     gray = buildBoardGray(img);
     hard = gastonNotButtons(findGameBubbles(gray));
     band = houghCircles(gray, 3, 1, bc.minDist, bc.param1, cfg.bandParam2, bc.minRadius, bc.maxRadius);
+    if (board) { gold = gastonGoldCircles(img, board, bandFrom); }
   } finally {
     if (gray != null) { releaseImage(gray); }
     releaseImage(img);
   }
-  const bandFrom = outH * cfg.bubbleBandFrom;
   const low: GameBubble[] = [];
   for (let k = 0; k < band.length; k++) {
     const b = band[k];
@@ -1341,6 +1354,11 @@ function gastonBubbles(ts: Tsum): GameBubble[] {
   const lowKept = gastonNotButtons(low);
   for (let k = 0; k < lowKept.length; k++) {
     if (!gastonBubbleNear(lowKept[k], out, bc.minDist)) { out.push(lowKept[k]); }
+  }
+  for (let k = 0; k < gold.length; k++) {
+    if (!gastonBubbleNear(gold[k], out, bc.minDist)) {
+      out.push({ x: gold[k].x, y: gold[k].y, r: (bc.minRadius + bc.maxRadius) / 2, gold: true });
+    }
   }
   return gastonRememberBubbles(ts, out);
 }
@@ -1790,6 +1808,48 @@ function gastonFloorRead(ts: Tsum, board: BoardPoint[]): number[] {
   return out;
 }
 
+/** Red brightest and over 0.82, saturation over 0.5, hue 36-60: the game's gold. */
+function gastonGold(c: { r: number, g: number, b: number }): boolean {
+  return c.r >= c.g && c.r > 209 && c.r - c.b > 0.5 * c.r && c.g - c.b > 0.6 * (c.r - c.b);
+}
+
+/**
+ * The centres of `board`'s circles below `fromY` whose coin grid is
+ * `bubbleGold` gold in `img`, a play-square capture: bubbles the scan took
+ * for tsums.
+ */
+function gastonGoldCircles(img: NativeImage, board: BoardPoint[], fromY: number): Point[] {
+  const cfg = GastonConfig;
+  const half = Config.tsumWidth / 2;
+  const size = getImageSize(img);
+  const pts: Point[] = [];
+  const at: Point[] = [];
+  for (let k = 0; k < board.length; k++) {
+    const cx = board[k].x + half;
+    const cy = board[k].y + half;
+    if (cy < fromY) { continue; }
+    at.push({ x: cx, y: cy });
+    for (let i = -cfg.coinGrid; i <= cfg.coinGrid; i++) {
+      for (let j = -cfg.coinGrid; j <= cfg.coinGrid; j++) {
+        pts.push({
+          x: Math.min(size.width - 1, Math.max(0, Math.round(cx + i * cfg.coinStep))),
+          y: Math.min(size.height - 1, Math.max(0, Math.round(cy + j * cfg.coinStep))),
+        });
+      }
+    }
+  }
+  if (at.length === 0) { return []; }
+  const colors = getImageColors(img, pts);
+  const per = (2 * cfg.coinGrid + 1) * (2 * cfg.coinGrid + 1);
+  const out: Point[] = [];
+  for (let k = 0; k < at.length; k++) {
+    let gold = 0;
+    for (let n = 0; n < per; n++) { if (gastonGold(colors[k * per + n])) { gold++; } }
+    if (gold >= cfg.bubbleGold * per) { out.push(at[k]); }
+  }
+  return out;
+}
+
 /**
  * Whether each of `path[from..to]` carries the game's gold coin in `img`, a
  * play-square capture: the mark on a linked tsum (see `rewind`).
@@ -1818,8 +1878,7 @@ function gastonCoins(img: NativeImage, path: TsumPath, from: number, to: number)
     let gold = 0;
     for (let n = 0; n < per; n++) {
       const c = colors[k * per + n];
-      // Red brightest and over 0.82, saturation over 0.5, hue 36-60.
-      if (c.r >= c.g && c.r > 209 && c.r - c.b > 0.5 * c.r && c.g - c.b > 0.6 * (c.r - c.b)) { gold++; }
+      if (gastonGold(c)) { gold++; }
     }
     out.push(gold >= cfg.coinShare * per);
   }
@@ -2196,7 +2255,7 @@ function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): Game
     for (let i = 0; i < far.length; i++) {
       const dx = far[i].b.x - mx;
       const dy = far[i].b.y - my;
-      const d = (far[i].b.soft ? 0 : 1e9) + dx * dx + dy * dy;
+      const d = (far[i].b.soft ? 0 : far[i].b.gold ? 5e8 : 1e9) + dx * dx + dy * dy;
       if (d > out) { out = d; keep = i; }
     }
     far.splice(keep, 1);
@@ -2242,7 +2301,7 @@ interface GastonClear {
 function gastonClearLeftovers(ts: Tsum, until: number): GastonClear {
   const cfg = GastonConfig;
   const board = ts.scanBoardQuick();
-  const bubbles = gastonBubbles(ts);
+  const bubbles = gastonBubbles(ts, board);
   const gastons = gastonGastons(ts, board);
   gastonBubbleWorth(bubbles, board, gastons);
   const left = gastonLeftovers(board, gastons).length;
@@ -2468,7 +2527,7 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     }
     // Its own bubble read, not the scan's `ts.gameBubbles`: the scan's capture
     // cuts the bottom row of bubbles in half. See `bubbleHem`.
-    const bubbles = gastonBubbles(ts);
+    const bubbles = gastonBubbles(ts, board);
     const biggest = gastonBiggestCluster(board);
     const gastons = gastonGastons(ts, board);
     gastonBubbleWorth(bubbles, board, gastons);
@@ -2543,7 +2602,7 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     // Gaston.
     const holds = function(headAt: number, chain: number): boolean {
       if (passesLeft === 0 || headAt >= refillBy - cfg.noCancelTailMs) { return true; }
-      return gastonTappableBubbles(bubbles).length === 0
+      return bubbles.length === 0
         && headAt + chain * cfg.popPerTsumMs + cfg.popTailMs >= refillBy;
     };
     // Not into the fever switch: the game takes no link through it.

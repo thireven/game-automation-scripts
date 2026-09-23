@@ -441,6 +441,15 @@ release note; they fold back in here when she ships.
   every cancel taps every known bubble but one -- kept out toward the rim,
   where it cuts the fewest routes -- and from two up (`surplusBubbles`) a
   short chain is cancelled too.
+- **Gaston finds the bubbles the Hough misses at the bottom rim.** Lit by the
+  rim, they went unread, the tsum scan took them for tsums -- the paint read
+  for Gastons, the one behind showing through -- and routes ran into them
+  and popped the chain there (two of four late boards on `gaston_120.mp4`),
+  while the cancels left them standing. A scanned circle in the bottom band
+  whose coin grid reads `bubbleGold` gold (their icons) is now a bubble:
+  planned round, and tapped. A chain with no bubble to cancel it is judged
+  on every known bubble, remembered ones included, since the cancel taps
+  those too now.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
