@@ -256,6 +256,15 @@
 // When the antlers give way to a fever the wait sees no switch at all and
 // runs to `switchLateMs`, which is where the held passes' 1.4-2.2s went.
 //
+// **A fever's start and end break drags too, and the gauge's ring shows
+// both.** Over `gaston_102`-`104.mp4` about a third of the chains that broke
+// short broke at one: a start broke drags begun 0.4-1.6s after the ring
+// lit, an end ones running over the last ~0.6s before it went dark. The
+// ring sits under the board, clear of the antlers, and the fill beside it
+// says when the fever runs out. So every drag also waits out those
+// (`gastonAwaitFever`, `dodgeFever`). A fever that starts after the drag has
+// begun is not caught: the start comes off the clear before it, not a clock.
+//
 // Two smaller things the window has to get right:
 //
 //   - **the drag must not cross a bubble, and the bubbles are the window's.**
@@ -715,6 +724,27 @@ var GastonConfig = {
   // draws: the pile moves in that time, and the route and the paint read are
   // planned off the scan.
   replanAfterWaitMs: 200,
+
+  // --- the fever's own start and end ---------------------------------------
+  //
+  // The antlers hide the fever from the chrome, but not from the ring round
+  // the fever gauge (`FeverProbes`' two strokes): near white while a fever
+  // runs, dark otherwise. On `gaston_102`-`104.mp4` (2026-09-23) drags that
+  // went out 0.4-1.6s after the ring lit broke at a fever's start (7/16,
+  // 6/18, 9/18, 20/39, 23/35, 26/37, 23/36), and ones out over the last
+  // ~0.6s before it went dark broke at its end (3/37, 17/29, 4/38). So a
+  // drag waits `feverStartMs` past the ring lighting, and one the fill says
+  // would run into the end waits for the ring to go dark and
+  // `switchFreezeMs` more (`gastonAwaitFever`). The fill drains a sample of
+  // `FeverBar`'s every ~440ms (`feverSliceMs`) and reads empty 0.3-0.9s
+  // before the ring goes dark (`feverTailMs` the least of that);
+  // `feverEndLeadMs` is how far ahead of the dark the end already breaks a
+  // drag. Independent of `dodgeSwitch`.
+  dodgeFever: true,
+  feverStartMs: 1800,
+  feverSliceMs: 440,
+  feverTailMs: 300,
+  feverEndLeadMs: 700,
   // The chrome either side of the score capsule on a plain board (`normal.png`
   // and `last_seconds*.png`, the same points as `FeverProbes`' dimmed pair).
   // The fever backdrop recolours it and a skill animation darkens it, so the
@@ -759,8 +789,11 @@ var gastonWindowUntil = 0;
 // the chrome read plain (-1 before the first look), when the backdrop came on
 // (0 while off) for the exit prediction, and the last change either way for
 // the freeze. Nothing resets between rounds: a stale `onAt` predicts an exit
-// long past, which waits for nothing.
-var gastonFever = { plain: -1, onAt: 0, switchedAt: 0 };
+// long past, which waits for nothing. `ring` is the fever gauge's ring the
+// same way (-1 unread, 1 lit), `ringOnAt`/`ringOffAt` when it was last seen
+// to light and go dark, and `ringSeen` a change read once and not yet
+// confirmed by a second read (see `gastonAwaitFever`).
+var gastonFever = { plain: -1, onAt: 0, switchedAt: 0, ring: -1, ringSeen: -1, ringSeenAt: 0, ringOnAt: 0, ringOffAt: 0 };
 
 // What the window's last paint read found not to be Gaston, as centres in
 // play-square scale, for a pass that cannot read (see `carryMatch`), and
@@ -860,18 +893,52 @@ function gastonChromePlain(ts: Tsum): boolean {
 }
 
 /**
- * One look at the backdrop, recording the switch if it changed. Called from
- * every poll of the window, so a switch is seen within a poll of the frame.
+ * Whether the ring round the fever gauge is lit: a fever is running, under
+ * the antlers or not. One crop through both of `FeverProbes`' ring strokes;
+ * either reading near white will do, since the ring's glow cycles colour.
+ */
+function gastonFeverRing(ts: Tsum): boolean {
+  const a = ts.toRealXY(FeverProbes[0].x, FeverProbes[0].y);
+  const b = ts.toRealXY(FeverProbes[1].x, FeverProbes[1].y);
+  const x = Math.max(0, Math.min(a.x, b.x));
+  const y = Math.max(0, Math.min(a.y, b.y));
+  const img = getScreenshotModify(x, y, Math.abs(b.x - a.x) + 1, Math.abs(b.y - a.y) + 1, 0, 0, 100);
+  try {
+    return absColor(getImageColor(img, a.x - x, a.y - y), FeverProbes[0]) < FeverProbes[0].threshold
+      || absColor(getImageColor(img, b.x - x, b.y - y), FeverProbes[1]) < FeverProbes[1].threshold;
+  } finally {
+    releaseImage(img);
+  }
+}
+
+/**
+ * One look at the backdrop and the fever ring, recording a switch if either
+ * changed. Called from every poll of the window, so a switch is seen within a
+ * poll of the frame. A ring change counts once a second read agrees, stamped
+ * at the first: the ring flickers for a frame as the gauge fills.
  */
 function gastonWatchFever(ts: Tsum): void {
   const plain = gastonChromePlain(ts) ? 1 : 0;
-  if (plain === gastonFever.plain) { return; }
-  if (gastonFever.plain !== -1) {
-    const now = Date.now();
-    gastonFever.switchedAt = now;
-    gastonFever.onAt = plain ? 0 : now;
+  if (plain !== gastonFever.plain) {
+    if (gastonFever.plain !== -1) {
+      const now = Date.now();
+      gastonFever.switchedAt = now;
+      gastonFever.onAt = plain ? 0 : now;
+    }
+    gastonFever.plain = plain;
   }
-  gastonFever.plain = plain;
+  if (!GastonConfig.dodgeFever) { return; }
+  const ring = gastonFeverRing(ts) ? 1 : 0;
+  if (ring === gastonFever.ring) { gastonFever.ringSeen = -1; return; }
+  if (gastonFever.ring === -1) { gastonFever.ring = ring; return; }
+  if (gastonFever.ringSeen !== ring) {
+    gastonFever.ringSeen = ring;
+    gastonFever.ringSeenAt = Date.now();
+    return;
+  }
+  gastonFever.ring = ring;
+  gastonFever.ringSeen = -1;
+  if (ring) { gastonFever.ringOnAt = gastonFever.ringSeenAt; } else { gastonFever.ringOffAt = gastonFever.ringSeenAt; }
 }
 
 /**
@@ -895,6 +962,48 @@ function gastonAwaitSwitch(ts: Tsum, dragMs: number): number {
   }
   const rest = gastonFever.switchedAt + cfg.switchFreezeMs - Date.now();
   if (gastonFever.switchedAt > 0 && rest > 0) { ts.sleep(rest); }
+  return Date.now() - from;
+}
+
+/**
+ * Hold a drag of `dragMs` back from the fever's own start and end, which the
+ * chrome cannot see under the antlers (see `dodgeFever`): until
+ * `feverStartMs` past the ring lighting, and, when the fill says the fever
+ * ends inside the drag, until the ring goes dark and `switchFreezeMs` past
+ * it. Answers the ms spent waiting; 0 at once with `dodgeFever` off.
+ */
+function gastonAwaitFever(ts: Tsum, dragMs: number): number {
+  const cfg = GastonConfig;
+  if (!cfg.dodgeFever) { return 0; }
+  const from = Date.now();
+  gastonWatchFever(ts);
+  // A change read once needs a second read to count.
+  if (gastonFever.ringSeen !== -1) {
+    ts.sleep(cfg.pollMs);
+    gastonWatchFever(ts);
+  }
+  // Just started.
+  if (gastonFever.ring === 1 && gastonFever.ringOnAt > 0) {
+    const rest = gastonFever.ringOnAt + cfg.feverStartMs - Date.now();
+    if (rest > 0 && ts.isRunning) { ts.sleep(rest); }
+  }
+  // About to end: the fill's last samples, one `feverSliceMs` each.
+  if (gastonFever.ring === 1 && ts.isRunning) {
+    const lit = Math.round(ts.feverRemainingMs() * FeverBar.samples / FeverBar.durationMs);
+    const endIn = Math.max(0, lit - 1) * cfg.feverSliceMs + cfg.feverTailMs;
+    if (endIn < dragMs + cfg.feverEndLeadMs) {
+      const until = Date.now() + lit * cfg.feverSliceMs + cfg.feverTailMs + cfg.switchLateMs;
+      while (ts.isRunning && gastonFever.ring === 1 && Date.now() < until) {
+        ts.sleep(cfg.pollMs);
+        gastonWatchFever(ts);
+      }
+    }
+  }
+  // Just ended.
+  if (gastonFever.ring === 0 && gastonFever.ringOffAt > 0) {
+    const rest = gastonFever.ringOffAt + cfg.switchFreezeMs - Date.now();
+    if (rest > 0 && ts.isRunning) { ts.sleep(rest); }
+  }
   return Date.now() - from;
 }
 
@@ -1847,6 +1956,8 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
   // Time this pass has spent held back from the switch, and whether it has
   // scanned again for it.
   let waitedMs = 0;
+  // And from the fever's own start and end (`dodgeFever`).
+  let feverWaitMs = 0;
   let replanned = false;
   for (;;) {
     let board = ts.scanBoardQuick();
@@ -1938,12 +2049,14 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
     };
     // Not into the fever switch: the game takes no link through it.
     const waited = gastonAwaitSwitch(ts, gastonDragEstimate(path.length));
+    const feverWaited = gastonAwaitFever(ts, gastonDragEstimate(path.length));
     waitedMs += waited;
+    feverWaitMs += feverWaited;
     // A wait the pile can move in leaves the scan -- and the route and the
     // paint read planned off it -- stale. `gaston_101.mp4` (2026-09-23): a
     // held chain drawn 1.5s after its scan, through the switch, landed beside
     // its head and linked 7 of 19.
-    if (waited > cfg.replanAfterWaitMs && !replanned && ts.isRunning) {
+    if (waited + feverWaited > cfg.replanAfterWaitMs && !replanned && ts.isRunning) {
       replanned = true;
       continue;
     }
@@ -2009,6 +2122,9 @@ function gastonPass(ts: Tsum, refillBy: number, mayCancel: boolean, holdUntil: n
       // scanned again after it (`replanAfterWaitMs`), and whether the backdrop
       // was up when it went out.
       waitedMs: waitedMs, replanned: replanned, fever: gastonFever.onAt > 0,
+      // How long it was held back from the fever's own start or end, and
+      // whether the fever ring was lit when it went out (`dodgeFever`).
+      feverWaitMs: feverWaitMs, feverRing: gastonFever.ring === 1,
       // The drag's length, and the part of it spent beyond its sleeps: the
       // game's MOVE acks, and the read's two captures on a pass that read.
       dragMs: drag.ms, overMs: drag.overMs,

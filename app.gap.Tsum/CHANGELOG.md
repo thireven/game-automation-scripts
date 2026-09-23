@@ -328,6 +328,12 @@ release note; they fold back in here when she ships.
   `refillBy` (tap + `openMinMs` + duration). The HUD band also cut the
   Gastons joining a pile's halves (6 planned of 14 painted); painted circles
   are now cut only above `paintedHudBand`, 8% more planned over 153 passes.
+- **Gaston's drags wait out a fever starting or ending.** Checked on video,
+  `gaston_102`-`104.mp4` broke most chains short, about a third of them at a
+  fever's start or end, which the antlers hide from the chrome probe. The ring
+  round the fever gauge shows both: a drag now waits `feverStartMs` past it
+  lighting, and for it to go dark when the fill says the fever ends inside
+  the drag (`dodgeFever`, `feverWaitMs` on the pass record).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
