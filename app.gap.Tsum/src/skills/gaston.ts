@@ -619,14 +619,26 @@ var GastonConfig = {
   // `bandParam2` over the bottom of the capture, from `bubbleBandFrom` of its
   // height down (y 150 of a 220-tall hemmed capture: the resting ones centre
   // at 150-185), takes those; its finds are `band` -- kept out of the route
-  // and tapped as cancels like the pass proper's. At 18 it also takes a tsum
+  // and tapped as cancels like the pass proper's (14 since `gaston_141.mp4`,
+  // with the inside check below; 18 before). At 18 it also takes a tsum
   // now and then, and a tap on one is a tap the game ignores; the cost is
   // the pass counting it cancelled and waiting `fillMinMs` on a pop that ran
   // long. Replayed in cv2 over the scan frames of that day's four recordings:
   // the band pass found two of two, three of three and two of three bottom
   // bubbles at 20, more at 18, with one false circle in 18 frames.
   bubbleBandFrom: 0.68,
-  bandParam2: 18,
+  bandParam2: 14,
+  bandMaxRadius: 20,
+  // The pass proper, at its own threshold rather than `GameBubbleConfig`'s
+  // 26. Then every circle either pass finds is checked inside: a bubble is
+  // translucent over the pile, so no Gaston hair shows through its middle
+  // (`bubbleDarkMax` of the disc at 0.7 of its radius under value 64), and a
+  // pale-painted tsum is white where a bubble is not (`bubbleWhiteMax`). Over
+  // 108 bubbles hand-marked on `gaston_138`/`141.mp4` this finds 85 where the
+  // old passes found 65, with about as many false circles (13 against 11).
+  hardParam2: 24,
+  bubbleDarkMax: 0.03,
+  bubbleWhiteMax: 0.4,
   // Bubbles a read found stay known for this long, matched by position within
   // `bubbleMatch` widths on later reads: one that sank under the rim lights
   // and dropped out of the Hough is still there, and only a cancel's tap
@@ -1386,9 +1398,11 @@ function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
 
 /**
  * The bubbles on the board, off a capture that runs `bubbleHem` below the play
- * square -- see `bubbleHem` for the ones the square cuts in half. The same
- * Hough pass as `findGameBubbles`, in play-square scale; a centre below the
- * square has y past `playResizeHeight`, which the taps map like any other.
+ * square -- see `bubbleHem` for the ones the square cuts in half. A Hough
+ * pass like `findGameBubbles`, at `hardParam2`, in play-square scale; a centre
+ * below the square has y past `playResizeHeight`, which the taps map like any
+ * other. Its circles and the band's must look like a bubble inside
+ * (`gastonBubbleLooks`).
  *
  * Then three more sources: a second Hough at `bandParam2` over the bottom
  * `bubbleBandFrom` of the capture, for the bubbles resting on the bowl the
@@ -1408,27 +1422,29 @@ function gastonBubbles(ts: Tsum, board?: BoardPoint[]): GameBubble[] {
   const img = getScreenshotModify(ts.playOffsetX, ts.playOffsetY, ts.playWidth, h,
     ts.playResizeWidth, outH, 100);
   let gray: NativeImage | null = null;
-  let hard: GameBubble[];
-  let band: HoughCircle[];
+  const hard: GameBubble[] = [];
+  const low: GameBubble[] = [];
   const bandFrom = outH * cfg.bubbleBandFrom;
   let gold: Point[] = [];
+  let hardKept: GameBubble[];
+  let lowKept: GameBubble[];
   try {
     gray = buildBoardGray(img);
-    hard = gastonNotButtons(findGameBubbles(gray));
-    band = houghCircles(gray, 3, 1, bc.minDist, bc.param1, cfg.bandParam2, bc.minRadius, bc.maxRadius);
+    const found = houghCircles(gray, 3, 1, bc.minDist, bc.param1, cfg.hardParam2, bc.minRadius, bc.maxRadius);
+    for (let k = 0; k < found.length; k++) { hard.push({ x: found[k].x, y: found[k].y, r: found[k].radius }); }
+    const band = houghCircles(gray, 3, 1, bc.minDist, bc.param1, cfg.bandParam2, bc.minRadius, cfg.bandMaxRadius);
+    for (let k = 0; k < band.length; k++) {
+      if (band[k].y < bandFrom) { continue; }
+      low.push({ x: band[k].x, y: band[k].y, r: band[k].radius, band: true });
+    }
+    hardKept = gastonBubbleLooks(img, gastonNotButtons(hard));
+    lowKept = gastonBubbleLooks(img, gastonNotButtons(low));
     if (board) { gold = gastonGoldCircles(img, board, bandFrom); }
   } finally {
     if (gray != null) { releaseImage(gray); }
     releaseImage(img);
   }
-  const low: GameBubble[] = [];
-  for (let k = 0; k < band.length; k++) {
-    const b = band[k];
-    if (b.y < bandFrom) { continue; }
-    low.push({ x: b.x, y: b.y, r: b.radius, band: true });
-  }
-  const out = hard.slice();
-  const lowKept = gastonNotButtons(low);
+  const out = hardKept.slice();
   for (let k = 0; k < lowKept.length; k++) {
     if (!gastonBubbleNear(lowKept[k], out, bc.minDist)) { out.push(lowKept[k]); }
   }
@@ -1438,6 +1454,54 @@ function gastonBubbles(ts: Tsum, board?: BoardPoint[]): GameBubble[] {
     }
   }
   return gastonRememberBubbles(ts, out);
+}
+
+/**
+ * `circles` less those that do not look like a bubble inside (see
+ * `hardParam2`): too much dark hair, or white, in the disc at 0.7 of the
+ * radius, sampled every 2 units of `img`, the bubble capture.
+ */
+function gastonBubbleLooks(img: NativeImage, circles: GameBubble[]): GameBubble[] {
+  const cfg = GastonConfig;
+  const size = getImageSize(img);
+  const pts: Point[] = [];
+  const per: number[] = [];
+  for (let k = 0; k < circles.length; k++) {
+    const c = circles[k];
+    const r = 0.7 * (c.r || GameBubbleConfig.minRadius);
+    let n = 0;
+    for (let dx = -r; dx <= r; dx += 2) {
+      for (let dy = -r; dy <= r; dy += 2) {
+        if (dx * dx + dy * dy > r * r) { continue; }
+        const x = Math.round(c.x + dx);
+        const y = Math.round(c.y + dy);
+        if (x < 0 || y < 0 || x >= size.width || y >= size.height) { continue; }
+        pts.push({ x: x, y: y });
+        n++;
+      }
+    }
+    per.push(n);
+  }
+  if (pts.length === 0) { return circles; }
+  const colors = getImageColors(img, pts);
+  const out: GameBubble[] = [];
+  let at = 0;
+  for (let k = 0; k < circles.length; k++) {
+    let dark = 0;
+    let white = 0;
+    for (let n = 0; n < per[k]; n++) {
+      const c = colors[at + n];
+      const hi = Math.max(c.r, c.g, c.b);
+      const lo = Math.min(c.r, c.g, c.b);
+      if (hi < 64) { dark++; }
+      if (hi > 217 && hi - lo < 0.25 * hi) { white++; }
+    }
+    at += per[k];
+    if (per[k] === 0 || (dark <= cfg.bubbleDarkMax * per[k] && white <= cfg.bubbleWhiteMax * per[k])) {
+      out.push(circles[k]);
+    }
+  }
+  return out;
 }
 
 /**

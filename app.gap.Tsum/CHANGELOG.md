@@ -530,6 +530,14 @@ release note; they fold back in here when she ships.
   timed off its own hops; the closing chain keeps the cut up front. One the
   whole route would be held for (no bubble left) is not cut: it ends the
   window anyway (`gaston_132.mp4` held two cut to 32 and 36 of 41 and 42).
+- **Gaston reads bubbles better.** Over 108 bubbles marked by hand on
+  `gaston_138`/`141.mp4` the reads found 65 and took 11 other circles for
+  bubbles -- a Gaston or a Stitch at the rim once took a cancel's taps while
+  the real bubble went untapped (`gaston_138.mp4`). Both Hough passes now run
+  lower (`hardParam2` 24, `bandParam2` 14, `bandMaxRadius` 20) and every
+  circle must look like a bubble inside: no dark hair showing through, not
+  white (`bubbleDarkMax`, `bubbleWhiteMax`). The same frames: 85 found, 13
+  others, several of those real bubbles the marking missed.
 - **Gaston's first window of a round clears the other tsums.** It starts on
   an ordinary board, half of it other tsums packed at the bottom, and only
   what the window clears comes back Gaston. On `gaston_140.mp4` the bottom
