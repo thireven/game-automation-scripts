@@ -527,7 +527,13 @@ release note; they fold back in here when she ships.
   before the drag off a 26ms-a-hop estimate; hops take ~22ms, and on
   `gaston_129.mp4` every trimmed chain let go 120-170ms early, ~6 tsums. A
   cancelled chain now lets go at the hop that would pass its slot's end,
-  timed off its own hops; the closing chain keeps the cut up front.
+  timed off its own hops; the closing chain keeps the cut up front. One the
+  whole route would be held for (no bubble left) is not cut: it ends the
+  window anyway (`gaston_132.mp4` held two cut to 32 and 36 of 41 and 42).
+- **Gaston's last cancel lets go 120ms later** (`closeSlackMs`). Over
+  `gaston_130`-`133.mp4` the closing pass was through its refill gate a
+  median 113ms before the antlers left and waited 162ms for them; that time
+  now goes to the two cancelled chains, whose medians sat at 30 and 31.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

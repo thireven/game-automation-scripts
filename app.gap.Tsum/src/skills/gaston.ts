@@ -821,6 +821,12 @@ var GastonConfig = {
   // chrome, and runs this long only in a window where they were never seen.
   holdPastCloseMs: 300,
   antlerReleaseMs: 100,
+  // How much later than a full refill cycle before the antlers go the last
+  // cancel lets go: the closing pass only has to be through its refill gate
+  // by then, not at its grab. Over `gaston_130`-`133.mp4` it was through a
+  // median 113ms early and waited 162ms for them; this is time for the two
+  // cancelled chains instead.
+  closeSlackMs: 120,
   antlerEarlyMs: 700,
   // The antlers at `plainChrome[0]`: red over this and over blue by
   // `antlerRedOverBlue`. Up they read ~(150-185, 110-120, 80-90), a fever
@@ -2102,7 +2108,9 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       }
       // A cancelled chain ends at the hop that would run past `until`, timed
       // off its own hops so far (checks included), keeping `cancelMinChain`.
-      if (!sl.closing && i >= cfg.cancelMinChain) {
+      // Not one the whole route would be held for: that ends the window, and
+      // `gaston_132.mp4` held two such chains cut to 32 and 36 of 41 and 42.
+      if (!sl.closing && i >= cfg.cancelMinChain && !holds(Date.now(), tail + 1)) {
         const hopMs = Math.max(dwellMs, (Date.now() - hopsFrom) / Math.max(1, hops));
         if (Date.now() + hopMs > until) {
           drag.trimmed += tail - i + 1;
@@ -2600,7 +2608,7 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
   const late = passesLeft === 0 && Date.now() + cfg.paintMs + gastonDragEstimate(1) > closeAt - cfg.closeLeadMs;
   const closeWaitMs = late ? gastonAwaitClose(ts, closeAt, holdUntil) : 0;
   // The last cancel's release: its refill lands as the antlers go.
-  const lastRelease = closeAt + cfg.antlerReleaseMs - gastonCycleMs;
+  const lastRelease = closeAt + cfg.antlerReleaseMs - gastonCycleMs + cfg.closeSlackMs;
   // This drag's slot: the cancelled passes left share the time to
   // `lastRelease` evenly, a refill cycle between each, with one pass fewer
   // when a share cannot fit `cancelMinChain`; else it is the closing chain,
