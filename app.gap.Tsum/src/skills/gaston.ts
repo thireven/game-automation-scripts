@@ -731,6 +731,10 @@ var GastonConfig = {
   // bubble is still tapped. Every known bubble counts, the memory's too, and
   // the one kept is one a read saw, out toward the rim (`gastonTapBubbles`).
   bubbleReserve: 1,
+  // A chain this long earns a bubble of its own as it clears, so its cancel
+  // keeps none back: the one it earns is the next cancel's. Kept, the reserve
+  // and that new one left two to four on every board of `gaston_122.mp4`.
+  bubbleEarnChain: 12,
   // A chain under this is not cancelled at all: its pop is over inside
   // `fillMinMs` anyway, and the bubble is worth more to the next long chain.
   cancelMinChain: 10,
@@ -2226,7 +2230,8 @@ function gastonAwaitDrop(ts: Tsum, before: number): number {
 }
 
 /**
- * Tap `bubbles`, all but the reserve (`bubbleReserve`) -- the ones a read saw
+ * Tap `bubbles`, all but the reserve (`bubbleReserve`, none after a chain
+ * that earns its own, `bubbleEarnChain`) -- the ones a read saw
  * first, then the remembered ones; in each, the one over the most leftovers
  * first (`gastonBubbleWorth`), then the one furthest from the chain. The
  * reserve is one a read saw, as far out from the board's middle as there is,
@@ -2256,7 +2261,8 @@ function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): Game
   far.sort(function(p, q) {
     return (p.b.soft ? 1 : 0) - (q.b.soft ? 1 : 0) || (q.b.near || 0) - (p.b.near || 0) || q.d - p.d;
   });
-  if (far.length > 1 && GastonConfig.bubbleReserve > 0) {
+  const reserve = path.length >= GastonConfig.bubbleEarnChain ? 0 : GastonConfig.bubbleReserve;
+  if (far.length > 1 && reserve > 0) {
     const mx = ts.playResizeWidth / 2;
     const my = ts.playResizeHeight / 2;
     let keep = -1;

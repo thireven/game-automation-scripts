@@ -460,6 +460,10 @@ release note; they fold back in here when she ships.
   goes out only if it did not fill: on `gaston_122.mp4` a 23 was retried,
   the retry found nothing, and the spam's budget had run out behind it, so a
   gauge that may have been full was never tapped (`chargeMinMs`).
+- **Gaston's cancel after a long chain keeps no bubble back.** The chain
+  earns one as it clears, and that one is the next cancel's; keeping the
+  reserve as well left two to four on every board of `gaston_122.mp4`. A
+  chain under `bubbleEarnChain` (12) still keeps one.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
