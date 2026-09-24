@@ -83,6 +83,11 @@ var ChainCounterConfig = {
   // digit's plate onto the board, which is why not more.
   plateRing: 3,
   plateFrac: 0.35,
+  // A first look at the plate, before the full read: 16 points on a ring two
+  // pixels out, this share white. On Gaston's boards a style's mask boxes ~7
+  // shapes of a digit's height -- hair, eyes -- and the full read of each took
+  // the read to 76ms (341 at worst) on `gaston_125.mp4`.
+  plateProbeFrac: 0.25,
   // Nothing above this many tsum widths from the square's top is the
   // counter: the fever bonus and the combo counter are drawn there, in the
   // same outline.
@@ -582,11 +587,36 @@ function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number,
   const size = getImageSize(img);
   const hits: ChainDigitHit[] = [];
   const ring = cfg.plateRing;
+  const sized: ContourBox[] = [];
   for (let b = 0; b < boxes.length; b++) {
     const box = boxes[b];
     if (box.height < cfg.boxHeight.min || box.height > cfg.boxHeight.max
         || box.width < cfg.boxWidth.min || box.width > cfg.mergedAspect * box.height) { continue; }
     if (box.y + box.height / 2 < cfg.hudBand * tsumWidth) { continue; }
+    sized.push(box);
+  }
+  // Every box's plate probe in one read (`plateProbeFrac`).
+  const probe: Point[] = [];
+  const at = function(x: number, y: number): Point {
+    return { x: Math.min(size.width - 1, Math.max(0, Math.floor(x))), y: Math.min(size.height - 1, Math.max(0, Math.floor(y))) };
+  };
+  for (let b = 0; b < sized.length; b++) {
+    const box = sized[b];
+    for (let k = 0; k < 4; k++) {
+      const fx = box.x - 2 + (box.width + 3) * k / 3;
+      const fy = box.y - 2 + (box.height + 3) * k / 3;
+      probe.push(at(fx, box.y - 2), at(fx, box.y + box.height + 1), at(box.x - 2, fy), at(box.x + box.width + 1, fy));
+    }
+  }
+  const probed = probe.length > 0 ? getImageColors(img, probe) : [];
+  for (let b = 0; b < sized.length; b++) {
+    const box = sized[b];
+    let plate = 0;
+    for (let k = 0; k < 16; k++) {
+      const c = probed[b * 16 + k];
+      if (Math.min(c.r, c.g, c.b) >= cfg.plateFloor) { plate++; }
+    }
+    if (plate < cfg.plateProbeFrac * 16) { continue; }
     // The box and its frame in one read.
     const x0 = Math.max(0, box.x - ring);
     const y0 = Math.max(0, box.y - ring);

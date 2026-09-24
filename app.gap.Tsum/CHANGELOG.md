@@ -487,6 +487,15 @@ release note; they fold back in here when she ships.
 - **Gaston's last cancel keeps a recovered chain.** Cut to its slot after a
   rewind, `gaston_124.mp4`'s recovered chains went out at 10 and 13 of 45;
   the last cancelled pass's redraw may now run `rewindGraceMs` (500) past it.
+- **Gaston's stall check believes the game's count over the coins.** On
+  `gaston_125.mp4` a chain the game counted at 24 was walked back to route 12
+  on a coin read that missed. A coin stall is now overruled when the count is
+  within `countSlack` (3) of the finger (`countKept`), and a count past the
+  last coin moves the walk back up to it, keeping what is linked.
+- **The chain counter is quick again.** Its colour masks box ~7 digit-sized
+  shapes each on a Gaston board, and the full plate read of every one took a
+  read to 76ms (341 at worst); 16 plate points per box, in one read, drop
+  most of them first (`plateProbeFrac`).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
