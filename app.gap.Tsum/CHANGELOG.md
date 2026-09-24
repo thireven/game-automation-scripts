@@ -530,6 +530,14 @@ release note; they fold back in here when she ships.
   timed off its own hops; the closing chain keeps the cut up front. One the
   whole route would be held for (no bubble left) is not cut: it ends the
   window anyway (`gaston_132.mp4` held two cut to 32 and 36 of 41 and 42).
+- **Gaston's chains stuck at the head start over from the other end.** A
+  tsum the game links off the route beside the head leaves the chain stuck
+  at 1-3; walking back cannot undo it, and redrawing the same route stalled
+  the same way -- 55 of 80 such stalls to `gaston_136.mp4` ended the drag at
+  1, most of them the window's first cancel. The finger now comes up and
+  goes down on the route's far end (`restartBelow`, `restartSkip`), and the
+  first stall check runs at the eighth tsum, not the twelfth
+  (`checkMinSpan`).
 - **Gaston's passes pass over a lookalike.** A game box can hold a second
   dark-haired tsum that clusters with Gaston by colour, and a finger on one
   paints only its own kind: `gaston_134.mp4`'s heads painted 6-17 of 23-30,

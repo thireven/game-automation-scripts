@@ -711,6 +711,9 @@ var GastonConfig = {
   coinLag: 2,
   // Route index of the first tsum that can carry a coin.
   coinFrom: 4,
+  // The fewest tsums a check reads: at `checkEvery` 8 that is route 4-6, the
+  // first check a stall at the head can meet (it waited for 12 before).
+  checkMinSpan: 3,
   // Where the walk-back looks for the last coin from: the dots can end at
   // the second link. Searched from `coinFrom`, a stall at the fourth or fifth
   // tsum found none, walked back to the head and redrew the same stall, and
@@ -735,6 +738,14 @@ var GastonConfig = {
   coinStep: 2,
   coinShare: 0.2,
   maxRewinds: 3,
+  // A first stall with no more than `restartBelow` linked is stuck at the
+  // head, on a tsum linked off the route there that no walk back undoes: the
+  // same route redrawn stalled the same way, and 55 of 80 such stalls to
+  // `gaston_136.mp4` ended the drag at 1 -- most of them first passes. The
+  // finger comes up and starts over from the route's far end, less the
+  // `restartSkip` tsums round the old head, whose little chain may pop.
+  restartBelow: 3,
+  restartSkip: 3,
   // A stall is mostly the route's, not chance -- on `gaston_111.mp4` all
   // three redraws stalled where the first had, and on `gaston_114.mp4` the
   // last coin had been linked early, from a tsum three before it, so the
@@ -1955,8 +1966,8 @@ function gastonCoins(img: NativeImage, path: TsumPath, from: number, to: number)
 function gastonStalled(ts: Tsum, path: TsumPath, at: number, end: boolean, drag: GastonDrag): number {
   const cfg = GastonConfig;
   const last = end ? at : at - cfg.coinLag;
-  const first = last - cfg.checkSpan + 1;
-  if (first < cfg.coinFrom) { return -1; }
+  const first = Math.max(cfg.coinFrom, last - cfg.checkSpan + 1);
+  if (last - first + 1 < cfg.checkMinSpan) { return -1; }
   const img = ts.playScreenshotSquare();
   try {
     const span = gastonCoins(img, path, first, last);
@@ -2199,6 +2210,27 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
             path = path.slice(0, back + 1) as TsumPath;
             drag.path = path;
             break;
+          }
+          // Stuck at the head: up, and down again on the route's far end.
+          if (linked <= cfg.restartBelow && drag.rewinds.length === 0
+              && tail - cfg.restartSkip + 1 >= cfg.minChain) {
+            drag.rewinds.push([i, -1]);
+            down = false;
+            tapUp(finger.x, finger.y, cfg.releaseMs);
+            path = path.slice(cfg.restartSkip, tail + 1).reverse() as TsumPath;
+            pts.length = 0;
+            for (let k = 0; k < path.length; k++) { pts.push(gastonToScreen(ts, path[k])); }
+            tail = pts.length - 1;
+            drag.path = path;
+            finger = pts[0];
+            tapDown(finger.x, finger.y, cfg.grabMs);
+            down = true;
+            moveTo(finger.x, finger.y, dwellMs, cfg.pacedMoves);
+            settled += cfg.releaseMs + cfg.grabMs + dwellMs;
+            lastBack = -1;
+            lastCount = null;
+            i = 1;
+            continue;
           }
           for (let k = i - 1; k >= to; k--) { hop(k + 1, k); }
           if (next !== null) {
