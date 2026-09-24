@@ -530,6 +530,10 @@ release note; they fold back in here when she ships.
   timed off its own hops; the closing chain keeps the cut up front. One the
   whole route would be held for (no bubble left) is not cut: it ends the
   window anyway (`gaston_132.mp4` held two cut to 32 and 36 of 41 and 42).
+- **Gaston's last cancel redraws a stall while its slot has room**
+  (`lastRewindRoomMs`). A cancelled chain releases at a stall once 8 are
+  linked; for the last cancel the time it frees only waits for the antlers,
+  and `gaston_138`/`139.mp4` let five go at 13-18 with 0.2-0.9s unused.
 - **Gaston's chains stuck at the head start over from the other end.** A
   tsum the game links off the route beside the head leaves the chain stuck
   at 1-3; walking back cannot undo it, and redrawing the same route stalled

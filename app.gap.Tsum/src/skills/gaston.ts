@@ -729,8 +729,12 @@ var GastonConfig = {
   // coin stall is believed.
   countSlack: 3,
   // A cancelled pass linked this far releases at a stall rather than
-  // rewinding (see the stall branch in `gastonLinkChain`).
+  // rewinding (see the stall branch in `gastonLinkChain`) -- bar the last
+  // cancel with this much of its slot left, grace included: time it saves
+  // there only waits for the antlers. `gaston_138`/`139.mp4` let five second
+  // cancels go at 13-18 with 0.2-0.9s of slot unused.
   stopFrom: 8,
+  lastRewindRoomMs: 600,
   coinSettleMs: 80,
   // The coin test: a (2*coinGrid+1)^2 grid at `coinStep` round the planned
   // centre, a tsum carrying one when `coinShare` of it is gold (hue 36-60,
@@ -2204,7 +2208,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           // A count under the last coin is a misread (`gaston_137.mp4` read
           // 1 on a chain of 7 and restarted it).
           const linked = count !== null ? Math.max(count, back + 1) : back + 1;
-          const settle = !sl.closing && (linked >= cfg.stopFrom || drag.rewinds.length > 0);
+          const room = sl.last && until + cfg.rewindGraceMs - Date.now() >= cfg.lastRewindRoomMs;
+          const settle = !sl.closing && (drag.rewinds.length > 0 || (linked >= cfg.stopFrom && !room));
           const flat = sl.closing && count !== null && lastCount !== null && count <= lastCount;
           if (count !== null) { lastCount = count; }
           if (late || settle || flat || (again && next === null)) {
