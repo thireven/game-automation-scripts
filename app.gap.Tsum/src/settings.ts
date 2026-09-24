@@ -1227,6 +1227,32 @@ function takeStoredSettings(): void {
     }
 }
 
+/**
+ * Writes the whole form to the store when the store is missing any row of it.
+ *
+ * A fresh device, or a build that added a setting, leaves the store without
+ * those rows, and nothing writes them until a control is changed. The Quick Bar
+ * draws from the store while no run is going, so it would show nothing for
+ * them. `Presets` tells it the store moved, as a preset load does.
+ */
+function completeStoredSettings(): void {
+    if (localStorage === undefined) {
+        return;
+    }
+    var stored = storedSettings();
+    var form = collectSettingValues(settings);
+    for (var key in form) {
+        if (!(key in stored)) {
+            recordSettings(settings);
+            var iface = bridge();
+            if (iface !== undefined && iface.broadcast !== undefined) {
+                iface.broadcast(PageMessage.Presets);
+            }
+            return;
+        }
+    }
+}
+
 /** The shared store as an object; empty when it holds nothing usable. */
 function storedSettings(): { [key: string]: SettingValue } {
     if (localStorage === undefined) {
@@ -4100,6 +4126,7 @@ function bootstrap(): void {
     checkShareSlots();
     loadSettings(settings);
     renderPage();
+    completeStoredSettings();
 
     // The last word on a debounced write: the panel can go away between a tap
     // and the timer, and the host closes it in ways this page never hears about
