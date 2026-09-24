@@ -173,7 +173,6 @@ var GastonConfig = {
   //
   // One MOVE per tsum, queued: the game links along the line between MOVEs,
   // and `crossAvoid` keeps that line clear of other tsums.
-  // The Debug tab's "Drag dwell" overrides `dwellMs` when set (`gastonDwellMs`).
   grabMs: 10,
   dwellMs: 30,
   releaseMs: 10,
@@ -476,15 +475,10 @@ function gastonWatchAntlers(ts: Tsum): void {
   gastonAntlers.up = up;
 }
 
-/** The dwell on each tsum of a drag: the Debug tab's, when set, else `dwellMs`. */
-function gastonDwellMs(): number {
-  return Config.dragDwellMs > 0 ? Config.dragDwellMs : GastonConfig.dwellMs;
-}
-
 /** About how long a drag over `chain` tsums takes. */
 function gastonDragEstimate(chain: number): number {
   const cfg = GastonConfig;
-  return cfg.grabMs + cfg.releaseMs + chain * (gastonDwellMs() + cfg.hopOverMs);
+  return cfg.grabMs + cfg.releaseMs + chain * (cfg.dwellMs + cfg.hopOverMs);
 }
 
 // --- Reading the board ------------------------------------------------------
@@ -1212,7 +1206,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   const base = oracle !== null ? gastonFloorRead(ts, oracle.board) : null;
   const from = Date.now();
   drag.startedAt = from;
-  const dwellMs = gastonDwellMs();
+  const dwellMs = GastonConfig.dwellMs;
   const head = gastonToScreen(ts, path[0]);
   tapDown(head.x, head.y, cfg.grabMs);
   // The host never lifts the finger itself, so a throw must, or it drags on.
@@ -1645,7 +1639,7 @@ function gastonCrossesBubble(path: TsumPath, bubbles: GameBubble[]): boolean {
 /** A plain drag at the window's pace: no paint read, no counter, no hold. */
 function gastonDrawPlain(ts: Tsum, path: TsumPath): void {
   const cfg = GastonConfig;
-  const dwellMs = gastonDwellMs();
+  const dwellMs = GastonConfig.dwellMs;
   let p = gastonToScreen(ts, path[0]);
   tapDown(p.x, p.y, cfg.grabMs);
   moveTo(p.x, p.y, dwellMs);

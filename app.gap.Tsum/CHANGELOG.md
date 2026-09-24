@@ -83,10 +83,7 @@ release note; they fold back in here when she ships.
   `registeredLate` a held chain's count again before its release; the play
   loop's chains log `board.chainDrawn` under a skill that sets
   `SkillHandler.readsChainCounter`, which Gaston does. Nine recordings of his
-  drag were tuned without this number ever being in the log; the dwell is the
-  first thing to measure with it, and **`SettingKey.DragDwellMs` on the Debug
-  tab (never shared)** sets it for those drags without a rebuild -- 0 keeps
-  each drag's own. Never run on a device.
+  drag were tuned without this number ever being in the log.
 - **`SettingKey.BoardModel` and `SettingKey.ClusterFragments`, on the Debug
   tab, never shared.** Two board-scan experiments, both off by default and
   neither run on a device, measured on `gaston_8.mp4`'s paint-labelled boards
@@ -373,7 +370,7 @@ release note; they fold back in here when she ships.
   the finger on any throw.
 - **Gaston's play-loop rules start at his first activation.** `chainLimits`
   (one uncapped chain a scan), `extraClusterSlots` and `readsChainCounter`
-  (the Debug dwell and a counter read per chain) held from the round's start,
+  (a counter read per chain) held from the round's start,
   so the loop chained almost only Gaston before the skill had ever fired, and
   `gaston_112.mp4` redrew the same three short chains for 15s. All three now
   follow `gastonActivated`; `SkillHandler` takes a function for the last two.

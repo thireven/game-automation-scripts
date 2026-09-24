@@ -180,8 +180,6 @@ declare const enum UiText {
   BoardModelRadial = 'boardModel.radial',
   SettingClusterFragments = 'setting.clusterFragments',
   SettingClusterFragmentsHelp = 'setting.clusterFragments.help',
-  SettingDragDwell = 'setting.dragDwell',
-  SettingDragDwellHelp = 'setting.dragDwell.help',
   SettingDebugGame = 'setting.debugGame',
   SettingDebugGameHelp = 'setting.debugGame.help',
   SettingWalkthrough = 'setting.walkthrough',

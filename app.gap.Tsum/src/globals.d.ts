@@ -1129,8 +1129,6 @@ interface TsumConfig {
   boardModel: BoardModel;
   /** Merge the fragments a scan splits off a colour back into it -- see `mergeClusterFragments`. */
   clusterFragments: boolean;
-  /** The Debug tab's drag dwell for the measured drags, ms; 0 keeps each drag's own. */
-  dragDwellMs: number;
   /**
    * Page-history frames an issue report copies, and so the number the router
    * keeps on disk (`PageRouter.shotDepth`).

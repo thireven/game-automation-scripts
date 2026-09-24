@@ -745,19 +745,6 @@ var tabs: TabSpec[] = [
                         neverShared: true
                     },
                     {
-                        // The dwell experiment the chain counter is for: three
-                        // values in one sitting, the log's `registered` the
-                        // judge. See chainCounter.ts.
-                        key: SettingKey.DragDwellMs,
-                        title: UiText.SettingDragDwell,
-                        help: UiText.SettingDragDwellHelp,
-                        default: 0,
-                        step: 2,
-                        max: 60,
-                        min: 0,
-                        neverShared: true
-                    },
-                    {
                         key: SettingKey.DebugGame,
                         title: UiText.SettingDebugGame,
                         help: UiText.SettingDebugGameHelp,

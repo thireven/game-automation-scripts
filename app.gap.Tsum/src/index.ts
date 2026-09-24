@@ -215,8 +215,6 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // hand-written start() command, plays on the model every round has.
   Config.boardModel = settings.boardModel === BoardModel.Radial ? BoardModel.Radial : BoardModel.Chroma;
   Config.clusterFragments = settings.clusterFragments === true;
-  Config.dragDwellMs = typeof settings.dragDwellMs === 'number' && settings.dragDwellMs > 0
-    ? Math.min(settings.dragDwellMs, 60) : 0;
   Config.maxChain = settings.maxChain;
   // Bounded here as well as in the UI, because a share code clamps to *its*
   // version's range and a hand-edited start() command has no range at all --
