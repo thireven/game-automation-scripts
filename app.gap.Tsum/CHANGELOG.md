@@ -506,13 +506,12 @@ release note; they fold back in here when she ships.
   stall (the board sat pale for 3s after a close the fever ended at), and the
   retry now judges the gauge on the game's count, not the route drawn
   (`gaston_126.mp4`: 42 drawn, 6 linked, no retry).
-- **Gaston's window waits for a board it cannot see open.** A charge fired
-  inside the last closing chain's pop leaves the board full through the
-  animation, so the count never dips and the gate opened on its 3.5s floor --
-  into that pop and, often, a fever starting. Every such window of
-  `gaston_124`-`127.mp4` drew 0-11 on its first pass (dead heads, a leftover
-  clear spending the bubbles); seen boards opened at 4.5-5.3s. A gate full on
-  every read now holds to `openBlindMs` (4600), logged as `openBlind`.
+- **Gaston's window opens no earlier than 4.6s.** The skill's own drop and
+  the last closing chain's pop both play out after the animation, so a count
+  full at ~3.8s was a board about to clear: those windows drew 0-14 on their
+  first pass (dead heads, short routes, a fever starting). Over 637 windows
+  to `gaston_129.mp4`, gates that left before 4.6s drew a median first chain
+  of 6-11, those from 4.8s on 23-24. The gate's floor is now `openFloorMs`.
 - **Gaston's cancelled chains let go at their last tsum.** Each waited
   ~170-200ms there -- the end coin check's 80ms settle, then the count's
   60ms settle and read -- for a stall it would release as it stood anyway
@@ -524,6 +523,11 @@ release note; they fold back in here when she ships.
   of those drawn and 39% of the stalls, at 5-8 times the rate of the rest;
   replayed over 774 logged boards the cap costs 1.7 tsums of plan, mostly
   past what the slots draw.
+- **Gaston's cancelled chains run to the end of their slot.** They were cut
+  before the drag off a 26ms-a-hop estimate; hops take ~22ms, and on
+  `gaston_129.mp4` every trimmed chain let go 120-170ms early, ~6 tsums. A
+  cancelled chain now lets go at the hop that would pass its slot's end,
+  timed off its own hops; the closing chain keeps the cut up front.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
