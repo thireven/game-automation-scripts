@@ -695,6 +695,11 @@ var GastonConfig = {
   coinLag: 2,
   // Route index of the first tsum that can carry a coin.
   coinFrom: 4,
+  // Where the walk-back looks for the last coin from: the dots can end at
+  // the second link. Searched from `coinFrom`, a stall at the fourth or fifth
+  // tsum found none, walked back to the head and redrew the same stall, and
+  // ended the drag at 1 -- 1 drag in 10-20 on `gaston_121`-`123.mp4`.
+  coinBackFrom: 2,
   coinSettleMs: 80,
   // The coin test: a (2*coinGrid+1)^2 grid at `coinStep` round the planned
   // centre, a tsum carrying one when `coinShare` of it is gold (hue 36-60,
@@ -1754,7 +1759,7 @@ interface GastonDrag {
   closing: boolean;
   /** How long a closing drag stood still through the close, 0 when it did not cross it. */
   pausedMs: number;
-  /** Tsums cut off the route's end to fit its slot (`nextPassMs`, `closeChainMax`, `closeLeadMs`). */
+  /** Tsums cut off the route's end to fit its slot (`nextPassMs`, `closeChainMax`, `closeLeadMs`), a redraw's too. */
   trimmed: number;
 }
 
@@ -1916,9 +1921,9 @@ function gastonStalled(ts: Tsum, path: TsumPath, at: number, end: boolean, drag:
     let back = -1;
     if (span.indexOf(true) < 0) {
       back = 0;
-      const before = first > cfg.coinFrom ? gastonCoins(img, path, cfg.coinFrom, first - 1) : [];
+      const before = first > cfg.coinBackFrom ? gastonCoins(img, path, cfg.coinBackFrom, first - 1) : [];
       for (let k = before.length - 1; k >= 0; k--) {
-        if (before[k]) { back = cfg.coinFrom + k; break; }
+        if (before[k]) { back = cfg.coinBackFrom + k; break; }
       }
     }
     if (end) {
@@ -2081,11 +2086,13 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           // came back on every redraw of `gaston_114.mp4`. From there a fresh
           // route clear of what is linked (on a repeat, of the failing tsum
           // too), else the old one; a repeat with no route stops the drag, and
-          // so does a walk back that would run into the close's freeze.
+          // so does a walk back that would run into the close's freeze. Back
+          // at the head, the first redraw is the old route (a random miss),
+          // a repeat one clear of the route's second tsum.
           const again = lastBack >= 0 && back <= lastBack + 1;
           lastBack = back;
           const to = back > 0 ? back - 1 : 0;
-          const next = to > 0 ? replan(to, again ? back + 1 : back) : null;
+          const next = to > 0 || again ? replan(to, again ? back + 1 : back) : null;
           const late = Date.now() < closeAt && Date.now() + 2 * (i - to) * perHop > closeAt - cfg.closeLeadMs;
           if (late || (again && next === null)) {
             drag.rewinds.push([i, back, 0]);
@@ -2105,6 +2112,20 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
             drag.path = path;
           } else {
             drag.rewinds.push([i, to]);
+          }
+          // A cancelled pass's redraw is cut to what still fits its slot, as
+          // the first draw was: `gaston_123.mp4`'s rewinds ran three passes
+          // 0.4-1.6s past theirs, and each window lost its second cancel.
+          if (!sl.closing) {
+            const room = Math.max(0, Math.floor((sl.end - Date.now() - cfg.coinSettleMs) / perHop));
+            const keepTail = Math.max(to + room, cfg.cancelMinChain - 1);
+            if (keepTail < tail) {
+              drag.trimmed += tail - keepTail;
+              tail = keepTail;
+              path = path.slice(0, tail + 1) as TsumPath;
+              pts.length = tail + 1;
+              drag.path = path;
+            }
           }
           i = to + 1;
           continue;

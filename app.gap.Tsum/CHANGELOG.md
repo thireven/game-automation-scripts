@@ -464,6 +464,14 @@ release note; they fold back in here when she ships.
   earns one as it clears, and that one is the next cancel's; keeping the
   reserve as well left two to four on every board of `gaston_122.mp4`. A
   chain under `bubbleEarnChain` (12) still keeps one.
+- **Gaston's stall recovery keeps to the pass's slot and the chain's head.**
+  On `gaston_123.mp4` rewinds ran three cancelled passes 0.4-1.6s past their
+  slots, and each of those windows lost its second cancel; a redraw is now
+  cut to what still fits, as the first draw is. A stall in the first four
+  tsums found no coin (they carry dots), walked back to the head, redrew the
+  same stall and stopped at 1 -- 1 drag in 10-20. The last coin is now looked
+  for from the second tsum (`coinBackFrom`), and a repeat stall at the head
+  replans clear of the route's second tsum.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
