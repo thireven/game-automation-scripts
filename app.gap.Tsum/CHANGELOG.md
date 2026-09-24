@@ -530,6 +530,13 @@ release note; they fold back in here when she ships.
   timed off its own hops; the closing chain keeps the cut up front. One the
   whole route would be held for (no bubble left) is not cut: it ends the
   window anyway (`gaston_132.mp4` held two cut to 32 and 36 of 41 and 42).
+- **Gaston's passes pass over a lookalike.** A game box can hold a second
+  dark-haired tsum that clusters with Gaston by colour, and a finger on one
+  paints only its own kind: `gaston_134.mp4`'s heads painted 6-17 of 23-30,
+  the route ran over the lookalikes, the read then took the real Gastons for
+  leftovers, and the whole round drew 3-17 first chains. A head that paints
+  under `strayPaint` (12) and under half its cluster is lifted, and the next
+  start is tried clear of everything it painted (`stray`).
 - **Gaston's last cancel lets go 120ms later** (`closeSlackMs`). Over
   `gaston_130`-`133.mp4` the closing pass was through its refill gate a
   median 113ms before the antlers left and waited 162ms for them; that time

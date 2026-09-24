@@ -585,6 +585,13 @@ var GastonConfig = {
   paintRise: 12,
   paintBlackoutMs: 1000,
   deadRetries: 2,
+  // A head that paints fewer than this, and under half its colour cluster, is
+  // taken for a lookalike: lifted like a dead one, and the next start is
+  // tried clear of everything it painted. A box can hold a second dark-haired
+  // tsum that clusters with Gaston (`gaston_134.mp4`); its heads painted only
+  // their own kind, 6-17 of 23-30, the carry then read the real Gastons as
+  // leftovers, and the whole round drew 3-17 first chains.
+  strayPaint: 12,
   // A pass with no read leaves out every circle within this of a leftover the
   // last read found, in tsum widths: the pile settles after a cancel, but the
   // leftovers sit under the Gastons and mostly stay put.
@@ -813,7 +820,7 @@ var GastonConfig = {
   // every window one cancel and a hold on `gaston_116.mp4`, the hold idle a
   // second into the close.
   nextPassMs: 1500,
-  closeChainMax: 28,
+  closeChainMax: 32,
   // How long past the close the held chain's finger stays down before the
   // release. The close is an estimate (see `durationMs`), and a release inside
   // the window is the whole charge lost, so this errs late. Now only the
@@ -1759,6 +1766,8 @@ interface GastonDrag {
   releasedAt: number;
   /** The paint read lifted the finger: the head painted nothing, so it was not Gaston. */
   dead: boolean;
+  /** The paint read lifted the finger on a head that painted too few (`strayPaint`). */
+  stray: boolean;
   /** The circles the paint read found to be Gaston, null when it did not run. */
   gastons: BoardPoint[] | null;
   /** The read's rise: the median over the circles that rose, or over every circle when none did. Null when it did not run. */
@@ -1808,6 +1817,8 @@ interface GastonSlot {
 interface GastonOracle {
   board: BoardPoint[];
   plan: (head: BoardPoint, gastons: BoardPoint[]) => TsumPath | null;
+  /** A head painting fewer than this (the head included) is lifted as a lookalike (`strayPaint`); 0 never. */
+  strayBelow: number;
 }
 
 /** The lower median of `values`. */
@@ -1989,7 +2000,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     holdUntil: number, closeAt: number, slot: (now: number) => GastonSlot, oracle: GastonOracle | null): GastonDrag {
   const drag: GastonDrag = {
     path: [] as TsumPath, ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0,
-    dead: false, gastons: null, rise: null, rises: null, leftovers: [], count: null, countLate: null,
+    dead: false, stray: false, gastons: null, rise: null, rises: null, leftovers: [], count: null, countLate: null,
     rewinds: [], stallCounts: [], countKept: 0, coins: null, trimmed: 0, planned: null, startedAt: 0, slotEnd: 0, closing: false, pausedMs: 0,
   };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
@@ -2029,9 +2040,11 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       drag.gastons = gastons;
       drag.rise = gastonMedian(rises.length > 0 ? rises : all);
       drag.rises = all;
-      const planned = gastons.length + 1 >= cfg.minChain ? oracle.plan(path[0], gastons) : null;
+      const stray = gastons.length + 1 < oracle.strayBelow;
+      const planned = !stray && gastons.length + 1 >= cfg.minChain ? oracle.plan(path[0], gastons) : null;
       if (planned === null) {
         drag.dead = gastons.length + 1 < cfg.minChain;
+        drag.stray = stray && !drag.dead;
         // A head that painted nothing said nothing about the rest.
         if (drag.dead) { drag.leftovers = []; }
         drag.releasedAt = Date.now();
@@ -2714,6 +2727,8 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       plan: function(head, found) {
         return gastonChainFrom(head, gastonFreeBoard(found, bubbles, cfg.paintedHudBand), bubbles);
       },
+      // Not on the last try: that one draws what it found.
+      strayBelow: lifted < cfg.deadRetries ? Math.min(cfg.strayPaint, Math.floor(gastons.length / 2)) : 0,
     } : null;
     // Whether the chain drawn is the closing one, asked at its head (see the
     // doc comment). No bubble: its pop runs `popPerTsumMs` a tsum and the
@@ -2742,7 +2757,8 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     // re-enter this choreography.
     const drag = gastonLinkChain(ts, path, holds, holdUntil, closeAt, slot, oracle);
     // What the read learned is the window's until the next read.
-    if (drag.gastons !== null && !drag.dead) { gastonCarry = drag.leftovers; gastonCarryRead = true; }
+    // Not a lookalike's: its leftovers are the real Gastons.
+    if (drag.gastons !== null && !drag.dead && !drag.stray) { gastonCarry = drag.leftovers; gastonCarryRead = true; }
     // A drag that drew nothing cleared nothing, so there is no pop to cut short.
     const released = !drag.held && drag.path.length > 0;
     // A short chain, or a board of leftovers: clear more of it before the
@@ -2808,9 +2824,10 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       // The head the drag started on, as an index into `board`, and which
       // try this is.
       head: board.indexOf(path[0]), retry: lifted,
-      // The paint read: the rise it read (null when it did not run) and
-      // whether it lifted the finger for a head that was not Gaston.
-      rise: drag.rise, dead: drag.dead,
+      // The paint read: the rise it read (null when it did not run), whether
+      // it lifted the finger for a head that was not Gaston, and whether for
+      // one that painted too few to be (`strayPaint`).
+      rise: drag.rise, dead: drag.dead, stray: drag.stray,
       // How long the drag was held back from a fever switch, whether the pass
       // scanned again after it (`replanAfterWaitMs`), and whether the backdrop
       // was up when it went out.
@@ -2853,6 +2870,10 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       if (drag.dead) { blank++; }
       if (lifted <= cfg.deadRetries && ts.isRunning) {
         avoid.push({ x: path[0].x, y: path[0].y });
+        // A lookalike's kind is out of the next start too.
+        if (drag.stray && drag.gastons !== null) {
+          for (let k = 0; k < drag.gastons.length; k++) { avoid.push({ x: drag.gastons[k].x, y: drag.gastons[k].y }); }
+        }
         continue;
       }
     }
