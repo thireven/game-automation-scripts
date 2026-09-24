@@ -3245,8 +3245,12 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
     const popping = clearingLate !== null && clearingLate > 0 && clearingLate < clearing ? clearingLate : clearing;
     // At least `chargeMinMs`: a retry that drew nothing can outlast the pop,
     // and a gauge that filled meanwhile still wants its tap.
-    spamUntil = Math.max(chargeFrom + cfg.chargeMinMs, Math.min(chargeFrom + cfg.gaugeWaitMs,
-      releasedAt + popping * cfg.popPerTsumMs + cfg.chargeTailMs));
+    // A converting window's gauge starts empty -- no earlier pop filled it --
+    // so it spams to `gaugeWaitMs`: `gaston_145.mp4`'s first window let go at
+    // 3.7s and the play loop found the gauge full 0.3s later.
+    spamUntil = convert ? chargeFrom + cfg.gaugeWaitMs
+      : Math.max(chargeFrom + cfg.chargeMinMs, Math.min(chargeFrom + cfg.gaugeWaitMs,
+        releasedAt + popping * cfg.popPerTsumMs + cfg.chargeTailMs));
     charge = gastonSpamSkill(ts, spamUntil);
   }
   const firedAt = charge.ready ? Date.now() : 0;

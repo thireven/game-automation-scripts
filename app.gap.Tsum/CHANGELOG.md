@@ -550,6 +550,8 @@ release note; they fold back in here when she ships.
   5-chain), so the time left goes to the paint read: a finger on the densest
   leftover paints its kind, and the chain is planned over those, up to
   `convertReads` (3) kinds a pass (`gastonPaintedLeftovers`).
+  Its charge spams the whole `gaugeWaitMs`: the gauge starts empty there,
+  and `gaston_145.mp4`'s first window stopped at 3.7s with it 0.3s from full.
 - **Gaston's last cancel redraws a stall while its slot has room**
   (`lastRewindRoomMs`). A cancelled chain releases at a stall once 8 are
   linked; for the last cancel the time it frees only waits for the antlers,
