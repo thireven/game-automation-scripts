@@ -993,6 +993,16 @@ var GastonConfig = {
   mixedBelow: 15,
   mixedFrom: 15,
   mixedChainMs: 1000,
+  // The window the play loop opens -- a round's first, or the one after a
+  // charge that did not fire -- starts on an ordinary board: half of it
+  // other tsums, packed under his at the bottom, and only what the window
+  // clears comes back Gaston. Its cancelled passes each clear other colours
+  // after their Gaston chain for this long, past their slot, while the
+  // refill still lands before the close (`noCancelTailMs`). On
+  // `gaston_140.mp4` the bottom half never cleared, the closing chain found
+  // 20 Gastons and drew 16, and the charge never came: 4 of 25 first windows
+  // to then failed to charge, and most of the rest took 2-4s to.
+  convertChainMs: 1500,
 };
 
 // The `roundStartedAt` of the round whose first activation has gone out, or 0.
@@ -2643,7 +2653,7 @@ function gastonAwaitClose(ts: Tsum, closeAt: number, until: number): number {
  * once rather than waiting out a refill that is not coming.
  */
 function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: number, closeAt: number,
-    fullBoard: boolean, paintUntil: number): GastonPass {
+    fullBoard: boolean, paintUntil: number, convert: boolean): GastonPass {
   const cfg = GastonConfig;
   const enteredAt = Date.now();
   // Only a round-over page ends the window, as in the play loop: the last
@@ -2807,10 +2817,13 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     // His tsums are the read's where it ran, else the pass's.
     const his = drag.gastons !== null ? drag.gastons : source;
     // Short as planned, not as cut to its slot; and only inside the slot.
-    const mixed = released && cfg.mixedChainMs > 0 && (drag.path.length + drag.trimmed < cfg.mixedBelow
+    // A converting window (`convertChainMs`) always, and past the slot.
+    const mixed = released && cfg.mixedChainMs > 0 && (convert || drag.path.length + drag.trimmed < cfg.mixedBelow
       || gastonLeftovers(board, his).filter(function(p) { return drag.path.indexOf(p) < 0; }).length >= cfg.mixedFrom);
-    const extra = mixed ? gastonMixedChains(ts, board, bubbles, drag.path, his,
-      Math.min(drag.releasedAt + cfg.mixedChainMs, refillBy - cfg.noCancelTailMs, drag.slotEnd)) : [];
+    const mixedUntil = convert
+      ? Math.min(drag.releasedAt + cfg.convertChainMs, refillBy - cfg.noCancelTailMs)
+      : Math.min(drag.releasedAt + cfg.mixedChainMs, refillBy - cfg.noCancelTailMs, drag.slotEnd);
+    const extra = mixed ? gastonMixedChains(ts, board, bubbles, drag.path, his, mixedUntil) : [];
     // When the last of it pops if nothing cancels it: the extras pop from
     // their own releases, the last of them about now.
     const extraAt = Date.now() - drag.releasedAt;
@@ -2934,14 +2947,17 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
  * the passes and the spam that fires the next activation. Answers when that
  * activation went (the read that saw the gauge full), or 0 when the charge
  * never filled it, the held chain was too short to try, or the round ended.
+ * `charged`: opened by the last window's charge, not by the play loop.
  */
-function gastonWindow(ts: Tsum, level: number, t0: number): number {
+function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): number {
   const cfg = GastonConfig;
   // The earliest the window can close, for `stillRunning`: the animation's
   // floor and the window itself.
   gastonWindowRound = ts.roundStartedAt;
   gastonWindowUntil = t0 + cfg.openMinMs + cfg.durationMs[level - 1];
   gastonWindowT0 = t0;
+  // Opened by the play loop: a board to convert (`convertChainMs`).
+  const convert = !charged && cfg.convertChainMs > 0;
   if (gastonCycleRound !== ts.roundStartedAt) {
     gastonCycleRound = ts.roundStartedAt;
     gastonCycleMs = cfg.nextPassMs;
@@ -3014,7 +3030,7 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   const biggest: number[] = [];
   while (ts.isRunning) {
     const closingPass = passesLeft === 0;
-    const pass = gastonPass(ts, refillBy, passesLeft, holdUntil, closeAt, fullBoard, paintUntil);
+    const pass = gastonPass(ts, refillBy, passesLeft, holdUntil, closeAt, fullBoard, paintUntil, convert);
     passes++;
     dead += pass.dead;
     if (!pass.onBoard) { onBoard = false; break; }
@@ -3170,6 +3186,8 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     heldMs: heldMs,
     // Closing chains drawn after one that stopped short of `gaugeChain`.
     closeRetries: retries,
+    // Opened by the play loop, so its passes cleared other colours (`convertChainMs`).
+    convert: convert,
     releaseLeadMs: clearing > 0 ? releasedAt - (gastonFever.antlersOffAt > t0 ? gastonFever.antlersOffAt : closesAt) : 0,
     // When the antlers came up and went, from the tap (0: not seen), and the
     // close the window planned on (`antlerMs`).
@@ -3236,6 +3254,8 @@ registerSkill({
   afterActivate: function(ts, _board, activatedAt) {
     const cfg = GastonConfig;
     let t0 = activatedAt || Date.now();
+    // The first window here was opened by the play loop, not a charge.
+    let charged = false;
     // From here to the tally the bubbles are the window's. See `claimsBubbles`.
     gastonClaimRound = ts.roundStartedAt;
     const level = Math.min(Math.max(ts.skillLevel, 1), cfg.durationMs.length);
@@ -3245,8 +3265,9 @@ registerSkill({
     // the window is anchored at the read. What `useSkill` does at every
     // activation is done here too, and logged the same, marked `charged`.
     while (ts.isRunning) {
-      const firedAt = gastonWindow(ts, level, t0);
+      const firedAt = gastonWindow(ts, level, t0, charged);
       if (firedAt === 0) { break; }
+      charged = true;
       logInfo(Log.Skill.Use, { skill: ts.skillType, skillLevel: ts.skillLevel, settleMs: 0,
         charged: true });
       ts.holdBubblesAfterSkill(firedAt);
