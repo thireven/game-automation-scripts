@@ -52,7 +52,7 @@ const local = (...parts) => path.join(projectDir, ...parts);
 const nodeBin = process.execPath;
 const tsc = local('node_modules', 'typescript', 'bin', 'tsc');
 
-const DEPLOY_DIR = '/sdcard/Download/GameAutomationPlatform/scripts/Official GAP/Tsum Tsum/';
+const DEPLOY_DIR = '/sdcard/Download/GameAutomationPlatform/scripts/DEV';
 
 // The page scripts, minified in one process. All ES5, to match what
 // tsconfig.settings.json and tsconfig.quickbar.json emit. `verify` is only
@@ -300,7 +300,7 @@ async function main() {
 
   if (has('adb')) {
     const device = valueOf('device');
-    const target = device ? ['-s', device] : [];
+    const target = device ? ['-s', device] : ['-s', 'emulator-5554'];
     console.log(`[build] pushing to ${device || 'the connected device'}...`);
     await sh((text) => process.stdout.write(text), 'adb', [
       ...target, 'push',
