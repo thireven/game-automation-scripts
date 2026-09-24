@@ -508,6 +508,12 @@ var GastonConfig = {
   // under its last frames is a drag the game may not take.
   openMinMs: 3500,
   openWaitMs: 6500,
+  // The floor when the board read full on every poll from the tap, so the
+  // count could not see the opening. Every window of `gaston_124`-`127.mp4`
+  // that opened on the 3.5s floor that way drew 0-11 on its first pass, into
+  // the last closing chain's pop and a fever starting; boards the count saw
+  // come back opened at 4.5-5.3s.
+  openBlindMs: 4600,
   // The refill gates between passes. A cancelled clear is off the board at
   // once and the board is back and full at ~1.1s (`gaston_debug5.mp4`, 5.9s to
   // 7.0s; 0.95s from the release on `gaston_116.mp4`), so its floor is
@@ -1052,6 +1058,8 @@ interface GastonWait {
   peak: number;
   /** It left on a full count, not the ceiling. */
   full: boolean;
+  /** Full on every read: the count never saw the board go and come back. */
+  blind: boolean;
 }
 
 /** What the charge after the held chain came to. */
@@ -1268,6 +1276,7 @@ function gastonAwaitBoard(ts: Tsum, until: number, notBefore: number): GastonWai
   let peak = count;
   let held = 0;
   let full = false;
+  let blind = count >= cfg.enoughTsums;
   while (ts.isRunning && Date.now() < until) {
     if (Date.now() >= notBefore && count >= cfg.enoughTsums && held >= cfg.stillReads) {
       full = true;
@@ -1278,11 +1287,12 @@ function gastonAwaitBoard(ts: Tsum, until: number, notBefore: number): GastonWai
     held = now > count + cfg.countNoise ? 0 : held + 1;
     count = now;
     if (count > peak) { peak = count; }
+    if (count < cfg.enoughTsums) { blind = false; }
     gastonWatchFever(ts);
   }
   // Full is not landed: the last of the refill is still falling. See `landMs`.
   if (full) { ts.sleep(cfg.landMs); }
-  return { peak: peak, full: full };
+  return { peak: peak, full: full, blind: blind };
 }
 
 /**
@@ -2859,7 +2869,15 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   // The animation and the first fill are one wait, behind a floor: the
   // animation is never under three seconds, and a board that was full at the
   // tap counts as full under it. See `openMinMs`.
-  const opened = gastonAwaitBoard(ts, t0 + cfg.openWaitMs, t0 + cfg.openMinMs);
+  let opened = gastonAwaitBoard(ts, t0 + cfg.openWaitMs, t0 + cfg.openMinMs);
+  // Full on every read, the gate never saw the opening: a charge fired inside
+  // the last closing chain's pop, which plays out after the animation and
+  // often sets a fever off. It holds to `openBlindMs` instead.
+  const openBlind = opened.full && opened.blind;
+  if (openBlind) {
+    const more = gastonAwaitBoard(ts, t0 + cfg.openWaitMs, t0 + cfg.openBlindMs);
+    opened = { peak: Math.max(opened.peak, more.peak), full: more.full, blind: true };
+  }
   const openMs = Date.now() - t0;
   // The backdrop up as the board comes live is the fever this activation's
   // clear brought on, and its clock started as the face faded. See `faceMs`.
@@ -3026,8 +3044,10 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
     // The field to read first. `openMs` near 3900 with `openTsums` at a full
     // board is the gate working; `openMs` at the `openWaitMs` ceiling with
     // `openTsums` low is a board that never filled, and everything after it
-    // was planned under the animation.
+    // was planned under the animation. `openBlind`: full on every read from
+    // the tap, held to `openBlindMs`.
     openMs: openMs,
+    openBlind: openBlind,
     openTsums: opened.peak,
     passes: passes,
     // Every chain the window drew, in order, the last of them the held

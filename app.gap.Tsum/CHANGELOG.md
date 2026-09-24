@@ -506,6 +506,13 @@ release note; they fold back in here when she ships.
   stall (the board sat pale for 3s after a close the fever ended at), and the
   retry now judges the gauge on the game's count, not the route drawn
   (`gaston_126.mp4`: 42 drawn, 6 linked, no retry).
+- **Gaston's window waits for a board it cannot see open.** A charge fired
+  inside the last closing chain's pop leaves the board full through the
+  animation, so the count never dips and the gate opened on its 3.5s floor --
+  into that pop and, often, a fever starting. Every such window of
+  `gaston_124`-`127.mp4` drew 0-11 on its first pass (dead heads, a leftover
+  clear spending the bubbles); seen boards opened at 4.5-5.3s. A gate full on
+  every read now holds to `openBlindMs` (4600), logged as `openBlind`.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
