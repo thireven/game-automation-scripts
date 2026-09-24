@@ -556,6 +556,8 @@ release note; they fold back in here when she ships.
   (`lastRewindRoomMs`). A cancelled chain releases at a stall once 8 are
   linked; for the last cancel the time it frees only waits for the antlers,
   and `gaston_138`/`139.mp4` let five go at 13-18 with 0.2-0.9s unused.
+  The first cancel does the same with 400ms of its own slot left
+  (`firstRewindRoomMs`): 7 of 19 let go at 8-15 with 0.4-0.7s to spare.
 - **Gaston's chains stuck at the head start over from the other end.** A
   tsum the game links off the route beside the head leaves the chain stuck
   at 1-3; walking back cannot undo it, and redrawing the same route stalled
