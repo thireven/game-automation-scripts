@@ -60,7 +60,7 @@
         * the readouts are `#baseCoinAvg`, `#finalCoinAvg` and `#roundCount`;
         * `<body>` carries `data-state`, which is what the CSS reads;
         * every control is a `<button>` inside `.qb-controls` -- that is what
-          quickbarPage.ts disables while the script is not paused, `.qb-report`
+          quickbarPage.ts disables while the script is running, `.qb-report`
           excepted, which it disables only while there is no run;
         * a label carries `data-i18n` naming a `UiText` key (src/strings.d.ts),
           and quickbarPage.ts fills its text in from the chosen language once the
@@ -98,8 +98,8 @@
   </head>
   <!--
     `data-state` is one of `paused`, `running` or `idle`, set by the host through
-    onGapState(). Only `paused` is interactive -- see quickbar.css -- bar the
-    Report chip, which is live in `running` too. Nothing is ever covered up: the
+    onGapState(). `paused` and `idle` are interactive -- see quickbar.css -- and
+    the Report chip is live in `running` too. Nothing is ever covered up: the
     strip is up for a whole run and its job is to be read, so the controls grey
     out rather than disappearing behind a veil.
 
@@ -234,7 +234,7 @@
           and quickbarPage.ts finds it by class. What it writes is the engine's
           `reportIssue`; see src/report.ts.
 
-          The strip is only touchable while the run is paused -- except here.
+          The strip is untouchable while the run is going -- except here.
           Pausing presses the game's own Pause button, so a report taken from a
           paused strip shows the pause menu; this chip is instead named to the
           host as a hotspot it keeps touchable while the run is going, so a

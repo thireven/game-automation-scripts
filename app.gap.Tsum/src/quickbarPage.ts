@@ -66,8 +66,13 @@ var QB_DENSE_BELOW = 48;
  */
 var QB_MIN_MEASURED = 20;
 
-/** Set by the host through `onGapState`; the sheet and the timer both read it. */
-var qbPaused = false;
+/**
+ * Set by the host through `onGapState`; the sheet and the timer both read it.
+ * Live means the controls take taps: paused, or stopped (`qbIdle`).
+ */
+var qbLive = false;
+/** No run at all: changes go to the store for the next Play, not to the engine. */
+var qbIdle = true;
 var qbVisible = false;
 /** A run is up, paused or not: the one state the Report chip is live in. */
 var qbActive = false;
@@ -135,6 +140,12 @@ function qbLogInfo(event: string, message: string, fields?: object): void {
 function qbRequestState(): void {
     var bridge = qbBridge();
     if (bridge === undefined || qbInFlight > 0 || Object.keys(qbPending).length > 0) {
+        return;
+    }
+    // Stopped: the store is what the next Play reads, so it is the world.
+    if (qbIdle) {
+        qbState = qbStoredSettings() as { [key: string]: string | number | boolean };
+        qbRender();
         return;
     }
     bridge.runScriptCallback('quickBarState()', 'onQuickBarState');
@@ -269,21 +280,26 @@ function onGapState(json: string): void {
         return;
     }
     qbSetStripHeight(state.stripHeight);
-    qbPaused = !!state.paused;
-    qbVisible = state.visible !== false;
-    qbActive = !!state.active || qbPaused;
-    // The strip going away or going live is the end of the editing the debounce
-    // was waiting out, so nothing sits in the queue across it.
-    if (!qbPaused || !qbVisible) {
+    var idle = !state.active && !state.paused;
+    var live = !!state.paused || idle;
+    var visible = state.visible !== false;
+    // The strip going away, going dead or changing where it writes is the end
+    // of the editing the debounce was waiting out. Flushed under the old state,
+    // so a change made while stopped lands in the store, not a run just started.
+    if (!live || !visible || idle !== qbIdle) {
         qbFlushApplies();
     }
+    qbLive = live;
+    qbIdle = idle;
+    qbVisible = visible;
+    qbActive = !idle;
     document.body.setAttribute('data-state',
         state.paused ? 'paused' : (state.active ? 'running' : 'idle'));
-    qbSetEnabled(qbPaused);
+    qbSetEnabled(qbLive);
     qbSetReportEnabled(qbActive);
     // After `qbSetEnabled`, which knows nothing about an empty preset list.
     qbRenderPreset();
-    if (!qbPaused) {
+    if (!qbLive) {
         qbCloseSheet();
     }
     // The band may just have changed under the chip.
@@ -327,7 +343,7 @@ function onGapMessage(topic: string): void {
  * The strip used to draw a veil over itself instead, which cost the readings the
  * strip is left up to be read. `disabled` says the same thing without hiding
  * anything, and unlike the veil it refuses the tap itself -- the window is
- * untouchable unless paused anyway, so this is that one fact on the control.
+ * untouchable while running anyway, so this is that one fact on the control.
  *
  * All but the Report chip, which lives by the run rather than by the pause:
  * `qbSetReportEnabled`.
@@ -570,7 +586,7 @@ function qbRenderPreset(): void {
     if (chip !== null) {
         // Drawn dead rather than taken away: the strip is read at a glance, and
         // a control that comes and goes is one you stop looking for.
-        chip.disabled = !qbPaused || list.length === 0;
+        chip.disabled = !qbLive || list.length === 0;
         // `both`, because a preset is not one setting: it moves the rows a round
         // can take now *and* the ones the whistle has to apply. The cell rather
         // than the chip, so the CSS reads it the same way it reads every other
@@ -641,7 +657,7 @@ function qbGrouped(value: number): string {
  * the flush is the running world, clamp included, and overwrites this.
  */
 function qbApply(key: string, value: string | number | boolean): void {
-    if (!qbPaused || qbBridge() === undefined) {
+    if (!qbLive || qbBridge() === undefined) {
         return;
     }
     qbState[key] = value;
@@ -675,6 +691,13 @@ function qbFlushApplies(): void {
     }
     var sending = qbPending;
     qbPending = {};
+    // Stopped: nothing to send to, so the store alone, and the settings page
+    // is told to re-read it.
+    if (qbIdle) {
+        qbRemember(sending);
+        qbNudgePages();
+        return;
+    }
     qbOverlay(qbSent, sending);
     for (var i = 0; i < keys.length; i++) {
         qbInFlight++;
@@ -708,7 +731,7 @@ function qbFlushApplies(): void {
  */
 function qbApplyPreset(preset: Preset): void {
     var bridge = qbBridge();
-    if (!qbPaused || bridge === undefined) {
+    if (!qbLive || bridge === undefined) {
         return;
     }
     // Ahead of the preset, so a value tapped and then overruled by it is not put
@@ -723,6 +746,14 @@ function qbApplyPreset(preset: Preset): void {
     qbOverlay(qbState, preset.values);
     qbOverlay(qbSent, preset.values);
     qbRender();
+    if (qbIdle) {
+        // No run to take it; the store is all of it. `Presets` so the settings
+        // page reloads its form from there.
+        if (bridge.broadcast !== undefined) {
+            bridge.broadcast(PageMessage.Presets);
+        }
+        return;
+    }
     qbLogInfo(Log.QuickBar.PresetApplied, 'A preset was loaded from the Quick Bar',
         {preset: preset.name});
     qbInFlight++;
@@ -869,7 +900,7 @@ var qbSheet: HTMLElement | undefined;
  * presets -- and everything they share is here.
  */
 function qbShowSheet(fill: (list: Element) => void): void {
-    if (!qbPaused || qbSheet !== undefined) {
+    if (!qbLive || qbSheet !== undefined) {
         return;
     }
     var template = document.getElementById('tpl-sheet') as HTMLTemplateElement;

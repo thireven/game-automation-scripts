@@ -76,7 +76,7 @@
   --qb-on: #21bfa0;
   --qb-accent: #e0af3b;
 
-  /* Not paused: the affordances go quiet, never the values. */
+  /* Running: the affordances go quiet, never the values. */
   --qb-off: #7b8797;
   --qb-chip-edge-off: #2b323b;
   --qb-radius: 7px;
@@ -611,17 +611,17 @@ body {
  */
 .qb-cell[data-when="nextRound"] .qb-name { color: var(--qb-accent); }
 
-/* Not paused is not the moment to be asking about it: the whole strip is dead,
+/* Running is not the moment to be asking about it: the whole strip is dead,
    and two colours of affordance on a dead strip is noise. */
-body:not([data-state="paused"]) .qb-cell[data-when] .qb-stepper,
-body:not([data-state="paused"]) .qb-cell[data-when] .qb-toggle,
-body:not([data-state="paused"]) .qb-cell[data-when] .qb-select { box-shadow: none; }
+body[data-state="running"] .qb-cell[data-when] .qb-stepper,
+body[data-state="running"] .qb-cell[data-when] .qb-toggle,
+body[data-state="running"] .qb-cell[data-when] .qb-select { box-shadow: none; }
 
-body:not([data-state="paused"]) .qb-cell[data-when="both"] .qb-select {
+body[data-state="running"] .qb-cell[data-when="both"] .qb-select {
   background-image: none;
 }
 
-body:not([data-state="paused"]) .qb-cell[data-when="nextRound"] .qb-name {
+body[data-state="running"] .qb-cell[data-when="nextRound"] .qb-name {
   color: var(--qb-muted);
 }
 
@@ -680,11 +680,11 @@ body[data-dense="true"] .qb-stat-label { font-size: calc(9 * var(--qb-u) * var(-
 body[data-dense="true"] .qb-stat-value { font-size: calc(12 * var(--qb-u) * var(--qb-vs)); }
 body[data-dense="true"] .qb-stat-rounds .qb-stat-value { font-size: calc(10 * var(--qb-u) * var(--qb-vs)); }
 
-/* --- not paused: readable, but not live --------------------------------- */
+/* --- running: readable, but not live --------------------------------- */
 
 /*
- * The controls are live only while the script is paused. The window itself is
- * untouchable at every other time -- that is what actually stops a tap, because
+ * The controls are live while the script is paused or stopped. The window is
+ * untouchable while it runs -- that is what actually stops a tap, because
  * a touchable overlay would also swallow the ones the script injects -- and
  * these rules are what say so.
  *
@@ -696,21 +696,21 @@ body[data-dense="true"] .qb-stat-rounds .qb-stat-value { font-size: calc(10 * va
  * the control refuses the tap as well as looking like it would. The Report chip
  * is the one control left out of these rules -- see *report* above.
  */
-body:not([data-state="paused"]) .qb-stepper,
-body:not([data-state="paused"]) .qb-select,
-body:not([data-state="paused"]) .qb-toggle { border-color: var(--qb-chip-edge-off); }
+body[data-state="running"] .qb-stepper,
+body[data-state="running"] .qb-select,
+body[data-state="running"] .qb-toggle { border-color: var(--qb-chip-edge-off); }
 
-body:not([data-state="paused"]) .qb-step { color: var(--qb-off); }
-body:not([data-state="paused"]) .qb-caret { stroke: var(--qb-off); }
+body[data-state="running"] .qb-step { color: var(--qb-off); }
+body[data-state="running"] .qb-caret { stroke: var(--qb-off); }
 
 /*
  * The toggle keeps its ON tint -- checked or not is a reading, not an
  * affordance -- and only its edge recedes with the rest.
  */
-body:not([data-state="paused"]) .qb-toggle[aria-checked="true"] { border-color: #1a6b5c; }
+body[data-state="running"] .qb-toggle[aria-checked="true"] { border-color: #1a6b5c; }
 
 /* The strip's top edge is the one thing that changes colour: teal means live. */
-body[data-state="paused"] .qb { border-top-color: var(--qb-on); }
+body:not([data-state="running"]) .qb { border-top-color: var(--qb-on); }
 
 /* --- the skill sheet ---------------------------------------------------- */
 
