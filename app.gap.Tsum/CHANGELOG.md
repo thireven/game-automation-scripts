@@ -495,7 +495,17 @@ release note; they fold back in here when she ships.
 - **The chain counter is quick again.** Its colour masks box ~7 digit-sized
   shapes each on a Gaston board, and the full plate read of every one took a
   read to 76ms (341 at worst); 16 plate points per box, in one read, drop
-  most of them first (`plateProbeFrac`).
+  most of them first (`plateProbeFrac`). A read along a route now looks only
+  round its last `nearTail` (12) tsums, where the counter is.
+- **Gaston's cancelled chains go out at a stall instead of being redrawn.**
+  Over `gaston_124`-`126.mp4` a cancelled pass's rewinds won a median 5 tsums
+  for 610ms -- time the next pass draws ~20 in -- and the trims that followed
+  were most of `gaston_126.mp4`'s cut-off chains. A cancelled chain releases
+  at a stall once `stopFrom` (8) are linked, or after one redraw below that.
+  A closing chain stops when the game's count has not moved since the last
+  stall (the board sat pale for 3s after a close the fever ended at), and the
+  retry now judges the gauge on the game's count, not the route drawn
+  (`gaston_126.mp4`: 42 drawn, 6 linked, no retry).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

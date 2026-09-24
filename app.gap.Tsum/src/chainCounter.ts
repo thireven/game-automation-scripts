@@ -103,6 +103,10 @@ var ChainCounterConfig = {
   aspectSlack: 0.15,
   // A gap between digits over this many digit heights starts a new number.
   digitGap: 0.7,
+  // A read with a route looks only round its last this-many tsums, this far
+  // out in tsum widths -- further up, where the counter drifts after a link.
+  nearTail: 12,
+  nearMargin: { up: 2.5, side: 1.5 },
   // After the last MOVE, before the read: the game takes a move a frame and
   // the counter is drawn on the frame after, so two frames.
   settleMs: 60,
@@ -582,7 +586,7 @@ function chainBestDigit(bits: Uint8Array, bw: number, bh: number, from: number, 
  * mask boxes: the plate test, the sampling and the match, per box -- a wide
  * box as two digits too (`mergedAspect`), whichever reads better.
  */
-function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number, st: ChainStyle): ChainDigitHit[] {
+function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number, st: ChainStyle, top: number): ChainDigitHit[] {
   const cfg = ChainCounterConfig;
   const size = getImageSize(img);
   const hits: ChainDigitHit[] = [];
@@ -592,7 +596,7 @@ function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number,
     const box = boxes[b];
     if (box.height < cfg.boxHeight.min || box.height > cfg.boxHeight.max
         || box.width < cfg.boxWidth.min || box.width > cfg.mergedAspect * box.height) { continue; }
-    if (box.y + box.height / 2 < cfg.hudBand * tsumWidth) { continue; }
+    if (top + box.y + box.height / 2 < cfg.hudBand * tsumWidth) { continue; }
     sized.push(box);
   }
   // Every box's plate probe in one read (`plateProbeFrac`).
@@ -736,8 +740,36 @@ function chainCounterRead(ts: Tsum, route: Point[] | null): ChainCount {
   // Scan pixels per play-square unit, and the capture at the scan width --
   // the native crop when the square already is that wide.
   const scale = cfg.scanWidth / ts.playResizeWidth;
-  const out = ts.playWidth === cfg.scanWidth ? 0 : cfg.scanWidth;
-  const img = getScreenshotModify(ts.playOffsetX, ts.playOffsetY, ts.playWidth, ts.playHeight, out, out, 100);
+  // With a route, only round its last `nearTail` tsums: the counter sits by
+  // the chain's end, drifting up (`nearMargin`, in tsum widths), and a
+  // corner of the square reads in a fraction of the time.
+  let rx = 0;
+  let ry = 0;
+  let rw = cfg.scanWidth;
+  let rh = cfg.scanWidth;
+  if (route !== null && route.length > 0) {
+    const tw = Config.tsumWidth * scale;
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (let r = Math.max(0, route.length - cfg.nearTail); r < route.length; r++) {
+      x0 = Math.min(x0, route[r].x * scale);
+      y0 = Math.min(y0, route[r].y * scale);
+      x1 = Math.max(x1, route[r].x * scale);
+      y1 = Math.max(y1, route[r].y * scale);
+    }
+    rx = Math.max(0, Math.floor(x0 - cfg.nearMargin.side * tw));
+    ry = Math.max(0, Math.floor(y0 - cfg.nearMargin.up * tw));
+    rw = Math.min(cfg.scanWidth, Math.ceil(x1 + cfg.nearMargin.side * tw)) - rx;
+    rh = Math.min(cfg.scanWidth, Math.ceil(y1 + cfg.nearMargin.side * tw)) - ry;
+  }
+  // Screen pixels per scan pixel; the native crop when the square already is
+  // the scan's width.
+  const f = ts.playWidth / cfg.scanWidth;
+  const same = ts.playWidth === cfg.scanWidth;
+  const img = getScreenshotModify(ts.playOffsetX + Math.round(rx * f), ts.playOffsetY + Math.round(ry * f),
+    Math.round(rw * f), Math.round(rh * f), same ? 0 : rw, same ? 0 : rh, 100);
   if (!(img as unknown as number)) { none.ms = Date.now() - from; return none; }
   let mask: NativeImage | null = null;
   let nums: ChainNumberHit[];
@@ -751,10 +783,14 @@ function chainCounterRead(ts: Tsum, route: Point[] | null): ChainCount {
       const boxes = findContours(mask, cfg.minArea, 0);
       releaseImage(mask);
       mask = null;
-      const found = chainDigitsOn(img, boxes, Config.tsumWidth * scale, st);
+      const found = chainDigitsOn(img, boxes, Config.tsumWidth * scale, st, ry);
       for (let k = 0; k < found.length; k++) { hits.push(found[k]); }
     }
     nums = chainNumbersOf(chainDedupe(hits));
+    for (let n = 0; n < nums.length; n++) {
+      nums[n].x += rx;
+      nums[n].y += ry;
+    }
   } finally {
     if (mask != null) { releaseImage(mask); }
     releaseImage(img);

@@ -707,6 +707,9 @@ var GastonConfig = {
   // How far the game's count may trail the finger's route index before a
   // coin stall is believed.
   countSlack: 3,
+  // A cancelled pass linked this far releases at a stall rather than
+  // rewinding (see the stall branch in `gastonLinkChain`).
+  stopFrom: 8,
   coinSettleMs: 80,
   // The coin test: a (2*coinGrid+1)^2 grid at `coinStep` round the planned
   // centre, a tsum carrying one when `coinShare` of it is gold (hue 36-60,
@@ -2075,6 +2078,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     };
     let tail = pts.length - 1;
     let lastBack = -1;
+    let lastCount: number | null = null;
     let i = 1;
     while (i <= tail) {
       if (pauseAt > 0 && Date.now() + perHop > pauseAt) {
@@ -2091,13 +2095,14 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           settled += cfg.coinSettleMs;
         }
         let back = gastonStalled(ts, path, i, end, drag);
+        let count: number | null = null;
         if (back >= 0 && spare) {
           // The game's own count, where it reads, over the coins: within
           // `countSlack` of the finger the chain never stalled -- the coins
           // missed -- and past the last coin the walk back stops short of
           // undoing what is linked. `gaston_125.mp4` walked a chain the game
           // counted at 24 back to route 12.
-          const count = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1))).value;
+          count = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1))).value;
           drag.stallCounts.push(count !== null ? count : -1);
           if (count !== null && count >= i + 1 - cfg.countSlack) {
             back = -1;
@@ -2122,7 +2127,19 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           const to = back > 0 ? back - 1 : 0;
           const next = to > 0 || again ? replan(to, again ? back + 1 : back) : null;
           const late = Date.now() < closeAt && Date.now() + 2 * (i - to) * perHop > closeAt - cfg.closeLeadMs;
-          if (late || (again && next === null)) {
+          // A cancelled chain goes out as it stands once `stopFrom` are
+          // linked, or after one redraw: over `gaston_124`-`126.mp4` a
+          // cancelled pass's rewinds won a median 5 tsums for 610ms, which
+          // the next pass draws ~20 in. A closing chain, which has to reach
+          // `gaugeChain`, stops when the count has not moved since the last
+          // stall: the game is not linking (the board still pale after a
+          // close the fever ended at, 3s on `gaston_125`/`126.mp4`), and the
+          // retry's fresh chain is quicker than more redraws.
+          const linked = count !== null ? count : back + 1;
+          const settle = !sl.closing && (linked >= cfg.stopFrom || drag.rewinds.length > 0);
+          const flat = sl.closing && count !== null && lastCount !== null && count <= lastCount;
+          if (count !== null) { lastCount = count; }
+          if (late || settle || flat || (again && next === null)) {
             drag.rewinds.push([i, back, 0]);
             // What it linked, for the pop, the hold and the charge.
             drag.planned = path;
@@ -2929,7 +2946,9 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
       extra += pass.extra;
       overMs += pass.overMs;
       if (pass.held) {
-        clearing += pass.chain;
+        // The game's count where it read: a stalled drag's route says more
+        // than it linked (`gaston_126.mp4`: 42 drawn, 6 linked, no retry).
+        clearing += pass.registered !== null && pass.registered > 0 ? pass.registered : pass.chain;
         clearingLate = retries === 0 ? pass.registeredLate : null;
         heldMs += pass.heldMs;
         releasedAt = pass.releasedAt;
