@@ -164,6 +164,11 @@ function onQuickBarState(json: string): void {
     if (parsed === null) {
         return;
     }
+    // No run behind the answer (a stop landing mid-read): it carries no values,
+    // so the store is drawn instead of a blank strip.
+    if (parsed.active !== true) {
+        parsed = qbStoredSettings() as { [key: string]: string | number | boolean };
+    }
     // Newest last: sent beats the answer, and pending beats what was sent.
     qbOverlay(parsed, qbSent);
     qbOverlay(parsed, qbPending);
