@@ -1703,7 +1703,7 @@ declare function tapUp(x: number, y: number, during?: number): void;
  * `wait` (default false) returns only once the game has taken the move, about
  * a frame, so a long drag across a stalled game pauses instead of batching into
  * one point. Off, the move is queued and the call returns at once; a short drag
- * is faster that way. See `gastonLinkChain` for the one drag that asks for it.
+ * is faster that way.
  */
 declare function moveTo(x: number, y: number, during?: number, wait?: boolean): void;
 declare function keycode(code: KeyCode, during?: number): void;

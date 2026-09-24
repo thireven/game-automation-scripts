@@ -193,6 +193,11 @@ release note; they fold back in here when she ships.
   consecutive scans. `bubble.found` and `bubble.unripe` carry `age`.
 - **`gaston.ts`'s comments trimmed** to what the code needs: recording notes,
   measurements and history removed (3416 to 2522 lines, no code change).
+- **Gaston's disabled fever dodges removed.** The fever-switch and fever
+  start/end waits (`dodgeSwitch`, `dodgeFever`), their rescan and the per-hop
+  steps (`stepsPerHop`, `pacedMoves`) were all off; `skill.gaston.pass` drops
+  `waitedMs`, `replanned`, `fever`, `feverWaitMs` and `feverRing`. The antler
+  read stays (`gastonWatchAntlers`, `antlerProbe`).
 
 ### Fixed
 

@@ -171,16 +171,12 @@ var GastonConfig = {
   // 30ms on each tsum, unpaced: 10ms linked far fewer chains whole, 50ms fit
   // only two passes per window. A thirty-chain is ~1s.
   //
-  // No steps between tsums (`stepsPerHop` 0): the game links along the line
-  // between MOVEs, and a mid-sample landing on a neighbour links it out of
-  // order. `crossAvoid` keeps hops clean. `pacedMoves` is off: it did not help.
+  // One MOVE per tsum, queued: the game links along the line between MOVEs,
+  // and `crossAvoid` keeps that line clear of other tsums.
   // The Debug tab's "Drag dwell" overrides `dwellMs` when set (`gastonDwellMs`).
   grabMs: 10,
   dwellMs: 30,
-  stepMs: 5,
-  stepsPerHop: 0,
   releaseMs: 10,
-  pacedMoves: false,
 
   // --- the rewind ----------------------------------------------------------
   //
@@ -288,8 +284,9 @@ var GastonConfig = {
   // then, not grab. Gives the cancelled chains more time.
   closeSlackMs: 120,
   antlerEarlyMs: 700,
-  // Antlers are up at `plainChrome[0]` when red is over this and over blue by
-  // `antlerRedOverBlue`.
+  // The chrome left of the score capsule: the antlers are up there when red
+  // is over `antlerMinRed` and over blue by `antlerRedOverBlue`.
+  antlerProbe: { x: 300, y: 250 },
   antlerMinRed: 110,
   antlerRedOverBlue: 30,
   // How long the antlers stay up at level 6, and tap to close when they were
@@ -328,51 +325,6 @@ var GastonConfig = {
   // How often the spam checks the board is still up, so taps stop if the round
   // ends.
   spamPageCheckMs: 500,
-
-  // --- the fever switch ----------------------------------------------------
-  //
-  // The game stops linking briefly when the fever backdrop switches. The
-  // backdrop stays up `feverMs` from coming on, `faceMs` after the activation
-  // tap. A drag that would straddle the predicted exit waits for the switch
-  // and `switchFreezeMs` more; `switchLeadMs` is how early the freeze begins.
-  //
-  // `dodgeSwitch` false sends every drag out at once (`gastonAwaitSwitch`
-  // waits for nothing), still logging `fever` with `waitedMs` 0. Off because
-  // the close is read off the antlers and `closeLeadMs` handles it.
-  dodgeSwitch: false,
-  feverMs: 8350,
-  faceMs: 1300,
-  switchFreezeMs: 800,
-  switchLeadMs: 250,
-  // How long past the predicted exit to keep waiting: skill animations pause
-  // the fever clock.
-  switchLateMs: 1500,
-  // A pass that waited longer than this for the switch rescans before drawing,
-  // since the pile moves.
-  replanAfterWaitMs: 200,
-
-  // --- the fever's own start and end ---------------------------------------
-  //
-  // The ring round the fever gauge (`FeverProbes`' two strokes) is near white
-  // during a fever. Drags break near a fever's start and end, so a drag waits
-  // `feverStartMs` past the ring lighting, and one that would run into the end
-  // waits for the ring to go dark plus `switchFreezeMs` (`gastonAwaitFever`).
-  // The fill drains a `FeverBar` sample every `feverSliceMs` and reads empty at
-  // least `feverTailMs` before the dark; `feverEndLeadMs` is how early the end
-  // breaks drags. Independent of `dodgeSwitch`. Off: it did not reduce breaks
-  // and its waits cost cancels.
-  dodgeFever: false,
-  feverStartMs: 1800,
-  feverSliceMs: 440,
-  feverTailMs: 300,
-  feverEndLeadMs: 700,
-  // The chrome either side of the score capsule on a plain board. Fever themes
-  // and skill animations recolour it, so the backdrop is read as "not plain".
-  plainChrome: [
-    { x: 300, y: 250, r: 24, g: 207, b: 239 },
-    { x: 800, y: 250, r: 16, g: 190, b: 231 },
-  ],
-  plainChromeTolerance: 90,
 
   // A scan reading far under a board the gate just saw full is under a flash
   // (the fever label's) and rescans for up to this long.
@@ -414,16 +366,9 @@ var gastonWindowT0 = 0;
 var gastonCycleMs = 0;
 var gastonCycleRound = 0;
 
-// Last seen fever state (`gastonWatchFever`). `plain`: chrome read plain (-1
-// unread); `onAt`: when the backdrop came on (0 while off); `switchedAt`: last
-// change. `ring` is the gauge ring (-1 unread, 1 lit), with `ringOnAt`/
-// `ringOffAt`, and `ringSeen` a change awaiting a second read
-// (`gastonAwaitFever`). `antlers` is the skill backdrop (1 up) with its
-// on/off times (`antlerMs`). The window zeroes all three at its tap.
-var gastonFever = {
-  plain: -1, onAt: 0, switchedAt: 0, ring: -1, ringSeen: -1, ringSeenAt: 0, ringOnAt: 0, ringOffAt: 0,
-  antlers: -1, antlersOnAt: 0, antlersOffAt: 0,
-};
+// The skill's antlers in the chrome (`gastonWatchAntlers`): `up` 1 while up
+// (-1 unread), and when they came up and left. Zeroed at each window's tap.
+var gastonAntlers = { up: -1, onAt: 0, offAt: 0 };
 
 // Non-Gaston centres (play-square scale) from the window's last paint read, for
 // passes that cannot read (see `carryMatch`), and whether a read happened this
@@ -506,149 +451,29 @@ function gastonRoundOver(): boolean {
   return isRoundOverPage(gPages.detect(1, 0, inRoundPages()));
 }
 
-// --- The fever switch --------------------------------------------------------
+// --- The antlers -------------------------------------------------------------
 
 /**
- * Reads the chrome beside the score from one crop through both `plainChrome`
- * probes: `plain` (no fever backdrop or animation over it) and `antlers`
- * (the skill's antlers are up, `antlerMinRed`).
+ * Read the antlers at `antlerProbe` and stamp when they come up and leave
+ * (`gastonAntlers`). Called on every poll of the window.
  */
-function gastonChrome(ts: Tsum): { plain: boolean, antlers: boolean } {
+function gastonWatchAntlers(ts: Tsum): void {
   const cfg = GastonConfig;
-  const a = ts.toRealXY(cfg.plainChrome[0].x, cfg.plainChrome[0].y);
-  const b = ts.toRealXY(cfg.plainChrome[1].x, cfg.plainChrome[1].y);
-  const x = Math.max(0, Math.min(a.x, b.x));
-  const y = Math.max(0, Math.min(a.y, b.y) - 1);
-  const img = getScreenshotModify(x, y, Math.abs(b.x - a.x) + 1, Math.abs(b.y - a.y) + 3, 0, 0, 100);
+  const p = ts.toRealXY(cfg.antlerProbe.x, cfg.antlerProbe.y);
+  const x = Math.max(0, p.x - 1);
+  const y = Math.max(0, p.y - 1);
+  const img = getScreenshotModify(x, y, 3, 3, 0, 0, 100);
+  let up = 0;
   try {
-    const ca = getImageColor(img, a.x - x, a.y - y);
-    return {
-      plain: absColor(ca, cfg.plainChrome[0]) < cfg.plainChromeTolerance
-        && absColor(getImageColor(img, b.x - x, b.y - y), cfg.plainChrome[1]) < cfg.plainChromeTolerance,
-      antlers: ca.r >= cfg.antlerMinRed && ca.r - ca.b >= cfg.antlerRedOverBlue,
-    };
+    const c = getImageColor(img, p.x - x, p.y - y);
+    up = c.r >= cfg.antlerMinRed && c.r - c.b >= cfg.antlerRedOverBlue ? 1 : 0;
   } finally {
     releaseImage(img);
   }
-}
-
-/**
- * Whether the fever gauge's ring is lit, i.e. a fever is running. Either
- * `FeverProbes` stroke matching is enough, since the ring's glow cycles colour.
- */
-function gastonFeverRing(ts: Tsum): boolean {
-  const a = ts.toRealXY(FeverProbes[0].x, FeverProbes[0].y);
-  const b = ts.toRealXY(FeverProbes[1].x, FeverProbes[1].y);
-  const x = Math.max(0, Math.min(a.x, b.x));
-  const y = Math.max(0, Math.min(a.y, b.y));
-  const img = getScreenshotModify(x, y, Math.abs(b.x - a.x) + 1, Math.abs(b.y - a.y) + 1, 0, 0, 100);
-  try {
-    return absColor(getImageColor(img, a.x - x, a.y - y), FeverProbes[0]) < FeverProbes[0].threshold
-      || absColor(getImageColor(img, b.x - x, b.y - y), FeverProbes[1]) < FeverProbes[1].threshold;
-  } finally {
-    releaseImage(img);
-  }
-}
-
-/**
- * Check the backdrop, antlers and fever ring, recording any change in
- * `gastonFever`. Called on every poll of the window. A ring change needs a
- * second agreeing read (it flickers as the gauge fills), stamped at the first.
- */
-function gastonWatchFever(ts: Tsum): void {
-  const chrome = gastonChrome(ts);
-  const plain = chrome.plain ? 1 : 0;
-  if (plain !== gastonFever.plain) {
-    if (gastonFever.plain !== -1) {
-      const now = Date.now();
-      gastonFever.switchedAt = now;
-      gastonFever.onAt = plain ? 0 : now;
-    }
-    gastonFever.plain = plain;
-  }
-  const antlers = chrome.antlers ? 1 : 0;
-  if (antlers !== gastonFever.antlers) {
-    if (antlers === 1) { gastonFever.antlersOnAt = Date.now(); }
-    if (antlers === 0 && gastonFever.antlers === 1) { gastonFever.antlersOffAt = Date.now(); }
-    gastonFever.antlers = antlers;
-  }
-  if (!GastonConfig.dodgeFever) { return; }
-  const ring = gastonFeverRing(ts) ? 1 : 0;
-  if (ring === gastonFever.ring) { gastonFever.ringSeen = -1; return; }
-  if (gastonFever.ring === -1) { gastonFever.ring = ring; return; }
-  if (gastonFever.ringSeen !== ring) {
-    gastonFever.ringSeen = ring;
-    gastonFever.ringSeenAt = Date.now();
-    return;
-  }
-  gastonFever.ring = ring;
-  gastonFever.ringSeen = -1;
-  if (ring) { gastonFever.ringOnAt = gastonFever.ringSeenAt; } else { gastonFever.ringOffAt = gastonFever.ringSeenAt; }
-}
-
-/**
- * Delay a drag of `dragMs` away from a fever switch: the freeze after one just
- * seen, or a fever exit (`feverMs`) due during the drag. Returns the ms waited;
- * 0 with `dodgeSwitch` off.
- */
-function gastonAwaitSwitch(ts: Tsum, dragMs: number): number {
-  const cfg = GastonConfig;
-  if (!cfg.dodgeSwitch) { return 0; }
-  const from = Date.now();
-  if (gastonFever.onAt > 0) {
-    const exitIn = gastonFever.onAt + cfg.feverMs - from;
-    if (exitIn > -cfg.switchFreezeMs && exitIn < dragMs + cfg.switchLeadMs) {
-      const until = from + exitIn + cfg.switchLateMs;
-      while (ts.isRunning && gastonFever.onAt > 0 && Date.now() < until) {
-        ts.sleep(cfg.pollMs);
-        gastonWatchFever(ts);
-      }
-    }
-  }
-  const rest = gastonFever.switchedAt + cfg.switchFreezeMs - Date.now();
-  if (gastonFever.switchedAt > 0 && rest > 0) { ts.sleep(rest); }
-  return Date.now() - from;
-}
-
-/**
- * Delay a drag of `dragMs` away from the fever's start and end, read off the
- * ring since the chrome is hidden under the antlers: until `feverStartMs` after
- * it lights, and if it ends during the drag, until `switchFreezeMs` after it
- * goes dark. Returns the ms waited; 0 with `dodgeFever` off.
- */
-function gastonAwaitFever(ts: Tsum, dragMs: number): number {
-  const cfg = GastonConfig;
-  if (!cfg.dodgeFever) { return 0; }
-  const from = Date.now();
-  gastonWatchFever(ts);
-  // A change read once needs a second read to count.
-  if (gastonFever.ringSeen !== -1) {
-    ts.sleep(cfg.pollMs);
-    gastonWatchFever(ts);
-  }
-  // Just started.
-  if (gastonFever.ring === 1 && gastonFever.ringOnAt > 0) {
-    const rest = gastonFever.ringOnAt + cfg.feverStartMs - Date.now();
-    if (rest > 0 && ts.isRunning) { ts.sleep(rest); }
-  }
-  // About to end: the fill's last samples, one `feverSliceMs` each.
-  if (gastonFever.ring === 1 && ts.isRunning) {
-    const lit = Math.round(ts.feverRemainingMs() * FeverBar.samples / FeverBar.durationMs);
-    const endIn = Math.max(0, lit - 1) * cfg.feverSliceMs + cfg.feverTailMs;
-    if (endIn < dragMs + cfg.feverEndLeadMs) {
-      const until = Date.now() + lit * cfg.feverSliceMs + cfg.feverTailMs + cfg.switchLateMs;
-      while (ts.isRunning && gastonFever.ring === 1 && Date.now() < until) {
-        ts.sleep(cfg.pollMs);
-        gastonWatchFever(ts);
-      }
-    }
-  }
-  // Just ended.
-  if (gastonFever.ring === 0 && gastonFever.ringOffAt > 0) {
-    const rest = gastonFever.ringOffAt + cfg.switchFreezeMs - Date.now();
-    if (rest > 0 && ts.isRunning) { ts.sleep(rest); }
-  }
-  return Date.now() - from;
+  if (up === gastonAntlers.up) { return; }
+  if (up === 1) { gastonAntlers.onAt = Date.now(); }
+  if (up === 0 && gastonAntlers.up === 1) { gastonAntlers.offAt = Date.now(); }
+  gastonAntlers.up = up;
 }
 
 /** The dwell on each tsum of a drag: the Debug tab's, when set, else `dwellMs`. */
@@ -656,7 +481,7 @@ function gastonDwellMs(): number {
   return Config.dragDwellMs > 0 ? Config.dragDwellMs : GastonConfig.dwellMs;
 }
 
-/** About how long a drag over `chain` tsums takes, for the switch wait. */
+/** About how long a drag over `chain` tsums takes. */
 function gastonDragEstimate(chain: number): number {
   const cfg = GastonConfig;
   return cfg.grabMs + cfg.releaseMs + chain * (gastonDwellMs() + cfg.hopOverMs);
@@ -699,7 +524,7 @@ function gastonAwaitBoard(ts: Tsum, until: number, notBefore: number): GastonWai
     held = now > count + cfg.countNoise ? 0 : held + 1;
     count = now;
     if (count > peak) { peak = count; }
-    gastonWatchFever(ts);
+    gastonWatchAntlers(ts);
   }
   // The last of the refill is still falling (`landMs`).
   if (full) { ts.sleep(cfg.landMs); }
@@ -724,7 +549,7 @@ function gastonSpamSkill(ts: Tsum, until: number): GastonCharge {
     ts.tap(Button.gameSkill1, cfg.spamTapMs);
     charge.taps++;
     if (ts.checkSkillReadinessFast() === SkillReadiness.Active) { charge.ready = true; return charge; }
-    gastonWatchFever(ts);
+    gastonWatchAntlers(ts);
   }
   return charge;
 }
@@ -1152,7 +977,7 @@ interface GastonDrag {
   path: TsumPath;
   /** Grab to release less the hold, in ms. */
   ms: number;
-  /** Time beyond dwells and settles: the calls, plus `moveTo`'s waits with `pacedMoves`. */
+  /** Time beyond dwells and settles: the native calls themselves. */
   overMs: number;
   /** The finger stayed on the last tsum until the window had closed. */
   held: boolean;
@@ -1394,7 +1219,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   let finger: Point = head;
   let down = true;
   try {
-    moveTo(head.x, head.y, dwellMs, cfg.pacedMoves);
+    moveTo(head.x, head.y, dwellMs);
     if (oracle !== null && base !== null) {
       const rest = cfg.paintMs - cfg.grabMs - dwellMs;
       if (rest > 0) { ts.sleep(rest); }
@@ -1454,13 +1279,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     for (let i = 1; i < path.length; i++) { pts.push(gastonToScreen(ts, path[i])); }
     let hops = 0;
     let settled = 0;
-    const hop = function(a: number, b: number): void {
-      for (let s = 1; s <= cfg.stepsPerHop; s++) {
-        const f = s / (cfg.stepsPerHop + 1);
-        moveTo(Math.floor(pts[a].x + (pts[b].x - pts[a].x) * f),
-          Math.floor(pts[a].y + (pts[b].y - pts[a].y) * f), cfg.stepMs, cfg.pacedMoves);
-      }
-      moveTo(pts[b].x, pts[b].y, dwellMs, cfg.pacedMoves);
+    const hop = function(b: number): void {
+      moveTo(pts[b].x, pts[b].y, dwellMs);
       finger = pts[b];
       hops++;
     };
@@ -1504,7 +1324,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           break;
         }
       }
-      hop(i - 1, i);
+      hop(i);
       const end = i === tail;
       const spare = drag.rewinds.length < cfg.maxRewinds;
       // Only a held chain's end is checked; a released one goes out as it
@@ -1572,14 +1392,14 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
             finger = pts[0];
             tapDown(finger.x, finger.y, cfg.grabMs);
             down = true;
-            moveTo(finger.x, finger.y, dwellMs, cfg.pacedMoves);
+            moveTo(finger.x, finger.y, dwellMs);
             settled += cfg.releaseMs + cfg.grabMs + dwellMs;
             lastBack = -1;
             lastCount = null;
             i = 1;
             continue;
           }
-          for (let k = i - 1; k >= to; k--) { hop(k + 1, k); }
+          for (let k = i - 1; k >= to; k--) { hop(k); }
           if (next !== null) {
             drag.rewinds.push([i, to, next.length - 1]);
             path = path.slice(0, to).concat(next) as TsumPath;
@@ -1610,9 +1430,9 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       // than `antlerEarlyMs` before the close: an early release loses the
       // charge. `holdUntil` caps it, and is the whole hold if none were seen.
       while (ts.isRunning && Date.now() < holdUntil) {
-        if (gastonFever.antlersOnAt > 0) {
-          gastonWatchFever(ts);
-          if (gastonFever.antlers === 0 && Date.now() >= gastonFever.antlersOffAt + cfg.antlerReleaseMs
+        if (gastonAntlers.onAt > 0) {
+          gastonWatchAntlers(ts);
+          if (gastonAntlers.up === 0 && Date.now() >= gastonAntlers.offAt + cfg.antlerReleaseMs
               && Date.now() >= closeAt - cfg.antlerEarlyMs) { break; }
         }
         ts.sleep(Math.min(cfg.holdSliceMs, holdUntil - Date.now()));
@@ -1626,7 +1446,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     tapUp(finger.x, finger.y, cfg.releaseMs);
     drag.ms = Date.now() - from - drag.heldMs;
     const slept = cfg.grabMs + dwellMs * (hops + 1)
-      + cfg.stepMs * cfg.stepsPerHop * hops + cfg.releaseMs + settled
+      + cfg.releaseMs + settled
       + (oracle !== null ? Math.max(0, cfg.paintMs - cfg.grabMs - dwellMs) : 0)
       + (drag.count !== null ? ChainCounterConfig.settleMs + drag.count.ms : 0);
     drag.overMs = Math.max(0, drag.ms - slept);
@@ -1828,10 +1648,10 @@ function gastonDrawPlain(ts: Tsum, path: TsumPath): void {
   const dwellMs = gastonDwellMs();
   let p = gastonToScreen(ts, path[0]);
   tapDown(p.x, p.y, cfg.grabMs);
-  moveTo(p.x, p.y, dwellMs, cfg.pacedMoves);
+  moveTo(p.x, p.y, dwellMs);
   for (let i = 1; i < path.length; i++) {
     p = gastonToScreen(ts, path[i]);
-    moveTo(p.x, p.y, dwellMs, cfg.pacedMoves);
+    moveTo(p.x, p.y, dwellMs);
   }
   tapUp(p.x, p.y, cfg.releaseMs);
 }
@@ -1958,9 +1778,9 @@ function gastonAwaitClose(ts: Tsum, closeAt: number, until: number): number {
   const cfg = GastonConfig;
   const from = Date.now();
   while (ts.isRunning && Date.now() < until) {
-    if (gastonFever.antlersOnAt > 0) {
-      gastonWatchFever(ts);
-      if (gastonFever.antlers === 0 && Date.now() >= gastonFever.antlersOffAt + cfg.antlerReleaseMs
+    if (gastonAntlers.onAt > 0) {
+      gastonWatchAntlers(ts);
+      if (gastonAntlers.up === 0 && Date.now() >= gastonAntlers.offAt + cfg.antlerReleaseMs
           && Date.now() >= closeAt - cfg.antlerEarlyMs) { break; }
     }
     ts.sleep(Math.min(cfg.holdSliceMs, until - Date.now()));
@@ -2015,16 +1835,11 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     }
     return { end: late ? 0 : closeAt - cfg.closeLeadMs, closing: true, last: false };
   };
-  gastonWatchFever(ts);
+  gastonWatchAntlers(ts);
   // Starts the finger came up from, left out of the next plan.
   const avoid: Point[] = [];
   let lifted = 0;
   let blank = 0;
-  // Time held back from the fever switch, and whether it rescanned.
-  let waitedMs = 0;
-  // Time held back from the fever's start and end (`dodgeFever`).
-  let feverWaitMs = 0;
-  let replanned = false;
   for (;;) {
     let board = ts.scanBoardQuick();
     let rescans = 0;
@@ -2106,16 +1921,6 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       return bubbles.length === 0
         && headAt + chain * cfg.popPerTsumMs + cfg.popTailMs >= refillBy;
     };
-    // Not into the fever switch: the game takes no link through it.
-    const waited = gastonAwaitSwitch(ts, gastonDragEstimate(path.length));
-    const feverWaited = gastonAwaitFever(ts, gastonDragEstimate(path.length));
-    waitedMs += waited;
-    feverWaitMs += feverWaited;
-    // A long wait lets the pile move, leaving the scan and route stale: rescan once.
-    if (waited + feverWaited > cfg.replanAfterWaitMs && !replanned && ts.isRunning) {
-      replanned = true;
-      continue;
-    }
     // Own drag, not `linkTsums` or `link`: the paint read and hold are needed,
     // and `link`'s `maybeAutoTapSkill` would re-enter this flow.
     const drag = gastonLinkChain(ts, path, holds, holdUntil, closeAt, slot, oracle);
@@ -2191,11 +1996,6 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       // Paint read: its rise (null: not run), and whether the finger lifted
       // for a non-Gaston head or one that painted too few (`strayPaint`).
       rise: drag.rise, dead: drag.dead, stray: drag.stray,
-      // Wait for the fever switch, rescan after it (`replanAfterWaitMs`),
-      // and whether the backdrop was up.
-      waitedMs: waitedMs, replanned: replanned, fever: gastonFever.onAt > 0,
-      // Wait for the fever's start or end, and whether its ring was lit (`dodgeFever`).
-      feverWaitMs: feverWaitMs, feverRing: gastonFever.ring === 1,
       // Drag time, and the part spent beyond its sleeps (MOVE acks, read captures).
       dragMs: drag.ms, overMs: drag.overMs,
       // From the window's tap: grab and release; the refill cycle used; and
@@ -2263,24 +2063,21 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
     gastonCycleMs = cfg.nextPassMs;
   }
   // The antlers come up during the open gate's polls (see `antlerMs`).
-  gastonFever.antlers = 0;
-  gastonFever.antlersOnAt = 0;
-  gastonFever.antlersOffAt = 0;
+  gastonAntlers.up = 0;
+  gastonAntlers.onAt = 0;
+  gastonAntlers.offAt = 0;
   // The animation and first fill are one wait. See `openFloorMs`.
   const opened = gastonAwaitBoard(ts, t0 + cfg.openWaitMs, t0 + cfg.openFloorMs);
   const openMs = Date.now() - t0;
-  // A backdrop up now is this activation's fever, started as the face faded. See `faceMs`.
-  gastonWatchFever(ts);
-  if (gastonFever.plain === 0) { gastonFever.onAt = t0 + cfg.faceMs; }
   // The clock starts here, not at the tap. See `durationMs`.
   const closesAt = Date.now() + cfg.durationMs[level - 1];
   const holdUntil = closesAt + cfg.holdPastCloseMs;
   // The close, off the antlers coming up, else off the tap. Levels under 6
   // are shorter by their `durationMs`.
   const shorter = cfg.durationMs[5] - cfg.durationMs[level - 1];
-  const upMs = gastonFever.antlersOnAt - t0;
+  const upMs = gastonAntlers.onAt - t0;
   const closeAt = (upMs >= cfg.antlerUpMs[0] && upMs <= cfg.antlerUpMs[1]
-    ? gastonFever.antlersOnAt + cfg.antlerMs : t0 + cfg.tapToCloseMs) - shorter;
+    ? gastonAntlers.onAt + cfg.antlerMs : t0 + cfg.tapToCloseMs) - shorter;
   // What a refill must land before: the earliest possible close
   // (`closesAt` errs late).
   const refillBy = gastonWindowUntil;
@@ -2448,10 +2245,10 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
     closeRetries: retries,
     // Opened by the play loop, so its passes cleared other colours (`convertChainMs`).
     convert: convert,
-    releaseLeadMs: clearing > 0 ? releasedAt - (gastonFever.antlersOffAt > t0 ? gastonFever.antlersOffAt : closesAt) : 0,
+    releaseLeadMs: clearing > 0 ? releasedAt - (gastonAntlers.offAt > t0 ? gastonAntlers.offAt : closesAt) : 0,
     // Antlers up and off from the tap (0: not seen), and the planned close (`antlerMs`).
-    antlersOnMs: gastonFever.antlersOnAt > t0 ? gastonFever.antlersOnAt - t0 : 0,
-    antlersOffMs: gastonFever.antlersOffAt > t0 ? gastonFever.antlersOffAt - t0 : 0,
+    antlersOnMs: gastonAntlers.onAt > t0 ? gastonAntlers.onAt - t0 : 0,
+    antlersOffMs: gastonAntlers.offAt > t0 ? gastonAntlers.offAt - t0 : 0,
     closeAtMs: closeAt - t0,
     // Charge taps until full; -1 if never full by `gaugeWaitMs`, 0 if not
     // charged. `ready`: gauge seen full (next window). `chargeMs`: release to
