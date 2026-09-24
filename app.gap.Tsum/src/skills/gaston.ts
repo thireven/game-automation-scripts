@@ -558,6 +558,12 @@ var GastonConfig = {
   // over 103 logged boards the routes plan 99.5% of the unfiltered length at
   // 0.7 (98.6% at 0.8).
   crossAvoid: 0.7,
+  // The longest hop planned, in tsum widths -- under the play loop's
+  // `linkReach` (1.9). Over `gaston_121`-`128.mp4` hops of 1.6-1.8 widths
+  // stalled 4.7 times their share and 1.8-1.9 8.3 times, 39% of the stalls
+  // from 7% of the hops; replayed over 774 logged boards the cap costs 1.7
+  // tsums of plan, which the slot trims cut off anyway.
+  hopReach: 1.6,
 
   // --- the paint read ------------------------------------------------------
   //
@@ -1593,7 +1599,7 @@ function gastonSegmentNear(a: Point, b: Point, p: Point, rSq: number): boolean {
  */
 function gastonNeighbors(board: BoardPoint[], bubbles: GameBubble[]): number[][] {
   const half = Config.tsumWidth / 2;
-  const reachSq = Config.tsumWidth * Config.linkReach * Config.tsumWidth * Config.linkReach;
+  const reachSq = Config.tsumWidth * GastonConfig.hopReach * Config.tsumWidth * GastonConfig.hopReach;
   const cross = Config.tsumWidth * GastonConfig.crossAvoid;
   const crossSq = cross * cross;
   const centres: Point[] = [];
@@ -2044,7 +2050,9 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     const sl = slot(Date.now());
     drag.slotEnd = sl.end;
     drag.closing = sl.closing;
-    const fits = Math.floor((sl.end - Date.now() - cfg.coinSettleMs) / perHop) + 1;
+    // The closing chain keeps time for its end read; a cancelled one has none.
+    const endRead = sl.closing ? cfg.coinSettleMs : 0;
+    const fits = Math.floor((sl.end - Date.now() - endRead) / perHop) + 1;
     const keep = Math.max(fits, sl.closing ? cfg.closeChainMax : cfg.cancelMinChain);
     if (keep < path.length) {
       drag.trimmed = path.length - keep;
@@ -2098,8 +2106,12 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       hop(i - 1, i);
       const end = i === tail;
       const spare = drag.rewinds.length < cfg.maxRewinds;
-      // The end is always read, for the log; a mid-drag check only while a rewind is left.
-      if (cfg.rewind && (end || (spare && i % cfg.checkEvery === 0))) {
+      // The end is read for a held chain; a chain released at once goes out
+      // as it stands (`stopFrom`), and its 80ms coin settle and the count read
+      // after it were ~6 tsums of every cancelled pass's slot. A mid-drag
+      // check only while a rewind is left.
+      const quick = end && !drag.closing && !holds(Date.now(), path.length);
+      if (cfg.rewind && (end ? !quick : spare && i % cfg.checkEvery === 0)) {
         if (end) {
           ts.sleep(cfg.coinSettleMs);
           settled += cfg.coinSettleMs;
@@ -2173,7 +2185,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           // 0.4-1.6s past theirs, and each window lost its second cancel.
           if (!sl.closing) {
             const until = sl.end + (sl.last ? cfg.rewindGraceMs : 0);
-            const room = Math.max(0, Math.floor((until - Date.now() - cfg.coinSettleMs) / perHop));
+            const room = Math.max(0, Math.floor((until - Date.now()) / perHop));
             const keepTail = Math.max(to + room, cfg.cancelMinChain - 1);
             if (keepTail < tail) {
               drag.trimmed += tail - keepTail;
@@ -2191,11 +2203,12 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     }
     const headAt = Date.now();
     // What the game linked, off its own counter, with the finger still down:
-    // the measurement every drag setting is judged by (chainCounter.ts).
+    // the measurement every drag setting is judged by (chainCounter.ts). A
+    // held chain only; a released one goes out at once (see `quick`).
     const route = chainRouteCentres(path);
-    ts.sleep(ChainCounterConfig.settleMs);
-    drag.count = chainCounterRead(ts, route);
     if (drag.closing || holds(headAt, path.length)) {
+      ts.sleep(ChainCounterConfig.settleMs);
+      drag.count = chainCounterRead(ts, route);
       drag.held = true;
       // Until the antlers go, read off twice `antlerReleaseMs` apart and no
       // earlier than `antlerEarlyMs` before the predicted close -- a misread
@@ -2220,7 +2233,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     const slept = cfg.grabMs + dwellMs * (hops + 1)
       + cfg.stepMs * cfg.stepsPerHop * hops + cfg.releaseMs + settled
       + (oracle !== null ? Math.max(0, cfg.paintMs - cfg.grabMs - dwellMs) : 0)
-      + ChainCounterConfig.settleMs + drag.count.ms;
+      + (drag.count !== null ? ChainCounterConfig.settleMs + drag.count.ms : 0);
     drag.overMs = Math.max(0, drag.ms - slept);
     return drag;
   } catch (e) {

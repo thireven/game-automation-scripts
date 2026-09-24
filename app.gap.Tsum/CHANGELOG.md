@@ -513,6 +513,17 @@ release note; they fold back in here when she ships.
   `gaston_124`-`127.mp4` drew 0-11 on its first pass (dead heads, a leftover
   clear spending the bubbles); seen boards opened at 4.5-5.3s. A gate full on
   every read now holds to `openBlindMs` (4600), logged as `openBlind`.
+- **Gaston's cancelled chains let go at their last tsum.** Each waited
+  ~170-200ms there -- the end coin check's 80ms settle, then the count's
+  60ms settle and read -- for a stall it would release as it stood anyway
+  and a count only the log used: ~6 tsums of every cancelled slot, which now
+  goes to the chain. Held chains keep both reads; a released one logs no
+  `coins` or `registered`.
+- **Gaston's routes plan no hop over 1.6 tsum widths** (`hopReach`, was the
+  play loop's 1.9). Over `gaston_121`-`128.mp4` hops of 1.6-1.9 widths were 7%
+  of those drawn and 39% of the stalls, at 5-8 times the rate of the rest;
+  replayed over 774 logged boards the cap costs 1.7 tsums of plan, mostly
+  past what the slots draw.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`
