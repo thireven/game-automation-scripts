@@ -545,7 +545,11 @@ release note; they fold back in here when she ships.
   charge never came; 4 of 25 first windows to then failed to charge. A
   window the play loop opened now follows each cancelled pass's Gaston chain
   with other-colour chains for up to `convertChainMs` (1.5s), past the pass's
-  slot, while the refill still lands before the close (`convert`).
+  slot, while the refill still lands before the close (`convert`). The
+  scan's colour groups found almost none on `gaston_141`/`142.mp4` (0 and one
+  5-chain), so the time left goes to the paint read: a finger on the densest
+  leftover paints its kind, and the chain is planned over those, up to
+  `convertReads` (3) kinds a pass (`gastonPaintedLeftovers`).
 - **Gaston's last cancel redraws a stall while its slot has room**
   (`lastRewindRoomMs`). A cancelled chain releases at a stall once 8 are
   linked; for the last cancel the time it frees only waits for the antlers,

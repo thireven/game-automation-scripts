@@ -1015,6 +1015,9 @@ var GastonConfig = {
   // 20 Gastons and drew 16, and the charge never came: 4 of 25 first windows
   // to then failed to charge, and most of the rest took 2-4s to.
   convertChainMs: 1500,
+  // Leftover kinds a converting pass reads and chains after the scan's own
+  // (`gastonPaintedLeftovers`).
+  convertReads: 3,
 };
 
 // The `roundStartedAt` of the round whose first activation has gone out, or 0.
@@ -2602,7 +2605,7 @@ function gastonDrawPlain(ts: Tsum, path: TsumPath): void {
  * clear refills as Gaston, so it leaves the carry. Answers each length.
  */
 function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[], drawn: TsumPath,
-    gastons: BoardPoint[], until: number): number[] {
+    gastons: BoardPoint[], until: number, used?: BoardPoint[]): number[] {
   const cfg = GastonConfig;
   const out: number[] = [];
   const free = gastonFreeBoard(board, bubbles, cfg.hudBand).filter(function(p) {
@@ -2624,6 +2627,7 @@ function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[],
     if (Date.now() + gastonDragEstimate(path.length) > until || gastonCrossesBubble(path, bubbles)) { continue; }
     gastonDrawPlain(ts, path);
     out.push(path.length);
+    if (used) { for (let k = 0; k < path.length; k++) { used.push(path[k]); } }
     gastonCarry = gastonCarry.filter(function(c) {
       for (let k = 0; k < path.length; k++) {
         const dx = c.x - (path[k].x + half);
@@ -2632,6 +2636,52 @@ function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[],
       }
       return true;
     });
+  }
+  return out;
+}
+
+/**
+ * Other-colour chains off the paint read, until `until`: the finger lands on
+ * the leftover with the most leftovers round it, the game paints its kind,
+ * and the chain is planned over those (`gastonLinkChain`, released at once).
+ * Each kind read, and each head that painted nothing, is left out of the
+ * next start. `skip` is what is Gaston or drawn already. Answers each length.
+ */
+function gastonPaintedLeftovers(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[], skip: BoardPoint[],
+    until: number, closeAt: number): number[] {
+  const cfg = GastonConfig;
+  const out: number[] = [];
+  const reach = Config.tsumWidth * cfg.hopReach;
+  let left = gastonFreeBoard(board, bubbles, cfg.hudBand).filter(function(p) { return skip.indexOf(p) < 0; });
+  const oracle: GastonOracle = {
+    board: board,
+    plan: function(head, found) {
+      return gastonChainFrom(head, gastonFreeBoard(found, bubbles, cfg.paintedHudBand), bubbles);
+    },
+    strayBelow: 0,
+  };
+  const slot = function(): GastonSlot { return { end: until, closing: false, last: false }; };
+  const never = function(): boolean { return false; };
+  for (let t = 0; t < cfg.convertReads && left.length >= cfg.minChain; t++) {
+    if (!ts.isRunning || Date.now() + cfg.paintMs + gastonDragEstimate(cfg.minChain) > until) { break; }
+    // The densest start: most leftovers within a hop.
+    let head: BoardPoint | null = null;
+    let best = -1;
+    for (let i = 0; i < left.length; i++) {
+      let n = 0;
+      for (let j = 0; j < left.length; j++) {
+        const dx = left[j].x - left[i].x;
+        const dy = left[j].y - left[i].y;
+        if (i !== j && dx * dx + dy * dy <= reach * reach) { n++; }
+      }
+      if (n > best || (n === best && head !== null && left[i].y > head.y)) { best = n; head = left[i]; }
+    }
+    if (head === null || best < cfg.minChain - 1) { break; }
+    const drag = gastonLinkChain(ts, [head] as TsumPath, never, 0, closeAt, slot, oracle);
+    if (drag.path.length > 0) { out.push(drag.path.length); }
+    const gone: BoardPoint[] = [head];
+    if (drag.gastons !== null) { for (let k = 0; k < drag.gastons.length; k++) { gone.push(drag.gastons[k]); } }
+    left = left.filter(function(p) { return gone.indexOf(p) < 0; });
   }
   return out;
 }
@@ -2887,7 +2937,15 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     const mixedUntil = convert
       ? Math.min(drag.releasedAt + cfg.convertChainMs, refillBy - cfg.noCancelTailMs)
       : Math.min(drag.releasedAt + cfg.mixedChainMs, refillBy - cfg.noCancelTailMs, drag.slotEnd);
-    const extra = mixed ? gastonMixedChains(ts, board, bubbles, drag.path, his, mixedUntil) : [];
+    const used: BoardPoint[] = [];
+    const extra = mixed ? gastonMixedChains(ts, board, bubbles, drag.path, his, mixedUntil, used) : [];
+    // A converting window then reads the leftovers' own kinds for the time
+    // left: the scan's colour clusters split and merge them (`gaston_141.mp4`
+    // drew none on a board of 14).
+    if (convert && released) {
+      const more = gastonPaintedLeftovers(ts, board, bubbles, his.concat(drag.path, used), mixedUntil, closeAt);
+      for (let k = 0; k < more.length; k++) { extra.push(more[k]); }
+    }
     // When the last of it pops if nothing cancels it: the extras pop from
     // their own releases, the last of them about now.
     const extraAt = Date.now() - drag.releasedAt;
