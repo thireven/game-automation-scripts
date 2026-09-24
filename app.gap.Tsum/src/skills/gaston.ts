@@ -700,6 +700,10 @@ var GastonConfig = {
   // tsum found none, walked back to the head and redrew the same stall, and
   // ended the drag at 1 -- 1 drag in 10-20 on `gaston_121`-`123.mp4`.
   coinBackFrom: 2,
+  // How far past its slot the last cancelled pass's redraw may run: cut to
+  // the slot, `gaston_124.mp4`'s recovered chains went out at 10 and 13 of
+  // 45. The closing chain starts that much later.
+  rewindGraceMs: 500,
   coinSettleMs: 80,
   // The coin test: a (2*coinGrid+1)^2 grid at `coinStep` round the planned
   // centre, a tsum carrying one when `coinShare` of it is gold (hue 36-60,
@@ -1748,6 +1752,8 @@ interface GastonDrag {
   countLate: ChainCount | null;
   /** Each rewind as [route index the finger was on, index it walked back to] (see `rewind`). */
   rewinds: number[][];
+  /** The game's count at each rewind (`chainCounterRead`), -1 unread. */
+  stallCounts: number[];
   /** The last check's coin read over the route, 'C' or '.' per tsum from `coinFrom`; null when none ran. */
   coins: string | null;
   /** The route a stopped drag was on, before `path` was cut to what it linked; null otherwise. */
@@ -1767,6 +1773,8 @@ interface GastonDrag {
 interface GastonSlot {
   end: number;
   closing: boolean;
+  /** The last cancelled pass: a redraw may run `rewindGraceMs` past `end`. */
+  last: boolean;
 }
 
 /**
@@ -1959,7 +1967,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   const drag: GastonDrag = {
     path: [] as TsumPath, ms: 0, overMs: 0, held: false, heldMs: 0, releasedAt: 0,
     dead: false, gastons: null, rise: null, rises: null, leftovers: [], count: null, countLate: null,
-    rewinds: [], coins: null, trimmed: 0, planned: null, startedAt: 0, slotEnd: 0, closing: false, pausedMs: 0,
+    rewinds: [], stallCounts: [], coins: null, trimmed: 0, planned: null, startedAt: 0, slotEnd: 0, closing: false, pausedMs: 0,
   };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.isRunning || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
@@ -2079,6 +2087,10 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
         }
         const back = gastonStalled(ts, path, i, end, drag);
         if (back >= 0 && spare) {
+          // What the game has linked, against the route: the log's measure of
+          // where the chain left it.
+          const count = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1))).value;
+          drag.stallCounts.push(count !== null ? count : -1);
           // Back to the tsum before the last coin: the chain's end either way.
           // A missed link is undone by the walk over it; a last coin linked
           // early, from a tsum before its turn, left its predecessor the end
@@ -2117,7 +2129,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           // the first draw was: `gaston_123.mp4`'s rewinds ran three passes
           // 0.4-1.6s past theirs, and each window lost its second cancel.
           if (!sl.closing) {
-            const room = Math.max(0, Math.floor((sl.end - Date.now() - cfg.coinSettleMs) / perHop));
+            const until = sl.end + (sl.last ? cfg.rewindGraceMs : 0);
+            const room = Math.max(0, Math.floor((until - Date.now() - cfg.coinSettleMs) / perHop));
             const keepTail = Math.max(to + room, cfg.cancelMinChain - 1);
             if (keepTail < tail) {
               drag.trimmed += tail - keepTail;
@@ -2515,7 +2528,10 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     fullBoard: boolean, paintUntil: number): GastonPass {
   const cfg = GastonConfig;
   const enteredAt = Date.now();
-  if (gPages.detect(1, 0) !== PageName.GamePlaying) {
+  // Only a round-over page ends the window, as in the play loop: the last
+  // five seconds' flash reads as no page, and `gaston_123`/`124.mp4`'s last
+  // windows quit under it and left the play loop's short chains to the end.
+  if (gastonRoundOver()) {
     return {
       chain: 0, registered: null, registeredLate: null, cancelled: 0, confirmed: null, extra: 0, popMs: 0,
       held: false, heldMs: 0, releasedAt: 0, headAt: 0, read: 0, biggest: 0, overMs: 0, dead: 0, blank: 0,
@@ -2536,9 +2552,9 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
   const slot = function(now: number): GastonSlot {
     for (let k = passesLeft; k >= 1; k--) {
       const end = now + (lastRelease - now - (k - 1) * (gastonCycleMs + cfg.paintMs)) / k;
-      if (end - now >= cfg.coinSettleMs + gastonDragEstimate(cfg.cancelMinChain)) { return { end: end, closing: false }; }
+      if (end - now >= cfg.coinSettleMs + gastonDragEstimate(cfg.cancelMinChain)) { return { end: end, closing: false, last: k === 1 }; }
     }
-    return { end: late ? 0 : closeAt - cfg.closeLeadMs, closing: true };
+    return { end: late ? 0 : closeAt - cfg.closeLeadMs, closing: true, last: false };
   };
   gastonWatchFever(ts);
   // The starts the finger came up from, left out of the next plan.
@@ -2752,7 +2768,7 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       closeWaitMs: closeWaitMs, pausedMs: drag.pausedMs,
       // Each walk back from a stalled chain, and the coins the last check read
       // over the route from `coinFrom` (see `rewind`).
-      rewinds: drag.rewinds, coins: drag.coins,
+      rewinds: drag.rewinds, stallCounts: drag.stallCounts, coins: drag.coins,
       // Tsums cut off the end so the closing chain ends before the close.
       trimmed: drag.trimmed,
     };

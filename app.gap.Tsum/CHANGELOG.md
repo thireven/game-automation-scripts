@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by playing two chains cancelled with a bubble each and then a closing chain released only once the skill has run out, drawn the moment the antlers leave the screen, so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain at a pace the game links whole and picking a chain back up where it stopped when a link fails mid-drag, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead, and popping them after a chain like any other, or on their own when they pile up, keeping just one standing between cancels, and by clearing the other tsums off a crowded board so the refills come back as Gaston; the round plays as normal until his first activation, with bubbles saved for the windows from then on.
+- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by playing two chains cancelled with a bubble each and then a closing chain released only once the skill has run out, drawn the moment the antlers leave the screen, so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain at a pace the game links whole and picking a chain back up where it stopped when a link fails mid-drag, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead, and popping them after a chain like any other, or on their own when they pile up, keeping just one standing between cancels, by clearing the other tsums off a crowded board so the refills come back as Gaston, and by playing his windows right to the end of the round; the round plays as normal until his first activation, with bubbles saved for the windows from then on.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 - Box Buying can buy the Pick-Up Capsule: pick it under "Box to buy" and the sweep buys from the capsule while one is on sale, opening each and closing its prize, whether a tsum or an item, closes the Last Prize the final capsule hands out, and stops once the capsule is sold out.
 
@@ -472,6 +472,21 @@ release note; they fold back in here when she ships.
   same stall and stopped at 1 -- 1 drag in 10-20. The last coin is now looked
   for from the second tsum (`coinBackFrom`), and a repeat stall at the head
   replans clear of the route's second tsum.
+- **Gaston's windows play to the end of the round.** A pass ended its window
+  whenever the screen did not read as the game, which the last five seconds'
+  flashing border does not: the last windows of `gaston_123`/`124.mp4` quit
+  under it and the play loop drew short chains of any colour to the end.
+  Only a round-over page ends a window now, as in the play loop.
+- **The chain counter reads every colour the game draws it in.** Navy is only
+  1-9; past that it is crimson on a pink plate, slate, brown with the digits
+  touching, and rainbow from 30, so Gaston's counts -- mostly past 10 when
+  read -- registered on 15% of drags. Each colour is its own mask now
+  (`styles`), touching digits are split, and the plate may be pink: 67% of
+  `gaston_124.mp4`'s drag frames read, 2 to 40. Gaston's rewinds log the count
+  at each (`stallCounts`).
+- **Gaston's last cancel keeps a recovered chain.** Cut to its slot after a
+  rewind, `gaston_124.mp4`'s recovered chains went out at 10 and 13 of 45;
+  the last cancelled pass's redraw may now run `rewindGraceMs` (500) past it.
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

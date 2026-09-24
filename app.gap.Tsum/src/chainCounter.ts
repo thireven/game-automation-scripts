@@ -24,13 +24,15 @@
 // sprite drawn large is the number that pops up over a cleared chain, and the
 // praise score popups ("27,429") and the combo counter share the outline; the
 // height band and the HUD band below keep those out, and the choice of which
-// number is the counter is made by position (`route`).
+// number is the counter is made by position (`route`). Past 9 the same
+// shapes come in other colours (`styles`): Gaston's chains, 20-40 long, read
+// on 15% of drags on navy alone.
 //
 // ## How it is read
 //
-// The play square at 540 wide, every navy pixel (`navy`) boxed by connected
-// component. A box the height of a digit whose surround is mostly the plate's
-// white (`plateRing`) is a candidate; its navy pixels, inner rings included,
+// The play square at 540 wide, every pixel of one style boxed by connected
+// component, style by style. A box the height of a digit whose surround is
+// mostly the plate (`plateRing`) is a candidate; its style's pixels, inner rings included,
 // are sampled to a 20x28 grid and scored against `ChainDigits` -- the same
 // outline rendered from the sprite itself by the development toolkit's
 // `chain:digits`, which also self-tests the templates at scales and offsets
@@ -52,17 +54,29 @@ var ChainCounterConfig = {
   // below are in its pixels. A 1080 screen halves on the way out of
   // getScreenshotModify, a 360 one is drawn up.
   scanWidth: 540,
-  // The outline's colour: the sprite's (114, 68, 38) BGR with room for the
-  // antialiasing against the fill and the plate. Measured on a device capture
-  // the outline's core runs B 115-157, G 36-101, R 16-82.
-  navy: { lo: { b: 80, g: 20, r: 0 }, hi: { b: 180, g: 130, r: 110 } },
-  // A plate pixel has every channel at or over this.
-  plateFloor: 190,
+  // The outline's colour, BGR, which goes with the chain's length -- the same
+  // digit shapes each time (`gaston_124.mp4`). Navy to 9: the sprite's
+  // (114, 68, 38) with room for the antialiasing, measured on a device
+  // capture at B 115-157, G 36-101, R 16-82. Crimson 10-14, on a pink plate;
+  // slate 15-19; dark brown 20-29, its digits touching; a dark rainbow from
+  // 30, which `dark` mostly takes. One mask each: the host has no mask OR.
+  styles: [
+    { lo: { b: 80, g: 20, r: 0 }, hi: { b: 180, g: 130, r: 110 } },
+    { lo: { b: 30, g: 0, r: 100 }, hi: { b: 140, g: 90, r: 230 } },
+    { lo: { b: 120, g: 90, r: 70 }, hi: { b: 205, g: 190, r: 175 } },
+    { lo: { b: 0, g: 0, r: 0 }, hi: { b: 159, g: 159, r: 159 } },
+  ],
+  // A plate pixel has every channel at or over this: white, or the crimson
+  // style's pink.
+  plateFloor: 170,
   // The outline's box: 25x28 measured on a 540 capture, 26-28 tall on a
   // recording. Wide enough for a device that draws the counter a little
-  // bigger or smaller; the sampling to the grid is size-blind.
+  // bigger or smaller; the sampling to the grid is size-blind. A box wider
+  // than `boxWidth.max`, up to `mergedAspect` heights, is two digits that
+  // touch, split where the pair reads best.
   boxHeight: { min: 20, max: 36 },
   boxWidth: { min: 4, max: 34 },
+  mergedAspect: 2.4,
   minArea: 40,
   // How many pixels outside the box the plate is sampled, and how much of
   // that frame has to be white. The corners of the frame fall off a round
@@ -509,16 +523,61 @@ function chainScore(cand: Uint8Array, candDilated: Uint8Array, tmpl: Uint8Array,
   return 0.5 * (onTemplate / Math.max(1, candCells) + onCand / Math.max(1, tmplCells));
 }
 
-function chainIsNavy(c: Color): boolean {
-  const n = ChainCounterConfig.navy;
-  return c.b >= n.lo.b && c.b <= n.hi.b && c.g >= n.lo.g && c.g <= n.hi.g && c.r >= n.lo.r && c.r <= n.hi.r;
+/** A counter outline style, as `ChainCounterConfig.styles` has them. */
+interface ChainStyle { lo: { b: number, g: number, r: number }; hi: { b: number, g: number, r: number }; }
+
+function chainInStyle(c: Color, st: ChainStyle): boolean {
+  return c.b >= st.lo.b && c.b <= st.hi.b && c.g >= st.lo.g && c.g <= st.hi.g && c.r >= st.lo.r && c.r <= st.hi.r;
 }
 
 /**
- * Every digit on the play square capture `img` (scan pixels), off its navy
- * mask's boxes: the plate test, the sampling and the match, per box.
+ * The best template for the on cells of `bits` (`bw` by `bh`) between columns
+ * `from` and `to`, cropped to their extent, in `bits`' coordinates. Null when
+ * too little is on to be a digit.
  */
-function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number): ChainDigitHit[] {
+function chainBestDigit(bits: Uint8Array, bw: number, bh: number, from: number, to: number): ChainDigitHit | null {
+  const cfg = ChainCounterConfig;
+  let minX = to;
+  let maxX = from - 1;
+  let minY = bh;
+  let maxY = -1;
+  for (let y = 0; y < bh; y++) {
+    for (let x = from; x < to; x++) {
+      if (!bits[y * bw + x]) { continue; }
+      if (x < minX) { minX = x; }
+      if (x > maxX) { maxX = x; }
+      if (y < minY) { minY = y; }
+      if (y > maxY) { maxY = y; }
+    }
+  }
+  const w = maxX - minX + 1;
+  const h = maxY - minY + 1;
+  if (maxY < 0 || h < 0.7 * cfg.boxHeight.min || w < 3) { return null; }
+  const sub = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) { sub[y * w + x] = bits[(minY + y) * bw + minX + x]; }
+  }
+  const cand = chainNormalise(sub, w, h);
+  const candDilated = chainDilate(cand);
+  const aspect = w / h;
+  let best = -1;
+  let second = -1;
+  let digit = '';
+  for (const d in chainTemplates) {
+    let s = chainScore(cand, candDilated, chainTemplates[d], chainTemplatesDilated![d]);
+    const off = Math.abs(aspect - ChainDigitAspect[d]);
+    if (off > cfg.aspectSlack) { s -= 0.5 * off; }
+    if (s > best) { second = best; best = s; digit = d; } else if (s > second) { second = s; }
+  }
+  return { x: minX, y: minY, w: w, h: h, digit: digit, score: best, margin: best - second };
+}
+
+/**
+ * Every digit on the play square capture `img` (scan pixels), off one style's
+ * mask boxes: the plate test, the sampling and the match, per box -- a wide
+ * box as two digits too (`mergedAspect`), whichever reads better.
+ */
+function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number, st: ChainStyle): ChainDigitHit[] {
   const cfg = ChainCounterConfig;
   const size = getImageSize(img);
   const hits: ChainDigitHit[] = [];
@@ -526,7 +585,7 @@ function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number)
   for (let b = 0; b < boxes.length; b++) {
     const box = boxes[b];
     if (box.height < cfg.boxHeight.min || box.height > cfg.boxHeight.max
-        || box.width < cfg.boxWidth.min || box.width > cfg.boxWidth.max) { continue; }
+        || box.width < cfg.boxWidth.min || box.width > cfg.mergedAspect * box.height) { continue; }
     if (box.y + box.height / 2 < cfg.hudBand * tsumWidth) { continue; }
     // The box and its frame in one read.
     const x0 = Math.max(0, box.x - ring);
@@ -547,7 +606,7 @@ function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number)
         const c = colors[(y - y0) * w + (x - x0)];
         const inside = x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height;
         if (inside) {
-          if (chainIsNavy(c)) { bits[(y - box.y) * box.width + (x - box.x)] = 1; }
+          if (chainInStyle(c, st)) { bits[(y - box.y) * box.width + (x - box.x)] = 1; }
         } else {
           frame++;
           if (Math.min(c.r, c.g, c.b) >= cfg.plateFloor) { white++; }
@@ -555,22 +614,49 @@ function chainDigitsOn(img: NativeImage, boxes: ContourBox[], tsumWidth: number)
       }
     }
     if (frame === 0 || white / frame < cfg.plateFrac) { continue; }
-    const cand = chainNormalise(bits, box.width, box.height);
-    const candDilated = chainDilate(cand);
-    const aspect = box.width / box.height;
-    let best = -1;
-    let second = -1;
-    let digit = '';
-    for (const d in chainTemplates) {
-      let s = chainScore(cand, candDilated, chainTemplates[d], chainTemplatesDilated![d]);
-      const off = Math.abs(aspect - ChainDigitAspect[d]);
-      if (off > cfg.aspectSlack) { s -= 0.5 * off; }
-      if (s > best) { second = best; best = s; digit = d; } else if (s > second) { second = s; }
+    let read: ChainDigitHit[] = [];
+    let readScore = -1;
+    if (box.width <= cfg.boxWidth.max) {
+      const one = chainBestDigit(bits, box.width, box.height, 0, box.width);
+      if (one !== null) { read = [one]; readScore = one.score; }
     }
-    if (best < cfg.minScore || best - second < cfg.minMargin) { continue; }
-    hits.push({ x: box.x, y: box.y, w: box.width, h: box.height, digit: digit, score: best, margin: best - second });
+    if (box.width >= 0.9 * box.height) {
+      for (let k = Math.floor(0.3 * box.width); k <= Math.floor(0.7 * box.width); k++) {
+        const l = chainBestDigit(bits, box.width, box.height, 0, k);
+        const r = chainBestDigit(bits, box.width, box.height, k, box.width);
+        if (l === null || r === null) { continue; }
+        const s = (l.score + r.score) / 2;
+        if (s > readScore) { read = [l, r]; readScore = s; }
+      }
+    }
+    let ok = read.length > 0;
+    for (let i = 0; i < read.length; i++) {
+      if (read[i].score < cfg.minScore || read[i].margin < cfg.minMargin) { ok = false; }
+    }
+    if (!ok) { continue; }
+    for (let i = 0; i < read.length; i++) {
+      read[i].x += box.x;
+      read[i].y += box.y;
+      hits.push(read[i]);
+    }
   }
   return hits;
+}
+
+/** One hit per digit place: where the styles' reads overlap, the best score. */
+function chainDedupe(hits: ChainDigitHit[]): ChainDigitHit[] {
+  hits.sort(function(a, b) { return b.score - a.score; });
+  const kept: ChainDigitHit[] = [];
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    let dup = false;
+    for (let k = 0; k < kept.length && !dup; k++) {
+      dup = Math.abs(h.x + h.w / 2 - kept[k].x - kept[k].w / 2) < 0.4 * h.h
+        && Math.abs(h.y + h.h / 2 - kept[k].y - kept[k].h / 2) < 0.4 * h.h;
+    }
+    if (!dup) { kept.push(h); }
+  }
+  return kept;
 }
 
 /** Digits joined left to right into numbers: one row, a gap under `digitGap` heights. */
@@ -585,7 +671,7 @@ function chainNumbersOf(hits: ChainDigitHit[]): ChainNumberHit[] {
     for (let n = 0; n < nums.length; n++) {
       const g = nums[n];
       const gap = h.x - (g.x + g.w);
-      if (Math.abs((h.y + h.h / 2) - (g.y + g.h / 2)) < 0.5 * h.h && gap >= 0 && gap < cfg.digitGap * h.h) {
+      if (Math.abs((h.y + h.h / 2) - (g.y + g.h / 2)) < 0.5 * h.h && gap >= -2 && gap < cfg.digitGap * h.h) {
         digits[n] += h.digit;
         const top = Math.min(g.y, h.y);
         g.h = Math.max(g.y + g.h, h.y + h.h) - top;
@@ -626,12 +712,19 @@ function chainCounterRead(ts: Tsum, route: Point[] | null): ChainCount {
   let mask: NativeImage | null = null;
   let nums: ChainNumberHit[];
   try {
-    const n = cfg.navy;
-    // BGRA bounds, as inRange takes them.
-    mask = inRange(img, n.lo.b, n.lo.g, n.lo.r, 0, n.hi.b, n.hi.g, n.hi.r, 255);
-    if (!(mask as unknown as number)) { none.ms = Date.now() - from; return none; }
-    const boxes = findContours(mask, cfg.minArea, 0);
-    nums = chainNumbersOf(chainDigitsOn(img, boxes, Config.tsumWidth * scale));
+    const hits: ChainDigitHit[] = [];
+    for (let i = 0; i < cfg.styles.length; i++) {
+      const st = cfg.styles[i];
+      // BGRA bounds, as inRange takes them.
+      mask = inRange(img, st.lo.b, st.lo.g, st.lo.r, 0, st.hi.b, st.hi.g, st.hi.r, 255);
+      if (!(mask as unknown as number)) { mask = null; continue; }
+      const boxes = findContours(mask, cfg.minArea, 0);
+      releaseImage(mask);
+      mask = null;
+      const found = chainDigitsOn(img, boxes, Config.tsumWidth * scale, st);
+      for (let k = 0; k < found.length; k++) { hits.push(found[k]); }
+    }
+    nums = chainNumbersOf(chainDedupe(hits));
   } finally {
     if (mask != null) { releaseImage(mask); }
     releaseImage(img);
