@@ -456,6 +456,10 @@ release note; they fold back in here when she ships.
   and the play loop to fill it. While the closing chains total under
   `gaugeChain` (24), another is drawn once the last one's pop has landed --
   every clear past the close fills the gauge -- up to `closeRetries` (2).
+  The gauge is tapped through the short chain's pop first and the retry
+  goes out only if it did not fill: on `gaston_122.mp4` a 23 was retried,
+  the retry found nothing, and the spam's budget had run out behind it, so a
+  gauge that may have been full was never tapped (`chargeMinMs`).
 - **Three native-image throw windows closed.** The host keeps every capture
   until `releaseImage`, so a native throwing between a capture and its guard
   leaked a frame for the rest of the run: `buildBoardGray` and `tiaraCapture`

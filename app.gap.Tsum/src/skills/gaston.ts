@@ -836,6 +836,8 @@ var GastonConfig = {
   // on `gaston_121.mp4` stopped theirs at 9 and 8 and never charged.
   gaugeChain: 24,
   closeRetries: 2,
+  // The spam's least run, whatever the clear's own length says.
+  chargeMinMs: 300,
   // The spam also stops this long after the held chain's clear should be over
   // (`popPerTsumMs` a tsum, of its late count when the counter read one). On
   // 2026-09-23 every charge that fired read full within 0.9s of that; the ones
@@ -2830,8 +2832,10 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   let cycleFrom = 0;
   // The held chain, 0 when the window closed without one.
   let clearing = 0;
-  // Closing chains drawn after one that stopped short (`gaugeChain`).
+  // Closing chains drawn after one that stopped short (`gaugeChain`), and
+  // the spam through the short one's pop, which may have fired already.
   let retries = 0;
+  let early: GastonCharge | null = null;
   let clearingLate: number | null = null;
   let heldMs = 0;
   let releasedAt = 0;
@@ -2870,12 +2874,15 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
         clearingLate = retries === 0 ? pass.registeredLate : null;
         heldMs += pass.heldMs;
         releasedAt = pass.releasedAt;
-        // Short of the gauge: another closing chain, on the board its pop
-        // leaves (`gaugeChain`).
+        // Short of the gauge: tap it through the pop, which may fill it after
+        // all, and draw another closing chain on the board the pop leaves only
+        // if it did not (`gaugeChain`).
         if (clearing < cfg.gaugeChain && retries < cfg.closeRetries && ts.isRunning) {
+          const landed = pass.releasedAt + pass.chain * cfg.popPerTsumMs + cfg.popTailMs;
+          early = gastonSpamSkill(ts, landed);
+          if (early.ready || !early.onBoard) { break; }
           retries++;
           passesLeft = 0;
-          const landed = pass.releasedAt + pass.chain * cfg.popPerTsumMs + cfg.popTailMs;
           fullBoard = gastonAwaitBoard(ts, Math.max(Date.now(), landed) + cfg.fillWaitMs, landed).full;
           continue;
         }
@@ -2923,10 +2930,14 @@ function gastonWindow(ts: Tsum, level: number, t0: number): number {
   const chargeFrom = Date.now();
   let charge: GastonCharge = { taps: 0, ready: false, onBoard: onBoard };
   let spamUntil = chargeFrom;
-  if (onBoard && clearing >= cfg.chargeMinChain) {
+  if (early !== null && (early.ready || !early.onBoard)) {
+    charge = early;
+  } else if (onBoard && clearing >= cfg.chargeMinChain) {
     const popping = clearingLate !== null && clearingLate > 0 && clearingLate < clearing ? clearingLate : clearing;
-    spamUntil = Math.min(chargeFrom + cfg.gaugeWaitMs,
-      releasedAt + popping * cfg.popPerTsumMs + cfg.chargeTailMs);
+    // At least `chargeMinMs`: a retry that drew nothing can outlast the pop,
+    // and a gauge that filled meanwhile still wants its tap.
+    spamUntil = Math.max(chargeFrom + cfg.chargeMinMs, Math.min(chargeFrom + cfg.gaugeWaitMs,
+      releasedAt + popping * cfg.popPerTsumMs + cfg.chargeTailMs));
     charge = gastonSpamSkill(ts, spamUntil);
   }
   const firedAt = charge.ready ? Date.now() : 0;
