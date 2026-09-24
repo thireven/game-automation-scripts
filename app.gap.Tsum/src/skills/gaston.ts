@@ -711,9 +711,11 @@ var GastonConfig = {
   coinLag: 2,
   // Route index of the first tsum that can carry a coin.
   coinFrom: 4,
-  // The fewest tsums a check reads: at `checkEvery` 8 that is route 4-6, the
-  // first check a stall at the head can meet (it waited for 12 before).
-  checkMinSpan: 3,
+  // The fewest tsums a check reads, so the first check is at the twelfth
+  // tsum. At 3 it ran at the eighth over route 4-6, whose coins show late:
+  // on `gaston_137.mp4` it called chains of 9-10 stalled and walked them
+  // back, four first cancels ending at 4-23.
+  checkMinSpan: 4,
   // Where the walk-back looks for the last coin from: the dots can end at
   // the second link. Searched from `coinFrom`, a stall at the fourth or fifth
   // tsum found none, walked back to the head and redrew the same stall, and
@@ -2199,7 +2201,9 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           // stall: the game is not linking (the board still pale after a
           // close the fever ended at, 3s on `gaston_125`/`126.mp4`), and the
           // retry's fresh chain is quicker than more redraws.
-          const linked = count !== null ? count : back + 1;
+          // A count under the last coin is a misread (`gaston_137.mp4` read
+          // 1 on a chain of 7 and restarted it).
+          const linked = count !== null ? Math.max(count, back + 1) : back + 1;
           const settle = !sl.closing && (linked >= cfg.stopFrom || drag.rewinds.length > 0);
           const flat = sl.closing && count !== null && lastCount !== null && count <= lastCount;
           if (count !== null) { lastCount = count; }

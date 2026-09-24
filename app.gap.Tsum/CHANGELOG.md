@@ -535,9 +535,10 @@ release note; they fold back in here when she ships.
   at 1-3; walking back cannot undo it, and redrawing the same route stalled
   the same way -- 55 of 80 such stalls to `gaston_136.mp4` ended the drag at
   1, most of them the window's first cancel. The finger now comes up and
-  goes down on the route's far end (`restartBelow`, `restartSkip`), and the
-  first stall check runs at the eighth tsum, not the twelfth
-  (`checkMinSpan`).
+  goes down on the route's far end (`restartBelow`, `restartSkip`), judged
+  on the coins where the count reads lower. The first check stays at the
+  twelfth tsum (`checkMinSpan`): moved to the eighth, it read the first
+  links' late coins as a stall and walked chains of 9-10 back.
 - **Gaston's passes pass over a lookalike.** A game box can hold a second
   dark-haired tsum that clusters with Gaston by colour, and a finger on one
   paints only its own kind: `gaston_134.mp4`'s heads painted 6-17 of 23-30,
