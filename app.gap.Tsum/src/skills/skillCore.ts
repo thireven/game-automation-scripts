@@ -72,11 +72,6 @@ interface SkillHandler {
   // function is asked once per scan, for a skill that wants them only part of
   // the round.
   extraClusterSlots?: number | ((ts: Tsum) => number);
-  // The board colour model this skill's scans cluster with, over the Debug
-  // tab's choice: a skill whose tsum a model tells apart better than the
-  // default does declares it here. Nothing declares one yet -- the models are
-  // tried from the Debug tab first (`SettingKey.BoardModel`).
-  boardModel?: BoardModel;
   // The choreography clears bubbles itself, with `clearAllBubbles`.
   //
   // That call is the deliberate override of the Bubble Strategy setting: the
@@ -281,12 +276,6 @@ function skillClusterSlots(ts: Tsum): number {
   const extra = typeof slots === 'function' ? slots(ts) : slots;
   return ts.uniqueTsumCount - 1 + (typeof extra === 'number' ? extra : 0)
     + lorcanaExtraClusterSlots(ts);
-}
-
-/** The board colour model a scan clusters with: the skill's, else the setting's. */
-function skillBoardModel(ts: Tsum): BoardModel {
-  const handler = SkillHandlers[ts.skillType];
-  return handler && handler.boardModel ? handler.boardModel : Config.boardModel;
 }
 
 function skillMaxChainsPerScan(ts: Tsum): number {

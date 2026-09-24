@@ -426,10 +426,7 @@ Tsum.prototype.scanBoardQuick = function() {
         age: bubbleAges(this.gameBubbles) });
     }
     logDebug(Log.Board.RecognitionStart);
-    // The skill's model, else the setting's; the type count is what the
-    // fragment merge stops at -- every type on the board plus the skill's own
-    // colours, not the slots the scan then keeps.
-    const tcs = classifyTsums(points, skillBoardModel(this), skillClusterSlots(this) + 1);
+    const tcs = classifyTsums(points);
     tcs.sort(function(a, b) { return a.points.length > b.points.length ? -1: 1; });
     // HSV cluster centers — compare these (and the inter-cluster distance3D)
     // against the boardImg circles when tuning the color-clustering settings.

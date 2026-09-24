@@ -620,8 +620,6 @@ function findTsums(img: NativeImage, grayImg: NativeImage): TsumPoint[] {
     smooth(localImg, 1, LocalSampleBlur);
     convertColor(localImg, 40);
     const locals = pts.length > 0 ? getImageColors(localImg, pts) : [];
-    // The rim drop, off the same light blur -- see `RimDisc`.
-    const drops = readRimDrops(localImg, points);
     // The texture read, off the gray the Hough pass already has.
     const textures = readTextures(grayImg, points);
 
@@ -648,7 +646,7 @@ function findTsums(img: NativeImage, grayImg: NativeImage): TsumPoint[] {
         // every tsum; nothing reads it, which is why nothing noticed.
         x: p.x, y: p.y, z: p.radius,
         b: c.b, g: c.g, r: c.r,
-        contrast: textures[k].contrast, peak: textures[k].peak, drop: drops[k],
+        contrast: textures[k].contrast, peak: textures[k].peak,
         local: {b: lb / CrossPoints, g: lg / CrossPoints, r: lr / CrossPoints},
       });
     }
@@ -812,101 +810,6 @@ function readTextures(grayImg: NativeImage, circles: Point[]): TsumTexture[] {
   return out;
 }
 
-// --- the board model switch ---------------------------------------------------
-//
-// Two experiments behind the Debug tab, each measured on `gaston_8.mp4`
-// (2026-09-21): eleven boards labelled off the paint the game puts on Gaston's
-// tsums when one is touched, 334 of his among 420 circles, under the fever tint
-// and on the plain theme, scored on the biggest cluster's purity and recall.
-//
-// **Radial** (`BoardModel.Radial`) adds the *rim drop* to the distance: how much
-// darker a tsum's rim is than its centre, read as HSV value off the light blur
-// on `RimDisc`. It is the one axis that told Gaston from what the tint had
-// merged into him -- his face under dark hair reads 68-124, the plain orange
-// tsum beside him 31-35, a Donald ~47 -- and it is rotation-proof and nearly
-// theme-proof, where the ring *colours* were not: a whole-ring chroma vector
-// tried first doubled the within-type spread through the centre error and the
-// tilt. At `dropWeight` 0.5 and `mergeDistance` 50, with `refinePasses` of
-// k-means over the greedy pass's clusters, the foreign tsums in his cluster
-// halved (24 to 11 of ~340) at the same recall; F 0.936 -> 0.955. The threshold
-// is 50 rather than 40 because the fever tint scales every chroma distance up
-// -- his own tsums sit 2.5x further apart there -- and 40 split him.
-//
-// **Fragments** (`Config.clusterFragments`, `mergeClusterFragments`) is about
-// ordinary play. On a five-type board the greedy pass makes eight to ten
-// clusters, and the slot cut then keeps four: 72-82% of the circles on the
-// frames of two recordings. Merging each small cluster into the nearest big one
-// -- the smaller at most `smallShare` of the larger, centres within
-// `maxMerge`, and never two big ones -- down to the round's type count keeps
-// 88-94%. Fragment-only because a merge of two big clusters is a merge of two
-// types, which no chain links; on the labelled boards it changed nothing.
-//
-// Both are off by default: neither has run on a device, and the fragment merge
-// has no labelled ordinary-play boards behind it (the paint is Gaston's
-// window's own -- an ordinary touch paints nothing).
-var BoardModelConfig = {
-  radial: { dropWeight: 0.5, mergeDistance: 50, refinePasses: 3 },
-  fragments: { maxMerge: 80, smallShare: 0.34 },
-};
-
-/** The model `distance3D` measures with while `classifyTsums` runs; null is the setting's. */
-var boardModelActive: BoardModel | null = null;
-
-/** The board model in force: the one a classification set, else the setting's. */
-function boardModelNow(): BoardModel {
-  return boardModelActive !== null ? boardModelActive : Config.boardModel;
-}
-
-/**
- * Where the rim drop is read: a core of the centre and a ring of 8 at radius
- * 3, and a rim of 20 at radius 10 and 24 at 12, inside a head of radius ~12.
- * Two rings per part so a centre a few pixels off the sprite still reads it.
- */
-var RimDisc = (function() {
-  const ring = function(radius: number, count: number): Point[] {
-    const out: Point[] = [];
-    for (let k = 0; k < count; k++) {
-      const a = 2 * Math.PI * k / count;
-      out.push({x: Math.round(radius * Math.cos(a)), y: Math.round(radius * Math.sin(a))});
-    }
-    return out;
-  };
-  return { core: [{x: 0, y: 0}].concat(ring(3, 8)), rim: ring(10, 20).concat(ring(12, 24)) };
-})();
-
-/**
- * Each circle's rim drop: the mean HSV value over `RimDisc.core` less the mean
- * over `RimDisc.rim`, off `hsvImg` -- the light-blur HSV the local sample
- * reads -- in one batched crossing. A point off the square is clamped onto it.
- */
-function readRimDrops(hsvImg: NativeImage, circles: Point[]): number[] {
-  const core = RimDisc.core, rim = RimDisc.rim;
-  const per = core.length + rim.length;
-  const edge = Config.screenResize - 1;
-  const pts: Point[] = [];
-  for (let k = 0; k < circles.length; k++) {
-    const p = circles[k];
-    const parts = [core, rim];
-    for (let s = 0; s < parts.length; s++) {
-      for (let d = 0; d < parts[s].length; d++) {
-        const x = p.x + parts[s][d].x;
-        const y = p.y + parts[s][d].y;
-        pts.push({x: x < 0 ? 0 : (x > edge ? edge : x), y: y < 0 ? 0 : (y > edge ? edge : y)});
-      }
-    }
-  }
-  const colors = pts.length > 0 ? getImageColors(hsvImg, pts) : [];
-  const out: number[] = [];
-  for (let k = 0; k < circles.length; k++) {
-    const base = k * per;
-    let coreV = 0, rimV = 0;
-    for (let d = 0; d < core.length; d++) { coreV += colors[base + d].r; }
-    for (let d = 0; d < rim.length; d++) { rimV += colors[base + core.length + d].r; }
-    out.push(coreV / core.length - rimV / rim.length);
-  }
-  return out;
-}
-
 /** How much of the texture axes a colour this far from grey gets: 1 down to 0. */
 function textureGate(c: Color): number {
   const radius = Math.sqrt(c.b * c.b + c.g * c.g);
@@ -945,8 +848,7 @@ function chromaToHsv(c: Color): Color {
 // of them was patching a pathology the plane does not have.
 //
 // Plus the texture axes, when both sides carry them and both are near grey --
-// the block above `TextureContrastWeight` is the reasoning. Plus the rim drop
-// under the radial model, when both sides carry it (`BoardModelConfig`).
+// the block above `TextureContrastWeight` is the reasoning.
 function distance3D(p1: Color & Partial<TsumTexture>, p2: Color & Partial<TsumTexture>): number {
   const db = p1.b - p2.b, dg = p1.g - p2.g, dr = p1.r - p2.r;
   let d2 = db * db + dg * dg + dr * dr;
@@ -959,17 +861,13 @@ function distance3D(p1: Color & Partial<TsumTexture>, p2: Color & Partial<TsumTe
       d2 += gate * (dc * dc + dp * dp);
     }
   }
-  if (p1.drop !== undefined && p2.drop !== undefined && boardModelNow() === BoardModel.Radial) {
-    const dd = BoardModelConfig.radial.dropWeight * (p1.drop - p2.drop);
-    d2 += dd * dd;
-  }
   return Math.sqrt(d2);
 }
 
 /** A cluster over `points`, its sums and means from scratch. */
 function clusterOf(points: TsumPoint[]): TsumCluster {
   const c: TsumCluster = {
-    sumb: 0, sumg: 0, sumr: 0, sumContrast: 0, sumPeak: 0, sumDrop: 0,
+    sumb: 0, sumg: 0, sumr: 0, sumContrast: 0, sumPeak: 0,
     b: 0, g: 0, r: 0, contrast: 0, peak: 0, points: points,
   };
   for (let i = 0; i < points.length; i++) { clusterAdd(c, points[i], i + 1); }
@@ -984,13 +882,9 @@ function clusterAdd(c: TsumCluster, p: TsumPoint, count: number): void {
   c.sumb += p.b; c.sumg += p.g; c.sumr += p.r;
   c.sumContrast += p.contrast !== undefined ? p.contrast : 0;
   c.sumPeak += p.peak !== undefined ? p.peak : 0;
-  c.sumDrop += p.drop !== undefined ? p.drop : 0;
   c.b = c.sumb / count; c.g = c.sumg / count; c.r = c.sumr / count;
   c.contrast = c.sumContrast / count;
   c.peak = c.sumPeak / count;
-  // Only a point that carries a drop gives the centre one, so a centre keeps
-  // the plain distance against a colour that never had it.
-  if (p.drop !== undefined) { c.drop = c.sumDrop / count; }
 }
 
 // Greedy single pass against a drifting running mean, fixed merge threshold,
@@ -999,118 +893,35 @@ function clusterAdd(c: TsumCluster, p: TsumPoint, count: number): void {
 // the merge distance (common once blue variants are detected), first-match
 // could bleed a point into the wrong colour and drift both means; nearest-match
 // keeps the assignment stable.
-//
-// `model` is the board model to cluster with, the setting's when absent (see
-// `BoardModelConfig`); `types` is how many tsum types the board holds, which
-// the fragment merge needs and which only the scan knows.
-function classifyTsums(points: TsumPoint[], model?: BoardModel, types?: number): TsumCluster[] {
+function classifyTsums(points: TsumPoint[]): TsumCluster[] {
   if (!Array.isArray(points) || points.length === 0) {
     return [];
   }
-  boardModelActive = model !== undefined ? model : Config.boardModel;
-  try {
-    const radial = boardModelActive === BoardModel.Radial;
-    const threshold = radial ? BoardModelConfig.radial.mergeDistance : ChromaMergeDistance;
-    let clusters: TsumCluster[] = [];
+  const clusters: TsumCluster[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    let bestCluster: TsumCluster | null = null;
+    let minDistance = Infinity;
 
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      let bestCluster: TsumCluster | null = null;
-      let minDistance = Infinity;
-
-      // Find the closest existing cluster within threshold.
-      for (let j = 0; j < clusters.length; j++) {
-        const cluster = clusters[j];
-        const d = distance3D(cluster, p);
-        if (d < threshold && d < minDistance) {
-          minDistance = d;
-          bestCluster = cluster;
-        }
-      }
-
-      if (bestCluster) {
-        // Add to the nearest cluster and update its running means.
-        bestCluster.points.push(p);
-        clusterAdd(bestCluster, p, bestCluster.points.length);
-      } else {
-        clusters.push(clusterOf([p]));
+    // Find the closest existing cluster within threshold.
+    for (let j = 0; j < clusters.length; j++) {
+      const cluster = clusters[j];
+      const d = distance3D(cluster, p);
+      if (d < ChromaMergeDistance && d < minDistance) {
+        minDistance = d;
+        bestCluster = cluster;
       }
     }
 
-    if (Config.clusterFragments && types !== undefined && types > 0) {
-      clusters = mergeClusterFragments(clusters, types);
+    if (bestCluster) {
+      // Add to the nearest cluster and update its running means.
+      bestCluster.points.push(p);
+      clusterAdd(bestCluster, p, bestCluster.points.length);
+    } else {
+      clusters.push(clusterOf([p]));
     }
-    if (radial) {
-      clusters = refineClusters(clusters, BoardModelConfig.radial.refinePasses);
-    }
-    return clusters;
-  } finally {
-    boardModelActive = null;
   }
-}
-
-/**
- * k-means over the greedy pass's clusters: every point to the nearest centre,
- * the centres remade, `passes` times. The greedy pass is order-dependent and
- * its means drift as they grow, so a point taken early by a centre that then
- * walked away from it is what this puts right. Clusters left empty go.
- */
-function refineClusters(clusters: TsumCluster[], passes: number): TsumCluster[] {
-  let current = clusters;
-  for (let pass = 0; pass < passes && current.length > 1; pass++) {
-    const members: TsumPoint[][] = [];
-    for (let j = 0; j < current.length; j++) { members.push([]); }
-    for (let j = 0; j < current.length; j++) {
-      const pts = current[j].points;
-      for (let i = 0; i < pts.length; i++) {
-        let best = 0;
-        let minDistance = Infinity;
-        for (let k = 0; k < current.length; k++) {
-          const d = distance3D(current[k], pts[i]);
-          if (d < minDistance) { minDistance = d; best = k; }
-        }
-        members[best].push(pts[i]);
-      }
-    }
-    const next: TsumCluster[] = [];
-    for (let j = 0; j < members.length; j++) {
-      if (members[j].length > 0) { next.push(clusterOf(members[j])); }
-    }
-    current = next;
-  }
-  return current;
-}
-
-/**
- * Merge the fragments back: while more than `types` clusters remain, the
- * closest pair of centres whose smaller side is at most `smallShare` of the
- * larger, and within `maxMerge` -- see `BoardModelConfig`. Two big clusters
- * never merge, whatever their distance: those are two types.
- */
-function mergeClusterFragments(clusters: TsumCluster[], types: number): TsumCluster[] {
-  const cfg = BoardModelConfig.fragments;
-  let current = clusters.slice();
-  while (current.length > types) {
-    let bestA = -1, bestB = -1;
-    let minDistance = cfg.maxMerge;
-    for (let a = 0; a < current.length; a++) {
-      for (let b = a + 1; b < current.length; b++) {
-        const na = current[a].points.length, nb = current[b].points.length;
-        if (Math.min(na, nb) > cfg.smallShare * Math.max(na, nb)) { continue; }
-        const d = distance3D(current[a], current[b]);
-        if (d < minDistance) { minDistance = d; bestA = a; bestB = b; }
-      }
-    }
-    if (bestA < 0) { break; }
-    const merged = clusterOf(current[bestA].points.concat(current[bestB].points));
-    const next: TsumCluster[] = [];
-    for (let j = 0; j < current.length; j++) {
-      if (j !== bestA && j !== bestB) { next.push(current[j]); }
-    }
-    next.push(merged);
-    current = next;
-  }
-  return current;
+  return clusters;
 }
 
 function detectOffsetYInGame() {

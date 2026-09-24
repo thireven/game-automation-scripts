@@ -45,7 +45,7 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by playing two chains cancelled with a bubble each and then a closing chain released only once the skill has run out, drawn the moment the antlers leave the screen, so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by keeping its chains clear of the fever's end, where the game briefly stops linking, by drawing each chain at a pace the game links whole and picking a chain back up where it stopped when a link fails mid-drag, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead, and popping them after a chain like any other, or on their own when they pile up, keeping just one standing between cancels, by clearing the other tsums off a crowded board so the refills come back as Gaston, by playing his windows right to the end of the round, and by clearing the other tsums off the board in the first window of a round so it charges the next one too; the round plays as normal until his first activation, with bubbles saved for the windows from then on.
+- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by playing two chains cancelled with a bubble each and then a closing chain released only once the skill has run out, drawn the moment the antlers leave the screen, so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by drawing each chain at a pace the game links whole and picking a chain back up where it stopped when a link fails mid-drag, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead, and popping them after a chain like any other, or on their own when they pile up, keeping just one standing between cancels, by clearing the other tsums off a crowded board so the refills come back as Gaston, by playing his windows right to the end of the round, and by clearing the other tsums off the board in the first window of a round so it charges the next one too; the round plays as normal until his first activation, with bubbles saved for the windows from then on.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 - Box Buying can buy the Pick-Up Capsule: pick it under "Box to buy" and the sweep buys from the capsule while one is on sale, opening each and closing its prize, whether a tsum or an item, closes the Last Prize the final capsule hands out, and stops once the capsule is sold out.
 
@@ -84,20 +84,6 @@ release note; they fold back in here when she ships.
   loop's chains log `board.chainDrawn` under a skill that sets
   `SkillHandler.readsChainCounter`, which Gaston does. Nine recordings of his
   drag were tuned without this number ever being in the log.
-- **`SettingKey.BoardModel` and `SettingKey.ClusterFragments`, on the Debug
-  tab, never shared.** Two board-scan experiments, both off by default and
-  neither run on a device, measured on `gaston_8.mp4`'s paint-labelled boards
-  (`BoardModelConfig` in `src/pathfinding.ts`). *Radial* adds the rim drop --
-  how much darker a tsum's rim is than its centre, read off the light blur on
-  `RimDisc` -- to `distance3D` at weight 0.5, merges at 50, and runs three
-  k-means passes over the greedy clusters (`refineClusters`): the foreign
-  tsums in Gaston's cluster halved at the same recall. *Merge cluster
-  fragments* folds each small cluster (at most 34% of the larger, centres
-  within 80) into the nearest big one down to the round's type count
-  (`mergeClusterFragments`): on ordinary-play frames the four kept clusters
-  hold 88-94% of the circles instead of 72-82%. `SkillHandler.boardModel`
-  lets a skill name its model over the setting (`skillBoardModel`); nothing
-  does yet. `TsumPoint`/`TsumCluster` carry `drop`.
 - **`SettingKey.SkillSettleMs`.** `useSkill` runs `settleBoard` with the
   setting as the budget and no floor between the gauge read and the activation
   tap, ahead of the fever hold-off and `beforeActivate` -- the tap goes out the
@@ -195,6 +181,9 @@ release note; they fold back in here when she ships.
   steps (`stepsPerHop`, `pacedMoves`) were all off; `skill.gaston.pass` drops
   `waitedMs`, `replanned`, `fever`, `feverWaitMs` and `feverRing`. The antler
   read stays (`gastonWatchAntlers`, `antlerProbe`).
+- **Gaston's Debug-tab experiments removed**: Drag dwell, Board colour model
+  (radial) and Merge cluster fragments. The paint read replaced them; the scan
+  no longer reads each tsum's rim drop.
 
 ### Fixed
 
