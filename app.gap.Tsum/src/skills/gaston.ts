@@ -1,469 +1,48 @@
 // ---------------------------------------------------------------------------
 // Gaston
 //
-// His activation changes nothing already on the board: for a window his skill
-// level sets, every tsum that *drops* is a Gaston. So the activation is worth
-// however much board gets cleared while it is open -- clear a chain of Gastons
-// and the hole fills with more of them -- and the chain that clears it wants to
-// take as much of the board as it can. A human playing him draws **one chain of
-// about thirty**; measured off `debug/gaston_correct.mp4`, that is the whole
-// skill.
+// While his skill window is open, every tsum that drops is a Gaston. A chain of Gastons cleared
+// in the window refills with more Gastons, so the skill is worth as much board as it clears.
 //
-// ## The round, and the window inside it
+// ## The round
+// Before the first activation the round plays normally. From then on the skill owns the bubbles
+// (`claimsBubbles`) and nothing between windows pops one. Each window (`gastonWindow`) is:
+//   1. Two cancelled chains (`passesBeforeHold`, `nextPassMs`), each cut to its slot and
+//      cancelled with a bubble on release so the refill lands at once.
+//   2. A closing chain, cut to end `closeLeadMs` before the close and released `antlerReleaseMs`
+//      after it, so its pop charges the gauge. Gastons cleared while the skill runs charge
+//      nothing. A chain with no bubble is held too if its pop would refill after `refillBy`.
+//   3. The skill button is spammed (`gastonSpamSkill`). The first full read is the next
+//      activation, and the next window opens from it (`afterActivate`).
+// The close is timed off the antlers in the chrome (`antlerMs`), not the tap. The window opens
+// on a full tsum count that has stopped climbing, behind `openFloorMs`.
 //
-// Before the first activation the round is ordinary play: the play loop's
-// chains, the Bubble Strategy's pops. The activation is what changes the
-// board -- every tsum that drops after it is Gaston, and every activation
-// leaves a bubble -- so from the first one on the round is played to keep it
-// that way: bubbles are the window's (`claimsBubbles`), spent inside it on the
-// leftovers, and nothing between windows pops one. The window itself is two
-// cancelled chains and a closing one. The longest chain on the board, cut to
-// its share of the window and cancelled at once with a bubble so the refill
-// lands as one drop, twice (`passesBeforeHold`, `nextPassMs`); then the
-// closing chain, **released only once the skill has run out**, because
-// Gastons cleared while the skill runs fill nothing and the ones cleared
-// after it fill the gauge as they pop. It is drawn the moment the antlers
-// leave, on the last cancel's refill (or drawn before and held through the
-// close when it fits); its clear is the charge, and the button is tapped
-// through it until the gauge reads full. Timed right, only Gastons ever drop
-// after the first activation.
+// ## The route
+// The longest path over the free Gastons (`gastonChain`), started from its higher end and away
+// from leftovers (`gastonOrient`). The game links only from the head, and links whatever a hop
+// crosses, so hops may cross no other tsum or bubble (`gastonNeighbors`). HUD digits in the top
+// `hudBand` are not tsums (`gastonFreeBoard`). Each hop dwells `dwellMs`.
 //
-// ## The chain is the longest path, from wherever it starts
+// ## The paint read: which tsums are Gaston
+// A finger resting on a Gaston paints every other Gaston pale. The drag reads each circle before
+// the grab and after `paintMs`; a rise of `paintRise` marks a Gaston, and the route is planned
+// from the head over those (`gastonLinkChain`, `gastonChainFrom`). A head that paints nothing is
+// lifted and the next start tried. Nothing is read inside `paintBlackoutMs` of the close.
+// Without a read, the pass falls back to the carry (`gastonCarry`: circles last read as not
+// Gaston), then to the biggest colour cluster (`gastonGastons`).
 //
-// For a while the chain was a snake: a boustrophedon down the pile from a top
-// corner of the biggest component, as the human's thirty-chain in
-// `gaston_correct.mp4` is drawn, on the theory that the drops land at the top
-// and a chain from the top is the one the next drop feeds. On the device the
-// constraint cost more than it bought. Forced to start at the corner, the route
-// ran upward into dead ends, up against a bubble, or back over itself, and the
-// game stopped linking there. So the chain is the longest simple path over the
-// free Gastons (`gastonChain`, on `findLongestTsumPath` -- the play loop's own
-// search, every tsum tried as a start, under `searchSteps`), starting wherever
-// that path starts. Replayed over 725 logged device boards it plans 15,917
-// tsums to the snake's 15,743, longer on 131 boards and shorter on 5, the whole
-// component on 647. The game takes any hop inside its reach, so the count is
-// the point and the shape is nothing.
+// ## Bubbles
+// The game stops linking at a bubble, so routes keep clear of every bubble known (`bubbleAvoid`):
+// the Hough pass, a lower-threshold pass over the bowl's bottom, and the round's memory
+// (`gastonBubbles`). A cancel taps all but `bubbleReserve` (`gastonTapBubbles`), skips chains
+// under `cancelMinChain`, and is checked off the tsum count (`cancelDrop`).
 //
-// **Which end it starts from is not nothing.** `gaston_7.mp4` (2026-09-21),
-// aligned to its log and every route overlaid on the frames, had seven of
-// eighteen drags register 1-8 of 14-33 planned, and five of the seven began on
-// a tsum that was not Gaston: Lumiere, whose tan the scan merges with his
-// face; Chip, with the Hough centre landed on the white cup beside him; the
-// Beast, navy beside his hair. All at the *bottom* of the pile. The Gastons
-// drop onto whatever the last clear left, so the frontier where his mass meets
-// the leftovers is the bottom edge, and a longest path runs tip to tip -- one
-// end of it is nearly always on that frontier. A wrong head links nothing for
-// the whole drag (the game links from the head only), the cancel spends a
-// bubble on nothing, and the refill gate then waits its floor for a clear that
-// never happened: 2.75s of a 6s window, twice in some windows. So the drag
-// starts from the higher end, and an end touching a known leftover loses
-// whatever its height (`gastonOrient`); four of the five had a Gaston at the
-// other end. What the scan cannot see -- a leftover merged into his cluster --
-// the paint read below catches.
-//
-// **The route is Gaston only, and the game itself says which tsums those are.**
-// The route ran over the whole board array for a while, on the theory that a
-// leftover of another colour the drag crosses is inert. It is not. The game
-// links a tsum only while it is within reach of the chain's *head*, so the
-// first leftover in the route leaves every Gaston after it two hops from the
-// head, and the chain stalls there for good: `gaston_debug6.mp4` registered 14,
-// 17, 2, 1 and 8 of routes planned at 29, 35, 15, 22 and 28, every stall on an
-// ordinary 23-33px hop, while 43-44px hops inside the same chains linked fine.
-// So the route is drawn over his tsums alone. For a long while his tsums were
-// **the board's biggest colour cluster** (`gastonGastons`), and that is still
-// how the drag picks the tsum it starts on. It is not good enough for the
-// route. What the scan merges *into* that cluster it cannot tell apart, and
-// under the fever backdrop's tint that is a lot: `gaston_8.mp4` (2026-09-21)
-// had Donald, the Cheshire Cat and an orange tsum in the cluster on most
-// boards, three to eight of them, and every route planned through one stopped
-// there or lost its head to one -- the six held chains of that round
-// registered 16, 14, 19, 7, 8 and 10 of 30, 35, 30, 37, 24 and 32. A palette
-// learned by size and matched by colour was tried before that (`gaston_2.mp4`)
-// and admitted Marie's cluster beside his face. Matching the skill-button
-// portrait drew nothing: his face on blue is not his sprite on the board.
-//
-// What does tell them apart is the game. The moment a finger lands on a Gaston,
-// the game paints **every other Gaston pale** -- translucent over a light layer,
-// dark hair and all -- and nothing else on the board changes; land on a Donald
-// and the Donalds go pale instead. It is on the next frame or the one after
-// and it stays through the first hops at least. So the drag reads it
-// (`gastonLinkChain` with a `GastonOracle`): every circle's floor -- its
-// darkest channel, the median over a grid -- before the grab and again with
-// the finger resting on the head (`paintMs`), and whatever rose by `paintRise`
-// is Gaston. Measured on that recording: his tsums rise 22-51 under the fever
-// tint and 36-56 on a plain board, a Donald or a Cheshire 0. The route is then
-// planned from the head over exactly those (`gastonChainFrom`), and the finger
-// goes on. A head that painted nothing was not Gaston: it comes up -- one
-// tsum under a finger pops nothing -- and the pass tries the next start
-// (`deadRetries`). The one thing the read cannot see through is the game's
-// own paint at the close: from around the window's end every Gaston is held
-// pale, finger or no finger, so nothing is read inside `paintBlackoutMs` of
-// it, and a pass that reads nothing twice stops reading for the window. A
-// pass without a read plans off what the last read learned: the circles it
-// found not to be Gaston are remembered for the window (`gastonCarry`), less
-// whatever a cancel's blast cleared since, and a circle of the cluster within
-// `carryMatch` of one is left out -- the cluster, because the carry knows
-// nothing of what dropped after the read. With no read at all it is the
-// cluster, as it was. `extraClusterSlots` keeps his second and third clusters in the
-// board array whatever the leftovers do, so the cluster pick has them.
-//
-// The read replaced a check that read eight far Gastons at the second hop
-// (`gaston_7.mp4`): on `gaston_8.mp4` five of those eight were Donalds and
-// Cheshires the cluster had swallowed, the check read live heads dead 27 times
-// in 40, and every one of those lifts released the three tsums under it as a
-// chain of three -- two and a half seconds of the window each on two windows.
-//
-// ## Nothing here consults the chain settings
-//
-// "Maximum Chain Number" and "Chains per board scan" are tuned for ordinary
-// play, where many short chains keep the combo alive. They are the wrong answer
-// for every part of this skill, so `chainLimits` buys both of them out for the
-// play loop between windows: the chain is **uncapped** and exactly **one** goes
-// out per scan. The second half matters as much as the first -- the extra chains
-// of a batch are planned on a board the first chain has already cleared, and on
-// a Gaston board that is what turns one chain of thirty into a chain of twelve
-// and two of three. Inside the window the pass consults nothing at all.
-//
-// ## The activation animation is 3.4 seconds and the window is 6
-//
-// So the window is anchored to the **end of the animation**, not to the tap.
-// Measured off `gaston_correct.mp4` frame by frame: the tap lands at 8.0s, the
-// board sits under a dark flexing figure until 11.4s, fills with Gaston by
-// 13.5s, and the chain goes out at 14.3s. Anchored at the tap, a 6s window is
-// over before the board is worth looking at -- which is exactly what
-// `gaston_wrong.mp4` shows: five seconds of window spent scanning a board under
-// the veil, then the play loop chaining fours across a board of twenty-six
-// Gastons.
-//
-// The gate is **a full count that has stopped climbing, behind a floor** -- a
-// count, not positions. A position gate was tried: the circles matched read to
-// read, landed meaning nine in ten within 3px of a read ago. Run through the
-// same Hough pass over the frames of a board that had visibly landed
-// (`debug/gaston_debug5.mp4`, 3.0s to 5.3s), that share never passed 0.80 and
-// mostly sat near 0.6: at a vote threshold of 10 the pass finds forty-odd
-// circles of which a dozen are somewhere else on the next frame. So every gate
-// ran to its ceiling and the window sat three seconds over a full board. The
-// count wanders a few either way for the same reason, which is why "stopped
-// climbing" allows `countNoise` (a refill landing climbs by several a read).
-// What a count cannot see is a clear in progress -- forty popping tsums are
-// forty circles for a while yet -- so the refill gate does not look before
-// `fillMinMs`, long enough for a clear of any size to have taken tsums off the
-// count, and a board that never reads full is taken at the ceiling
-// (`fillWaitMs`) rather than by a "landed short" test the count cannot make.
-// The floor (`openFloorMs`) covers the activation animation and the drop behind
-// it, because a board that was full when the button went is still forty
-// circles under the dim.
-//
-// ## The HUD is inside the play square
-//
-// The fever bonus and the combo counter are drawn across the top of the play
-// square, over the pile's top row, and their glyphs -- the 0, 8, 9 and 2 of
-// "48,202" -- are tsum-sized circles to the Hough pass. Ordinary play never
-// meets them: they land in a small colour cluster the `uniqueTsumCount - 1` cut
-// drops. This skill keeps every cluster (`extraClusterSlots`), so they were in
-// its board, along the top. Replayed offline on the boards of
-// `gaston_debug5.mp4`, both routes began on the fever bonus digits and hopped
-// through the combo counter; on the device those drags linked one tsum, then
-// five. `gastonFreeBoard` cuts everything with its centre in the top `hudBand`
-// of the square. That costs a real tsum or two on a pile stacked into the band
-// (`corpus/GamePlaying/last_seconds1.png` has three there); every fever capture
-// in the corpus has two to four glyph circles in the band. On BlueStacks the
-// pile stacks further in, and the Gastons there were what joined its halves,
-// so a route off the paint read keeps what it found painted down to the glyph
-// rows (`paintedHudBand`).
-//
-// ## The last chain is held past the close, then the button is spammed
-//
-// Gastons cleared while the skill is running do not fill the gauge; the ones
-// cleared after it has run out do, and they fill it *as they pop* -- a thirty
-// chain's clear is three seconds long (`debug/gaston_debug2.mp4`, 44.3s to
-// 47.3s) and the gauge climbs through the whole of it. A chain released
-// before the close charges nothing, even the part of its clear that pops
-// after it. So the window's last chain is drawn and **held**: the finger
-// stays on its last tsum until `holdPastCloseMs` past the close and only
-// then comes up (`gastonLinkChain`). The game keeps a chain linked for as
-// long as the finger is still, and nothing drops while it is held, so the
-// hold costs the wait and nothing else. The close is the estimate
-// `durationMs` makes: late costs a short hold, early releases inside the
-// window and throws the charge away, which is why the anchor below is the
-// late one. Which chain is held: the one after `passesBeforeHold` cancelled
-// passes, or any chain whose drag ends inside `noCancelTailMs` of the close,
-// since a cancel there refills a board the window will not chain again. A
-// window that finds nothing to chain by `fillWaitMs` past the close hands
-// the board back as it stands -- nothing later is Gaston, and a route over a
-// mixed board links one tsum (the "1" chains after the fever in
-// `gaston_debug5.mp4`).
-//
-// A chain with no bubble to cancel it is held too, whatever pass it is, when
-// its own pop would refill past the earliest close (`refillBy`, not the late
-// `closesAt`). Left to pop it takes ~90ms a tsum
-// and the refill lands behind that, so a thirty-chain uncancelled at four
-// seconds in refills after the close -- with leftovers. The device log of
-// 2026-09-21 (`muc2hht99b`) had three windows of six whose second pass found
-// no bubble: each waited 3.4s for that pop, planned its closing chain over a
-// board whose Gaston cluster was 12 of 40, charged nothing, and the play
-// loop's next activation then opened on a full board of leftovers -- two
-// windows lost to one missing bubble. Holding the uncancelled chain instead
-// charges off it; the pass after it would have had nothing to chain.
-//
-// From the release the skill button is tapped over and over
-// (`gastonSpamSkill`): a tap on a filling gauge is a no-op the game ignores,
-// the tap that lands first after it fills is the one that fires, and the
-// tsums still popping spill their count into the fresh gauge -- the overload
-// `Tsum.link` is built around. The first read of the button that says full
-// is the next activation, and **the next window opens from here**
-// (`afterActivate` runs `gastonWindow` after `gastonWindow`): one more tap in
-// case the read was the gauge full under the next tap rather than the flash
-// of this loop's own, and the window is anchored at the read. Handing back to
-// `useSkill` for that tap was tried and lost two windows of `gaston_6.mp4`:
-// once the button has fired, the empty gauge behind its flash reads empty a
-// few reads later, `useSkill` saw no activation to make, and the play loop
-// chained a Gaston board for eleven seconds -- and, the moment the overflow
-// filled the gauge, fired a second activation four seconds into the first's
-// window, which threw the rest of it away. `stillRunning` is the guard for
-// whatever else hands the play loop a full gauge inside a window: no tap
-// before the window can have closed. A held chain under `chargeMinChain`
-// fills nothing worth waiting on; the board goes straight back to the play
-// loop, whose chains fill the rest.
-//
-// ## The fever switch freezes the game, and it lands on the held chain
-//
-// The game stops taking links for 0.5-0.75s when the fever backdrop switches,
-// and a drag under way at that moment loses its head: the finger is ten hops
-// on when links resume, out of reach. `gaston_6.mp4` had the exit land inside
-// four of eight held drags, which registered 13, 9, 14 and 24 of 32, 22, 24
-// and 30 planned; two of those windows then never filled the gauge. It is
-// structural: every activation's clear filled the fever gauge, so the
-// backdrop came on 1.3s after the tap as the face faded (`faceMs`), stayed
-// exactly 8.35s (`feverMs`, nine of nine) and went off at tap + 9.65s -- when
-// the third pass's drag is out. The exit is therefore predicted from the
-// backdrop coming on and a drag that would straddle it waits for the switch
-// and the freeze behind it (`gastonAwaitSwitch`); a switch seen within
-// `switchFreezeMs` of any drag holds it the rest. The backdrop is read as the
-// chrome beside the score not being its plain-board colour (`plainChrome`),
-// because each fever theme paints its own -- `FeverProbes` expects one
-// theme's dimmed teal and reads no fever at all on the antlered theme of that
-// recording. A fever that enters mid-window off a cancelled pass is not
-// predicted, only seen when it switches; none did there.
-//
-// **The antlers are not a fever theme; they are his skill.** `gaston_102.mp4`
-// (2026-09-23), sampled at the chrome probe every 40-50ms: the antlers come
-// up at tap+1.15-1.25s, never drop out before the close, and go at
-// tap+9.60-9.72s in seven windows of seven, whatever the fever does. A fever
-// behind them reads (0,55,65), a plain board (0,221,244), the antlers ~(248,
-// 128,60). So `faceMs` + `feverMs` is the skill's clock, and the "exit" the
-// switch wait predicts is the close, fixed at tap+9.65s -- where `closesAt`
-// put it at 10.6-11.3. What the chrome
-// cannot see is a fever under the antlers: one that ends mid-window ends
-// unseen, and in that window a first pass planned at 37 linked 3 across it.
-// When the antlers give way to a fever the wait sees no switch at all and
-// runs to `switchLateMs`, which is where the held passes' 1.4-2.2s went.
-//
-// **So the close is read off the antlers, not waited out.** They stayed up
-// 8.4-8.6s in all 15 windows of `gaston_108`/`109.mp4`, so the window times
-// the close from them coming up (`antlerMs`). The closing chain is drawn at
-// once, with no switch wait (`dodgeSwitch` off). It is cut to end
-// `closeLeadMs` before the close, because drags that ran over it broke 5 of 7
-// times. It is released `antlerReleaseMs` after the antlers leave the chrome;
-// the old hold ran to `closesAt`, 1.0-1.6s late, plus `holdPastCloseMs`.
-//
-// **A fever's start and end break drags too, and the gauge's ring shows
-// both.** Over `gaston_102`-`104.mp4` about a third of the chains that broke
-// short broke at one: a start broke drags begun 0.4-1.6s after the ring
-// lit, an end ones running over the last ~0.6s before it went dark. The
-// ring sits under the board, clear of the antlers, and the fill beside it
-// says when the fever runs out. So every drag also waits out those
-// (`gastonAwaitFever`, `dodgeFever`). A fever that starts after the drag has
-// begun is not caught: the start comes off the clear before it, not a clock.
-// The wait is off: `gaston_105.mp4`, the round it ran, broke as many chains,
-// so the coincidence was not the cause. Over `gaston_102`-`108.mp4` only 6 of
-// 98 drags ran over a fever's end (4 broke); 44 broke with none near.
-//
-// Two smaller things the window has to get right:
-//
-//   - **the drag must not cross a bubble, and the bubbles are the window's.**
-//     One crossed mid-travel pops and ends the chain there, and this chain
-//     crosses the board. Tsums sitting on a bubble are held out of the plan,
-//     and the bubble is then spent deliberately: tapped the moment the drag
-//     releases, which cuts the pop animation short so the next batch of
-//     Gastons drops at once. Which bubble: the one whose blast holds the most
-//     leftovers (`gastonBubbleWorth`), since a pop there clears ground the
-//     chain could not take and refills it with Gaston, where a pop over
-//     Gastons clears what the next chain would have. Every bubble but one
-//     goes (`bubbleReserve`), and a short chain spends none
-//     (`cancelMinChain`), so the next pass has its cancel even when this
-//     chain broke too short to earn one. That is why bubbles are the skill's
-//     rather than the Bubble Strategy's from the first activation on
-//     (`claimsBubbles`): a pop between windows cuts a clear that is filling
-//     the gauge, and the refill it brings is mixed. Before the first
-//     activation the strategy plays them as set. The bubbles are read off a
-//     capture that runs below the play square (`gastonBubbles`, `bubbleHem`):
-//     the square cuts the bottom row of them in half, and a third of one
-//     window's passes went uncancelled with four in plain sight. The hem also
-//     brings in the two round HUD buttons under the bowl, which the pass read
-//     as bubbles on every board of `gaston_2.mp4` and the cancels tapped
-//     instead of the bubble in play; `hemButtons` names them and they are
-//     dropped.
-//   - **the drag dwells 30ms a tsum, unpaced** (`dwellMs`). It was the play
-//     loop's 10ms until `gaston_102`-`108.mp4` (2026-09-23): 17 of 41 chains
-//     linked whole at 10, 44 of 75 at 30. The history before that:
-//     for a while it dwelt 40ms on each, on `gaston_3.mp4` (2026-09-21):
-//     Android hands the game one MOVE per frame and the game drops one in
-//     five under fever, and at an 18ms dwell 279 of 456 planned tsums
-//     registered. That was the snake route, whose hops ran to `linkReach`
-//     and crossed back over its own links -- the mechanism `gaston_8.mp4`
-//     found (below), which the crossing-free route removes. On the same
-//     boards the play loop's 10ms chains run whole between windows, where
-//     the 40ms drag cost 1.3s a chain and three of them did not fit the
-//     window (`muc2hht99b`: the closing drag out 1.2-3.8s past the close in
-//     every window). The freeze at the fever switch (above) was first read
-//     as the game's UI thread blocking with the moves piling up behind it
-//     (`gaston_4.mp4`: 33 planned registered 11, the drawn line frozen for
-//     1.1s), and the host was given a paced MOVE for it -- `moveTo` with
-//     `wait` returns once the game has taken the move (`pacedMoves`).
-//     Measured in `gaston_6.mp4` it costs ~2ms a hop, the acks come back at
-//     once, and the chains died at the switch all the same: the game takes
-//     the moves and links none of them while it switches, so the freeze is
-//     the game's own and the drag has to stay out of it. The pacing is off;
-//     the pass record's `overMs` is what a drag cost beyond its dwells.
-//
-//     A closed loop in the script was tried too (`gaston_5.mp4`): each hop
-//     confirmed off the coin the game draws on a linked tsum, a miss held by
-//     sending the finger back. It lost more than it saved, for two reasons
-//     worth keeping. The scan's centres sit ~14px off the game's sprites on
-//     median (up to 30; Hough on a packed pile, and the pile keeps sliding
-//     after a pop), so a read at the planned centre missed real coins on a
-//     tsum in three. And the game takes the finger returning to the previous
-//     tsum as *undoing* the last link, so every false miss cut the head off
-//     and the rest of the route with it.
-//
-//     The rewind (`rewind`, 2026-09-23) is the loop done the other way round.
-//     It reads a grid round each centre, not the centre, and calls a stall
-//     only on four tsums in a row with no coin. It then walks the route back
-//     to the tsum before the last coin -- the chain's end whether the last
-//     link was missed or made early -- and plans on from there.
-//
-// ## A hop links whatever it crosses, and undoes what it crosses back over
-//
-// The host sends one MOVE per tsum and nothing between, and the game still
-// links along the line between them: `gaston_8.mp4` has a three-tsum drag
-// count 1, 2, 4, 5 and a chain of 37 planned register 7 because its fourth hop
-// ran back across the third tsum's disc on the way to the fifth -- the counter
-// went 4, 3, and the head sat there for the rest of the drag (the game takes
-// the finger returning to the previous link as undoing it; a leftover under
-// the fifth hop is what put the head there). The over-counts on the good
-// drags, 24 of 23 and 25 of 22, are the same thing the pleasant way round. A
-// planned hop of up to `linkReach` widths crosses another tsum nearly every
-// time on a packed pile, so the route is planned over hops that cross nothing:
-// an edge is kept only when its segment passes no other tsum's centre, nor a
-// bubble's, within `crossAvoid` (`gastonNeighbors`). That is the adjacency
-// graph and little more, which is what a finger draws anyway. Early links
-// still break chains (`gaston_108.mp4`: 38 planned linked 4 and 20 that way),
-// but a replay of the game's linking over 98 logged routes, at any touch
-// radius of 0.5-0.9 widths and reach of 1.5-2.1, predicted every chain broken
-// or none: the scan's centres are too rough to say which hop will fail. So
-// the drag watches for it instead (`rewind`).
-//
-// Two things `gaston_7.mp4` measured and nothing here uses yet:
-//
-//   - the blink above is the game's own clock. It began at tap+9.0-9.7s and
-//     went solid at ~9.7-10.4s in every window, where `closesAt` estimated
-//     tap+10.7-11.2: the held chain went out 1-3s after the real close and
-//     `heldMs` was 0 on every window. Safe, but window time.
-//   - `gastonAwaitSwitch` held seven of eighteen drags 1.2-3.1s, because the
-//     fever's start is stamped `faceMs` after the tap whenever the chrome reads
-//     dimmed at the open, and one window's fever came on 4.3s after its tap.
-//
-// ## Every drag reads the game's own count
-//
-// Everything above was worked out by aligning a recording to the log and
-// counting, one recording at a time, and none of it moved the number that
-// matters: `gaston_9.mp4` (2026-09-21) still registered 7-15 of chains
-// planned at 20-37, on boards the paint read had right. So the number is in
-// the log now. Every drag reads the counter the game draws beside the head
-// (chainCounter.ts) with the finger still down and logs it as `registered`
-// beside `chain`, per pass and per window, and the play loop's chains between
-// windows read it too (`readsChainCounter`), on the same boards. A drag
-// setting is judged by that table -- `chain:replay` in the development
-// toolkit checks a read against a recording -- and the first thing to settle
-// with it is `dwellMs`: the host hands the game one MOVE a frame and the game
-// links from the head only, so at 10ms every skipped hop that was a corner
-// leaves the next tsum out of reach, which is what a chain stopping at a
-// "wall" looks like. Measure 10 against 20 and 34 before changing anything
-// else here.
-//
-// ## A route into a bubble dies there
-//
-// Measured, 2026-09-21, four recordings at dwell 10/20/34
-// (`round-1-20260921-*.mp4`) aligned to the log by the activation cut-in and
-// the planned route drawn over the frames. The counter read found 8 of 48
-// drags -- the count is drawn pink, yellow-filled or rainbow-filled as often
-// as navy -- so the numbers came off the release popups. Where the route was
-// clean the 10ms drag registered whole: 24 of 24, 34 of 36 held, 19 of 19,
-// 19 of 21, 19 of 20, 11 of 11. Where it died it died at a bubble: the
-// 33-chain that read 7 linked 1-7 as planned and its eighth tsum was a bubble
-// resting on the bowl; the one that read 13 ran into the bottom row of them
-// at 14; a 14-chain stopped at 9 on a tsum 1.1 widths from a bubble the pass
-// had read. The pass had read no bubble on the first two, with three in
-// plain sight: the Hough pass loses the resting ones under the rim lights and
-// the fever tint, the scan reads a bubble's icons as a tsum circle, and the
-// paint read passes it (its `rise` is logged per circle now, to say by how
-// much). So bubbles come from three sources (`gastonBubbles`): the pass
-// proper, a second pass at a lower threshold over the bowl's bottom (`band`),
-// and the round's memory of every read (`soft`, planned round and never
-// tapped). The first run on them (`mucbceu4xy`) charged 13 windows of 18
-// against 5 of 23 the day before, and showed the other edge: every bubble's
-// avoid disc and crossing disc takes tsums out of the route, and at
-// `bubbleAvoid` 1.4 four bubbles cut a full Gaston board into pieces (see
-// the table). Dwell is not the lever; the passes that registered short did
-// so at 10, 20 and 34 alike.
-//
-// The band's finds were `soft` too at first, and that left the resting
-// bubbles standing: over six runs on 2026-09-22, 30 of the 35 chains released
-// without a cancel had bubbles on the board, every one of them soft, and 66
-// of those 78 sat in the band -- real ones, still there pass after pass and
-// read hard by the next pass often enough. So the band's finds are tapped
-// now, and only the memory's are not.
-//
-// The same recordings showed the carry starving whole windows: 221 of 291
-// passes planned nothing, all on a carry that had marked the board's
-// leftovers before the first clear slid them into new positions. A pass whose
-// carry leaves nothing to chain now plans from the cluster and drops the
-// carry until the next read (`starved` on the pass record).
-//
-// ## Every step is checked, not assumed
-//
-// The window used to take each step on trust: a bubble tapped was a cancel,
-// a held chain was a charge. Two rounds on 2026-09-23 (`mudehgre4r`, 16
-// windows) showed what that costs. Three passes went out uncancelled while
-// the memory knew a bubble. Six charges failed, three on a held chain the
-// counter read stalled (19 of 39, 19 of 27, 16 of 21), each spamming 4.5s
-// over a board that had stopped clearing. And a failed charge is what ruins
-// the windows after it: the play loop fills the gauge on the leftovers the
-// clear refilled with, so the next activation opens on 17-20 Gastons of
-// 36-45, and three windows in a row drew 3-14 on their first pass. So:
-//
-//   - a cancel is checked off the tsum count (`cancelDrop`); one the count
-//     does not confirm taps the remembered bubbles, then any a fresh read
-//     finds, and failing that the refill gate waits out the pop rather than
-//     planning over it;
-//   - a pass held back from the fever switch scans again before it draws
-//     (`replanAfterWaitMs`), since the pile moves under a stale plan;
-//   - a chain left to pop is held when its refill would land past the
-//     earliest close (`refillBy`), not the late estimate the hold runs to;
-//   - a chain under `cancelMinChain` spends no bubble, and a cancel leaves
-//     one standing (`bubbleReserve`), so a chain that breaks short does not
-//     leave the next pass without its cancel;
-//   - the charge stops spamming once the held chain's clear is over
-//     (`chargeTailMs`), and the play loop's chains fill the rest;
-//   - a pass whose Gaston chain is short, or whose board is mostly
-//     leftovers, draws other colours' chains too, and a pass with no Gaston
-//     chain draws only those (`mixedFrom`), so a board of leftovers turns
-//     Gaston within a window.
-//
-// None of it sees a drag stall with the finger still down. The counter read
-// one drag in six there, and its first read can be early (1 at the head, 16
-// at the release), so a stall is judged by what the pass cleared instead.
+// ## Other rules
+// - Nothing here consults the player's chain settings. Between windows `chainLimits` sends one
+//   uncapped chain per scan.
+// - Stalls are recovered by the coin check (`rewind`): the drag walks back or restarts.
+// - A pass with a short Gaston chain or a mostly-leftover board chains other colours too
+//   (`mixedFrom`).
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -471,64 +50,37 @@
 // `var`, like every other skill's table: a `const` here is lexical, so it is not
 // a property of the global object and the offline harness cannot reach it.
 var GastonConfig = {
-  // How long the drops stay Gaston **after the activation animation ends**, by
-  // skill level 1-6, in ms.
-  //
-  // Level 6's 6s is the number the skill is played on; the rest are a straight
-  // ladder to it and are NOT MEASURED. Nor is the anchor: the game may well
-  // start the window at the tap, in which case this over-runs by the length of
-  // the animation. That is the safe direction to be wrong in -- an over-run
-  // holds the last chain a little longer than it had to, where an under-run
-  // releases it inside the window and its clear charges nothing.
+  // How long the drops stay Gaston after the activation animation ends, by
+  // skill level 1-6, in ms. Only level 6 is measured; the rest are a straight
+  // ladder. Erring long is safe: an under-run releases inside the window.
   durationMs: [4000, 4400, 4800, 5200, 5600, 6000],
 
   // --- the board gates -----------------------------------------------------
   //
-  // The tsum count off one capture and one Hough pass (~10ms), polled -- not
-  // `settleBoard`, whose grid a score popup or a coin shower keeps moving over
-  // a board that has landed, and not circle positions, which the pass does not
-  // hold still enough to match (see the header).
+  // Polls the tsum count (one capture + one Hough pass, ~10ms) rather than
+  // `settleBoard`, whose grid popups and coin showers keep moving.
   pollMs: 80,
-  // Full: the count at or over `enoughTsums`, and not up by more than
-  // `countNoise` on `stillReads` reads running. A full board measures around
-  // 43 and wanders a few either way read to read, where a refill landing
-  // climbs by several a read; a dozen dim tsums is what the animation leaves
-  // visible. 36 rather than 40 because the window carries bubbles, each sitting
-  // where a tsum or two would, and because the count carries the two to four
-  // HUD glyphs `gastonFreeBoard` cuts.
+  // Full: count at or over `enoughTsums` and not up by more than `countNoise`
+  // for `stillReads` reads. 36, not ~43, because bubbles take up tsum slots.
   enoughTsums: 36,
   countNoise: 2,
   stillReads: 2,
-  // The activation animation: 3.4s in `gaston_correct.mp4`, ~3.2s in
-  // `gaston_wrong.mp4`, 3.3s in `gaston_debug5.mp4`. The window's clock
-  // (`refillBy`) runs from its end.
+  // Length of the activation animation; the window's clock (`refillBy`) runs
+  // from its end.
   openMinMs: 3500,
-  // The opening gate's floor and ceiling. The board is not live before the
-  // floor whatever the count says: the skill drops tsums as the animation
-  // ends, and the last closing chain's pop plays out behind it, so a count
-  // full at ~3.8s is a board about to clear. Over 637 windows to
-  // `gaston_129.mp4`, gates that left before 4.6s drew a median first chain
-  // of 6-11, those from 4.8s on 23-24.
+  // Opening gate floor and ceiling. Before the floor a full count is the last
+  // closing chain still popping, and early gates drew much shorter chains.
   openFloorMs: 4600,
   openWaitMs: 6500,
-  // The refill gates between passes. A cancelled clear is off the board at
-  // once and the board is back and full at ~1.1s (`gaston_debug5.mp4`, 5.9s to
-  // 7.0s; 0.95s from the release on `gaston_116.mp4`), so its floor is
-  // `fillMinMs` from the release; the full, still count decides the rest. A clear left to pop -- no bubble to
-  // cancel it with -- takes its tsums off one at a time at about
-  // `popPerTsumMs` each (a thirty chain is three seconds, `gaston_debug2.mp4`),
-  // and the count cannot tell that from a full board for the first second, so
-  // its floor is the pop's own length plus `popTailMs` for the drop behind it.
-  // `fillWaitMs` is the ceiling past the floor, for a board that never reads
-  // full -- one crowded with bubbles -- which is chained as it stands then.
+  // Refill gates between passes. A cancelled clear refills in ~1s, so its floor
+  // is `fillMinMs` from the release. An uncancelled clear pops one tsum per
+  // `popPerTsumMs`, so its floor is the pop's length plus `popTailMs`.
+  // `fillWaitMs` is the ceiling past the floor for a board that never reads full.
   fillMinMs: 800,
   fillWaitMs: 1500,
   popPerTsumMs: 90,
   popTailMs: 400,
-  // A full count is not a landed board: the last tsums of a refill are circles
-  // while they fall, and `gaston_debug6.mp4` had two boards scanned with a band
-  // still in the air -- 39 read, a route of 8. Every gate that leaves on full
-  // sits this long first.
+  // Wait after a full count before scanning: the last tsums may still be falling.
   landMs: 250,
   // A pass that found no chain waits this long before looking again.
   rescanIdleMs: 120,
@@ -536,163 +88,92 @@ var GastonConfig = {
   // --- the chain -----------------------------------------------------------
   //
   minChain: 3,
-  // Steps the longest-path search may spend over one component
-  // (`findLongestTsumPath`). Replayed over 725 device boards, 10,000 planned
-  // 12 tsums more than 3,000 in all and 30,000 one more than that; the bench
-  // prices 3,000 pruned steps at ~12ms on the device.
+  // Step budget per component for `findLongestTsumPath` (~12ms on device);
+  // more steps barely lengthen routes.
   searchSteps: 3000,
-  // An end of the route within this of a leftover, in tsum widths centre to
-  // centre, is the frontier and the drag starts from the other end (see
-  // `gastonOrient`). Adjacent tsums sit one width apart, so this is
-  // "touching".
+  // A route end within this of a leftover (tsum widths) is the frontier, and
+  // the drag starts from the other end (`gastonOrient`). 1.2 = touching.
   frontierAvoid: 1.2,
-  // A hop whose segment passes within this of any other tsum's centre, in
-  // tsum widths, is not planned: the game links what the finger's line
-  // crosses and undoes a link it crosses back over (see the header). The undo
-  // of `gaston_8.mp4` was a segment 0.59 widths from the tsum's centre.
-  // Adjacent tsums are a width apart and the third tsum of a packed row sits
-  // 0.87 off the line between them, so every adjacent hop keeps. Replayed
-  // over 103 logged boards the routes plan 99.5% of the unfiltered length at
-  // 0.7 (98.6% at 0.8).
+  // Skip hops whose segment passes within this of another tsum's centre (tsum
+  // widths): the game links what the line crosses. Every adjacent hop still fits.
   crossAvoid: 0.7,
-  // The longest hop planned, in tsum widths -- under the play loop's
-  // `linkReach` (1.9). Over `gaston_121`-`128.mp4` hops of 1.6-1.8 widths
-  // stalled 4.7 times their share and 1.8-1.9 8.3 times, 39% of the stalls
-  // from 7% of the hops; replayed over 774 logged boards the cap costs 1.7
-  // tsums of plan, which the slot trims cut off anyway.
+  // Longest planned hop in tsum widths, under the play loop's `linkReach`
+  // (1.9); longer hops stall far more often.
   hopReach: 1.6,
 
   // --- the paint read ------------------------------------------------------
   //
-  // With a Gaston under the finger the game paints every other Gaston pale;
-  // with a leftover under it the board stays as it was. Read as the rise in
-  // every circle's floor -- its darkest channel, the median over a
-  // (2*paintGrid+1)^2 grid at `paintStep` around its centre -- from a capture
-  // just before the grab to one `paintMs` after the finger lands on the head.
-  // `gaston_8.mp4`: the paint is on one to two frames after the DOWN, his
-  // tsums rise 22-51 under the fever tint and 36-56 on a plain board, a
-  // Donald or a Cheshire 0. A circle up by `paintRise` is Gaston. Fewer than
-  // `minChain - 1` of them and the head was not: the finger comes up and the
-  // pass tries another start, `deadRetries` times, one tsum under it popping
-  // nothing. No read inside `paintBlackoutMs` of the close, where the game
-  // paints every Gaston pale on its own -- solid from 0.8-1.8s past the
-  // estimated close on that recording -- bar a closing chain begun once the
-  // antlers have gone, and none for the rest of a window once a pass has read
-  // nothing twice.
+  // With a Gaston under the finger the game paints every other Gaston pale.
+  // Read as each circle's rise in floor (darkest channel, median over a
+  // (2*paintGrid+1)^2 grid at `paintStep`) from just before the grab to
+  // `paintMs` after. A circle up by `paintRise` is Gaston. Fewer than
+  // `minChain - 1` means the head was not: lift and retry, `deadRetries` times.
+  // No read within `paintBlackoutMs` of the close (the game paints all Gastons
+  // pale on its own then), except a closing chain begun after the antlers go,
+  // and none for the rest of a window once a pass has read nothing twice.
   paintMs: 80,
   paintGrid: 3,
   paintStep: 2,
   paintRise: 12,
   paintBlackoutMs: 1000,
   deadRetries: 2,
-  // A head that paints fewer than this, and under half its colour cluster, is
-  // taken for a lookalike: lifted like a dead one, and the next start is
-  // tried clear of everything it painted. A box can hold a second dark-haired
-  // tsum that clusters with Gaston (`gaston_134.mp4`); its heads painted only
-  // their own kind, 6-17 of 23-30, the carry then read the real Gastons as
-  // leftovers, and the whole round drew 3-17 first chains.
+  // A head painting fewer than this, and under half its colour cluster, is a
+  // dark-haired lookalike: lifted, and the next start avoids what it painted.
   strayPaint: 12,
-  // A pass with no read leaves out every circle within this of a leftover the
-  // last read found, in tsum widths: the pile settles after a cancel, but the
-  // leftovers sit under the Gastons and mostly stay put.
+  // A pass with no read skips circles within this of the last read's leftovers
+  // (tsum widths); leftovers sit under the Gastons and mostly stay put.
   carryMatch: 0.6,
-  // The two round HUD buttons under the bowl -- the skill button and the one
-  // across from it -- in play-square coordinates. The hem brings them into the
-  // bubble capture, and a circle within `hemButtonAvoid` tsum widths of one is
-  // a button, not a bubble. Off the pass logs: x 27-34 and 167-173, y 212-216,
-  // every pass.
+  // The two round HUD buttons under the bowl, in play-square coordinates. The
+  // hem brings them into the bubble capture; a circle within `hemButtonAvoid`
+  // tsum widths of one is a button, not a bubble.
   hemButtons: [{ x: 30, y: 214 }, { x: 170, y: 214 }],
   hemButtonAvoid: 1.0,
-  // How far a planned tsum must stay from a bubble's centre, in tsum widths.
-  // A bubble is about 1.4 tsums across, so this is "not touching". It was
-  // 1.4 for one run (`mucbceu4xy`, 2026-09-22) on the strength of a 14-chain
-  // that died at 9 on a tsum 1.1 widths from a bubble: with three or four
-  // bubbles on the board that disc cut the pile into pieces no route could
-  // cross -- routes of 4, 6 and 13 over 24-33 painted Gastons, 758 planned
-  // over the run's 33 read passes against 898 at 1.0, replayed offline.
+  // How far a planned tsum stays from a bubble's centre, in tsum widths (a
+  // bubble is ~1.4 across). Larger cuts the pile into unroutable pieces.
   bubbleAvoid: 1.0,
-  // The bubbles the Hough pass misses are the ones resting on the bowl's
-  // bottom: the rim lights and the fever tint leave their outline under
-  // `GameBubbleConfig.param2`, and a route that runs into one dies there --
-  // two 33-chains registered 7 and 13 that way on 2026-09-21, with the pass
-  // reading no bubble at all and three in plain sight. A second pass at
-  // `bandParam2` over the bottom of the capture, from `bubbleBandFrom` of its
-  // height down (y 150 of a 220-tall hemmed capture: the resting ones centre
-  // at 150-185), takes those; its finds are `band` -- kept out of the route
-  // and tapped as cancels like the pass proper's (14 since `gaston_141.mp4`,
-  // with the inside check below; 18 before). At 18 it also takes a tsum
-  // now and then, and a tap on one is a tap the game ignores; the cost is
-  // the pass counting it cancelled and waiting `fillMinMs` on a pop that ran
-  // long. Replayed in cv2 over the scan frames of that day's four recordings:
-  // the band pass found two of two, three of three and two of three bottom
-  // bubbles at 20, more at 18, with one false circle in 18 frames.
+  // A second Hough pass over the bottom of the capture (from `bubbleBandFrom`
+  // of its height) at `bandParam2`, for bubbles resting on the bowl's bottom
+  // that the rim lights hide from `GameBubbleConfig.param2`. Its finds are
+  // `band`: avoided and tapped like the main pass's. It may take a tsum now and
+  // then; tapping one is ignored by the game.
   bubbleBandFrom: 0.68,
   bandParam2: 14,
   bandMaxRadius: 20,
-  // The pass proper, at its own threshold rather than `GameBubbleConfig`'s
-  // 26. Then every circle either pass finds is checked inside: a bubble is
-  // translucent over the pile, so no Gaston hair shows through its middle
-  // (`bubbleDarkMax` of the disc at 0.7 of its radius under value 64), and a
-  // pale-painted tsum is white where a bubble is not (`bubbleWhiteMax`). Over
-  // 108 bubbles hand-marked on `gaston_138`/`141.mp4` this finds 85 where the
-  // old passes found 65, with about as many false circles (13 against 11).
+  // The main pass's own threshold (vs `GameBubbleConfig`'s 26). Every circle
+  // from either pass is then checked inside: no dark Gaston hair through its
+  // middle (`bubbleDarkMax` of the disc at 0.7 radius under value 64), and not
+  // white like a pale-painted tsum (`bubbleWhiteMax`).
   hardParam2: 24,
   bubbleDarkMax: 0.03,
   bubbleWhiteMax: 0.4,
-  // Bubbles a read found stay known for this long, matched by position within
-  // `bubbleMatch` widths on later reads: one that sank under the rim lights
-  // and dropped out of the Hough is still there, and only a cancel's tap
-  // removes one. Remembered bubbles are `soft`: planned round, never tapped,
-  // since one that rolled when a clear went out from under it is a phantom
-  // at the old spot.
+  // Bubbles stay known this long, matched within `bubbleMatch` widths on later
+  // reads, since one can drop out of the Hough. Remembered bubbles are `soft`:
+  // avoided, but tapped only when a cancel did not take, as they may have rolled.
   bubbleMemoryMs: 12000,
   bubbleMatch: 1.2,
   // How far below the play square the bubble capture runs, as a share of its
-  // height. The bowl is deeper at the middle than the square is tall, and a
-  // bubble resting there has its lower third cut off the square: four sat so
-  // in `gaston_debug6.mp4` and the pass over the square found none of them.
+  // height: bubbles resting at the bowl's deep middle are cut off the square.
   bubbleHem: 0.1,
-  // Share of a circle's coin grid that must be gold for a tsum-scan circle in
-  // the bottom band (`bubbleBandFrom`) to be a bubble: its icons. The Hough
-  // passes miss bubbles lit by the rim, and the scan then takes one for a
-  // tsum -- the paint read even for Gaston, the one behind it showing
-  // through -- so a route runs into it and it pops the chain there: two of
-  // four late boards on `gaston_120.mp4`. Circles on bubbles read 0.39-0.84
-  // gold there and Gastons near none; higher up the rim lights and coin
-  // showers read gold too, so the band only.
+  // Share of gold (bubble icons) in a circle's coin grid that marks a
+  // tsum-scan circle in the bottom band (`bubbleBandFrom`) as a bubble the
+  // Hough missed. Band only: higher up, rim lights and coin showers read gold.
   bubbleGold: 0.3,
-  // The band across the top of the play square the HUD draws into, in tsum
-  // widths; a circle with its centre in it is a glyph, not a tsum (see the
-  // header). The fever bonus digits centre at 0.7-1.0 and the combo counter's
-  // at up to ~1.15 (`gaston_debug5.mp4`); a full pile's top row centres at
-  // 1.25-2.0.
+  // Band across the top of the play square, in tsum widths, where the HUD draws;
+  // a circle centred in it is a glyph, not a tsum. A full pile's top row
+  // starts at 1.25.
   hudBand: 1.25,
-  // Where the band ends for circles the paint read found painted: those are
-  // tsums, so only the glyph rows stay cut. On BlueStacks the glyphs centre
-  // at 0.2-0.45 and the pile's top row at 0.5 and down, and the full band cut
-  // the Gastons that joined a pile's two halves (`gaston_102.mp4`: 6 planned
-  // of 14 painted, 11 with them; over 153 read passes, 8% more planned).
+  // The band for circles the paint read found painted: those are tsums, so
+  // only the glyph rows stay cut.
   paintedHudBand: 0.6,
 
   // --- the drag ------------------------------------------------------------
   //
-  // 30ms on each tsum, unpaced. At the play loop's 10ms, `gaston_102`-`103.mp4`
-  // (BlueStacks, 2026-09-23) linked 17 of 41 chains whole and 57-67% of the
-  // planned tsums; at 30, `gaston_104`-`108.mp4` linked 44 of 75 whole and
-  // 73-87%. A thirty-chain is ~1s. At 50 (`gaston_109.mp4`) hops broke about
-  // as often (1.6% against 1.8%) and a window fit two passes, not three. An
-  // earlier 40ms was dropped because three passes outran the window, but that
-  // was the snake route of `gaston_3.mp4`, whose hops ran to `linkReach`.
+  // 30ms on each tsum, unpaced: 10ms linked far fewer chains whole, 50ms fit
+  // only two passes per window. A thirty-chain is ~1s.
   //
-  // No step between tsums (`stepsPerHop` 0), unlike Rapunzel+'s two: the game
-  // links along the line between two MOVEs on its own (see the header), so a
-  // sample in the middle adds nothing, and one that lands on a neighbour links
-  // it out of order (`gaston_4.mp4`, three chains over their plan by 1-5 that
-  // way). What keeps a hop clean is the route, planned over hops that cross
-  // nothing (`crossAvoid`). `pacedMoves` makes each `moveTo` wait for the
-  // game to take the move: ~2ms a hop measured, and no help at the fever
-  // switch (see the header), so it is off and the moves queue as every other
-  // drag's do.
+  // No steps between tsums (`stepsPerHop` 0): the game links along the line
+  // between MOVEs, and a mid-sample landing on a neighbour links it out of
+  // order. `crossAvoid` keeps hops clean. `pacedMoves` is off: it did not help.
   // The Debug tab's "Drag dwell" overrides `dwellMs` when set (`gastonDwellMs`).
   grabMs: 10,
   dwellMs: 30,
@@ -703,20 +184,12 @@ var GastonConfig = {
 
   // --- the rewind ----------------------------------------------------------
   //
-  // About 1.8% of hops fail at random (`gaston_102`-`109.mp4`), and past a
-  // failed hop the finger drags an empty line: the next tsum is out of the
-  // head's reach. So the drag checks as it goes (`gastonStalled`). The game
-  // puts a gold coin on every linked tsum but the first two to four (a blue
-  // dot), within ~2 tsums of the finger. Every `checkEvery` tsums, and once
-  // `coinSettleMs` after the last, one capture reads the `checkSpan` tsums
-  // ending `coinLag` behind the finger; with no coin on any, the finger walks
-  // the route back to the tsum before the last coin and draws on from there,
-  // at most `maxRewinds` times a drag. Walking back is safe: stepping onto the
-  // previous link undoes the head, so it unwinds the chain to where the
-  // finger stops, and unlinked tsums behind a failed hop are out of reach.
-  // Replayed over 44 held chains, the coins stopped within 3 of the game's
-  // count on 16 of 22 broken ones, and 2 of 21 whole ones had 4 misses in a
-  // row -- a needless rewind, which costs only time.
+  // ~2% of hops fail at random, leaving the finger dragging an empty line, so
+  // the drag checks as it goes (`gastonStalled`). Linked tsums get a gold coin
+  // (bar the first 2-4). Every `checkEvery` tsums, and `coinSettleMs` after
+  // the last, the `checkSpan` tsums ending `coinLag` behind the finger are
+  // read; with no coin on any, the finger walks back to the tsum before the
+  // last coin (which unwinds the chain) and redraws, up to `maxRewinds` times.
   rewind: true,
   checkEvery: 4,
   checkSpan: 4,
@@ -724,57 +197,40 @@ var GastonConfig = {
   // Route index of the first tsum that can carry a coin.
   coinFrom: 4,
   // The fewest tsums a check reads, so the first check is at the twelfth
-  // tsum. At 3 it ran at the eighth over route 4-6, whose coins show late:
-  // on `gaston_137.mp4` it called chains of 9-10 stalled and walked them
-  // back, four first cancels ending at 4-23.
+  // tsum; earlier checks called chains stalled before their coins showed.
   checkMinSpan: 4,
-  // Where the walk-back looks for the last coin from: the dots can end at
-  // the second link. Searched from `coinFrom`, a stall at the fourth or fifth
-  // tsum found none, walked back to the head and redrew the same stall, and
-  // ended the drag at 1 -- 1 drag in 10-20 on `gaston_121`-`123.mp4`.
+  // Where the walk-back searches for the last coin from: the coins can start
+  // at the second link.
   coinBackFrom: 2,
-  // How far past its slot the last cancelled pass's redraw may run: cut to
-  // the slot, `gaston_124.mp4`'s recovered chains went out at 10 and 13 of
-  // 45. The closing chain starts that much later.
+  // How far past its slot the last cancelled pass's redraw may run; the
+  // closing chain starts that much later.
   rewindGraceMs: 500,
-  // How far the game's count may trail the finger's route index before a
-  // coin stall is believed.
+  // How far the game's count may trail the route index before a coin stall is
+  // believed.
   countSlack: 3,
   // A cancelled pass linked this far releases at a stall rather than
-  // rewinding (see the stall branch in `gastonLinkChain`) -- bar the last
-  // cancel with this much of its slot left, grace included: time it saves
-  // there only waits for the antlers. `gaston_138`/`139.mp4` let five second
-  // cancels go at 13-18 with 0.2-0.9s of slot unused.
+  // rewinding (`gastonLinkChain`) -- except the last cancel with this much of
+  // its slot left, grace included, since time saved there only waits.
   stopFrom: 8,
   lastRewindRoomMs: 600,
-  // The first cancel's too, within its own slot: 7 of 19 first cancels to
-  // `gaston_148.mp4` let go at 8-15 linked with 400-680ms of slot left, and a
-  // redraw from the stall ends by the slot anyway (`until`).
+  // Same for the first cancel, within its own slot.
   firstRewindRoomMs: 400,
   coinSettleMs: 80,
-  // The coin test: a (2*coinGrid+1)^2 grid at `coinStep` round the planned
-  // centre, a tsum carrying one when `coinShare` of it is gold (hue 36-60,
-  // saturation over 0.5, value over 0.82 -- the fever lights wash the coins
-  // at the board's edge below 0.7).
+  // Coin test: a (2*coinGrid+1)^2 grid at `coinStep` round the planned
+  // centre is a coin when `coinShare` of it is gold (hue 36-60, saturation
+  // over 0.5, value over 0.82).
   coinGrid: 3,
   coinStep: 2,
   coinShare: 0.2,
   maxRewinds: 3,
-  // A first stall with no more than `restartBelow` linked is stuck at the
-  // head, on a tsum linked off the route there that no walk back undoes: the
-  // same route redrawn stalled the same way, and 55 of 80 such stalls to
-  // `gaston_136.mp4` ended the drag at 1 -- most of them first passes. The
-  // finger comes up and starts over from the route's far end, less the
-  // `restartSkip` tsums round the old head, whose little chain may pop.
+  // A first stall with no more than `restartBelow` linked is stuck at the head
+  // in a way no walk-back undoes: lift and restart from the route's far end,
+  // skipping the `restartSkip` tsums round the old head.
   restartBelow: 3,
   restartSkip: 3,
-  // A stall is mostly the route's, not chance -- on `gaston_111.mp4` all
-  // three redraws stalled where the first had, and on `gaston_114.mp4` the
-  // last coin had been linked early, from a tsum three before it, so the
-  // chain ended one short of it. So the rest is planned afresh from where
-  // the finger walked back to, clear of every linked tsum, over a first hop
-  // no longer than this in tsum widths; a repeat leaves out the failing tsum
-  // too, and with no route the drag stops there.
+  // Stalls repeat on the same route, so after a walk-back the rest is replanned
+  // clear of every linked tsum, with a first hop no longer than this (tsum
+  // widths). A repeat stall also excludes the failing tsum; no route stops the drag.
   replanFirstHop: 1.5,
 
   // --- the cancel, and the hold --------------------------------------------
@@ -784,108 +240,67 @@ var GastonConfig = {
   // to cancel with still counts as one -- unless its pop would refill past
   // the close, when it is held instead (see `gastonPass`).
   passesBeforeHold: 2,
-  // Tapped the moment the drag releases: the pop animation is what it cuts
-  // short, so a late tap spends a bubble on nothing.
+  // Tapped as the drag releases: a late tap spends a bubble on nothing.
   cancelTapMs: 10,
-  // Bubbles a cancel leaves standing for the next pass. It used to tap them
-  // all, on the theory that every long chain earns one back; but a chain that
-  // breaks short earns none, and on `gaston_107.mp4` (2026-09-23) two
-  // windows spent 2 and 3 bubbles on chains of 4 and 5, so their held chains
-  // had none and the next window's 29-chain went out uncancelled. A lone
-  // bubble is still tapped. Every known bubble counts, the memory's too, and
-  // the one kept is one a read saw, out toward the rim (`gastonTapBubbles`).
+  // Bubbles a cancel leaves standing for the next pass, since a chain that
+  // breaks short earns none back. A lone bubble is still tapped. Memory counts;
+  // the one kept is a read one out toward the rim (`gastonTapBubbles`).
   bubbleReserve: 1,
-  // A chain this long earns a bubble of its own as it clears, so its cancel
-  // keeps none back: the one it earns is the next cancel's. Kept, the reserve
-  // and that new one left two to four on every board of `gaston_122.mp4`.
+  // A chain this long earns its own bubble, so its cancel keeps none back.
   bubbleEarnChain: 12,
-  // A chain under this is not cancelled at all: its pop is over inside
-  // `fillMinMs` anyway, and the bubble is worth more to the next long chain.
+  // Chains under this are not cancelled: their pop ends inside `fillMinMs`
+  // anyway, and the bubble is worth more later.
   cancelMinChain: 10,
-  // From this many known bubbles (the memory's included) they are not
-  // scarce: every release is cancelled whatever its length, and a pass with
-  // no chain pops all but the reserve, whose blasts refill as Gaston. Two, so
-  // one bubble is all that lives from cancel to cancel: on `gaston_119.mp4`,
-  // at three and with only the read's own bubbles tapped, passes saw four to
-  // seven, and each one cuts the routes round it (`bubbleAvoid`). The play loop keeps bubbles
-  // between windows (`claimsBubbles`), and on `gaston_113.mp4` (2026-09-23)
-  // uncharged windows piled ten along the bottom: the refills had no room,
-  // every route was cut, and 29 of 44 passes drew nothing.
+  // From this many known bubbles (memory included) they are not scarce: every
+  // release is cancelled, and a pass with no chain pops all but the reserve.
+  // Two, because each extra bubble cuts routes (`bubbleAvoid`) and they pile up
+  // across windows (`claimsBubbles`).
   surplusBubbles: 2,
-  // A cancelled clear leaves the board at once; one left to pop loses a tsum
-  // every `popPerTsumMs`. So a cancel is confirmed when the tsum count drops
-  // `cancelDrop` within `cancelCheckMs` of the tap (a pop manages ~4 in that
-  // time). Unconfirmed, the remembered (`soft`) bubbles are tapped too -- one
-  // that has rolled away leaves a tsum under the tap, which the game ignores
-  // -- and the refill gate waits out the pop. Chains under `cancelCheckMin`
-  // are not checked: their pop is over inside `fillMinMs` either way.
+  // A cancel is confirmed when the tsum count drops `cancelDrop` within
+  // `cancelCheckMs` of the tap (a pop manages ~4). Unconfirmed, the `soft`
+  // bubbles are tapped too and the refill gate waits out the pop. Chains under
+  // `cancelCheckMin` are not checked.
   cancelDrop: 8,
   cancelCheckMs: 400,
   cancelPollMs: 40,
   cancelCheckMin: 10,
-  // A chain whose drag ends within this of the earliest close is held rather
-  // than cancelled, whatever pass it is: a cancel there refills a board the
-  // window has no time to chain again, and a release there charges nothing.
-  // With no bubble to cancel with the tail is the pop itself (`popPerTsumMs`,
-  // `popTailMs`): a clear left to pop refills that much later, and drops
-  // past the close are not Gaston.
+  // A chain whose drag ends within this of the earliest close is held, not
+  // cancelled: there is no time to chain the refill. Without a bubble the tail
+  // is the pop itself (`popPerTsumMs`, `popTailMs`).
   noCancelTailMs: 800,
   // The window's schedule: `passesBeforeHold` cancelled passes, then the
-  // closing chain. The last cancel is timed so its refill has landed as the
-  // antlers go -- released `nextPassMs` before then, the release to the next
-  // grab (the game's refill, 0.95s on `gaston_116.mp4`, and the gate and scan
-  // after it), which starts here and follows what the round measures
-  // (`gastonCycleMs`). The cancelled passes left share the time to that
-  // release evenly, each chain cut to its share; a share that cannot fit
-  // `cancelMinChain` means one pass fewer. The closing chain goes out on that
-  // refill: drawn up to `closeLeadMs` before the close, the finger still on
-  // its last tsum through the close (as the hold always has), then on from
-  // the moment the antlers leave (the game links right after the close, a 26
-  // whole from it on `gaston_114.mp4`, only not across it) and released at
-  // once. What it draws past the close is cut to `closeChainMax`, which sets
-  // how soon the release follows. That chain's clear is the only thing that
-  // fills the gauge, and it must fill it whole: at 20 on `gaston_117.mp4`
-  // every charge waited ~2s on its own pop, the gauge stayed empty through
-  // the window after, and five of sixteen never filled; the 23-35 of
-  // `gaston_116.mp4` filled it before the next window's first chain.
-  //
-  // Holding the second chain whenever a third as long would not fit made
-  // every window one cancel and a hold on `gaston_116.mp4`, the hold idle a
-  // second into the close.
+  // closing chain. The last cancel releases `nextPassMs` before the antlers go
+  // (release to next grab; tracked per round in `gastonCycleMs`), so its
+  // refill lands as they go. Earlier cancels share the time before it evenly;
+  // a share too short for `cancelMinChain` drops a pass. The closing chain is
+  // drawn up to `closeLeadMs` before the close, held through it, continued
+  // once the antlers leave, and released at once, capped at `closeChainMax`.
+  // Its clear alone fills the gauge, so it must be long.
   nextPassMs: 1500,
   closeChainMax: 32,
-  // How long past the close the held chain's finger stays down before the
-  // release. The close is an estimate (see `durationMs`), and a release inside
-  // the window is the whole charge lost, so this errs late. Now only the
-  // ceiling: the hold lets go `antlerReleaseMs` after the antlers leave the
-  // chrome, and runs this long only in a window where they were never seen.
+  // Ceiling on how long past the close the held chain stays down, for a window
+  // where the antlers were never seen; otherwise it lets go `antlerReleaseMs`
+  // after they leave. Errs late: releasing inside the window loses the charge.
   holdPastCloseMs: 300,
   antlerReleaseMs: 100,
   // How much later than a full refill cycle before the antlers go the last
-  // cancel lets go: the closing pass only has to be through its refill gate
-  // by then, not at its grab. Over `gaston_130`-`133.mp4` it was through a
-  // median 113ms early and waited 162ms for them; this is time for the two
-  // cancelled chains instead.
+  // cancel releases: the closing pass only needs to clear its refill gate by
+  // then, not grab. Gives the cancelled chains more time.
   closeSlackMs: 120,
   antlerEarlyMs: 700,
-  // The antlers at `plainChrome[0]`: red over this and over blue by
-  // `antlerRedOverBlue`. Up they read ~(150-185, 110-120, 80-90), a fever
-  // behind them (0,62,70), a plain board (0,223,245) (`gaston_108`/`109.mp4`).
+  // Antlers are up at `plainChrome[0]` when red is over this and over blue by
+  // `antlerRedOverBlue`.
   antlerMinRed: 110,
   antlerRedOverBlue: 30,
   // How long the antlers stay up at level 6, and tap to close when they were
-  // not seen coming up: 8.4-8.6s and tap+9.6-9.7s in all 15 windows of
-  // `gaston_108`/`109.mp4`. Other levels are taken as shorter by the
-  // difference in `durationMs`. They come up at tap+1.15-1.25s; a first
-  // sighting outside `antlerUpMs` is taken for a misread and the tap used.
+  // not seen coming up; other levels are shorter by the `durationMs` gap. A
+  // first sighting outside `antlerUpMs` (from the tap) is a misread.
   antlerMs: 8450,
   tapToCloseMs: 9650,
   antlerUpMs: [800, 2000],
   // The closing chain is cut to end this long before the predicted close,
-  // when `chargeMinChain` or more still fits: the game freezes at the close
-  // (`switchLeadMs` ahead to ~0.75s past), and drags run over it broke 5 of 7
-  // times on `gaston_102`-`109.mp4`. `hopOverMs` is each hop's cost past the
-  // dwell -- the move, and the rewind's checks -- for the fit.
+  // if `chargeMinChain` or more still fits: the game freezes around the close
+  // and breaks drags. `hopOverMs` is each hop's cost past the dwell.
   closeLeadMs: 300,
   hopOverMs: 6,
   // The hold sleeps in slices this long, so a stopped run lifts the finger
@@ -894,184 +309,135 @@ var GastonConfig = {
 
   // --- charging the gauge after the release --------------------------------
   //
-  // How long the button is spammed for after the release: a thirty chain pops
-  // for three seconds and the gauge reads full a little after the last of it
-  // -- a 34 watched for 3.5s was read full by the play loop 1.8s later. Past
-  // this the play loop has the board back and its own chains fill the rest,
-  // which is also the whole plan for a held chain under `chargeMinChain`: that
-  // one is not going to fill anything, and the play loop's longest chain on
-  // the Gastons it left is worth more than the wait.
+  // How long the button is spammed after the release; past this the play loop
+  // takes over. A held chain under `chargeMinChain` skips the wait entirely.
   gaugeWaitMs: 4500,
   chargeMinChain: 12,
-  // The closing chains' total the charge wants: the gauge takes ~23 tsums
-  // (`gaston_117.mp4`), so a closing chain that stops short of this is
-  // followed by another once its pop has landed -- every clear past the
-  // close fills the gauge -- at most `closeRetries` more. Two of ten windows
-  // on `gaston_121.mp4` stopped theirs at 9 and 8 and never charged.
+  // Closing-chain total the charge needs (gauge takes ~23 tsums). A closing
+  // chain short of this is followed by another once its pop lands, at most
+  // `closeRetries` more.
   gaugeChain: 24,
   closeRetries: 2,
-  // The spam's least run, whatever the clear's own length says.
+  // The spam's minimum run.
   chargeMinMs: 300,
   // The spam also stops this long after the held chain's clear should be over
-  // (`popPerTsumMs` a tsum, of its late count when the counter read one). On
-  // 2026-09-23 every charge that fired read full within 0.9s of that; the ones
-  // that did not spammed the whole `gaugeWaitMs` over a board that had
-  // stopped clearing, and the play loop's first chains after filled the gauge.
+  // (`popPerTsumMs` a tsum, using the late count when the counter read one).
   chargeTailMs: 1500,
-  // The spam tap's `during`. The host holds every tap 40ms on its own, so with
-  // the gauge read between taps the loop runs at about one tap a frame pair.
+  // The spam tap's `during`; the host holds every tap 40ms anyway.
   spamTapMs: 10,
-  // How often the spam loop checks the board is still there: the round can end
-  // under it, and the taps would go on into the tally.
+  // How often the spam checks the board is still up, so taps stop if the round
+  // ends.
   spamPageCheckMs: 500,
 
   // --- the fever switch ----------------------------------------------------
   //
-  // The game stops linking for a moment when the fever backdrop switches, and
-  // a drag under way loses its head there (see the header). The exit is
-  // predictable: the backdrop stays up `feverMs` from the moment it comes on
-  // -- nine of nine fevers in `gaston_6.mp4`, to the frame -- and it comes on
-  // `faceMs` after the activation tap, as the face animation fades, when the
-  // activation's clear has filled the fever gauge (every activation there). A
-  // drag that would straddle the predicted exit waits for the switch to show
-  // and `switchFreezeMs` more, the freeze measured 0.5-0.75s past the switch;
-  // `switchLeadMs` is how far ahead of the switch the freeze can begin.
+  // The game stops linking briefly when the fever backdrop switches. The
+  // backdrop stays up `feverMs` from coming on, `faceMs` after the activation
+  // tap. A drag that would straddle the predicted exit waits for the switch
+  // and `switchFreezeMs` more; `switchLeadMs` is how early the freeze begins.
   //
-  // `dodgeSwitch` false sends every drag out at once: `gastonAwaitSwitch`
-  // waits for nothing. The backdrop is still watched, so a pass still logs
-  // `fever` -- whether the drag went out under one -- with `waitedMs` 0. Off
-  // since the close is read off the antlers: the wait held the closing chain
-  // 0.8-2.6s past the close on `gaston_108`/`109.mp4`, where it is now cut to
-  // end before it (`closeLeadMs`).
+  // `dodgeSwitch` false sends every drag out at once (`gastonAwaitSwitch`
+  // waits for nothing), still logging `fever` with `waitedMs` 0. Off because
+  // the close is read off the antlers and `closeLeadMs` handles it.
   dodgeSwitch: false,
   feverMs: 8350,
   faceMs: 1300,
   switchFreezeMs: 800,
   switchLeadMs: 250,
-  // How long past the predicted exit to keep waiting for it. The fever clock
-  // pauses under a skill animation, so a fever already running at the tap
-  // outlives the estimate by the animation; past this the drag goes out anyway.
+  // How long past the predicted exit to keep waiting: skill animations pause
+  // the fever clock.
   switchLateMs: 1500,
-  // A pass that waited longer than this for the switch scans again before it
-  // draws: the pile moves in that time, and the route and the paint read are
-  // planned off the scan.
+  // A pass that waited longer than this for the switch rescans before drawing,
+  // since the pile moves.
   replanAfterWaitMs: 200,
 
   // --- the fever's own start and end ---------------------------------------
   //
-  // The antlers hide the fever from the chrome, but not from the ring round
-  // the fever gauge (`FeverProbes`' two strokes): near white while a fever
-  // runs, dark otherwise. On `gaston_102`-`104.mp4` (2026-09-23) drags that
-  // went out 0.4-1.6s after the ring lit broke at a fever's start (7/16,
-  // 6/18, 9/18, 20/39, 23/35, 26/37, 23/36), and ones out over the last
-  // ~0.6s before it went dark broke at its end (3/37, 17/29, 4/38). So a
-  // drag waits `feverStartMs` past the ring lighting, and one the fill says
-  // would run into the end waits for the ring to go dark and
-  // `switchFreezeMs` more (`gastonAwaitFever`). The fill drains a sample of
-  // `FeverBar`'s every ~440ms (`feverSliceMs`) and reads empty 0.3-0.9s
-  // before the ring goes dark (`feverTailMs` the least of that);
-  // `feverEndLeadMs` is how far ahead of the dark the end already breaks a
-  // drag. Independent of `dodgeSwitch`. Off: on `gaston_105.mp4` it broke as
-  // many chains as 104 without it (8 of 18 whole), one held 1.0s past the
-  // ring still broke at 9 of 35, and the waits cost a window its cancel and
-  // pushed held chains past the close.
+  // The ring round the fever gauge (`FeverProbes`' two strokes) is near white
+  // during a fever. Drags break near a fever's start and end, so a drag waits
+  // `feverStartMs` past the ring lighting, and one that would run into the end
+  // waits for the ring to go dark plus `switchFreezeMs` (`gastonAwaitFever`).
+  // The fill drains a `FeverBar` sample every `feverSliceMs` and reads empty at
+  // least `feverTailMs` before the dark; `feverEndLeadMs` is how early the end
+  // breaks drags. Independent of `dodgeSwitch`. Off: it did not reduce breaks
+  // and its waits cost cancels.
   dodgeFever: false,
   feverStartMs: 1800,
   feverSliceMs: 440,
   feverTailMs: 300,
   feverEndLeadMs: 700,
-  // The chrome either side of the score capsule on a plain board (`normal.png`
-  // and `last_seconds*.png`, the same points as `FeverProbes`' dimmed pair).
-  // The fever backdrop recolours it and a skill animation darkens it, so the
-  // backdrop is read as "not plain": each fever theme paints its own colour
-  // there, and `FeverProbes` -- one theme's dimmed teal -- reads nothing on
-  // the antlered theme of `gaston_6.mp4`.
+  // The chrome either side of the score capsule on a plain board. Fever themes
+  // and skill animations recolour it, so the backdrop is read as "not plain".
   plainChrome: [
     { x: 300, y: 250, r: 24, g: 207, b: 239 },
     { x: 800, y: 250, r: 16, g: 190, b: 231 },
   ],
   plainChromeTolerance: 90,
 
-  // A pass whose scan reads this far under a board the gate just saw full is
-  // under a flash -- the fever label's, `gaston_6.mp4` read 29 of 40 -- and
-  // rescans for up to this long.
+  // A scan reading far under a board the gate just saw full is under a flash
+  // (the fever label's) and rescans for up to this long.
   flashRetryMs: 600,
 
   // --- a board of leftovers ------------------------------------------------
   //
-  // Whatever the window clears refills as Gaston, so a pass whose Gaston
-  // chain is under `mixedBelow`, or whose board has `mixedFrom` or more
-  // leftovers, also clears every chain of the other colours off the same
-  // scan, for up to `mixedChainMs` after its release and before the cancel.
-  // A pass with no Gaston chain at all does the same (`gastonClearLeftovers`):
-  // `gaston_113.mp4` had 26 of them lift the finger and draw nothing on
-  // boards of 20-odd leftovers. 0 turns it off.
+  // Whatever the window clears refills as Gaston, so a pass whose Gaston chain
+  // is under `mixedBelow`, or whose board has `mixedFrom`+ leftovers, also
+  // clears other-colour chains off the same scan for up to `mixedChainMs`
+  // before the cancel. So does a pass with no Gaston chain
+  // (`gastonClearLeftovers`). 0 turns it off.
   mixedBelow: 15,
   mixedFrom: 15,
   mixedChainMs: 1000,
-  // The window the play loop opens -- a round's first, or the one after a
-  // charge that did not fire -- starts on an ordinary board: half of it
-  // other tsums, packed under his at the bottom, and only what the window
-  // clears comes back Gaston. Its cancelled passes each clear other colours
-  // after their Gaston chain for this long, past their slot, while the
-  // refill still lands before the close (`noCancelTailMs`). On
-  // `gaston_140.mp4` the bottom half never cleared, the closing chain found
-  // 20 Gastons and drew 16, and the charge never came: 4 of 25 first windows
-  // to then failed to charge, and most of the rest took 2-4s to.
+  // The play loop's window (a round's first, or after a charge that did not
+  // fire) starts on a mixed board. Its cancelled passes each clear other
+  // colours for this long past their slot, as long as the refill lands before
+  // the close (`noCancelTailMs`).
   convertChainMs: 1500,
   // Leftover kinds a converting pass reads and chains after the scan's own
   // (`gastonPaintedLeftovers`).
   convertReads: 3,
 };
 
-// The `roundStartedAt` of the round whose first activation has gone out, or 0.
-// Bubbles are the window's from that activation to the round's end and the
-// Bubble Strategy's before it -- see `claimsBubbles`. A round's start stamp is
-// unique and the play loop clears it at the tally, so nothing here resets.
+// `roundStartedAt` of the round whose first activation has gone out, or 0.
+// Bubbles belong to the window from then to round end (`claimsBubbles`).
+// Round stamps are unique, so nothing resets.
 var gastonClaimRound = 0;
 
-// The window now open -- its round and the earliest it can close -- for
-// `stillRunning`: a full gauge inside it waits (see the header).
+// The open window's round and earliest close, for `stillRunning`: a full
+// gauge inside it waits.
 var gastonWindowRound = 0;
 var gastonWindowUntil = 0;
 
-// The open window's tap, for the passes' timings, and the round's refill
-// cycle -- a cancelled pass's release to the next grab -- as measured so far
-// (`nextPassMs`), keyed to the round.
+// The open window's tap time, and the round's measured refill cycle (cancel
+// release to next grab, see `nextPassMs`), keyed to the round.
 var gastonWindowT0 = 0;
 var gastonCycleMs = 0;
 var gastonCycleRound = 0;
 
-// The fever backdrop as the window last saw it (`gastonWatchFever`): whether
-// the chrome read plain (-1 before the first look), when the backdrop came on
-// (0 while off) for the exit prediction, and the last change either way for
-// the freeze. Nothing resets between rounds: a stale `onAt` predicts an exit
-// long past, which waits for nothing. `ring` is the fever gauge's ring the
-// same way (-1 unread, 1 lit), `ringOnAt`/`ringOffAt` when it was last seen
-// to light and go dark, and `ringSeen` a change read once and not yet
-// confirmed by a second read (see `gastonAwaitFever`). `antlers` is the
-// skill's own backdrop the same way (1 up), with when this window saw it come
-// up and go (see `antlerMs`); the window zeroes all three at its tap.
+// Last seen fever state (`gastonWatchFever`). `plain`: chrome read plain (-1
+// unread); `onAt`: when the backdrop came on (0 while off); `switchedAt`: last
+// change. `ring` is the gauge ring (-1 unread, 1 lit), with `ringOnAt`/
+// `ringOffAt`, and `ringSeen` a change awaiting a second read
+// (`gastonAwaitFever`). `antlers` is the skill backdrop (1 up) with its
+// on/off times (`antlerMs`). The window zeroes all three at its tap.
 var gastonFever = {
   plain: -1, onAt: 0, switchedAt: 0, ring: -1, ringSeen: -1, ringSeenAt: 0, ringOnAt: 0, ringOffAt: 0,
   antlers: -1, antlersOnAt: 0, antlersOffAt: 0,
 };
 
-// What the window's last paint read found not to be Gaston, as centres in
-// play-square scale, for a pass that cannot read (see `carryMatch`), and
-// whether a read has happened this window at all -- a carry with nothing in
-// it after one means the board is all his. Both reset as each window opens;
-// a cancel's blast takes out what it cleared.
+// Non-Gaston centres (play-square scale) from the window's last paint read, for
+// passes that cannot read (see `carryMatch`), and whether a read happened this
+// window: an empty carry after a read means the board is all Gaston.
+// Both reset as each window opens.
 var gastonCarry: Point[] = [];
 var gastonCarryRead = false;
 
-// Every bubble a read of this round has found, by position, with when it was
-// last seen (`gastonRememberBubbles`): the ones the Hough loses under the rim
-// lights are still there. Keyed to the round; a cancel's tap drops one.
+// Every bubble seen this round, with when it was last seen
+// (`gastonRememberBubbles`), so ones a later Hough misses are still known.
 var gastonBubbleMemory: GameBubble[] = [];
 var gastonBubbleRound = 0;
 
-/** Whether this round's first activation has gone out: the skill's rules hold from there to the tally. */
+/** Whether this round's first skill activation has fired. */
 function gastonActivated(ts: Tsum): boolean {
   return ts.roundStartedAt !== 0 && gastonClaimRound === ts.roundStartedAt;
 }
@@ -1080,19 +446,19 @@ function gastonActivated(ts: Tsum): boolean {
 interface GastonPass {
   /** Tsums in the chain drawn, 0 when none was. */
   chain: number;
-  /** Tsums the game's counter said it linked (chainCounter.ts); null when nothing was drawn or the counter did not read. */
+  /** Chain length per the game's counter (chainCounter.ts); null when nothing was drawn or unread. */
   registered: number | null;
   /** The counter again just before a held chain's release; null unless held and read. */
   registeredLate: number | null;
   /** Bubbles tapped to cancel the pop animation. */
   cancelled: number;
-  /** Whether the tsum count showed the cancel take; null when unchecked (see `cancelCheckMin`). */
+  /** Whether the tsum count showed the cancel worked; null when unchecked (`cancelCheckMin`). */
   confirmed: boolean | null;
   /** Other colours' chains drawn beside it (`mixedFrom`). */
   extra: number;
-  /** From the release to the last tsum of it and its extras popping, uncancelled. */
+  /** Release to the last tsum popping, uncancelled. */
   popMs: number;
-  /** The chain was held on its last tsum until the window had closed, then left to pop -- the closing chain. */
+  /** The closing chain: held on its last tsum until the window closed, then left to pop. */
   held: boolean;
   /** How long the finger stayed on the last tsum past the drag, in ms. */
   heldMs: number;
@@ -1100,17 +466,17 @@ interface GastonPass {
   releasedAt: number;
   /** Epoch ms of the grab, 0 when there was none. */
   headAt: number;
-  /** Tsums the scan put in the board array, HUD glyphs included. */
+  /** Tsums the scan found, HUD glyphs included. */
   read: number;
-  /** Tsums in the board's biggest colour cluster -- how far short of `read` the scan reads Gaston. */
+  /** Tsums in the board's biggest colour cluster. */
   biggest: number;
-  /** Time the drag spent waiting on the game beyond its dwells. See `GastonDrag`. */
+  /** Time the drag spent waiting on the game beyond its dwells (see `GastonDrag`). */
   overMs: number;
-  /** Drags the finger came up from at the head: a start that painted nothing, or one no chain reaches from. */
+  /** Drags lifted at the head: it painted nothing, or no chain reaches from it. */
   dead: number;
-  /** Of those, the heads that painted nothing -- the read failing, not the route. */
+  /** Of those, heads that painted nothing (a read failure, not a route one). */
   blank: number;
-  /** The board was there to be scanned; false is a round that ended under the window. */
+  /** False when the round ended during the window. */
   onBoard: boolean;
 }
 
@@ -1118,7 +484,7 @@ interface GastonPass {
 interface GastonWait {
   /** The fullest the board was seen. */
   peak: number;
-  /** It left on a full count, not the ceiling. */
+  /** It left on a full count, not the timeout. */
   full: boolean;
 }
 
@@ -1126,15 +492,15 @@ interface GastonWait {
 interface GastonCharge {
   /** Taps sent to the button. */
   taps: number;
-  /** The gauge read full -- the next activation fired, or is about to on the next tap. */
+  /** The gauge read full: the next activation fired or fires on the next tap. */
   ready: boolean;
-  /** The board was still there; false is a round that ended under the charge. */
+  /** False when the round ended during the charge. */
   onBoard: boolean;
 }
 
 /**
- * Whether a round-over screen has replaced the board -- the play loop's own
- * sweep, so the pause menu or an animation over the HUD does not count.
+ * Whether a round-over screen has replaced the board. Uses the play loop's
+ * sweep, so the pause menu or a HUD animation does not count.
  */
 function gastonRoundOver(): boolean {
   return isRoundOverPage(gPages.detect(1, 0, inRoundPages()));
@@ -1143,9 +509,9 @@ function gastonRoundOver(): boolean {
 // --- The fever switch --------------------------------------------------------
 
 /**
- * The chrome beside the score, off one crop of the row through both probes
- * (`plainChrome`): whether it reads plain -- no fever backdrop and no
- * animation over it -- and whether the skill's antlers are up (`antlerMinRed`).
+ * Reads the chrome beside the score from one crop through both `plainChrome`
+ * probes: `plain` (no fever backdrop or animation over it) and `antlers`
+ * (the skill's antlers are up, `antlerMinRed`).
  */
 function gastonChrome(ts: Tsum): { plain: boolean, antlers: boolean } {
   const cfg = GastonConfig;
@@ -1167,9 +533,8 @@ function gastonChrome(ts: Tsum): { plain: boolean, antlers: boolean } {
 }
 
 /**
- * Whether the ring round the fever gauge is lit: a fever is running, under
- * the antlers or not. One crop through both of `FeverProbes`' ring strokes;
- * either reading near white will do, since the ring's glow cycles colour.
+ * Whether the fever gauge's ring is lit, i.e. a fever is running. Either
+ * `FeverProbes` stroke matching is enough, since the ring's glow cycles colour.
  */
 function gastonFeverRing(ts: Tsum): boolean {
   const a = ts.toRealXY(FeverProbes[0].x, FeverProbes[0].y);
@@ -1186,10 +551,9 @@ function gastonFeverRing(ts: Tsum): boolean {
 }
 
 /**
- * One look at the backdrop, the antlers and the fever ring, recording a switch
- * if any changed. Called from every poll of the window, so a switch is seen within a
- * poll of the frame. A ring change counts once a second read agrees, stamped
- * at the first: the ring flickers for a frame as the gauge fills.
+ * Check the backdrop, antlers and fever ring, recording any change in
+ * `gastonFever`. Called on every poll of the window. A ring change needs a
+ * second agreeing read (it flickers as the gauge fills), stamped at the first.
  */
 function gastonWatchFever(ts: Tsum): void {
   const chrome = gastonChrome(ts);
@@ -1223,9 +587,9 @@ function gastonWatchFever(ts: Tsum): void {
 }
 
 /**
- * Hold a drag of `dragMs` back from the fever switch: the freeze after one
- * just seen, and the exit the running fever's clock puts inside the drag (see
- * `feverMs`). Answers the ms spent waiting; 0 at once with `dodgeSwitch` off.
+ * Delay a drag of `dragMs` away from a fever switch: the freeze after one just
+ * seen, or a fever exit (`feverMs`) due during the drag. Returns the ms waited;
+ * 0 with `dodgeSwitch` off.
  */
 function gastonAwaitSwitch(ts: Tsum, dragMs: number): number {
   const cfg = GastonConfig;
@@ -1247,11 +611,10 @@ function gastonAwaitSwitch(ts: Tsum, dragMs: number): number {
 }
 
 /**
- * Hold a drag of `dragMs` back from the fever's own start and end, which the
- * chrome cannot see under the antlers (see `dodgeFever`): until
- * `feverStartMs` past the ring lighting, and, when the fill says the fever
- * ends inside the drag, until the ring goes dark and `switchFreezeMs` past
- * it. Answers the ms spent waiting; 0 at once with `dodgeFever` off.
+ * Delay a drag of `dragMs` away from the fever's start and end, read off the
+ * ring since the chrome is hidden under the antlers: until `feverStartMs` after
+ * it lights, and if it ends during the drag, until `switchFreezeMs` after it
+ * goes dark. Returns the ms waited; 0 with `dodgeFever` off.
  */
 function gastonAwaitFever(ts: Tsum, dragMs: number): number {
   const cfg = GastonConfig;
@@ -1301,10 +664,7 @@ function gastonDragEstimate(chain: number): number {
 
 // --- Reading the board ------------------------------------------------------
 
-/**
- * How many tsum circles the board shows: one capture and `findTsums`' circle
- * pass, counted and nothing else.
- */
+/** How many tsum circles the board shows, from one capture. */
 function gastonCountTsums(ts: Tsum): number {
   const img = ts.playScreenshotSquare();
   let gray: NativeImage | null = null;
@@ -1318,17 +678,10 @@ function gastonCountTsums(ts: Tsum): number {
 }
 
 /**
- * Wait until the board reads full, and say how full it got.
- *
- * Leaves once the count is at `enoughTsums` and has stopped climbing --
- * `stillReads` reads running not up by more than `countNoise`, the last of a
- * refill landing being the count still on its way up -- or on `until`. Never
- * short of full: the count cannot tell a board landed short from one mid-clear
- * (see the header), so a board that never reads full is taken at the ceiling.
- *
- * Nothing ends the wait before `notBefore`: the opening gate's floor under the
- * activation animation, the refill gates' `fillMinMs` while a clear takes its
- * tsums off the count.
+ * Wait until the board reads full and report the peak count.
+ * Leaves once the count is at `enoughTsums` and has stopped climbing
+ * (`stillReads` reads not up by more than `countNoise`), or at `until`.
+ * Never leaves before `notBefore`.
  */
 function gastonAwaitBoard(ts: Tsum, until: number, notBefore: number): GastonWait {
   const cfg = GastonConfig;
@@ -1348,21 +701,16 @@ function gastonAwaitBoard(ts: Tsum, until: number, notBefore: number): GastonWai
     if (count > peak) { peak = count; }
     gastonWatchFever(ts);
   }
-  // Full is not landed: the last of the refill is still falling. See `landMs`.
+  // The last of the refill is still falling (`landMs`).
   if (full) { ts.sleep(cfg.landMs); }
   return { peak: peak, full: full };
 }
 
 /**
  * Spam the skill button from the held chain's release until the gauge reads
- * full: its Gastons fill the gauge as they pop, a tap on a filling gauge is a
- * no-op the game ignores, and the tap that lands first after it fills is the
- * one that fires. The read that says full is either the gauge full under the
- * next tap or this loop's own tap having just fired it -- the button flashes
- * as it goes, and the empty gauge behind the flash reads empty a moment later
- * -- so the window that follows is opened from here, not by `useSkill` (see
- * the header). Stops once `until` passes with the gauge still filling, or the
- * round ends under it.
+ * full. Taps on a filling gauge are ignored and the first after it fills fires,
+ * so the next window is opened from here, not by `useSkill`. Stops at `until`
+ * or when the round ends.
  */
 function gastonSpamSkill(ts: Tsum, until: number): GastonCharge {
   const cfg = GastonConfig;
@@ -1381,10 +729,7 @@ function gastonSpamSkill(ts: Tsum, until: number): GastonCharge {
   return charge;
 }
 
-/**
- * The Gastons on the board: the points of its biggest colour cluster, and
- * nothing else -- see the header for the palette that used to add to it.
- */
+/** The Gastons on the board: the points of its biggest colour cluster. */
 function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
   const sizes: number[] = [];
   for (let c = 0; c < ts.boardClusters.length; c++) { sizes.push(0); }
@@ -1404,21 +749,12 @@ function gastonGastons(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
 }
 
 /**
- * The bubbles on the board, off a capture that runs `bubbleHem` below the play
- * square -- see `bubbleHem` for the ones the square cuts in half. A Hough
- * pass like `findGameBubbles`, at `hardParam2`, in play-square scale; a centre
- * below the square has y past `playResizeHeight`, which the taps map like any
- * other. Its circles and the band's must look like a bubble inside
- * (`gastonBubbleLooks`).
- *
- * Then three more sources: a second Hough at `bandParam2` over the bottom
- * `bubbleBandFrom` of the capture, for the bubbles resting on the bowl the
- * first pass reads through (`band`, tapped like the first pass's); with
- * `board`, that scan's circles in the same band whose icons read gold
- * (`bubbleGold`, `gold`); and the memory of earlier reads
- * (`gastonRememberBubbles`; `soft`, planned round and tapped last). A find
- * within `minDist` of an earlier one is the same bubble and dropped. The list
- * is ordered hard, band, gold, soft.
+ * The bubbles on the board, in play-square scale, from a capture extending
+ * `bubbleHem` below the play square (such centres have y past `playResizeHeight`).
+ * Returned in order: a Hough pass at `hardParam2`; one at `bandParam2` over the
+ * bottom `bubbleBandFrom` (`band`); with `board`, its gold circles there
+ * (`bubbleGold`, `gold`); remembered ones (`soft`). Hough finds must pass
+ * `gastonBubbleLooks`; a find within `minDist` of an earlier one is dropped.
  */
 function gastonBubbles(ts: Tsum, board?: BoardPoint[]): GameBubble[] {
   const cfg = GastonConfig;
@@ -1464,9 +800,8 @@ function gastonBubbles(ts: Tsum, board?: BoardPoint[]): GameBubble[] {
 }
 
 /**
- * `circles` less those that do not look like a bubble inside (see
- * `hardParam2`): too much dark hair, or white, in the disc at 0.7 of the
- * radius, sampled every 2 units of `img`, the bubble capture.
+ * `circles` less those that don't look like a bubble inside: too much dark or
+ * white (`bubbleDarkMax`, `bubbleWhiteMax`) in the disc at 0.7 of the radius.
  */
 function gastonBubbleLooks(img: NativeImage, circles: GameBubble[]): GameBubble[] {
   const cfg = GastonConfig;
@@ -1511,10 +846,7 @@ function gastonBubbleLooks(img: NativeImage, circles: GameBubble[]): GameBubble[
   return out;
 }
 
-/**
- * The bubbles a cancel may tap: the Hough pass proper's and the band's, not
- * the memory's (`soft`).
- */
+/** The bubbles a cancel may tap: all but remembered (`soft`) ones. */
 function gastonTappableBubbles(bubbles: GameBubble[]): GameBubble[] {
   const out: GameBubble[] = [];
   for (let i = 0; i < bubbles.length; i++) {
@@ -1534,11 +866,9 @@ function gastonBubbleNear(b: Point, list: Point[], dist: number): boolean {
 }
 
 /**
- * Fold this read into the round's bubble memory and hand back the read plus
- * every remembered bubble it did not find again, as `soft`. A read refreshes
- * a remembered bubble within `bubbleMatch` widths; one unseen for
- * `bubbleMemoryMs` is forgotten; a cancel's tap forgets one outright
- * (`gastonForgetBubble`). A new round starts with nothing.
+ * Merge this read into the round's bubble memory. Returns the read plus every
+ * remembered bubble it missed (within `bubbleMatch` widths), marked `soft`.
+ * Bubbles unseen for `bubbleMemoryMs` are forgotten; a new round starts empty.
  */
 function gastonRememberBubbles(ts: Tsum, read: GameBubble[]): GameBubble[] {
   const cfg = GastonConfig;
@@ -1576,8 +906,7 @@ function gastonForgetBubble(b: Point): void {
 
 /**
  * The bubbles less the two round HUD buttons the hem brings into the capture
- * (`hemButtons`): every pass of `gaston_2.mp4` read them as bubbles, and the
- * cancels went to them instead of the bubble in play.
+ * (`hemButtons`), which the Hough reads as bubbles.
  */
 function gastonNotButtons(bubbles: GameBubble[]): GameBubble[] {
   const cfg = GastonConfig;
@@ -1597,12 +926,9 @@ function gastonNotButtons(bubbles: GameBubble[]): GameBubble[] {
 }
 
 /**
- * What each bubble's pop is worth to the window, written to its `near`: the
- * tsums in its blast that are not Gaston. The blast is the bubble's radius
- * plus `GameBubbleConfig.blastReach` tsum widths, as `findGameBubbles` counts
- * it; board points are top-left corners, so the half width goes back on. The
- * HUD glyphs across the top are not leftovers and are left out (`hudBand`).
- * The cancel spends the richest first -- see `gastonCancelBubble`.
+ * Sets each bubble's `near` to the non-Gaston tsums in its blast (radius plus
+ * `GameBubbleConfig.blastReach` tsum widths), skipping the HUD band (`hudBand`).
+ * `gastonCancelBubble` spends the richest first.
  */
 function gastonBubbleWorth(bubbles: GameBubble[], board: BoardPoint[], gastons: BoardPoint[]): void {
   const half = Config.tsumWidth / 2;
@@ -1624,14 +950,9 @@ function gastonBubbleWorth(bubbles: GameBubble[], board: BoardPoint[], gastons: 
 }
 
 /**
- * The board minus what the drag must not touch: every tsum sitting on a bubble,
- * since a bubble the drag crosses pops and ends the chain there, and every
- * circle with its centre in the HUD band across the top, `band` tsum widths
- * deep, which is the fever bonus and the combo counter read as tsums -- see
- * the header.
- *
- * Board points are top-left corners and bubbles are centres, so the half-width
- * goes back on before either test.
+ * The board minus what the drag must not touch: tsums on a bubble (crossing one
+ * pops it and ends the chain) and circles in the top HUD band, `band` tsum
+ * widths deep, where HUD glyphs read as tsums.
  */
 function gastonFreeBoard(board: BoardPoint[], bubbles: GameBubble[], band: number): BoardPoint[] {
   const half = Config.tsumWidth / 2;
@@ -1654,10 +975,7 @@ function gastonFreeBoard(board: BoardPoint[], bubbles: GameBubble[], band: numbe
   return out;
 }
 
-/**
- * The board's leftovers: every point outside the Gaston cluster, less the HUD
- * glyphs across the top (`hudBand`), which are not tsums.
- */
+/** The board's leftovers: every point outside the Gaston cluster and the HUD band (`hudBand`). */
 function gastonLeftovers(board: BoardPoint[], gastons: BoardPoint[]): BoardPoint[] {
   const hud = Config.tsumWidth * GastonConfig.hudBand - Config.tsumWidth / 2;
   const out: BoardPoint[] = [];
@@ -1696,10 +1014,8 @@ function gastonSegmentNear(a: Point, b: Point, p: Point, rSq: number): boolean {
 
 /**
  * The hops the drag may draw over `board`: `buildTsumNeighbors`' reach, less
- * every hop whose segment passes within `crossAvoid` of a third tsum's centre
- * or inside a bubble -- the game links what the line crosses and undoes what
- * it crosses back over (see the header). Board points are top-left corners,
- * so the half width goes back on for the geometry.
+ * hops passing within `crossAvoid` of a third tsum's centre or inside a bubble,
+ * since the game links whatever the line crosses.
  */
 function gastonNeighbors(board: BoardPoint[], bubbles: GameBubble[]): number[][] {
   const half = Config.tsumWidth / 2;
@@ -1728,13 +1044,10 @@ function gastonNeighbors(board: BoardPoint[], bubbles: GameBubble[]): number[][]
 }
 
 /**
- * The chain to draw over `board` -- the Gastons the drag may touch: the longest
- * path `findLongestTsumPath` finds in any of its connected components, from
- * whichever tsum it starts at. See the header for why nothing anchors it.
- *
- * Components biggest first, each searched over its own points so the search's
- * memo applies (it keys on 31 tsums or fewer), and a route through the whole
- * of one ends the search: no smaller component can beat it.
+ * The chain to draw over `board` (the Gastons the drag may touch): the longest
+ * path `findLongestTsumPath` finds in any connected component, from any start.
+ * Components go biggest first, each searched alone so the search's memo applies
+ * (31 tsums or fewer); stops once no remaining component can beat the best.
  */
 function gastonChain(board: BoardPoint[], bubbles: GameBubble[]): TsumPath | null {
   const cfg = GastonConfig;
@@ -1746,9 +1059,8 @@ function gastonChain(board: BoardPoint[], bubbles: GameBubble[]): TsumPath | nul
   for (let c = 0; c < comps.length; c++) {
     const comp = comps[c];
     if (comp.length <= best.length || comp.length < cfg.minChain) { break; }
-    // The whole board's hops, renumbered to the component: rebuilt over the
-    // component alone they would lose the other components' tsums as
-    // obstacles.
+    // Reuse the whole board's hops, renumbered, so other components' tsums
+    // still count as obstacles.
     const points: BoardPoint[] = [];
     const all: number[] = [];
     const local: number[] = [];
@@ -1770,10 +1082,7 @@ function gastonChain(board: BoardPoint[], bubbles: GameBubble[]): TsumPath | nul
   return best.length >= cfg.minChain ? best : null;
 }
 
-/**
- * The longest chain from `head` over `gastons` -- the finger is already on the
- * head, so only that start is searched. Null under `minChain`.
- */
+/** The longest chain from `head` (the finger is already on it) over `gastons`; null under `minChain`. */
 function gastonChainFrom(head: BoardPoint, gastons: BoardPoint[], bubbles: GameBubble[]): TsumPath | null {
   const cfg = GastonConfig;
   const points: BoardPoint[] = [head];
@@ -1789,16 +1098,9 @@ function gastonChainFrom(head: BoardPoint, gastons: BoardPoint[], bubbles: GameB
 }
 
 /**
- * Which end the drag starts from. A path links the same tsums drawn either
- * way, and a longest path runs tip to tip; on a refilled board the tips are
- * the bottom frontier, where the Gaston mass meets what it landed on and the
- * scan is least to be trusted -- a leftover of his colour merged into his
- * cluster, a centre landed on the neighbour. Five of the seven dead drags of
- * `gaston_7.mp4` began on one, four of them at the bottom end with a Gaston at
- * the top end. So the start is the higher end, and an end touching a known
- * leftover (`frontierAvoid`) loses whatever its height. The opposite of
- * Rapunzel+'s rule, whose board is still landing at the top; this one has
- * landed (`landMs`) and the trouble is at the bottom.
+ * Pick which end the drag starts from. The bottom of a refilled board is where
+ * the scan is least reliable, so start from the higher end; an end touching a
+ * leftover (`frontierAvoid`) loses regardless of height.
  */
 function gastonOrient(path: TsumPath | null, leftovers: BoardPoint[]): TsumPath | null {
   if (!path || path.length < 2) { return path; }
@@ -1846,15 +1148,11 @@ function gastonToScreen(ts: Tsum, p: BoardPoint): Point {
 
 /** What a drag came to: its length, how much of that was the game's, and whether it was held. */
 interface GastonDrag {
-  /** The route drawn: the plan, or what the paint read planned from its head. Empty when nothing was. */
+  /** The route drawn: the plan, or the paint read's plan from its head. Empty when nothing was. */
   path: TsumPath;
   /** Grab to release less the hold, in ms. */
   ms: number;
-  /**
-   * Over the dwells and settles: the calls themselves, and with `pacedMoves`
-   * the time `moveTo` spent waiting for the game to take each move -- ~2ms a
-   * hop measured (see the header).
-   */
+  /** Time beyond dwells and settles: the calls, plus `moveTo`'s waits with `pacedMoves`. */
   overMs: number;
   /** The finger stayed on the last tsum until the window had closed. */
   held: boolean;
@@ -1866,17 +1164,17 @@ interface GastonDrag {
   dead: boolean;
   /** The paint read lifted the finger on a head that painted too few (`strayPaint`). */
   stray: boolean;
-  /** The circles the paint read found to be Gaston, null when it did not run. */
+  /** Circles the paint read found to be Gaston; null when it did not run. */
   gastons: BoardPoint[] | null;
-  /** The read's rise: the median over the circles that rose, or over every circle when none did. Null when it did not run. */
+  /** Median rise over the circles that rose, or over all when none did; null when unread. */
   rise: number | null;
-  /** Every circle's rise, in `board` order, for the log: what a bubble or a leftover reads against `paintRise`. Null when the read did not run. */
+  /** Every circle's rise in `board` order, for the log; null when unread. */
   rises: number[] | null;
-  /** The circles the read found not to be Gaston, as centres, for `gastonCarry`. Empty without a read. */
+  /** Centres the read found not to be Gaston, for `gastonCarry`. Empty without a read. */
   leftovers: Point[];
-  /** The game's chain counter, read `settleMs` after the last MOVE with the finger down (chainCounter.ts). Null when nothing was drawn. */
+  /** The game's chain counter, read `settleMs` after the last move with the finger down; null when nothing was drawn. */
   count: ChainCount | null;
-  /** The counter again just before a held chain's release, in case the count was still climbing. Null unless held. */
+  /** The counter again just before a held chain's release; null unless held. */
   countLate: ChainCount | null;
   /** Each rewind as [route index the finger was on, index it walked back to] (see `rewind`). */
   rewinds: number[][];
@@ -1884,18 +1182,18 @@ interface GastonDrag {
   stallCounts: number[];
   /** Coin stalls the count overruled (`countSlack`). */
   countKept: number;
-  /** The last check's coin read over the route, 'C' or '.' per tsum from `coinFrom`; null when none ran. */
+  /** The last coin check over the route, 'C' or '.' per tsum from `coinFrom`; null when none ran. */
   coins: string | null;
-  /** The route a stopped drag was on, before `path` was cut to what it linked; null otherwise. */
+  /** A stopped drag's route before `path` was cut to what it linked; null otherwise. */
   planned: TsumPath | null;
   /** Epoch ms of the grab. */
   startedAt: number;
-  /** When the schedule wanted the drag done (`nextPassMs`), and whether it was the closing chain's. */
+  /** When the schedule wanted the drag done (`nextPassMs`), and whether it was the closing chain. */
   slotEnd: number;
   closing: boolean;
-  /** How long a closing drag stood still through the close, 0 when it did not cross it. */
+  /** How long a closing drag paused through the close; 0 when it did not cross it. */
   pausedMs: number;
-  /** Tsums cut off the route's end to fit its slot (`nextPassMs`, `closeChainMax`, `closeLeadMs`), a redraw's too. */
+  /** Tsums cut off the route's end to fit its slot (`nextPassMs`, `closeChainMax`, `closeLeadMs`). */
   trimmed: number;
 }
 
@@ -1908,9 +1206,8 @@ interface GastonSlot {
 }
 
 /**
- * The paint read a drag may make with the finger on its head (see the header):
- * every circle of the scan to classify, and the plan to draw from the head
- * over the Gastons it finds.
+ * The paint read a drag may make with the finger on its head: the scan's
+ * circles to classify, and a planner from the head over the Gastons found.
  */
 interface GastonOracle {
   board: BoardPoint[];
@@ -1926,11 +1223,9 @@ function gastonMedian(values: number[]): number {
 }
 
 /**
- * Each circle's floor: the median, over a grid around its centre, of the
- * pixel's darkest channel, off one capture of the play square. The pale paint
- * the game puts on a live chain's Gastons lifts it by 20-50 whatever the theme
- * tints the board, where the sprite's own colours barely move it -- see
- * `paintRise`. Board points are top-left corners; the grid sits on the centre.
+ * Each circle's floor: the median darkest channel over a grid around its
+ * centre, from one play-square capture. The pale paint on a live chain's
+ * Gastons lifts it, while the sprite's own colours barely do (`paintRise`).
  */
 function gastonFloorRead(ts: Tsum, board: BoardPoint[]): number[] {
   const cfg = GastonConfig;
@@ -1972,9 +1267,8 @@ function gastonGold(c: { r: number, g: number, b: number }): boolean {
 }
 
 /**
- * The centres of `board`'s circles below `fromY` whose coin grid is
- * `bubbleGold` gold in `img`, a play-square capture: bubbles the scan took
- * for tsums.
+ * Centres of `board`'s circles below `fromY` that read at least `bubbleGold`
+ * gold in `img`: bubbles the scan took for tsums.
  */
 function gastonGoldCircles(img: NativeImage, board: BoardPoint[], fromY: number): Point[] {
   const cfg = GastonConfig;
@@ -2008,10 +1302,7 @@ function gastonGoldCircles(img: NativeImage, board: BoardPoint[], fromY: number)
   return out;
 }
 
-/**
- * Whether each of `path[from..to]` carries the game's gold coin in `img`, a
- * play-square capture: the mark on a linked tsum (see `rewind`).
- */
+/** Whether each of `path[from..to]` shows the gold coin of a linked tsum in `img` (see `rewind`). */
 function gastonCoins(img: NativeImage, path: TsumPath, from: number, to: number): boolean[] {
   const cfg = GastonConfig;
   const half = Config.tsumWidth / 2;
@@ -2044,11 +1335,10 @@ function gastonCoins(img: NativeImage, path: TsumPath, from: number, to: number)
 }
 
 /**
- * Whether the chain stopped growing behind the finger on `path[at]`: -1 when
- * a coin shows on the `checkSpan` tsums ending `coinLag` behind it (or it is
- * too early to tell), else the route index to walk back to -- the last coin
- * before the gap, 0 with none. `end` reads up to the finger itself, for the
- * check after the last tsum; it also fills `drag.coins`.
+ * Whether the chain stopped growing behind the finger on `path[at]`. Returns -1
+ * when a coin shows on the `checkSpan` tsums ending `coinLag` behind it (or it
+ * is too early to tell), else the route index to walk back to: the last coin
+ * before the gap, 0 with none. `end` reads up to the finger and fills `drag.coins`.
  */
 function gastonStalled(ts: Tsum, path: TsumPath, at: number, end: boolean, drag: GastonDrag): number {
   const cfg = GastonConfig;
@@ -2077,22 +1367,11 @@ function gastonStalled(ts: Tsum, path: TsumPath, at: number, end: boolean, drag:
 }
 
 /**
- * Draw the chain, dwelling on each tsum (see `dwellMs`), and release it -- at
- * once unless `holds` says the chain is the closing one, when the finger
- * stays on the last tsum until `holdUntil` so the clear falls after the
- * window's close (see the header).
- *
- * With `oracle`, `path` is only the head: the finger lands on it, waits
- * `paintMs` for the game's paint, and the read says which circles are Gaston
- * (`paintRise`). The route is then planned from the head over those and drawn
- * on. A head that painted fewer than `minChain - 1` is not Gaston: the finger
- * comes up at once, one tsum under it, which pops nothing (`dead`).
- *
- * `holds` is asked at the head, not at the plan, with when the head landed
- * and how long the chain drawn is: it is where the release falls against the
- * close that matters, and the read may have replanned the chain. The finger
- * comes up whatever happens to the run, since the host lifts nothing on its
- * own; a stopped run cuts the hold short and releases.
+ * Draw the chain, dwelling `dwellMs` on each tsum, and release it: at once, or
+ * held until `holdUntil` when `holds(headAt, chain)` says it is the closing one.
+ * With `oracle`, `path` is only the head: the game's paint read (`paintRise`)
+ * picks the Gastons and the route is planned over them; a head that painted
+ * under `minChain - 1` comes up at once (`dead`). The finger always comes up.
  */
 function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain: number) => boolean,
     holdUntil: number, closeAt: number, slot: (now: number) => GastonSlot, oracle: GastonOracle | null): GastonDrag {
@@ -2101,7 +1380,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     dead: false, stray: false, gastons: null, rise: null, rises: null, leftovers: [], count: null, countLate: null,
     rewinds: [], stallCounts: [], countKept: 0, coins: null, trimmed: 0, planned: null, startedAt: 0, slotEnd: 0, closing: false, pausedMs: 0,
   };
-  // A stopped run draws no new chain -- the same rule as `linkTsums`.
+  // A stopped run draws no new chain, as in `linkTsums`.
   if (!ts.isRunning || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
   const cfg = GastonConfig;
   const half = Config.tsumWidth / 2;
@@ -2111,8 +1390,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
   const dwellMs = gastonDwellMs();
   const head = gastonToScreen(ts, path[0]);
   tapDown(head.x, head.y, cfg.grabMs);
-  // The host lifts nothing on its own, so a throw from here on lifts the
-  // finger before it goes up: left down, it drags into the next screen.
+  // The host never lifts the finger itself, so a throw must, or it drags on.
   let finger: Point = head;
   let down = true;
   try {
@@ -2153,11 +1431,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       }
       path = planned;
     }
-    // Cut to the schedule's slot: the closing chain here, to what fits before
-    // the close (less its end read) or `closeChainMax`, and held. A cancelled
-    // pass is cut as it runs, at the hop that would pass its slot's end
-    // (`until`): cut here off an estimate, `gaston_129.mp4`'s trimmed chains
-    // all let go 120-170ms early, ~6 tsums.
+    // Cut the closing chain to what fits before the close (less its end read),
+    // at least `closeChainMax`. A cancelled chain is cut live, below.
     const perHop = dwellMs + cfg.hopOverMs;
     const sl = slot(Date.now());
     drag.slotEnd = sl.end;
@@ -2189,9 +1464,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       finger = pts[b];
       hops++;
     };
-    // A route on from `path[back]` over the read's Gastons, less every tsum
-    // of `path` up to `skip` -- in the chain, or the one that keeps failing --
-    // whose first hop is one the game takes (`replanFirstHop`). Null with none.
+    // A route on from `path[back]` over the read's Gastons, skipping `path` up
+    // to `skip`, whose first hop is short enough to take (`replanFirstHop`).
     const replan = function(back: number, skip: number): TsumPath | null {
       if (oracle === null || drag.gastons === null) { return null; }
       const out: BoardPoint[] = path.slice(0, skip + 1);
@@ -2217,10 +1491,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
         drag.pausedMs = gastonAwaitClose(ts, closeAt, holdUntil);
         pauseAt = 0;
       }
-      // A cancelled chain ends at the hop that would run past `until`, timed
-      // off its own hops so far (checks included), keeping `cancelMinChain`.
-      // Not one the whole route would be held for: that ends the window, and
-      // `gaston_132.mp4` held two such chains cut to 32 and 36 of 41 and 42.
+      // A cancelled chain ends at the hop that would run past `until`, keeping
+      // `cancelMinChain`. A chain that will be held is never cut.
       if (!sl.closing && i >= cfg.cancelMinChain && !holds(Date.now(), tail + 1)) {
         const hopMs = Math.max(dwellMs, (Date.now() - hopsFrom) / Math.max(1, hops));
         if (Date.now() + hopMs > until) {
@@ -2235,10 +1507,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       hop(i - 1, i);
       const end = i === tail;
       const spare = drag.rewinds.length < cfg.maxRewinds;
-      // The end is read for a held chain; a chain released at once goes out
-      // as it stands (`stopFrom`), and its 80ms coin settle and the count read
-      // after it were ~6 tsums of every cancelled pass's slot. A mid-drag
-      // check only while a rewind is left.
+      // Only a held chain's end is checked; a released one goes out as it
+      // stands to save slot time. Mid-drag checks only while a rewind is left.
       const quick = end && !drag.closing && !holds(Date.now(), path.length);
       if (cfg.rewind && (end ? !quick : spare && i % cfg.checkEvery === 0)) {
         if (end) {
@@ -2248,11 +1518,8 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
         let back = gastonStalled(ts, path, i, end, drag);
         let count: number | null = null;
         if (back >= 0 && spare) {
-          // The game's own count, where it reads, over the coins: within
-          // `countSlack` of the finger the chain never stalled -- the coins
-          // missed -- and past the last coin the walk back stops short of
-          // undoing what is linked. `gaston_125.mp4` walked a chain the game
-          // counted at 24 back to route 12.
+          // The game's count beats the coins: within `countSlack` of the
+          // finger there is no stall, else walk back no further than it.
           count = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1))).value;
           drag.stallCounts.push(count !== null ? count : -1);
           if (count !== null && count >= i + 1 - cfg.countSlack) {
@@ -2263,31 +1530,20 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           }
         }
         if (back >= 0 && spare) {
-          // Back to the tsum before the last coin: the chain's end either way.
-          // A missed link is undone by the walk over it; a last coin linked
-          // early, from a tsum before its turn, left its predecessor the end
-          // and the route's next hop out of that one's reach -- the stall that
-          // came back on every redraw of `gaston_114.mp4`. From there a fresh
-          // route clear of what is linked (on a repeat, of the failing tsum
-          // too), else the old one; a repeat with no route stops the drag, and
-          // so does a walk back that would run into the close's freeze. Back
-          // at the head, the first redraw is the old route (a random miss),
-          // a repeat one clear of the route's second tsum.
+          // Walk back to the tsum before the last coin (a coin linked early
+          // leaves its predecessor the real end) and redraw a fresh route,
+          // clear of the failing tsum on a repeat, else the old one. A repeat
+          // with no route, or a walk back into the close, stops the drag.
           const again = lastBack >= 0 && back <= lastBack + 1;
           lastBack = back;
           const to = back > 0 ? back - 1 : 0;
           const next = to > 0 || again ? replan(to, again ? back + 1 : back) : null;
           const late = Date.now() < closeAt && Date.now() + 2 * (i - to) * perHop > closeAt - cfg.closeLeadMs;
-          // A cancelled chain goes out as it stands once `stopFrom` are
-          // linked, or after one redraw: over `gaston_124`-`126.mp4` a
-          // cancelled pass's rewinds won a median 5 tsums for 610ms, which
-          // the next pass draws ~20 in. A closing chain, which has to reach
-          // `gaugeChain`, stops when the count has not moved since the last
-          // stall: the game is not linking (the board still pale after a
-          // close the fever ended at, 3s on `gaston_125`/`126.mp4`), and the
-          // retry's fresh chain is quicker than more redraws.
-          // A count under the last coin is a misread (`gaston_137.mp4` read
-          // 1 on a chain of 7 and restarted it).
+          // A cancelled chain goes out as it stands after one redraw, or at
+          // `stopFrom` linked with no room left: the next pass gains more. A
+          // closing chain stops when the count has not moved since the last
+          // stall (the game is not linking). A count under the last coin is a
+          // misread.
           const linked = count !== null ? Math.max(count, back + 1) : back + 1;
           const room = sl.last ? until + cfg.rewindGraceMs - Date.now() >= cfg.lastRewindRoomMs
             : until - Date.now() >= cfg.firstRewindRoomMs;
@@ -2334,10 +1590,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
           } else {
             drag.rewinds.push([i, to]);
           }
-          // A cancelled pass's redraw ends at its slot too (`until`), the
-          // last cancel's `rewindGraceMs` past it: `gaston_123.mp4`'s rewinds
-          // ran three passes 0.4-1.6s past theirs, and each window lost its
-          // second cancel.
+          // A redraw still ends at the slot; the last cancel gets `rewindGraceMs` more.
           if (!sl.closing && sl.last) { until = sl.end + cfg.rewindGraceMs; }
           i = to + 1;
           continue;
@@ -2346,18 +1599,16 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
       i++;
     }
     const headAt = Date.now();
-    // What the game linked, off its own counter, with the finger still down:
-    // the measurement every drag setting is judged by (chainCounter.ts). A
-    // held chain only; a released one goes out at once (see `quick`).
+    // The game's own chain count, finger still down (chainCounter.ts). Held
+    // chains only; a released one goes out at once (see `quick`).
     const route = chainRouteCentres(path);
     if (drag.closing || holds(headAt, path.length)) {
       ts.sleep(ChainCounterConfig.settleMs);
       drag.count = chainCounterRead(ts, route);
       drag.held = true;
-      // Until the antlers go, read off twice `antlerReleaseMs` apart and no
-      // earlier than `antlerEarlyMs` before the predicted close -- a misread
-      // there would lose the charge. `holdUntil` is the ceiling, and the whole
-      // hold in a window that never saw them.
+      // Hold until the antlers have been gone `antlerReleaseMs`, and no earlier
+      // than `antlerEarlyMs` before the close: an early release loses the
+      // charge. `holdUntil` caps it, and is the whole hold if none were seen.
       while (ts.isRunning && Date.now() < holdUntil) {
         if (gastonFever.antlersOnAt > 0) {
           gastonWatchFever(ts);
@@ -2390,28 +1641,21 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
 interface GastonCancel {
   /** Bubbles tapped, remembered ones included. */
   tapped: number;
-  /** Of those, remembered (`soft`) ones, tapped because the others did not take. */
+  /** Of those, remembered (`soft`) ones. */
   soft: number;
-  /** Of those, found by a read after the release, because none before it took. */
+  /** Of those, found by a fresh read after the release. */
   fresh: number;
-  /** The count showed the clear leave at once; null when unchecked. */
+  /** Whether the count showed the clear go at once; null when unchecked. */
   confirmed: boolean | null;
   /** How far the count fell after the taps; 0 when unchecked. */
   cleared: number;
 }
 
 /**
- * Cancel the pop animation, and check it took (`cancelDrop`): every bubble
- * known but the reserve (`gastonTapBubbles`) -- the ones this capture found
- * first, then the ones the memory holds, which may have rolled since (see
- * `gastonBubbles`) -- then, when those did not take, any a fresh read finds
- * that the list had not. `check` false taps the first set and trusts it, as
- * every cancel did before the check.
- *
- * The fresh read is for a bubble the pre-drag read got wrong: in
- * `gaston_101.mp4` (2026-09-23) the band pass took a tsum beside the real
- * bubble for it, the cancel tapped the tsum, and the 36-chain popped one by
- * one through the close, leaving the window nothing to hold.
+ * Cancel the pop animation by tapping every known bubble but the reserve
+ * (`gastonTapBubbles`), then check the tsum count fell by `cancelDrop`. If it
+ * did not, tap any new bubbles a fresh read finds, in case the pre-drag read
+ * mistook a tsum for one. `check` false taps the first set and trusts it.
  */
 function gastonCancelBubble(ts: Tsum, path: TsumPath, all: GameBubble[], check: boolean): GastonCancel {
   const out: GastonCancel = { tapped: 0, soft: 0, fresh: 0, confirmed: null, cleared: 0 };
@@ -2464,20 +1708,11 @@ function gastonAwaitDrop(ts: Tsum, before: number): number {
 }
 
 /**
- * Tap `bubbles`, all but the reserve (`bubbleReserve`, none after a chain
- * that earns its own, `bubbleEarnChain`) -- the ones a read saw
- * first, then the remembered ones; in each, the one over the most leftovers
- * first (`gastonBubbleWorth`), then the one furthest from the chain. The
- * reserve is one a read saw, as far out from the board's middle as there is,
- * where it cuts the fewest routes; a lone bubble is still tapped. Answers the
- * ones that went.
- *
- * Leftovers because a pop there clears what no Gaston chain can and refills
- * it as Gaston. Furthest because the chain's own tsums are already clearing
- * -- a bubble popped on top of them adds nothing, where one across the board
- * clears ground the chain did not reach. Positions come from the scan the
- * chain was planned off; bubbles are big and drift slowly, so the tap still
- * lands.
+ * Tap `bubbles` except the reserve (`bubbleReserve`, none after a chain of
+ * `bubbleEarnChain`) and return the ones tapped. Order: freshly read before
+ * remembered, then most leftovers under the blast (`gastonBubbleWorth`), then
+ * furthest from the chain, whose own tsums are clearing already. The reserve
+ * is the read bubble furthest from the board's middle; a lone one is tapped.
  */
 function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): GameBubble[] {
   const far: { b: GameBubble, d: number }[] = [];
@@ -2541,11 +1776,10 @@ interface GastonClear {
 }
 
 /**
- * A pass with no Gaston chain clears the leftovers instead, until `until`
- * (`gastonMixedChains`), then cancels their pops with all bubbles but the
- * reserve -- unless the bubbles are scarce and the clear was short
- * (`surplusBubbles`, `cancelMinChain`). Spare bubbles go even with nothing
- * drawn: their blasts refill as Gaston too.
+ * For a pass with no Gaston chain: clear leftovers until `until`
+ * (`gastonMixedChains`), then tap all bubbles but the reserve, unless bubbles
+ * are scarce and the clear was short (`surplusBubbles`, `cancelMinChain`).
+ * Spare bubbles go even with nothing drawn, since blasts refill as Gaston.
  */
 function gastonClearLeftovers(ts: Tsum, until: number): GastonClear {
   const cfg = GastonConfig;
@@ -2575,7 +1809,7 @@ function gastonClearLeftovers(ts: Tsum, until: number): GastonClear {
 
 // --- A board of leftovers ---------------------------------------------------
 
-/** Whether any hop of `path` passes inside a bubble -- a drag across one pops it and ends there. */
+/** Whether any hop of `path` passes inside a bubble (a drag across one pops it and ends). */
 function gastonCrossesBubble(path: TsumPath, bubbles: GameBubble[]): boolean {
   const half = Config.tsumWidth / 2;
   for (let i = 1; i < path.length; i++) {
@@ -2603,11 +1837,10 @@ function gastonDrawPlain(ts: Tsum, path: TsumPath): void {
 }
 
 /**
- * Clear what is not Gaston: every chain of the other colours off `board`
- * that fits before `until`, top of the pile first so a clear never drops
- * the pile onto a route still to come. Planned over the free board less
- * `drawn` and `gastons`, skipping any that would cross a bubble. What they
- * clear refills as Gaston, so it leaves the carry. Answers each length.
+ * Draw every other-colour chain off `board` (less `drawn` and `gastons`) that
+ * fits before `until`, topmost first so a clear never drops tsums onto a route
+ * still to come, skipping any that cross a bubble. Cleared tsums leave the
+ * carry, since they refill as Gaston. Returns each chain's length.
  */
 function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[], drawn: TsumPath,
     gastons: BoardPoint[], until: number, used?: BoardPoint[]): number[] {
@@ -2646,11 +1879,10 @@ function gastonMixedChains(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[],
 }
 
 /**
- * Other-colour chains off the paint read, until `until`: the finger lands on
- * the leftover with the most leftovers round it, the game paints its kind,
- * and the chain is planned over those (`gastonLinkChain`, released at once).
- * Each kind read, and each head that painted nothing, is left out of the
- * next start. `skip` is what is Gaston or drawn already. Answers each length.
+ * Other-colour chains off the paint read, until `until`: land on the densest
+ * leftover, let the game paint its kind, and chain over those (`gastonLinkChain`,
+ * released at once). Each head and its painted tsums are then left out. `skip`
+ * is what is Gaston or drawn already. Returns each chain's length.
  */
 function gastonPaintedLeftovers(ts: Tsum, board: BoardPoint[], bubbles: GameBubble[], skip: BoardPoint[],
     until: number, closeAt: number): number[] {
@@ -2692,10 +1924,9 @@ function gastonPaintedLeftovers(ts: Tsum, board: BoardPoint[], bubbles: GameBubb
 }
 
 /**
- * `board` less every circle within `carryMatch` of a leftover the window's
- * last paint read found (`gastonCarry`), and how many that left out. For a
- * pass that cannot read, over his colour cluster: the carry knows nothing of
- * what dropped since the read, which past the close is not him.
+ * `board` less every circle within `carryMatch` of a leftover from the
+ * window's last paint read (`gastonCarry`), and how many were left out. Used
+ * by passes that cannot paint-read; tsums dropped since that read are unknown.
  */
 function gastonCarryOut(board: BoardPoint[]): { kept: BoardPoint[], left: number } {
   const half = Config.tsumWidth / 2;
@@ -2719,10 +1950,9 @@ function gastonCarryOut(board: BoardPoint[]): { kept: BoardPoint[], left: number
 // --- The window -------------------------------------------------------------
 
 /**
- * Wait for the antlers to leave the chrome and `antlerReleaseMs` more -- the
- * skill's close, which no drag may straddle -- read no earlier than
- * `antlerEarlyMs` before `closeAt`; until `until` in a window that never saw
- * them. Answers how long it waited.
+ * Wait for the skill's close: the antlers gone for `antlerReleaseMs`, and no
+ * earlier than `antlerEarlyMs` before `closeAt`. Waits until `until` if they
+ * were never seen. Returns how long it waited.
  */
 function gastonAwaitClose(ts: Tsum, closeAt: number, until: number): number {
   const cfg = GastonConfig;
@@ -2739,35 +1969,21 @@ function gastonAwaitClose(ts: Tsum, closeAt: number, until: number): number {
 }
 
 /**
- * Scan, plan the longest chain over the board, draw it, and either cancel it
- * with a bubble or hold it until `holdUntil` and leave it to pop, which makes
- * it the closing chain (`held`). Each chain is cut to its slot in the
- * window's schedule (`nextPassMs`); with no cancelled pass left the closing
- * chain waits for the antlers to go when it would not end before the close.
- * Held when no cancelled pass is left, when the head
- * lands inside `noCancelTailMs` of `refillBy`, or when there is no bubble to
- * cancel with and the clear's own pop would refill past it: those drops are
- * not Gaston, so the next pass would plan over leftovers -- and a window
- * whose second pass waited out such a pop lost its charge and the window
- * after it (`muc2hht99b`, 2026-09-21, three of six windows). `refillBy` is
- * the earliest the window can close, not the late estimate the hold runs to
- * (see `gastonWindow`). A chain
- * released short draws other colours' chains after it (`gastonMixedChains`),
- * and the cancel is checked off the tsum count (`gastonCancelBubble`).
+ * Scan, plan the longest chain, draw it, and either cancel it with a bubble or
+ * hold it until `holdUntil` as the closing chain (`held`). Each chain is cut
+ * to its slot in the window's schedule (`nextPassMs`). Held when no cancelled
+ * pass is left, when the head lands inside `noCancelTailMs` of `refillBy` (the
+ * earliest close), or when no bubble can stop a pop that would refill past it.
+ * A chain released short is followed by other-colour chains
+ * (`gastonMixedChains`); the cancel is checked off the tsum count.
  *
- * The board is checked for first: this runs blind for ten seconds and more,
- * and a round that ends under it would otherwise have chains dragged across
- * whatever screen came next. `fullBoard` is the gate's verdict: a scan that
- * then reads well short is under a flash and is taken again (`flashRetryMs`).
+ * Checks the board is up first, so no chain is dragged across another screen;
+ * with `fullBoard`, a scan that reads well short is retaken (`flashRetryMs`).
  *
- * Which circles are Gaston: a drag begun before `paintUntil` reads the game's
- * paint with the finger on its head and plans from there (`GastonOracle`,
- * see the header); the head itself is the start of the longest chain over
- * the window's carry (`gastonCarryOut`) when a read has happened this window,
- * else over the biggest colour cluster. A head the finger came up from -- one
- * that painted nothing, or one no chain reaches from -- is left out and the
- * pass tries again, `deadRetries` times; `paintUntil` 0 reads nothing, and
- * the carry or the cluster is the route. A pass whose drags all came up
+ * Before `paintUntil` the head's paint read picks the Gastons (`GastonOracle`);
+ * the head starts the longest chain over the carry (`gastonCarryOut`), or over
+ * the biggest colour cluster before any read. A head the finger came up from
+ * is left out and retried up to `deadRetries` times. A pass whose drags all came up
  * answers `chain` 0 with `dead` counting them, so the window looks again at
  * once rather than waiting out a refill that is not coming.
  */
@@ -2775,9 +1991,7 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     fullBoard: boolean, paintUntil: number, convert: boolean): GastonPass {
   const cfg = GastonConfig;
   const enteredAt = Date.now();
-  // Only a round-over page ends the window, as in the play loop: the last
-  // five seconds' flash reads as no page, and `gaston_123`/`124.mp4`'s last
-  // windows quit under it and left the play loop's short chains to the end.
+  // Only a round-over page ends the window: the last seconds' flash reads as no page.
   if (gastonRoundOver()) {
     return {
       chain: 0, registered: null, registeredLate: null, cancelled: 0, confirmed: null, extra: 0, popMs: 0,
@@ -2785,17 +1999,15 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       onBoard: false,
     };
   }
-  // The closing chain waits for the antlers to leave when not even its head
-  // and paint read fit before the close; otherwise it starts now and stands
-  // still through the close (`nextPassMs`).
+  // The closing chain waits for the antlers to leave when its head and paint
+  // read cannot fit before the close (`nextPassMs`).
   const late = passesLeft === 0 && Date.now() + cfg.paintMs + gastonDragEstimate(1) > closeAt - cfg.closeLeadMs;
   const closeWaitMs = late ? gastonAwaitClose(ts, closeAt, holdUntil) : 0;
   // The last cancel's release: its refill lands as the antlers go.
   const lastRelease = closeAt + cfg.antlerReleaseMs - gastonCycleMs + cfg.closeSlackMs;
-  // This drag's slot: the cancelled passes left share the time to
-  // `lastRelease` evenly, a refill cycle between each, with one pass fewer
-  // when a share cannot fit `cancelMinChain`; else it is the closing chain,
-  // to end before the close, or `closeChainMax` long past it.
+  // This drag's slot: remaining cancelled passes share the time to
+  // `lastRelease` evenly, dropping one when a share cannot fit
+  // `cancelMinChain`; otherwise it is the closing chain.
   const slot = function(now: number): GastonSlot {
     for (let k = passesLeft; k >= 1; k--) {
       const end = now + (lastRelease - now - (k - 1) * (gastonCycleMs + cfg.paintMs)) / k;
@@ -2804,14 +2016,13 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     return { end: late ? 0 : closeAt - cfg.closeLeadMs, closing: true, last: false };
   };
   gastonWatchFever(ts);
-  // The starts the finger came up from, left out of the next plan.
+  // Starts the finger came up from, left out of the next plan.
   const avoid: Point[] = [];
   let lifted = 0;
   let blank = 0;
-  // Time this pass has spent held back from the switch, and whether it has
-  // scanned again for it.
+  // Time held back from the fever switch, and whether it rescanned.
   let waitedMs = 0;
-  // And from the fever's own start and end (`dodgeFever`).
+  // Time held back from the fever's start and end (`dodgeFever`).
   let feverWaitMs = 0;
   let replanned = false;
   for (;;) {
@@ -2824,30 +2035,21 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       board = ts.scanBoardQuick();
       rescans++;
     }
-    // Its own bubble read, not the scan's `ts.gameBubbles`: the scan's capture
-    // cuts the bottom row of bubbles in half. See `bubbleHem`.
+    // Own bubble read: the scan's capture cuts the bottom row. See `bubbleHem`.
     const bubbles = gastonBubbles(ts, board);
     const biggest = gastonBiggestCluster(board);
     const gastons = gastonGastons(ts, board);
     gastonBubbleWorth(bubbles, board, gastons);
-    // His tsums as far as the pass can tell without a read: the cluster, less
-    // what the last read found not to be him (the carry). The carry alone
-    // takes every tsum dropped since that read for Gaston, and past the close
-    // those are leftovers: `gaston_100.mp4` (2026-09-23) had two held chains
-    // planned that way through Lotsos and Stitches, one headed on a Lotso.
+    // His tsums: the cluster, less what the last read found not to be him
+    // (the carry). Past the close, newly dropped tsums are leftovers.
     const carry = gastonCarryRead ? gastonCarryOut(gastons) : null;
     let source = carry !== null ? carry.kept : gastons;
     let origin = carry !== null ? 'carry' : 'cluster';
     let free = gastonFreeBoard(source, bubbles, cfg.hudBand);
     for (let k = 0; k < avoid.length; k++) { free = gastonWithout(free, avoid[k]); }
     let path = gastonOrient(gastonChain(free, bubbles), gastonLeftovers(board, source));
-    // A carry that leaves nothing to chain is stale, not a board with nothing
-    // on it: the first read of a window finds a board of leftovers, the
-    // chain's clear slides them down into the positions it remembered, and
-    // the Gastons that landed on top read as leftovers too. Every pass after
-    // that planned nothing, for the rest of the window -- 221 of 291 passes on
-    // 2026-09-21, six windows of 23 lost whole. So the pass falls back to the
-    // cluster, and the carry is dropped until the next read replaces it.
+    // A carry that leaves nothing to chain is stale (the clear shifted the
+    // board), so fall back to the cluster and drop the carry until the next read.
     let starved = false;
     if (!path && carry !== null) {
       starved = true;
@@ -2858,11 +2060,8 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       for (let k = 0; k < avoid.length; k++) { free = gastonWithout(free, avoid[k]); }
       path = gastonOrient(gastonChain(free, bubbles), gastonLeftovers(board, source));
     }
-    // Bubble centres in play-square scale, beside the board below: whether a
-    // hop crossed one is then answerable offline. `near` is each one's
-    // leftovers, the order the cancel spends them in.
-    // `band` counts the band pass's finds and `soft` the memory's; the list
-    // runs the pass proper's, then the band's, then the memory's.
+    // Bubble centres in play-square scale, for offline replay. `near` is each
+    // one's leftovers; `band`/`soft` count band-pass and memory finds.
     const bubbleAt: number[] = [];
     const near: number[] = [];
     let softBubbles = 0;
@@ -2889,8 +2088,8 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
         blank: blank, onBoard: true,
       };
     }
-    // A closing chain begun past the close reads too: the antlers gone, a
-    // touched Gaston paints the rest as it does in the window (`gaston_118.mp4`).
+    // A closing chain begun past the close reads too: with the antlers gone,
+    // a touched Gaston still paints the rest.
     const oracle: GastonOracle | null = paintUntil > 0 && (Date.now() < paintUntil || late) ? {
       board: board,
       // Painted circles are tsums, so only the glyph rows are cut (`paintedHudBand`).
@@ -2900,10 +2099,8 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       // Not on the last try: that one draws what it found.
       strayBelow: lifted < cfg.deadRetries ? Math.min(cfg.strayPaint, Math.floor(gastons.length / 2)) : 0,
     } : null;
-    // Whether the chain drawn is the closing one, asked at its head (see the
-    // doc comment). No bubble: its pop runs `popPerTsumMs` a tsum and the
-    // refill drops `popTailMs` behind, and only drops before the close are
-    // Gaston.
+    // Whether the chain is the closing one, asked at its head. Without a
+    // bubble, it holds if its pop would refill past `refillBy`.
     const holds = function(headAt: number, chain: number): boolean {
       if (passesLeft === 0 || headAt >= refillBy - cfg.noCancelTailMs) { return true; }
       return bubbles.length === 0
@@ -2914,29 +2111,24 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     const feverWaited = gastonAwaitFever(ts, gastonDragEstimate(path.length));
     waitedMs += waited;
     feverWaitMs += feverWaited;
-    // A wait the pile can move in leaves the scan -- and the route and the
-    // paint read planned off it -- stale. `gaston_101.mp4` (2026-09-23): a
-    // held chain drawn 1.5s after its scan, through the switch, landed beside
-    // its head and linked 7 of 19.
+    // A long wait lets the pile move, leaving the scan and route stale: rescan once.
     if (waited + feverWaited > cfg.replanAfterWaitMs && !replanned && ts.isRunning) {
       replanned = true;
       continue;
     }
-    // Its own drag, not `linkTsums` and emphatically not `link`: the paint
-    // read and the hold are the point, and `link`'s `maybeAutoTapSkill` would
-    // re-enter this choreography.
+    // Own drag, not `linkTsums` or `link`: the paint read and hold are needed,
+    // and `link`'s `maybeAutoTapSkill` would re-enter this flow.
     const drag = gastonLinkChain(ts, path, holds, holdUntil, closeAt, slot, oracle);
-    // What the read learned is the window's until the next read.
-    // Not a lookalike's: its leftovers are the real Gastons.
+    // Keep the read's leftovers for the window, unless it was a lookalike.
     if (drag.gastons !== null && !drag.dead && !drag.stray) { gastonCarry = drag.leftovers; gastonCarryRead = true; }
     // A drag that drew nothing cleared nothing, so there is no pop to cut short.
     const released = !drag.held && drag.path.length > 0;
-    // A short chain, or a board of leftovers: clear more of it before the
-    // cancel, while its refill still lands before the close (`mixedFrom`).
+    // A short chain, or a board of leftovers: clear more before the cancel,
+    // while its refill still lands before the close (`mixedFrom`).
     // His tsums are the read's where it ran, else the pass's.
     const his = drag.gastons !== null ? drag.gastons : source;
-    // Short as planned, not as cut to its slot; and only inside the slot.
-    // A converting window (`convertChainMs`) always, and past the slot.
+    // Short as planned, not as trimmed, and only inside the slot;
+    // a converting window (`convertChainMs`) always, and past the slot.
     const mixed = released && cfg.mixedChainMs > 0 && (convert || drag.path.length + drag.trimmed < cfg.mixedBelow
       || gastonLeftovers(board, his).filter(function(p) { return drag.path.indexOf(p) < 0; }).length >= cfg.mixedFrom);
     const mixedUntil = convert
@@ -2944,15 +2136,13 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       : Math.min(drag.releasedAt + cfg.mixedChainMs, refillBy - cfg.noCancelTailMs, drag.slotEnd);
     const used: BoardPoint[] = [];
     const extra = mixed ? gastonMixedChains(ts, board, bubbles, drag.path, his, mixedUntil, used) : [];
-    // A converting window then reads the leftovers' own kinds for the time
-    // left: the scan's colour clusters split and merge them (`gaston_141.mp4`
-    // drew none on a board of 14).
+    // A converting window then reads the leftovers' own kinds, since the
+    // scan's colour clusters split and merge them.
     if (convert && released) {
       const more = gastonPaintedLeftovers(ts, board, bubbles, his.concat(drag.path, used), mixedUntil, closeAt);
       for (let k = 0; k < more.length; k++) { extra.push(more[k]); }
     }
-    // When the last of it pops if nothing cancels it: the extras pop from
-    // their own releases, the last of them about now.
+    // When the last tsum pops if nothing cancels: extras pop from their own releases.
     const extraAt = Date.now() - drag.releasedAt;
     let popMs = drag.path.length * cfg.popPerTsumMs;
     for (let k = 0; k < extra.length; k++) { popMs = Math.max(popMs, extraAt + extra[k] * cfg.popPerTsumMs); }
@@ -2966,10 +2156,8 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       ? gastonCancelBubble(ts, drag.path, bubbles, drawnTsums >= cfg.cancelCheckMin)
       : { tapped: 0, soft: 0, fresh: 0, confirmed: null, cleared: 0 };
     const cancelled = cancel.tapped;
-    // The scan the route was planned on and the route over it, so a short
-    // chain on a recording can be replayed offline: every circle, which of
-    // them the read found painted, and the route as indexes into it. Logged
-    // after the drag and the cancel, which are what the window's time is for.
+    // The scanned board and route as indexes into it, for offline replay.
+    // Logged after the drag and cancel so it costs no window time.
     const flat: number[] = [];
     for (let i = 0; i < board.length; i++) {
       flat.push(Math.round(board[i].x + Config.tsumWidth / 2), Math.round(board[i].y + Config.tsumWidth / 2));
@@ -2980,59 +2168,47 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
     for (let i = 0; i < routed.length; i++) { route.push(board.indexOf(routed[i])); }
     const fields: LogFields = {
       chain: drag.path.length, read: board.length, rescans: rescans, gaston: gastons.length,
-      // What the game's counter said the drag linked, against `chain`: the
-      // field to read first on a drag setting. `counter` is the read itself
-      // -- where the number sat (play-square scale, beside `board`), how sure
-      // the match was, and every other number on the frame. `registeredLate`
-      // is a held chain's count again just before its release.
+      // The game's counter for the drag, vs `chain`; `counter` is the read's
+      // detail; `registeredLate` is a held chain's count just before release.
       registered: drag.count !== null ? drag.count.value : null,
       counter: drag.count !== null ? chainCountDetail(drag.count) : null,
       registeredLate: drag.countLate !== null ? drag.countLate.value : null,
-      // Where the head came from, how many circles the carry left out, and
-      // whether it was dropped for leaving nothing.
+      // Head source, circles the carry left out, and whether it was dropped.
       source: origin, carried: carry !== null ? carry.left : 0, starved: starved,
       cut: source.length - free.length, bubbles: bubbles.length, band: bandBubbles, gold: goldBubbles,
         soft: softBubbles,
       held: drag.held, heldMs: drag.heldMs, cancelled: cancelled,
-      // Whether the count saw the cancel take (null: unchecked), how far it
-      // fell, and how many of the taps went to remembered bubbles.
+      // Whether the count confirmed the cancel (null: unchecked), how far it
+      // fell, and taps on remembered vs fresh bubbles.
       confirmed: cancel.confirmed, cleared: cancel.cleared, softTaps: cancel.soft, freshTaps: cancel.fresh,
-      // Released uncancelled because it was too short to be worth a bubble.
+      // Released uncancelled: too short to be worth a bubble.
       spared: spared,
       // Other colours' chains drawn after it (`mixedFrom`).
       extra: extra,
       board: flat, route: route, bubbleAt: bubbleAt, near: near,
-      // The head the drag started on, as an index into `board`, and which
-      // try this is.
+      // Head index into `board`, and which try this is.
       head: board.indexOf(path[0]), retry: lifted,
-      // The paint read: the rise it read (null when it did not run), whether
-      // it lifted the finger for a head that was not Gaston, and whether for
-      // one that painted too few to be (`strayPaint`).
+      // Paint read: its rise (null: not run), and whether the finger lifted
+      // for a non-Gaston head or one that painted too few (`strayPaint`).
       rise: drag.rise, dead: drag.dead, stray: drag.stray,
-      // How long the drag was held back from a fever switch, whether the pass
-      // scanned again after it (`replanAfterWaitMs`), and whether the backdrop
-      // was up when it went out.
+      // Wait for the fever switch, rescan after it (`replanAfterWaitMs`),
+      // and whether the backdrop was up.
       waitedMs: waitedMs, replanned: replanned, fever: gastonFever.onAt > 0,
-      // How long it was held back from the fever's own start or end, and
-      // whether the fever ring was lit when it went out (`dodgeFever`).
+      // Wait for the fever's start or end, and whether its ring was lit (`dodgeFever`).
       feverWaitMs: feverWaitMs, feverRing: gastonFever.ring === 1,
-      // The drag's length, and the part of it spent beyond its sleeps: the
-      // game's MOVE acks, and the read's two captures on a pass that read.
+      // Drag time, and the part spent beyond its sleeps (MOVE acks, read captures).
       dragMs: drag.ms, overMs: drag.overMs,
-      // From the window's tap: the grab and the release; the refill cycle the
-      // hold was judged on; and the pass's own time before the grab (scans,
-      // reads, plan), which is most of the cycle past the game's refill.
+      // From the window's tap: grab and release; the refill cycle used; and
+      // the pass's own time before the grab.
       headMs: drag.startedAt - gastonWindowT0, releaseMs: drag.releasedAt - gastonWindowT0,
       cycleMs: gastonCycleMs, prepMs: drag.startedAt - enteredAt,
-      // The slot's end from the tap and whether it closed the window; a
-      // closing chain drawn past the close, and how long it waited for it.
+      // Slot end from the tap, whether it was the closing chain, whether it
+      // was drawn past the close, and how long it waited.
       slotMs: drag.slotEnd > 0 ? drag.slotEnd - gastonWindowT0 : 0, closing: drag.closing, late: late,
       closeWaitMs: closeWaitMs, pausedMs: drag.pausedMs,
-      // Each walk back from a stalled chain, and the coins the last check read
-      // over the route from `coinFrom` (see `rewind`).
+      // Each rewind from a stalled chain, and the last check's coins (see `rewind`).
       rewinds: drag.rewinds, stallCounts: drag.stallCounts, countKept: drag.countKept, coins: drag.coins,
-      // Route tsums not drawn: a cancelled chain's past its slot's end, the
-      // closing chain's past `closeChainMax`.
+      // Route tsums not drawn: past the slot end, or past `closeChainMax`.
       trimmed: drag.trimmed,
     };
     // Which circles the read found painted, as indexes into `board`.
@@ -3041,9 +2217,7 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
       for (let i = 0; i < drag.gastons.length; i++) { painted.push(board.indexOf(drag.gastons[i])); }
       fields.painted = painted;
     }
-    // And every circle's rise, in `board` order: the pile's bubbles passed the
-    // read on 2026-09-21 (the route ran into one), and this is what says by
-    // how much.
+    // Every circle's rise, in `board` order.
     if (drag.rises !== null) { fields.rises = drag.rises; }
     logInfo(Log.Skill.GastonPass, fields);
     if (drag.path.length === 0) {
@@ -3071,15 +2245,14 @@ function gastonPass(ts: Tsum, refillBy: number, passesLeft: number, holdUntil: n
 
 /**
  * One window, from the activation at `t0` to the charge after it: the gate,
- * the passes and the spam that fires the next activation. Answers when that
+ * the passes and the spam that fires the next activation. Returns when that
  * activation went (the read that saw the gauge full), or 0 when the charge
- * never filled it, the held chain was too short to try, or the round ended.
+ * never filled it, the held chain was too short, or the round ended.
  * `charged`: opened by the last window's charge, not by the play loop.
  */
 function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): number {
   const cfg = GastonConfig;
-  // The earliest the window can close, for `stillRunning`: the animation's
-  // floor and the window itself.
+  // The earliest the window can close, for `stillRunning`.
   gastonWindowRound = ts.roundStartedAt;
   gastonWindowUntil = t0 + cfg.openMinMs + cfg.durationMs[level - 1];
   gastonWindowT0 = t0;
@@ -3093,43 +2266,35 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
   gastonFever.antlers = 0;
   gastonFever.antlersOnAt = 0;
   gastonFever.antlersOffAt = 0;
-  // The animation and the first fill are one wait, behind a floor the count
-  // cannot see past. See `openFloorMs`.
+  // The animation and first fill are one wait. See `openFloorMs`.
   const opened = gastonAwaitBoard(ts, t0 + cfg.openWaitMs, t0 + cfg.openFloorMs);
   const openMs = Date.now() - t0;
-  // The backdrop up as the board comes live is the fever this activation's
-  // clear brought on, and its clock started as the face faded. See `faceMs`.
+  // A backdrop up now is this activation's fever, started as the face faded. See `faceMs`.
   gastonWatchFever(ts);
   if (gastonFever.plain === 0) { gastonFever.onAt = t0 + cfg.faceMs; }
   // The clock starts here, not at the tap. See `durationMs`.
   const closesAt = Date.now() + cfg.durationMs[level - 1];
   const holdUntil = closesAt + cfg.holdPastCloseMs;
-  // The close itself, off the antlers coming up; off the tap if they were not
-  // seen. Levels under 6 are shorter by their `durationMs`.
+  // The close, off the antlers coming up, else off the tap. Levels under 6
+  // are shorter by their `durationMs`.
   const shorter = cfg.durationMs[5] - cfg.durationMs[level - 1];
   const upMs = gastonFever.antlersOnAt - t0;
   const closeAt = (upMs >= cfg.antlerUpMs[0] && upMs <= cfg.antlerUpMs[1]
     ? gastonFever.antlersOnAt + cfg.antlerMs : t0 + cfg.tapToCloseMs) - shorter;
-  // What a refill has to land before: the close as early as it can come.
-  // `closesAt` errs late for the hold, and judged against it
-  // `gaston_102.mp4`'s first window let a 29-chain with no bubble pop from
-  // tap+7.3s, due done by 10.3 against 10.8; the game closed at 9.65 and
-  // the refill was leftovers.
+  // What a refill must land before: the earliest possible close
+  // (`closesAt` errs late).
   const refillBy = gastonWindowUntil;
-  // What the last window's reads learned is the last window's.
+  // Reads from the last window don't carry over.
   gastonCarry = [];
   gastonCarryRead = false;
-  // The paint read runs clear of the game's own paint at the close, and not
-  // again in a window where a pass read nothing twice. See `paintBlackoutMs`.
+  // The paint read stays clear of the game's own paint at the close, and
+  // stops once a pass reads nothing twice. See `paintBlackoutMs`.
   let paintUntil = Math.min(closesAt - cfg.paintBlackoutMs, closeAt - cfg.closeLeadMs);
 
-  // The window: chain, cancel, wait for the drop, `passesBeforeHold` times,
-  // each chain cut to its slot; then the closing chain, held through the
-  // close or drawn as the antlers go (`nextPassMs`) -- that one ends the
-  // window and is the charge. So is any chain whose head lands in the tail, and one
-  // with no bubble whose pop would refill past the close (`gastonPass`). The
-  // refill gate is not cut at the close: what is falling at the close is
-  // Gaston, and the held chain wants it landed.
+  // Chain, cancel, wait for the drop, `passesBeforeHold` times; then the
+  // closing chain, held through the close (`nextPassMs`), which ends the
+  // window and is the charge. The refill gate is not cut at the close: what
+  // falls then is Gaston, and the held chain wants it landed.
   let passes = 0;
   let cancels = 0;
   let popped = 0;
@@ -3161,16 +2326,14 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
     passes++;
     dead += pass.dead;
     if (!pass.onBoard) { onBoard = false; break; }
-    // The round's refill cycle, off a cancelled release to the next grab --
-    // not the closing chain's, which may wait for the close.
+    // The refill cycle, from a cancelled release to the next grab; not the
+    // closing chain's, which may wait for the close.
     if (cycleFrom > 0 && pass.headAt > 0 && !closingPass) {
       gastonCycleMs = Math.round((gastonCycleMs + pass.headAt - cycleFrom) / 2);
     }
     cycleFrom = 0;
-    // Only heads that painted nothing say the read has stopped working; one
-    // that painted but had no route from it is the plan's fault. Counting
-    // those switched reads off for `gaston_100.mp4`'s second window, whose
-    // held chain then ran off the cluster into brown tsums at 14 of 32.
+    // Only heads that painted nothing mean the read stopped working; a
+    // painted head with no route is the plan's fault.
     if (pass.chain === 0 && pass.blank > cfg.deadRetries) { paintUntil = 0; }
     read.push(pass.read);
     biggest.push(pass.biggest);
@@ -3182,15 +2345,13 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
       extra += pass.extra;
       overMs += pass.overMs;
       if (pass.held) {
-        // The game's count where it read: a stalled drag's route says more
-        // than it linked (`gaston_126.mp4`: 42 drawn, 6 linked, no retry).
+        // Prefer the game's count: a stalled drag's route overstates what linked.
         clearing += pass.registered !== null && pass.registered > 0 ? pass.registered : pass.chain;
         clearingLate = retries === 0 ? pass.registeredLate : null;
         heldMs += pass.heldMs;
         releasedAt = pass.releasedAt;
-        // Short of the gauge: tap it through the pop, which may fill it after
-        // all, and draw another closing chain on the board the pop leaves only
-        // if it did not (`gaugeChain`).
+        // Short of the gauge: tap through the pop, which may fill it, and draw
+        // another closing chain only if it did not (`gaugeChain`).
         if (clearing < cfg.gaugeChain && retries < cfg.closeRetries && ts.isRunning) {
           const landed = pass.releasedAt + pass.chain * cfg.popPerTsumMs + cfg.popTailMs;
           early = gastonSpamSkill(ts, landed);
@@ -3203,22 +2364,19 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
         break;
       }
       passesLeft--;
-      // A cancelled clear is gone at once. One left to pop -- no bubble, or a
-      // cancel the count did not confirm -- takes its tsums off one by one
-      // from the release (`popPerTsumMs`), and a chain planned over them
-      // stalls on tsums already going.
+      // A cancelled clear is gone at once. An uncancelled one pops tsum by
+      // tsum (`popPerTsumMs`), so wait it out before planning over it.
       const fast = pass.cancelled > 0 && pass.confirmed !== false;
       if (fast) { cycleFrom = pass.releasedAt; }
       const notBefore = Math.max(Date.now(),
         pass.releasedAt + (fast ? cfg.fillMinMs : Math.max(cfg.fillMinMs, pass.popMs + cfg.popTailMs)));
       fullBoard = gastonAwaitBoard(ts, notBefore + cfg.fillWaitMs, notBefore).full;
     } else {
-      // Nothing to chain, and the close well past: the board is not coming
-      // back as Gaston. A ceiling, not the close itself, because a pass that
-      // finds nothing right at the close is a refill still landing.
+      // Nothing to chain well past the close: no more Gaston is coming. A
+      // margin, since a pass right at the close may catch a refill landing.
       if (Date.now() >= closesAt + cfg.fillWaitMs) { break; }
-      // Leftovers and spare bubbles become Gaston while their refill still
-      // lands before the close, so the next pass waits for it.
+      // Clear leftovers and spare bubbles while their refill still lands
+      // before the close, then wait for it.
       const lastRefill = refillBy - cfg.noCancelTailMs;
       const clear = Date.now() < lastRefill ? gastonClearLeftovers(ts, lastRefill) : null;
       if (clear !== null && (clear.tsums > 0 || clear.tapped > 0)) {
@@ -3234,13 +2392,10 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
     }
   }
 
-  // The charge: the held chain is popping past the close, so every Gaston
-  // in it fills the gauge. The button is spammed through the clear, and the
-  // moment it reads full the next window opens from here -- see the header.
-  // A short held chain fills nothing worth waiting on (`chargeMinChain`),
-  // and once the clear is over neither does the spam (`chargeTailMs`): the
-  // play loop's chains fill the rest. The late count, when the counter read
-  // one, is what popped; the first read can come before the game caught up.
+  // The charge: the held chain pops past the close, so its Gastons fill the
+  // gauge. Spam the button through the clear; the moment it reads full the
+  // next window opens. Skipped for a short chain (`chargeMinChain`), and
+  // capped at the clear's end (`chargeTailMs`). The late count is preferred.
   const chargeFrom = Date.now();
   let charge: GastonCharge = { taps: 0, ready: false, onBoard: onBoard };
   let spamUntil = chargeFrom;
@@ -3248,11 +2403,8 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
     charge = early;
   } else if (onBoard && clearing >= cfg.chargeMinChain) {
     const popping = clearingLate !== null && clearingLate > 0 && clearingLate < clearing ? clearingLate : clearing;
-    // At least `chargeMinMs`: a retry that drew nothing can outlast the pop,
-    // and a gauge that filled meanwhile still wants its tap.
-    // A converting window's gauge starts empty -- no earlier pop filled it --
-    // so it spams to `gaugeWaitMs`: `gaston_145.mp4`'s first window let go at
-    // 3.7s and the play loop found the gauge full 0.3s later.
+    // At least `chargeMinMs`: a gauge that filled during a retry still wants its tap.
+    // A converting window's gauge starts empty, so it spams to `gaugeWaitMs`.
     spamUntil = convert ? chargeFrom + cfg.gaugeWaitMs
       : Math.max(chargeFrom + cfg.chargeMinMs, Math.min(chargeFrom + cfg.gaugeWaitMs,
         releasedAt + popping * cfg.popPerTsumMs + cfg.chargeTailMs));
@@ -3263,77 +2415,49 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
   logInfo(Log.Skill.GastonDone, {
     skillLevel: level,
     windowMs: cfg.durationMs[level - 1],
-    // The field to read first. `openMs` at 4.6-5.1s with `openTsums` at a
-    // full board is the gate working; `openMs` at the `openWaitMs` ceiling
-    // with `openTsums` low is a board that never filled, and everything after
-    // it was planned under the animation.
+    // Open gate time and tsum peak; `openMs` at the `openWaitMs` ceiling with
+    // few `openTsums` is a board that never filled.
     openMs: openMs,
     openTsums: opened.peak,
     passes: passes,
-    // Every chain the window drew, in order, the last of them the held
-    // chain left to pop. Thirty, thirty, thirty is the skill playing; a short
-    // one is a board read before it had filled, or a route the game did not
-    // follow -- `skill.gaston.pass` has the board and the route to replay.
+    // Every chain drawn, in order, the last being the held chain.
     chains: drawn,
-    // What the game's counter said each of those chains linked, in the same
-    // order (chainCounter.ts); null where the counter did not read. The
-    // table a drag setting is judged by: `registered` well under `chains` is
-    // the drag the game did not follow, whatever the route looked like.
+    // The game counter's count per chain (null: unread); well under `chains`
+    // means the game did not follow the drag.
     registered: registered,
-    // Per pass: how many tsums the scan put in the board array, and how many
-    // of them its biggest colour cluster holds. `biggest` well under `read`
-    // on a board that looks like solid Gaston is the scan reading him as
-    // several colours, and the route is drawn over the biggest alone.
+    // Per pass: tsums scanned, and the biggest colour cluster among them.
     read: read,
     biggest: biggest,
-    // Bubbles tapped into the window's clears. At least one a chain bar the
-    // last is the loop working; well under is a window with no bubble to
-    // cancel with, whose refills ran the `fillWaitMs` ceiling.
+    // Bubbles tapped to cancel the window's clears.
     cancels: cancels,
     // Bubbles tapped on passes with no Gaston chain (`gastonClearLeftovers`).
     popped: popped,
-    // Passes whose cancel the tsum count did not confirm (`cancelDrop`); their
-    // refill gates waited out the pop. `skill.gaston.pass` has `confirmed`.
+    // Cancels the tsum count did not confirm (`cancelDrop`).
     missed: missed,
-    // Other colours' chains drawn beside Gaston ones, or instead of one
-    // (`mixedFrom`; `skill.gaston.clear` has the latter).
+    // Other colours' chains, beside or instead of Gaston ones (`mixedFrom`).
     extra: extra,
-    // Time the drags spent waiting on the game's MOVE acks beyond their
-    // dwells, summed -- `skill.gaston.pass` has it per drag.
+    // Total drag time spent on MOVE acks beyond dwells.
     overMs: overMs,
-    // Drags the finger came up from at the head -- each one is a
-    // `skill.gaston.pass` with `chain` 0, `dead` saying whether the head
-    // painted nothing, and `rise` what the read saw. One a window or so is
-    // the cluster's frontier being caught; every drag is the read failing,
-    // and a window that keeps reading nothing has stopped reading.
+    // Drags where the finger lifted at the head (see `skill.gaston.pass`).
     dead: dead,
-    // The held chain: how long the finger sat on its last tsum, and how far
-    // past the close it was released -- the antlers going when they were
-    // seen, else the estimate. `releaseLeadMs` under 0 is a release inside
-    // the window, which charges nothing -- the bug to look for; near
-    // `antlerReleaseMs` is the hold working, and well over it is a drag that
-    // ended past the close on its own. Both 0 when the window closed with no
-    // chain to hold.
+    // Held chain: time on its last tsum. `releaseLeadMs` is its release
+    // past the close (antlers off, else the estimate); under 0 charges nothing.
+    // Both 0 with no held chain.
     heldMs: heldMs,
     // Closing chains drawn after one that stopped short of `gaugeChain`.
     closeRetries: retries,
     // Opened by the play loop, so its passes cleared other colours (`convertChainMs`).
     convert: convert,
     releaseLeadMs: clearing > 0 ? releasedAt - (gastonFever.antlersOffAt > t0 ? gastonFever.antlersOffAt : closesAt) : 0,
-    // When the antlers came up and went, from the tap (0: not seen), and the
-    // close the window planned on (`antlerMs`).
+    // Antlers up and off from the tap (0: not seen), and the planned close (`antlerMs`).
     antlersOnMs: gastonFever.antlersOnAt > t0 ? gastonFever.antlersOnAt - t0 : 0,
     antlersOffMs: gastonFever.antlersOffAt > t0 ? gastonFever.antlersOffAt - t0 : 0,
     closeAtMs: closeAt - t0,
-    // Taps on the button through the clear until it read full, -1 when it
-    // never did by `gaugeWaitMs`, 0 when the held chain was too short to
-    // charge. `ready` is whether the gauge was seen full, which is the next
-    // activation and the next window; false hands the board to the play
-    // loop with the gauge still filling. `chargeMs` is release to full.
-    // `onBoard: false` is a round that ended under the window.
+    // Charge taps until full; -1 if never full by `gaugeWaitMs`, 0 if not
+    // charged. `ready`: gauge seen full (next window). `chargeMs`: release to
+    // full. `onBoard: false`: the round ended under the window.
     spamTaps: charge.ready ? charge.taps : (charge.taps > 0 ? -1 : 0),
-    // How long the spam was allowed: `gaugeWaitMs`, or less once the held
-    // chain's clear should be over (`chargeTailMs`).
+    // Spam time allowed: `gaugeWaitMs`, or less once the clear ends (`chargeTailMs`).
     spamBudgetMs: spamUntil - chargeFrom,
     chargeMs: Date.now() - chargeFrom,
     ready: charge.ready,
@@ -3345,39 +2469,25 @@ function gastonWindow(ts: Tsum, level: number, t0: number, charged: boolean): nu
 
 registerSkill({
   types: [SkillType.Gaston],
-  // Every bubble is a cancel, and a cancel is what fits a second pass into the
-  // window -- worth far more than the bigger clear the Bubble Strategy would
-  // buy by popping one into a chain. So they are the skill's from the first
-  // activation to the round's end (see the header); before it the round is
-  // ordinary play and the strategy spends them as set.
+  // Every bubble is a cancel, which fits another pass into the window, so the
+  // skill claims them from the first activation to the round's end.
   claimsBubbles: gastonActivated,
-  // No `popBubblesAfterChain`: a bubble popped into a chain between windows
-  // cancels a clear that is filling the gauge (see the header). Every bubble
-  // goes on the window's own cancels instead (`gastonCancelBubble`).
+  // No `popBubblesAfterChain`: a bubble popped between windows cancels a clear
+  // that is filling the gauge. Bubbles go on `gastonCancelBubble` instead.
   //
-  // Every colour stays in the board array, so Gaston's second and third
-  // clusters are there whatever the leftovers do -- see the header. Four, as
-  // Coronation Day Elsa keeps, is more than a board of leftovers has colours.
-  // It also keeps the HUD glyphs' cluster, which `gastonFreeBoard` cuts.
-  //
-  // This and the two below hold from the first activation only: before it the
-  // round is ordinary play, and with them on from the start the play loop
-  // drew one uncapped chain a scan -- Gaston's, nearly always -- at the Debug
-  // dwell, and on `gaston_112.mp4` redrew the same three short chains for 15s
-  // on a board that never charged.
+  // Every colour stays in the board array so Gaston's other clusters are
+  // there too; four covers a board of leftovers. `gastonFreeBoard` cuts the
+  // HUD glyphs' cluster. This and the two below apply from the first
+  // activation only; before it the round is ordinary play.
   extraClusterSlots: function(ts) { return gastonActivated(ts) ? 4 : 0; },
-  // Neither chain setting applies to this skill -- see the header. Uncapped,
-  // because right after a window the board is a single colour and the chain on
-  // it is worth thirty (`npm run chain:bench -- --only=gaston` costs that
-  // search); one per scan, because the rest of a batch is planned on a board
-  // the first chain has already cleared, which is what turned that thirty into
-  // a twelve and two threes in `gaston_wrong.mp4`.
+  // Uncapped, because after a window the board is one colour worth a long
+  // chain; one per scan, because the rest of a batch is planned on a board
+  // the first chain has already cleared.
   chainLimits: function(ts) { return gastonActivated(ts) ? { maxChain: 0, maxChainsPerScan: 1 } : {}; },
-  // The play loop's chains between windows read the counter too, so the
-  // same boards say whether its drag registers where the window's did not.
+  // The play loop's chains between windows read the counter too.
   readsChainCounter: gastonActivated,
-  // A full gauge inside a window waits for it: an activation there restarts
-  // the animation over the seconds the window had left (see the header).
+  // A full gauge inside a window waits: activating there restarts the
+  // animation over the window's remaining time.
   stillRunning: function(ts) {
     return ts.roundStartedAt !== 0 && gastonWindowRound === ts.roundStartedAt
       && Date.now() < gastonWindowUntil;
@@ -3390,11 +2500,9 @@ registerSkill({
     // From here to the tally the bubbles are the window's. See `claimsBubbles`.
     gastonClaimRound = ts.roundStartedAt;
     const level = Math.min(Math.max(ts.skillLevel, 1), cfg.durationMs.length);
-    // Window after window while each one's charge fires the next. The charge
-    // reads the gauge full either under its own tap or just before the next,
-    // so one more tap makes sure -- a no-op on a gauge already spent -- and
-    // the window is anchored at the read. What `useSkill` does at every
-    // activation is done here too, and logged the same, marked `charged`.
+    // Window after window while each charge fires the next. One more tap makes
+    // sure (a no-op on a spent gauge); the window is anchored at the read.
+    // Logged like `useSkill`, marked `charged`.
     while (ts.isRunning) {
       const firedAt = gastonWindow(ts, level, t0, charged);
       if (firedAt === 0) { break; }
@@ -3407,10 +2515,8 @@ registerSkill({
       ts.sleep(30);
       t0 = firedAt;
     }
-    // "It fired", which is what ends the play loop's link batch: the paths
-    // still to draw were planned ten seconds ago on a board this window has
-    // since cleared several times over. The play loop's next `useSkill` finds
-    // the gauge filling, or the round over.
+    // "It fired", which ends the play loop's link batch: its remaining paths
+    // were planned on a board this window has since cleared.
     return true;
   }
 });

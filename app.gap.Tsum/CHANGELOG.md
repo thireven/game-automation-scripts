@@ -191,6 +191,8 @@ release note; they fold back in here when she ships.
   carries sightings across scans by position (`GameBubble.firstSeen`), and the
   unripe release is per bubble by age (`unripeReleaseMs`, 3s) instead of five
   consecutive scans. `bubble.found` and `bubble.unripe` carry `age`.
+- **`gaston.ts`'s comments trimmed** to what the code needs: recording notes,
+  measurements and history removed (3416 to 2522 lines, no code change).
 
 ### Fixed
 
