@@ -44,6 +44,7 @@ release note; they fold back in here when she ships.
 ### Summary
 
 - The next round starts about 3 seconds sooner after the score tally, and the tally's count-up is now skipped with round stats off too.
+- Gaston skill improved and moved to Beta.
 
 ### Fixed
 
@@ -63,7 +64,6 @@ release note; they fold back in here when she ships.
 
 - New "Wait for Settle" setting on the Skills tab: once the gauge fills, waits up to a chosen number of milliseconds (steps of 200) for the board to refill before firing the skill, popping bubbles into a board still moving as the Bubble Strategy allows, so it goes off on a full board rather than a half-empty one.
 - Bubbles are no longer popped the moment they appear or right after a skill fires, when the burst has left nothing round them to clear; the Bubble Strategy spends them once the board has refilled.
-- Gaston skill improved by drawing the longest chain the board allows in each window pass over the tsums the game itself shows to be Gaston (read off the highlight it paints the moment a Gaston is touched, so a chain no longer runs into a stray tsum and stops), over hops that cross no other tsum so the game neither links nor unlinks one on the way, with a chain begun on a stray tsum lifted at once and another start tried, by playing two chains cancelled with a bubble each and then a closing chain released only once the skill has run out, drawn the moment the antlers leave the screen, so its clear charges the next activation, by opening the next window the moment that charge fires (never a second activation inside a window), by drawing each chain at a pace the game links whole and picking a chain back up where it stopped when a link fails mid-drag, by holding a chain it has no bubble to cancel for the next activation rather than waiting for it to clear, and by keeping its chains clear of the bubbles resting at the bottom of the bowl, where a chain used to stop dead, and popping them after a chain like any other, or on their own when they pile up, keeping just one standing between cancels, by clearing the other tsums off a crowded board so the refills come back as Gaston, by playing his windows right to the end of the round, and by clearing the other tsums off the board in the first window of a round so it charges the next one too; the round plays as normal until his first activation, with bubbles saved for the windows from then on.
 - The score tally's count-up is tapped through whether or not round stats are being recorded, so the next round starts sooner.
 - Box Buying can buy the Pick-Up Capsule: pick it under "Box to buy" and the sweep buys from the capsule while one is on sale, opening each and closing its prize, whether a tsum or an item, closes the Last Prize the final capsule hands out, and stops once the capsule is sold out.
 
