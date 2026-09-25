@@ -853,4 +853,7 @@ Tsum.prototype.taskPlayGameQuick = function() {
       nextRoundAt: new Date(this.nextRoundAt).toISOString() });
     this.banner('Next round in ' + minutes + ' min', 4000);
   }
+  // Due again at once: the job's 3s interval otherwise left the finished tally
+  // sitting on screen before Play was pressed.
+  return true;
 }

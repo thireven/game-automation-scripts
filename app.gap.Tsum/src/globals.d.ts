@@ -1082,9 +1082,12 @@ interface TiaraLook {
 // --- Scheduling ---
 
 /** A unit of work scheduled by the TaskController. */
+type TaskBody = () => boolean | void;
+
 interface Task {
   name: string;
-  run: () => void;
+  /** Returns true to be due again on the next pass rather than after `interval`. */
+  run: TaskBody;
   interval: number;
   runTimes: number;
   /** Lower runs first among the jobs due at once; distinct per job. `JobPriority`, src/runPlan.ts. */
@@ -1322,7 +1325,8 @@ interface Tsum {
   watchRoundEnd(hud: HudWatch): RoundLook;
   /** What is left of the between-rounds delay, in ms; 0 when none is running. */
   roundDelayRemainingMs(): number;
-  taskPlayGameQuick(): void;
+  /** True once a round has been played, so the next one starts without the job's interval. */
+  taskPlayGameQuick(): boolean | void;
 
   // --- corpus.ts -------------------------------------------------------
   /** Where saveCorpusFrame writes, under the record directory. */

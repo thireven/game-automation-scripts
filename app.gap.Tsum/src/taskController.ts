@@ -87,8 +87,9 @@ class TsumTaskController {
     this.runningTask = task.name;
     // Swallow uncaught errors so one bad job cannot kill the whole controller;
     // a run of them from the same job bounces the game app.
+    let again = false;
     try {
-      task.run();
+      again = task.run() === true;
       task.errors = 0;
     } catch (e) {
       task.errors++;
@@ -100,7 +101,9 @@ class TsumTaskController {
       }
     }
     this.runningTask = '';
-    task.lastRunTime = Date.now();
+    // A job asking to go again is stamped a whole interval back, so it is due
+    // on the next pass -- behind any chore that has come due meanwhile.
+    task.lastRunTime = Date.now() - (again ? task.interval : 0);
     task.runTimes--;
     if (task.runTimes === 0) {
       delete this.tasks[task.name];
@@ -118,7 +121,7 @@ class TsumTaskController {
     logInfo(Log.Task.LoopStop, 'Task loop stopped');
   }
 
-  newTaskObject(name: string, run: () => void, interval: number | undefined, runTimes: number | undefined, priority: number): Task {
+  newTaskObject(name: string, run: TaskBody, interval: number | undefined, runTimes: number | undefined, priority: number): Task {
     return {
       name: name,
       run: run,
@@ -142,7 +145,7 @@ class TsumTaskController {
    * the order among due jobs is the priority and nothing else; a name already
    * registered is replaced, which is what a re-registration means.
    */
-  newTask(name: string, run: () => void, interval?: number, runTimes?: number, runOnce?: boolean, priority?: number): Task | undefined {
+  newTask(name: string, run: TaskBody, interval?: number, runTimes?: number, runOnce?: boolean, priority?: number): Task | undefined {
     if (typeof run !== "function") {
       logError(Log.Task.NotAFunction, 'Task body is not a function', { task: name });
       return undefined;
@@ -161,7 +164,7 @@ class TsumTaskController {
   }
 
   /** Register one job off the run's task table (`runTaskTable`, src/runPlan.ts). */
-  register(spec: TaskSpec, run: () => void): Task | undefined {
+  register(spec: TaskSpec, run: TaskBody): Task | undefined {
     return this.newTask(spec.name, run, spec.intervalMs, 0, !spec.dueAtStart, spec.priority);
   }
 

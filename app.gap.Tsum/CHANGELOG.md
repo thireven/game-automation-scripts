@@ -39,6 +39,21 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [3.0b2]
+
+### Summary
+
+- The next round starts about 3 seconds sooner after the score tally.
+
+### Fixed
+
+- **The play job is due again as soon as a round ends.** The scheduler stamps
+  `lastRunTime` after a job returns, so the play job's 3s interval kept the
+  finished tally on screen for 3s before Play was pressed. A job may now return
+  `true` to be due on the next pass; `taskPlayGameQuick` does after a round.
+  The count-up tap itself worked -- on the device it cut ~0.6s off a count-up
+  under a second long.
+
 ## [3.0b]
 
 ### Summary

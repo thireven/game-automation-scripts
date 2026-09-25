@@ -315,7 +315,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
  * A switch rather than a lookup by string, so a name the table can produce and
  * this cannot bind is a build error.
  */
-function taskBody(run: Tsum, name: TaskName): () => void {
+function taskBody(run: Tsum, name: TaskName): TaskBody {
   switch (name) {
     case TaskName.Walkthrough: return run.taskWalkthrough.bind(run);
     case TaskName.ReceiveOneItem: return run.taskReceiveOneItem.bind(run);
