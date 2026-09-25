@@ -117,7 +117,8 @@ function readPreviousMetadata(target) {
 }
 
 /**
- * The four fields a history row carries.
+ * The fields a history row carries: the four that name the build, plus its
+ * host range when it has one.
  *
  * The release note is deliberately not one of them: nothing renders an old
  * version's note -- the app's notes dialog shows the newest, which is what "what
@@ -126,7 +127,10 @@ function readPreviousMetadata(target) {
  * are what CHANGELOG.md is for.
  */
 function historyRow(entry) {
-  return { Version: entry.Version, Date: entry.Date, Hash: entry.Hash, File: entry.File };
+  const row = { Version: entry.Version, Date: entry.Date, Hash: entry.Hash, File: entry.File };
+  if (entry.MinHost) row.MinHost = entry.MinHost;
+  if (entry.MaxHost) row.MaxHost = entry.MaxHost;
+  return row;
 }
 
 /**
@@ -207,6 +211,9 @@ async function main() {
     File: archive,
     Message: message,
   };
+  // The app versions this build runs on; the app refuses it outside them.
+  if (channel.MinHost) metadata.MinHost = channel.MinHost;
+  if (channel.MaxHost) metadata.MaxHost = channel.MaxHost;
 
   const target = path.join(path.resolve(projectDir, config.Catalogue), channel.Directory);
   const inherited = priorVersions(readPreviousMetadata(target));

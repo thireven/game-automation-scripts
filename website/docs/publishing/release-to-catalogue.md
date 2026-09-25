@@ -40,6 +40,7 @@ npm run release:alpha -- --yes       # skip the note review (for scripts; needs 
 | `Channels.<name>` | `Name` (what the app shows), `Archive` (the zip's base name), `Directory` (under `Catalogue`), `Note` (appended to every release note on that channel), `Status` (the lowest `ReleaseStatus` the channel offers: 0 Alpha, 1 Beta, 2 Production). |
 | `MessageMaxChars` | The note is read on a phone; over this, the release refuses. |
 | `HistoryLimit` | How many builds stay installable (5); older archives are deleted from the catalogue on the next release. |
+| `MinHost`, `MaxHost` | The app versions a build runs on (optional, inclusive; a channel may set its own). The app will not download or run a build outside them — raise `MinHost` when the script starts using an API a newer app added. |
 
 ```json reference title="app.gap.Tsum/config.json"
 https://github.com/game-automation-platform/game-automation-scripts/blob/main/app.gap.Tsum/config.json

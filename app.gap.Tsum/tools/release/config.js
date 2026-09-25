@@ -44,7 +44,25 @@ function resolveChannel(config, key) {
       `Channel "${name}" has no valid "Status" in config.json. It is the lowest ` +
       'skill status the channel ships: 0 Alpha, 1 Beta, 2 Production.');
   }
-  return { name, ...channel, Version: loadVersion() };
+  return { name, ...channel, Version: loadVersion(), ...hostRange(config, channel) };
+}
+
+/**
+ * `MinHost` / `MaxHost`: the app versions this build runs on, both optional. A
+ * channel's own value wins over the top-level one. The app drops a catalogue
+ * row whose value is not a dotted number, so it is refused here first.
+ */
+function hostRange(config, channel) {
+  const out = {};
+  for (const key of ['MinHost', 'MaxHost']) {
+    const value = channel[key] ?? config[key];
+    if (value === undefined || value === '') continue;
+    if (!/^\d+(\.\d+)*$/.test(String(value))) {
+      throw new Error(`${key} "${value}" in config.json is not a dotted version like 1.2.`);
+    }
+    out[key] = String(value);
+  }
+  return out;
 }
 
 /** `TsumTsum-Alpha-0.1.zip` -- what the build writes and the catalogue serves. */

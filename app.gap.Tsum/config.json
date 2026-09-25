@@ -6,6 +6,7 @@
   "DefaultChannel": "Alpha",
   "MessageMaxChars": 2000,
   "HistoryLimit": 5,
+  "MinHost": "1.2",
   "Channels": {
     "Alpha": {
       "Name": "Tsum Tsum Script - ALPHA",
