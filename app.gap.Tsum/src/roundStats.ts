@@ -406,13 +406,16 @@ const StatsScorePageMaxWaitMs = 60 * 1000;
 // buttons well below it. On what it is aimed at -- a tally mid-count, an
 // event's result overlay, its card reveal -- any tap counts.
 //
-// The skip is retried a look or two apart: the game draws the final figures on
-// the tap itself, so the next look says whether it landed, and one that went
-// out while the panel was still sliding in is simply lost. The overlay interval
+// The skip is retried on the next look: the game draws the final figures on
+// the tap itself, so that look says whether it landed, and one that went out
+// while the panel was still fading in is simply lost. Short, because the whole
+// count-up is only ~1.25s on the device -- at 1000ms the retry came after it
+// had already finished, which is what happened whenever the first look caught
+// the fade (stats off, straight off the level-up panel). The overlay interval
 // is longer because it has to leave an exit animation time to finish before the
 // next look.
 const StatsBlindTapSpot = {x: 540, y: 1000};
-const StatsSkipTapMs = 1000;
+const StatsSkipTapMs = 400;
 const StatsUnknownTapMs = 1500;
 
 // How many failed reads of the coin counter it takes, with none having

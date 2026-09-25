@@ -43,7 +43,7 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
-- The next round starts about 3 seconds sooner after the score tally.
+- The next round starts about 3 seconds sooner after the score tally, and the tally's count-up is now skipped with round stats off too.
 
 ### Fixed
 
@@ -53,6 +53,9 @@ release note; they fold back in here when she ships.
   `true` to be due on the next pass; `taskPlayGameQuick` does after a round.
   The count-up tap itself worked -- on the device it cut ~0.6s off a count-up
   under a second long.
+- **The count-up tap is retried after 400ms, not 1000ms.** With stats off the
+  first look at the tally comes straight off the level-up panel, mid-fade, and
+  the game drops that tap; the count-up (~1.25s) had ended before the retry.
 
 ## [3.0b]
 
