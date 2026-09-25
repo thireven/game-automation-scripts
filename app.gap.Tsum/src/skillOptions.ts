@@ -1,3 +1,7 @@
+// Editor only: tsconfig.json does not list this file, so name what it uses.
+/// <reference path="shared.d.ts" />
+/// <reference path="strings.d.ts" />
+/// <reference path="releaseStatus.ts" />
 // The Skill Type dropdown's entries, written once.
 //
 // Two pages offer this list -- the settings page's Skills tab and the Quick Bar
