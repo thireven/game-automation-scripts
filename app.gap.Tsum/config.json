@@ -6,24 +6,24 @@
   "DefaultChannel": "Alpha",
   "MessageMaxChars": 2000,
   "HistoryLimit": 5,
-  "MinHost": "1.2",
+  "MinHost": "2.0",
   "Channels": {
     "Alpha": {
-      "Name": "Tsum Tsum Script - ALPHA",
+      "Name": "Tsum Tsum - ALPHA",
       "Archive": "TsumTsum-Alpha",
       "Directory": "Alpha",
       "Note": "_USE WITH CAUTION_",
       "Status": 0
     },
     "Beta": {
-      "Name": "Tsum Tsum Script - BETA",
+      "Name": "Tsum Tsum - BETA",
       "Archive": "TsumTsum-Beta",
       "Directory": "Beta",
       "Note": "_Testing build -- please report anything odd._",
       "Status": 1
     },
     "Production": {
-      "Name": "Tsum Tsum Script",
+      "Name": "Tsum Tsum",
       "Archive": "TsumTsum",
       "Directory": "Production",
       "Note": "",
