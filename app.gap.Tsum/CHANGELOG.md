@@ -45,6 +45,27 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.0b2]
+
+### Summary
+
+**Additions**
+
+*Quick Bar and settings*
+- The Aa button opens Appearance: pick the style (Accessible or Felt), theme (Dark, Light or Device) and size (XS to L); Accessible now starts at Small.
+
+**Fixes**
+- Quick Bar dropdown labels (Preset, Bubble, Then) are no longer cut off at the top.
+
+### Changed
+
+- **Appearance panel**: Aa opens `#appearancePanel` (radio groups) instead of toggling felt. Size is `data-size` driving `--a-*` variables in `a11y.css`, Small by default, stored under `tsumtsumsize` (added to `gap-backup.json`).
+
+### Fixed
+
+- **Quick Bar wide chips**: label over value was 27px in a 23px chip, and `.qb-select-value`'s 1.4 line height overrode `.qb-wide-value`'s; now 22px, clipped sideways only (`overflow-x: clip`).
+- **Accessible chips**: 1px borders plus an inset ring, since a 2px border clipped the label.
+
 ## [5.0b1]
 
 ### Summary
@@ -68,7 +89,7 @@ release note; they fold back in here when she ships.
 
 *Quick Bar and settings*
 - Redesigned in the website's playful felt look, with cream and midnight themes, tighter rows that show more at once, and a Code button that copies the settings code.
-- New Accessible style, now the default: larger text and buttons, high contrast, no texture or motion, and a light Quick Bar. The Aa button opens Appearance to pick the style (Accessible or Felt), theme (Dark, Light or Device) and size (XS to L).
+- New Accessible style, now the default: larger text and buttons, high contrast, no texture or motion, and a light Quick Bar. The Aa button switches to the felt look and back.
 - Quick Bar shows average medals per round; tap the readout to copy the run's figures.
 
 *Tsum List*
@@ -87,7 +108,6 @@ release note; they fold back in here when she ships.
 - Receiving hearts one by one always skips the ad mail; Skip first person is gone.
 
 **Fixes**
-- Quick Bar dropdown labels (Preset, Bubble, Then) are no longer cut off at the top.
 - Chains no longer break in a round's last seconds.
 - Round stats keep score and coins when the rank-up panel appears, and base coins read more reliably.
 - Resuming after a pause presses Continue instead of sometimes Try Again.
@@ -244,8 +264,7 @@ release note; they fold back in here when she ships.
 
 - **Felt skin**: `src/felt.css` and `src/feltQuickbar.css` lay the website's "Midnight felt" (stitching, hard edges, tilts) over the GAP component sheets, and tighten the settings rows. Fonts are now Figtree and Caprasimo; Inter and Inter Display were dropped. An untitled settings group no longer draws an empty heading.
 
-- **Accessible style**: `src/a11y.css` and `src/a11yQuickbar.css` are the default style, felt the option. `src/pageStyle.ts` (both pages) switches the `data-style` sheets by `media`, stored under `tsumtsumstyle` (added to `gap-backup.json`); `PageMessage.Style` tells the strip. `tools/inline` now keeps `media` and `data-style` on inlined sheets. The strip's chips keep 1px borders plus an inset ring, since a 2px border clips the label. The Aa button opens the Appearance panel (radio groups in `#appearancePanel`); size is `data-size` driving `--a-*` variables in `a11y.css`, Small by default, stored under `tsumtsumsize`.
-- **Quick Bar wide chips**: label over value was 27px in a 23px chip, and `.qb-select-value`'s 1.4 line height overrode `.qb-wide-value`'s; now 22px, clipped sideways only (`overflow-x: clip`).
+- **Accessible style**: `src/a11y.css` and `src/a11yQuickbar.css` are the default style, felt the option. `src/pageStyle.ts` (both pages) switches the `data-style` sheets by `media`, stored under `tsumtsumstyle` (added to `gap-backup.json`); `PageMessage.Style` tells the strip. `tools/inline` now keeps `media` and `data-style` on inlined sheets.
 
 - **Website and starter moved out**: the Docusaurus site left `website/` for the sibling `tsum-tsum-website` repo (it reads this changelog's Summary for its Changelog page); the service starter was copied in as `starter/` (`TsumTsum-Starter` bundle).
 
