@@ -469,23 +469,31 @@ body[data-page="2"] [data-page="1"] { visibility: hidden; }
  * because a nowrap line under fit-content is never narrower than its text and
  * the percentage was the only thing making the ellipsis appear (see .qb-name).
  */
+/*
+ * Label over value has to fit the chip: 8 + 1 + 12 * 1.1 = 22 inside 23. Only
+ * the sideways overflow is clipped (`clip` leaves the other axis visible), so
+ * the ellipsis works and a descender below the short line box is not cut off.
+ * With `hidden` and a 1.4 line height the pair was 27 tall, and the centred
+ * stack lost the top of its label.
+ */
 .qb-wide-readout {
   flex: 1 1 auto;
   min-width: 0;
   text-align: left;
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
   align-items: stretch;
-  gap: calc(2 * var(--qb-u));
+  gap: 1px;
 }
 
-.qb-wide-value {
-  overflow: hidden;
+/* Two classes, to beat `.qb-select-value` (later in this file), which the value also carries. */
+.qb-wide-readout .qb-wide-value {
+  overflow-x: clip;
+  overflow-y: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: calc(12 * var(--qb-u));
-  /* As `.qb-select-value`: the clip is on the line box, so it has to clear the
-     descenders of whatever the user called their preset. */
-  line-height: var(--qb-lh);
+  line-height: 1.1;
 }
 
 /* Nothing loaded is a dash, and a dash is not a reading -- keep it quiet. */

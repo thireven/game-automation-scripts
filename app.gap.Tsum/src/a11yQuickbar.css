@@ -69,7 +69,14 @@ body {
   border-top-width: 2px;
 }
 
-/* --- chips: one solid 2px edge each ------------------------------------ */
+/*
+ * --- chips: a 2px edge each -------------------------------------------
+ *
+ * The border stays quickbar.css's 1px and an inset ring draws the second
+ * pixel, because the chip's height is a fixed budget: a label over a value
+ * (8 + 1 + 12) only just fits, and a thicker border clips the label. Sizes
+ * stay quickbar.css's for the same reason; only weight and colour change.
+ */
 
 .qb-stepper,
 .qb-toggle,
@@ -77,11 +84,24 @@ body {
 .qb-wide,
 .qb-action,
 .qb-page-toggle {
-  border-width: 2px;
-  border-color: var(--qb-chip-edge);
+  --qb-ring: var(--qb-chip-edge);
+  border-color: var(--qb-ring);
   background-color: var(--qb-chip);
+  box-shadow: inset 0 0 0 1px var(--qb-ring);
   color: var(--qb-ink);
 }
+
+/* The now/next bar under the ring (quickbar.css draws it alone). */
+.qb-cell[data-when] .qb-stepper,
+.qb-cell[data-when] .qb-toggle,
+.qb-cell[data-when] .qb-select {
+  box-shadow: inset 0 0 0 1px var(--qb-ring), inset 0 calc(-2 * var(--qb-u)) 0 var(--qb-when, transparent);
+}
+
+/* Running: the ring recedes with the border. */
+body[data-state="running"] .qb-stepper,
+body[data-state="running"] .qb-select,
+body[data-state="running"] .qb-toggle { --qb-ring: var(--qb-chip-edge-off); }
 
 .qb-step {
   color: var(--qb-on);
@@ -95,13 +115,12 @@ body {
 .qb-select-value,
 .qb-wide-value {
   color: var(--qb-ink);
-  font-size: calc(14 * var(--qb-u));
   font-weight: 800;
 }
 
 /* On: filled and underlined, so it is not told by colour alone. */
 .qb-toggle[aria-checked="true"] {
-  border-color: var(--qb-on);
+  --qb-ring: var(--qb-on);
   background: var(--qb-on);
   color: var(--qb-on-ink);
   text-decoration: underline;
@@ -109,7 +128,7 @@ body {
 }
 
 .qb-preset {
-  border-color: var(--qb-accent);
+  --qb-ring: var(--qb-accent);
   background-color: var(--qb-accent);
   color: var(--qb-accent-ink);
 }
@@ -131,10 +150,11 @@ body[data-readout="times"] .qb-readout-toggle .qb-dot:nth-child(2) { background:
 
 /* --- the readout -------------------------------------------------------- */
 
+/* 1px border plus a ring, as the chips: its four rows have no height to spare. */
 .qb-readouts {
-  border-width: 2px;
   border-color: var(--qb-static-edge);
   background: var(--qb-static);
+  box-shadow: inset 0 0 0 1px var(--qb-static-edge);
 }
 
 .qb-readout-toggle { border-right: 2px solid var(--qb-static-edge); }
