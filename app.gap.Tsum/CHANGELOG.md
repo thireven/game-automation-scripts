@@ -45,6 +45,19 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.0b3]
+
+### Summary
+
+**Additions**
+
+*Presets*
+- Pasting a preset export into the Code box saves its presets (a single line also applies it).
+
+### Added
+
+- **Preset import**: the Code box's Apply saves each `Name: code` line as a preset (`presetsFromText`, `importPresets`), replacing same-named ones; more than one line saves without applying.
+
 ## [5.0b2]
 
 ### Summary
@@ -53,7 +66,6 @@ release note; they fold back in here when she ships.
 
 *Quick Bar and settings*
 - The Aa button opens Appearance: pick the style (Accessible or Felt), theme (Dark, Light or Device) and size (XS to L); Accessible now starts at Small.
-- Pasting a preset export into the Code box saves its presets (a single line also applies it).
 
 **Fixes**
 - Quick Bar dropdown labels (Preset, Bubble, Then) are no longer cut off at the top.
@@ -61,7 +73,6 @@ release note; they fold back in here when she ships.
 ### Changed
 
 - **Appearance panel**: Aa opens `#appearancePanel` (radio groups) instead of toggling felt. Size is `data-size` driving `--a-*` variables in `a11y.css`, Small by default, stored under `tsumtsumsize` (added to `gap-backup.json`).
-- **Preset import**: the Code box's Apply saves each `Name: code` line as a preset (`presetsFromText`, `importPresets`), replacing same-named ones; more than one line saves without applying.
 
 ### Fixed
 
