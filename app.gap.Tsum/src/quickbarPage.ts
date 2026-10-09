@@ -102,6 +102,24 @@ function qbBridge(): typeof JavaScriptInterface | undefined {
 }
 
 /**
+ * The settings page's style, and in Accessible its theme too. Felt stays dark
+ * on the game, so it drops `data-theme` and the GAP tokens fall back to dark.
+ */
+function qbApplyStyle(): void {
+    var style = pageStyle();
+    applyPageStyle(style);
+    if (style === PageStyle.Accessible) {
+        document.documentElement.setAttribute('data-theme', storedTheme() || systemTheme());
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+}
+
+// At parse time, from <head>, so the strip never draws in the wrong look.
+qbApplyStyle();
+onSystemThemeChange(qbApplyStyle);
+
+/**
  * One structured record, written by the engine's logger rather than by a logger
  * of this page's own.
  *
@@ -330,6 +348,10 @@ function onGapState(json: string): void {
 function onGapMessage(topic: string): void {
     if (topic === PageMessage.ShareCodeCopied || topic === PageMessage.ShareCodeNotCopied) {
         qbCopyDone(topic === PageMessage.ShareCodeCopied);
+        return;
+    }
+    if (topic === PageMessage.Style) {
+        qbApplyStyle();
         return;
     }
     if (topic !== PageMessage.LiveSettings && topic !== PageMessage.Presets) {

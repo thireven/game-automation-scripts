@@ -154,6 +154,13 @@ p {
     height: 18px;
 }
 
+/* The style toggle is text, not an icon. */
+.style-toggle {
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+}
+
 /* The moon offers dark, the sun offers light. */
 [data-theme="dark"] .icon-moon,
 .icon-sun {

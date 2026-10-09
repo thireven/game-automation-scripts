@@ -24,7 +24,7 @@ const UI = 2;
 
 // index.html's load order, minus nothing: settings.js reads all of them.
 const PAGE_FILES = ['i18n', 'uiEn', 'uiZhTw', 'uiJa', 'releaseStatus', 'skillOptions', 'bubbleOptions',
-  'stopAfterOptions', 'runPlan', 'settingDefaults', 'qrCode', 'presets', 'settings'];
+  'stopAfterOptions', 'runPlan', 'settingDefaults', 'qrCode', 'presets', 'pageStyle', 'settings'];
 
 // Properties that name things rather than show text; never translated.
 const NOT_TEXT = new Set(['key', 'value', 'control', 'button', 'name', 'id', 'type', 'enables']);

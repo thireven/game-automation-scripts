@@ -103,6 +103,14 @@ declare const enum PageMessage {
   /** The settings page's answer to `CopyShareCode`. */
   ShareCodeCopied = 'shareCodeCopied',
   ShareCodeNotCopied = 'shareCodeNotCopied',
+  /** The page style or theme changed on the settings page; re-read both (src/pageStyle.ts). */
+  Style = 'style',
+}
+
+/** The look both pages use: Accessible (the default) or the felt skin. src/pageStyle.ts. */
+declare const enum PageStyle {
+  Accessible = 'a11y',
+  Felt = 'felt',
 }
 
 /**
@@ -119,6 +127,10 @@ declare const enum StorageKey {
   Settings = 'tsumtsumsettings2',
   /** The named configurations both pages switch between -- see src/presets.ts. */
   Presets = 'tsumtsumpresets',
+  /** 'dark' or 'light' once the user picks one; absent follows the device. */
+  Theme = 'tsumtsumtheme',
+  /** A `PageStyle`; absent is Accessible. */
+  Style = 'tsumtsumstyle',
 }
 
 /** Anything one settings row can hold. */

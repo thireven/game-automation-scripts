@@ -3331,23 +3331,13 @@ function genStartCommand(settings: SettingSpec[][]): string {
     return command;
 }
 
-// --- Theme -----------------------------------------------------------------
+// --- Theme and style ---------------------------------------------------------
 //
-// Two states, and the device's own setting decides which one the page opens in.
-// A tap stores an explicit choice; until there is one, the page keeps following
-// the device, so turning the phone to dark at dusk turns this page with it.
-
-/** localStorage key holding an explicit choice, if the user has made one. */
-var THEME_KEY = 'tsumtsumtheme';
-
-/** What the device asks for. Dark, GAP's default, when it has no opinion. */
-function systemTheme(): string {
-    if (typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-color-scheme: light)').matches) {
-        return 'light';
-    }
-    return 'dark';
-}
+// Theme: two states, and the device's own setting decides which one the page
+// opens in. A tap stores an explicit choice; until there is one, the page keeps
+// following the device, so turning the phone to dark at dusk turns this page
+// with it. Style: Accessible or Felt (src/pageStyle.ts, which also holds the
+// storage and device reads both pages share). The Quick Bar is told of either.
 
 /** The theme the page is showing right now. */
 function currentTheme(): string {
@@ -3368,15 +3358,32 @@ function setTheme(theme: string, remember: boolean): void {
         toggle.setAttribute('aria-label', i18nText(theme === 'dark' ?
             UiText.ChromeThemeToLight : UiText.ChromeThemeToDark));
     }
-    if (remember && localStorage !== undefined) {
-        localStorage.setItem(THEME_KEY, theme);
+    if (remember) {
+        pageStoreSet(StorageKey.Theme, theme);
+        broadcastStyle();
     }
 }
 
-/** The stored choice, or null while the page is still following the device. */
-function storedTheme(): string | null {
-    var stored = localStorage !== undefined ? localStorage.getItem(THEME_KEY) : null;
-    return stored === 'dark' || stored === 'light' ? stored : null;
+/** Switches the style, as `setTheme` does the theme. */
+function setStyle(style: PageStyle, remember: boolean): void {
+    applyPageStyle(style);
+    var toggle = document.getElementById('styleToggle');
+    if (toggle !== null) {
+        toggle.setAttribute('aria-label', i18nText(style === PageStyle.Felt ?
+            UiText.ChromeStyleToAccessible : UiText.ChromeStyleToFelt));
+    }
+    if (remember) {
+        pageStoreSet(StorageKey.Style, style);
+        broadcastStyle();
+    }
+}
+
+/** Tells the Quick Bar to re-read the style and theme. */
+function broadcastStyle(): void {
+    var iface = bridge();
+    if (iface !== undefined && iface.broadcast !== undefined) {
+        iface.broadcast(PageMessage.Style);
+    }
 }
 
 /**
@@ -3385,23 +3392,17 @@ function storedTheme(): string | null {
  * setting is not what this page should use.
  */
 function followSystemTheme(): void {
-    if (storedTheme() !== null || typeof window.matchMedia !== 'function') {
-        return;
-    }
-    var query: any = window.matchMedia('(prefers-color-scheme: dark)');
-    var onChange = function () {
-        setTheme(systemTheme(), false);
-    };
-    if (typeof query.addEventListener === 'function') {
-        query.addEventListener('change', onChange);
-    } else if (typeof query.addListener === 'function') {
-        query.addListener(onChange);   // pre-2020 WebViews
-    }
+    onSystemThemeChange(function () {
+        if (storedTheme() === null) {
+            setTheme(systemTheme(), false);
+        }
+    });
 }
 
-// Run at parse time, from <head>: the theme has to be on the root element
-// before the body is laid out, or the page flashes light on a dark device.
+// Run at parse time, from <head>: theme and style have to be on the root element
+// before the body is laid out, or the page flashes the wrong look.
 setTheme(storedTheme() || systemTheme(), false);
+setStyle(pageStyle(), false);
 
 // --- Run order -------------------------------------------------------------
 //
@@ -4492,6 +4493,9 @@ function localiseChrome(): void {
     if (note !== null && !note.hidden) {
         note.textContent = i18nText(UiText.ChromeRestartNow);
     }
+    // Relabels the two app bar toggles; neither stores or broadcasts.
+    setTheme(currentTheme(), false);
+    setStyle(pageStyle(), false);
     localisePresets();
 }
 
@@ -4566,8 +4570,15 @@ function bootstrap(): void {
             setTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);
         });
     }
-    // Re-run now that the button exists, so it gets its label.
+    var styleToggle = document.getElementById('styleToggle');
+    if (styleToggle !== null) {
+        styleToggle.addEventListener('click', function () {
+            setStyle(pageStyle() === PageStyle.Felt ? PageStyle.Accessible : PageStyle.Felt, true);
+        });
+    }
+    // Re-run now that the buttons exist, so they get their labels.
     setTheme(currentTheme(), false);
+    setStyle(pageStyle(), false);
     followSystemTheme();
 
     // Wired once: the app bar and the panel under it are not re-rendered, and

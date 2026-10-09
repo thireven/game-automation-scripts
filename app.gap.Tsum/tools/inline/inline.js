@@ -67,7 +67,13 @@ html = html.replace(/<link\b[^>]*>/gi, (tag) => {
     return tag;
   }
   inlined++;
-  return `<style>\n${read(href)}\n</style>`;
+  // Kept so src/pageStyle.ts can still find and switch the sheet.
+  const kept = ['media', 'data-style']
+    .map((name) => [name, attribute(tag, name)])
+    .filter(([, value]) => value !== undefined)
+    .map(([name, value]) => ` ${name}="${value}"`)
+    .join('');
+  return `<style${kept}>\n${read(href)}\n</style>`;
 });
 
 // <script src="..."></script> -> <script>...</script>

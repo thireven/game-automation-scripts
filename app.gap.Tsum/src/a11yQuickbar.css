@@ -1,0 +1,170 @@
+/*
+ * The Quick Bar's Accessible style, the default (src/pageStyle.ts switches
+ * between it and feltQuickbar.css). The strip keeps its size -- it sits on the
+ * game -- so this is the felt colours, flat: 2px solid edges, bolder and larger
+ * values, the device's font, no tilts. Follows the settings page's theme
+ * (quickbarPage.ts sets `data-theme`). quickbar.css still owns layout.
+ */
+
+:root,
+[data-theme="dark"] {
+  --font-sans: system-ui, "Roboto", "Noto Sans JP", sans-serif;
+
+  --qb-bg: #1c1b2b;
+  --qb-ink: #ffffff;
+  --qb-muted: #e2ddef;
+  --qb-chip: #2e2d45;
+  --qb-chip-press: #3d3b5c;
+  --qb-chip-edge: #a9a4c8;
+  --qb-on: #9db4ff;
+  --qb-on-ink: #141d40;
+  --qb-static: #14131f;
+  --qb-static-edge: #55527a;
+  --qb-off: #c9c4dc;
+  --qb-chip-edge-off: #55527a;
+  /* Marigold: the preset chip, lit dots, the strip's top edge when usable. */
+  --qb-accent: #ffb454;
+  --qb-accent-ink: #2e1a03;
+  --qb-dot: #6d6994;
+
+  --divider: #55527a;
+  --tap: var(--qb-accent);
+  --success: #5cc9a7;
+  --warning: #ffb454;
+  --data-coin: #ffb454;
+  --data-medal: #d6c8ff;
+}
+
+[data-theme="light"] {
+  --qb-bg: #f3ead9;
+  --qb-ink: #1a1424;
+  --qb-muted: #3d3450;
+  --qb-chip: #fffaf0;
+  --qb-chip-press: #ece1c9;
+  --qb-chip-edge: #5c5140;
+  --qb-on: #2f4aa8;
+  --qb-on-ink: #ffffff;
+  --qb-static: #fffaf0;
+  --qb-static-edge: #c9bb9c;
+  --qb-off: #5c5140;
+  --qb-chip-edge-off: #c9bb9c;
+  --qb-accent: #8a4a00;
+  --qb-accent-ink: #ffffff;
+  --qb-dot: #c9bb9c;
+
+  --divider: #c9bb9c;
+  --success: #1a6b52;
+  --warning: #8a4a00;
+  --data-coin: #8a4a00;
+  --data-medal: #5b3f9e;
+}
+
+html,
+body {
+  font-weight: 700;
+}
+
+.qb {
+  background: var(--qb-bg);
+  border-top-width: 2px;
+}
+
+/* --- chips: one solid 2px edge each ------------------------------------ */
+
+.qb-stepper,
+.qb-toggle,
+.qb-select,
+.qb-wide,
+.qb-action,
+.qb-page-toggle {
+  border-width: 2px;
+  border-color: var(--qb-chip-edge);
+  background-color: var(--qb-chip);
+  color: var(--qb-ink);
+}
+
+.qb-step {
+  color: var(--qb-on);
+  font-size: calc(17 * var(--qb-u));
+  font-weight: 900;
+}
+
+.qb-name { color: var(--qb-muted); }
+
+.qb-value,
+.qb-select-value,
+.qb-wide-value {
+  color: var(--qb-ink);
+  font-size: calc(14 * var(--qb-u));
+  font-weight: 800;
+}
+
+/* On: filled and underlined, so it is not told by colour alone. */
+.qb-toggle[aria-checked="true"] {
+  border-color: var(--qb-on);
+  background: var(--qb-on);
+  color: var(--qb-on-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.qb-preset {
+  border-color: var(--qb-accent);
+  background-color: var(--qb-accent);
+  color: var(--qb-accent-ink);
+}
+
+.qb-preset .qb-name,
+.qb-preset .qb-preset-value,
+.qb-preset .qb-preset-value[data-empty="true"] { color: var(--qb-accent-ink); }
+.qb-preset .qb-caret { stroke: var(--qb-accent-ink); }
+
+.qb-dot {
+  background: var(--qb-dot);
+  opacity: 1;
+}
+
+body[data-page="1"] .qb-page-toggle .qb-dot:nth-child(1),
+body[data-page="2"] .qb-page-toggle .qb-dot:nth-child(2),
+body[data-readout="coins"] .qb-readout-toggle .qb-dot:nth-child(1),
+body[data-readout="times"] .qb-readout-toggle .qb-dot:nth-child(2) { background: var(--qb-accent); }
+
+/* --- the readout -------------------------------------------------------- */
+
+.qb-readouts {
+  border-width: 2px;
+  border-color: var(--qb-static-edge);
+  background: var(--qb-static);
+}
+
+.qb-readout-toggle { border-right: 2px solid var(--qb-static-edge); }
+.qb-stat-label { color: var(--qb-muted); }
+.qb-stat-value { font-weight: 800; }
+
+/* --- the picker sheet --------------------------------------------------- */
+
+.qb-list {
+  border: 2px solid var(--qb-chip-edge);
+  background: var(--qb-chip);
+  box-shadow: none;
+}
+
+.qb-option {
+  background: var(--qb-bg);
+  color: var(--qb-ink);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.qb-option[aria-selected="true"] {
+  border-color: var(--qb-on);
+  background: var(--qb-on);
+  color: var(--qb-on-ink);
+}
+
+.qb-group {
+  color: var(--qb-accent);
+  font-weight: 800;
+}
+
+.qb-toggle { transition: none; }

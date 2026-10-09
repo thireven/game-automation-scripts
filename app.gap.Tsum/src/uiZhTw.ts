@@ -253,6 +253,8 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.ChromeRestartNow]: '立即重启TsumTsum脚本',
     [UiText.ChromeThemeToLight]: '切換為淺色模式',
     [UiText.ChromeThemeToDark]: '切換為深色模式',
+    [UiText.ChromeStyleToFelt]: '切換為毛氈風格',
+    [UiText.ChromeStyleToAccessible]: '切換為無障礙風格',
     [UiText.ChromeMoreTabs]: '顯示更多分頁',
     [UiText.ChromeCopyCode]: '代碼',
     [UiText.ChromeCopyCodeLabel]: '複製設定碼',

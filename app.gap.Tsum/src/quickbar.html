@@ -87,13 +87,15 @@
       and wants none of it.
     -->
     <!-- GAP Design System tokens, the felt fonts as data URIs (built from
-         src/fonts/), then the felt skin over quickbar.css. The strip is always
-         the dark theme: it sits on the game. -->
+         src/fonts/), then one style over quickbar.css, as on the settings page:
+         a11yQuickbar.css (the default, following the page's theme) or
+         feltQuickbar.css (always dark: it sits on the game). -->
     <link rel="stylesheet" href="gapTokens.css">
     <link rel="stylesheet" href="font-sans.css">
     <link rel="stylesheet" href="font-display.css">
     <link rel="stylesheet" href="quickbar.css">
-    <link rel="stylesheet" href="feltQuickbar.css">
+    <link rel="stylesheet" href="a11yQuickbar.css" data-style="a11y">
+    <link rel="stylesheet" href="feltQuickbar.css" data-style="felt" media="not all">
     <!--
       The language catalogues, shared with the settings page. English first: it
       is the complete one, so it is what `i18nRegister` keeps as the fallback for
@@ -116,6 +118,8 @@
     <!-- The named-configuration store the preset chip switches between, shared
          with the settings page; src/presets.ts. -->
     <script src="presets.js"></script>
+    <!-- The style and theme, shared with the settings page; src/pageStyle.ts. -->
+    <script src="pageStyle.js"></script>
     <script src="quickbarPage.js"></script>
   </head>
   <!--

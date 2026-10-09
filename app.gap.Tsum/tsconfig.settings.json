@@ -42,6 +42,9 @@
     "src/uiEn.ts",
     "src/uiZhTw.ts",
     "src/uiJa.ts",
+    // The page style and theme, shared with the Quick Bar page. Emits
+    // build/pageStyle.js, loaded before settings.js.
+    "src/pageStyle.ts",
     // What this channel is allowed to offer, and how an unfinished thing is
     // badged. Shared with the Quick Bar page, and read by both the skill list
     // and the settings schema. Emits build/releaseStatus.js, loaded first of

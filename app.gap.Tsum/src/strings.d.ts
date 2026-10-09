@@ -293,6 +293,9 @@ declare const enum UiText {
   ChromeRestartNow = 'chrome.restartNow',
   ChromeThemeToLight = 'chrome.themeToLight',
   ChromeThemeToDark = 'chrome.themeToDark',
+  /** The style toggle's spoken name: what a tap switches to. */
+  ChromeStyleToFelt = 'chrome.styleToFelt',
+  ChromeStyleToAccessible = 'chrome.styleToAccessible',
   ChromeMoreTabs = 'chrome.moreTabs',
   /** The app bar's short copy-code button; `ChromeCopyCodeLabel` is its spoken name. */
   ChromeCopyCode = 'chrome.copyCode',

@@ -92,6 +92,7 @@ const PAGE_SCRIPTS = [
   { file: 'build/settingDefaults.js' },
   { file: 'build/qrCode.js', verify: 'names:qrMatrix' },
   { file: 'build/presets.js', verify: 'names:presetsLoad,presetMatchName' },
+  { file: 'build/pageStyle.js', verify: 'names:pageStyle,applyPageStyle' },
 ].map((job) => ({ in: job.file, out: job.file, ecma: 5, verify: job.verify }));
 
 // config.json is the release identity: the game and one entry per channel. The
@@ -141,7 +142,8 @@ const substitute = (text) => text
 
 /** Stage the page assets so tools/inline/inline.js can resolve them by name. */
 function stageAssets(log) {
-  for (const name of ['index.html', 'index.css', 'felt.css', 'quickbar.html', 'quickbar.css', 'feltQuickbar.css', 'gapTokens.css']) {
+  for (const name of ['index.html', 'index.css', 'felt.css', 'a11y.css', 'quickbar.html', 'quickbar.css',
+    'feltQuickbar.css', 'a11yQuickbar.css', 'gapTokens.css']) {
     fs.copyFileSync(local('src', name), local('build', name));
   }
   // The GAP fonts as data URIs: the pages are opened from file:// on a device
