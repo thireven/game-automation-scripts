@@ -5,7 +5,7 @@
 # not: that is device/gap-service.sh, running on the device, and this file only
 # pushes and invokes it. See device/PROTOCOL.md.
 
-$global:Package     = 'com.gameautomation.platform'
+$global:Package     = 'com.generalautomation.platform'
 $global:StageDir    = '/data/local/tmp/gap'
 # Beside the stage dir, not in it: /data/local/tmp is the adb shell's own
 # on every Android, while a rooted device's app makes the stage dir root's.
@@ -18,7 +18,7 @@ $global:ProtoWant   = '1'
 # neither root nor the device script. A service started with --root=PATH needs
 # GAP_STORAGE_ROOT set to the same path.
 $global:DeviceStorage = if ($env:GAP_STORAGE_ROOT) { $env:GAP_STORAGE_ROOT }
-                        else { '/sdcard/Download/GameAutomationPlatform' }
+                        else { '/sdcard/Download/GeneralAutomationPlatform' }
 
 # Where `update` looks for the published APKs. /releases/latest/download/ is a
 # plain redirect to the newest non-draft release, so the asset names have to be

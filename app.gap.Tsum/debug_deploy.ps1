@@ -27,7 +27,7 @@ $ScriptId = "$($Config.Publisher)/$($Config.Game)/$($ChannelConfig.Name -replace
 # path -- push over adb instead of copying. Which folder is `DevicePath` in
 # config.json, because the tools that read records back off the device read it
 # from the same place, and the two must not be able to disagree.
-$DevicePath = if ($Config.DevicePath) { $Config.DevicePath } else { "/sdcard/Download/GameAutomationPlatform" }
+$DevicePath = if ($Config.DevicePath) { $Config.DevicePath } else { "/sdcard/Download/GeneralAutomationPlatform" }
 $TargetDir = "$DevicePath/scripts/$ScriptId"
 
 # build.ps1 uses relative paths, so run it from its own directory

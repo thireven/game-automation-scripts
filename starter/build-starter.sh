@@ -402,7 +402,7 @@ gate "manifest complete" "$(
 # Both hosts name the app's storage folder themselves -- the device protocol has
 # no key for it -- so drift from Config.kt would show up only as "nothing found"
 # when copying or deleting a script's files.
-cfg="$GAP_APP_DIR/app/src/main/java/com/gameautomation/platform/Config.kt"
+cfg="$GAP_APP_DIR/app/src/main/java/com/generalautomation/platform/Config.kt"
 want_parent="$(sed -n 's/.*const val PARENT = "\([^"]*\)".*/\1/p' "$cfg" | head -1)"
 want_folder="$(sed -n 's/.*const val FOLDER = "\([^"]*\)".*/\1/p' "$cfg" | head -1)"
 if [[ -z "$want_parent" || -z "$want_folder" ]]; then

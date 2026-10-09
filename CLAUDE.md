@@ -7,10 +7,11 @@ current. Anything it does not cover is worth adding to it once found.
 These scripts target **General Automation Platform** (source at `../game-automation-app`),
 and only that. Feel free to perform updates in that folder as needed.
 
-GAP used to stand for *Game* Automation Platform. Only the display name
-changed: the device folder `GameAutomationPlatform`, the `game-automation-*`
-repos, the `game-automation-platform` GitHub org and `com.gameautomation.platform`
-keep the old spelling on purpose (the host's `GENERAL-AUTOMATION-PLAN.md`).
+GAP used to stand for *Game* Automation Platform. The app id is now
+`com.generalautomation.platform` and the device folder `GeneralAutomationPlatform`
+(the app moves the old `GameAutomationPlatform` folder once). The `game-automation-*`
+repos and the `game-automation-platform` GitHub org keep the old spelling on
+purpose (the host's `GENERAL-AUTOMATION-PLAN.md`).
 
 **The development toolkit is a private sibling checkout, not part of this
 tree.** Comments and docs here cite its commands by name — `pages:eval`,
@@ -45,7 +46,7 @@ path:
   named jars modern Android no longer ships — which made `uiautomator dump`
   abort every time.
 
-Deploy targets **`sdcard/Download/GameAutomationPlatform/scripts/...`**. That is the one
+Deploy targets **`sdcard/Download/GeneralAutomationPlatform/scripts/...`**. That is the one
 folder General Automation Platform reads; it used to cross six parent directories
 with `Robotmon`, `AutoGameAssistance` and `GameAutomationPlatform`, and no longer
 does. A tree somewhere else is reachable only by starting its service with

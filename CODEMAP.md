@@ -524,7 +524,7 @@ than the script. Paths are inside `../game-automation-app`.
 | `app/src/main/cpp/api_image.cpp` | Capture, crop, resize, colour reads, template matching, the OpenCV helpers. The semantics `tools/runtime/host.js` shims |
 | `app/src/main/cpp/api_device.cpp`, `api_system.cpp`, `api_common.cpp` | Taps and swipes; shell, files, packages; the shared plumbing |
 | `app/src/main/cpp/engine.cpp`, `host.cpp` | The QuickJS-ng engine and the bridge that publishes the natives into it |
-| `app/src/main/java/com/gameautomation/platform/` | The Android side: `service/` (the running script), `script/` (loading from `sdcard/GameAutomationPlatform/scripts/`), `ui/`, `device/`, `engine/` |
+| `app/src/main/java/com/generalautomation/platform/` | The Android side: `service/` (the running script), `script/` (loading from `sdcard/GeneralAutomationPlatform/scripts/`), `ui/`, `device/`, `engine/` |
 | `tools/gap-cli.js` | Drives a device from the PC: install, run, screenshot |
 | `CODEMAP.md` | The host's own code map — the equivalent of this file, and the fastest way into that tree |
 | `samples/` | A minimal example script: `index.js` plus an HTML/CSS settings page |

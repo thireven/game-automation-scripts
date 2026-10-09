@@ -236,7 +236,7 @@ ask for help. Chrome and Edge show their own save dialog; other browsers get
 your computer's.
 
 A script keeps its log on the device, under
-/sdcard/Download/GameAutomationPlatform:
+/sdcard/Download/GeneralAutomationPlatform:
 
     script-<id>.log what the script logged, plus its rotated copies
 

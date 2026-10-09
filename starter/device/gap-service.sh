@@ -16,7 +16,9 @@
 # Output is key=value lines plus sentinel-delimited raw blocks. See PROTOCOL.md.
 
 PROTO=1
-PACKAGE=com.gameautomation.platform
+PACKAGE=com.generalautomation.platform
+# The app's id before the rename; its service would hold the socket name.
+LEGACY_PACKAGE=com.gameautomation.platform
 STAGE_DIR=/data/local/tmp/gap
 
 VERB=""
@@ -271,8 +273,9 @@ fi
 # Stop any previous instance so the socket is free. The sleep is the gap the old
 # process needs to release the abstract socket name; binding it while the old one
 # still holds it would leave a service nothing can talk to.
-if service_running; then
+if service_running || pgrep -f "$LEGACY_PACKAGE.Mai[n]" >/dev/null 2>&1; then
   pkill -f "$PACKAGE.Mai[n]" >/dev/null 2>&1
+  pkill -f "$LEGACY_PACKAGE.Mai[n]" >/dev/null 2>&1
   sleep 1
   echo "step=kill"
 fi

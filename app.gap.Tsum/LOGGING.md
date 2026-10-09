@@ -210,7 +210,7 @@ line; `runId` is what ties a run together now, so a running total can sit where
 it means something instead of next to every board scan.
 
 The rendering lives in the host app, in
-`app/src/main/java/com/gameautomation/platform/service/ScriptLogRecord.kt`,
+`app/src/main/java/com/generalautomation/platform/service/ScriptLogRecord.kt`,
 and is mirrored in its `tools/gap-cli.js`. Plain text the host
 logs itself is wrapped into a `host.message` record on the way to the file, so
 the file has no line a reader can choke on.
@@ -304,7 +304,7 @@ in-memory ring buffer does:
 
 ```sh
 adb shell "cat /data/local/tmp/gap/service.log" | grep 'log file'
-adb shell "tail -f /sdcard/Download/GameAutomationPlatform/logs/script-<id>.log" | logdy
+adb shell "tail -f /sdcard/Download/GeneralAutomationPlatform/logs/script-<id>.log" | logdy
 ```
 
 Three things about that command that are easy to get wrong:
@@ -318,7 +318,7 @@ Three things about that command that are easy to get wrong:
   the device's to derive, so ask rather than guess: the service prints the
   resolved path as `[gap] log file: …` into `/data/local/tmp/gap/service.log`
   at every start, and `gap-cli status` reports it as `logFile`. The root is
-  `/sdcard/Download/GameAutomationPlatform` — where the starter installs and
+  `/sdcard/Download/GeneralAutomationPlatform` — where the starter installs and
   `npm run adb` pushes, per `CLAUDE.md`. On MuMu that folder is a **host-shared
   mount, one Windows folder for every instance** — which is the reason for the
   id in the name, and also why `script*.log` there lists every instance's file.

@@ -6,7 +6,7 @@
 # and must never be duplicated here: it is device/gap-service.sh, and this file
 # only invokes it. See device/PROTOCOL.md.
 
-PACKAGE="com.gameautomation.platform"
+PACKAGE="com.generalautomation.platform"
 STAGE_DIR="/data/local/tmp/gap"
 # Beside the stage dir, not in it: /data/local/tmp is the adb shell's own
 # on every Android, while a rooted device's app makes the stage dir root's.
@@ -18,7 +18,7 @@ PROTO_WANT=1
 # against. It is not a protocol key: copying and deleting a script's own files
 # needs neither root nor the device script. A service started with --root=PATH
 # needs GAP_STORAGE_ROOT set to the same path.
-DEVICE_STORAGE="${GAP_STORAGE_ROOT:-/sdcard/Download/GameAutomationPlatform}"
+DEVICE_STORAGE="${GAP_STORAGE_ROOT:-/sdcard/Download/GeneralAutomationPlatform}"
 
 # Where `update` looks for the published APKs. /releases/latest/download/ is a
 # plain redirect to the newest non-draft release, so the asset names have to be

@@ -53,7 +53,7 @@ const local = (...parts) => path.join(projectDir, ...parts);
 const nodeBin = process.execPath;
 const tsc = local('node_modules', 'typescript', 'bin', 'tsc');
 
-const DEPLOY_DIR = '/sdcard/Download/GameAutomationPlatform/scripts/DEV';
+const DEPLOY_DIR = '/sdcard/Download/GeneralAutomationPlatform/scripts/DEV';
 
 /**
  * The host's install ledger, written beside a DEV push so the app lists the

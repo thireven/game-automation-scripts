@@ -2,7 +2,7 @@
   "Game": "Tsum Tsum",
   "Publisher": "Tsum Tsum Scripts",
   "Catalogue": "../../tsum-tsum-catalogue/LineTsumTsum",
-  "DevicePath": "/sdcard/Download/GameAutomationPlatform",
+  "DevicePath": "/sdcard/Download/GeneralAutomationPlatform",
   "DefaultChannel": "Alpha",
   "MessageMaxChars": 0,
   "HistoryLimit": 5,
