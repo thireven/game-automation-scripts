@@ -49,7 +49,7 @@ SCRIPTS_ONLY=""
 CHANNEL_URL=""
 STATS_PIN=""
 RELEASE_URL="https://github.com/TsumTsumScripts/tsum-tsum-script/releases/latest/download"
-MIN_STATS="0.16"
+MIN_STATS="0.17"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

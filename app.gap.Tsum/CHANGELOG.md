@@ -94,6 +94,7 @@ release note; they fold back in here when she ships.
 - Receiving hearts one by one no longer spins on the ad row.
 - Select My Tsum closes the "MyTsum has been changed." dialog.
 - The starter website no longer fails with "unknown flag: --starter".
+- The starter finds GAP again after its rename to General Automation Platform, instead of saying it is not installed.
 
 ### Added
 
@@ -244,7 +245,9 @@ release note; they fold back in here when she ships.
 - **Website and starter moved out**: the Docusaurus site left `website/` for the sibling `tsum-tsum-website` repo (it reads this changelog's Summary for its Changelog page); the service starter was copied in as `starter/` (`TsumTsum-Starter` bundle).
 
 - **Host renamed General Automation Platform** in docs, comments and
-  `package.json`. Folder, repo and package names keep `GameAutomationPlatform`.
+  `package.json`. The app id and device folder followed in GAP 3.2
+  (`com.generalautomation.platform`, `GeneralAutomationPlatform`); repo names
+  keep `game-automation-*`.
 - **`MinHost` raised to 3.1** (`config.json`): the app will not download or
   run this build on an older host. 3.1 is where the named host calls below
   arrived, so the script uses them unguarded rather than keeping a shell
@@ -342,6 +345,9 @@ release note; they fold back in here when she ships.
 - **Starter: unknown flag --starter.** tsum-stats 0.15 was cut without the
   starter; the floor is now 0.16, and a first download updates straight to the
   newest release instead of stopping at the pin.
+- **Starter: "GAP is not installed".** GAP 3.2 changed its app id to
+  `com.generalautomation.platform`; the starter scripts (1.2) and tsum-stats
+  (floor now 0.17) look for the new id.
 - **Select My Tsum left a dialog up.** MyTsum Set raises a "MyTsum has been changed." dialog that waits for a tap; `selectMyTsum` now taps it away (`CollectionGrid.setDoneDialog`).
 - **Base coins unread on a '6'.** The dimmed level-up counter draws a '6' with a
   filled lower loop that led '8' by under the margin; it now has a second '6'
