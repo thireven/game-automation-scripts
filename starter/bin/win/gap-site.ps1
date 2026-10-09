@@ -123,8 +123,11 @@ function Start-Site {
   $bin = $env:GAP_STARTER_SERVER
   if (-not $bin) {
     # Update first, so a newer floor from a starter update never asks to download.
-    if (Test-Path -LiteralPath $global:SiteBin) { Update-SiteProgram }
+    $had = Test-Path -LiteralPath $global:SiteBin
+    if ($had) { Update-SiteProgram }
     if (-not (Get-SiteProgram)) { return 1 }
+    # A fresh download is only the pinned floor; bring it to the newest release.
+    if (-not $had) { Update-SiteProgram }
     $bin = $global:SiteBin
   }
   $open = @('--open')

@@ -131,8 +131,11 @@ run_site() {
   bin="${GAP_STARTER_SERVER:-}"
   if [ -z "$bin" ]; then
     # Update first, so a newer floor from a starter update never asks to download.
-    [ -x "$(site_bin)" ] && site_update
+    had=0
+    [ -x "$(site_bin)" ] && { had=1; site_update; }
     site_download || return 1
+    # A fresh download is only the pinned floor; bring it to the newest release.
+    [ "$had" = 1 ] || site_update
     bin="$(site_bin)"
   fi
   open="--open"

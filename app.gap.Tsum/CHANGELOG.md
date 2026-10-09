@@ -93,6 +93,7 @@ release note; they fold back in here when she ships.
 - Disney Villains (Set) no longer re-fires its skill with no chains.
 - Receiving hearts one by one no longer spins on the ad row.
 - Select My Tsum closes the "MyTsum has been changed." dialog.
+- The starter website no longer fails with "unknown flag: --starter".
 
 ### Added
 
@@ -338,6 +339,9 @@ release note; they fold back in here when she ships.
 
 ### Fixed
 
+- **Starter: unknown flag --starter.** tsum-stats 0.15 was cut without the
+  starter; the floor is now 0.16, and a first download updates straight to the
+  newest release instead of stopping at the pin.
 - **Select My Tsum left a dialog up.** MyTsum Set raises a "MyTsum has been changed." dialog that waits for a tap; `selectMyTsum` now taps it away (`CollectionGrid.setDoneDialog`).
 - **Base coins unread on a '6'.** The dimmed level-up counter draws a '6' with a
   filled lower loop that led '8' by under the margin; it now has a second '6'
