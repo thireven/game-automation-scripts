@@ -52,7 +52,7 @@ i18nRegister(Locale.Japanese, '日本語', {
     [UiText.SettingShareListing]: '設定一覧も付けてコピー',
     [UiText.SettingShareListingHelp]: 'スキルの種類と、初期設定から変えた設定を付けます。',
     [UiText.SettingExportPresets]: 'プリセットを書き出す',
-    [UiText.SettingExportPresetsHelp]: 'プリセットごとに設定コードを1つ。上の欄に貼り付けると戻せます。',
+    [UiText.SettingExportPresetsHelp]: 'プリセットごとに設定コードを1つ。上の欄に貼り付けるとプリセットとして戻せます。',
     [UiText.SettingAutoPlayGame]: '自動プレイ',
     [UiText.SettingAutoPlayGameHelp]: '他の作業がないときにラウンドをプレイします。オフなら雑務のみ。',
     [UiText.SettingClickAssist]: 'クリックアシスト（タップでつなぐ）',
@@ -268,6 +268,7 @@ i18nRegister(Locale.Japanese, '日本語', {
     [UiText.PresetExportSaved]: '{path} に書き出しました。',
     [UiText.PresetExportNoEngine]: '先に一度「再生」を押してください。ファイルはこのページではなくスクリプトが書き出します。',
     [UiText.PresetExportFailed]: 'ファイルを書き出せませんでした: {error}',
+    [UiText.PresetImported]: 'プリセットを保存しました: {names}。',
 
     [UiText.LogNoSettings]: '設定が見つからないため、デフォルトを使用します',
     [UiText.LogLoadSettings]: '設定を読み込み',

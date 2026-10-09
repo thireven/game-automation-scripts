@@ -53,7 +53,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingShareListing]: 'Copy with settings list',
     [UiText.SettingShareListingHelp]: 'Adds the skill type and the settings changed from default.',
     [UiText.SettingExportPresets]: 'Export presets',
-    [UiText.SettingExportPresetsHelp]: 'One settings code per preset; paste one back above.',
+    [UiText.SettingExportPresetsHelp]: 'One settings code per preset; paste them back above to restore them.',
     [UiText.SettingAutoPlayGame]: 'Auto Play Game',
     [UiText.SettingAutoPlayGameHelp]: 'Plays rounds when no other job is due. Off runs chores only.',
     [UiText.SettingClickAssist]: 'Click Assist (connect on tap)',
@@ -314,6 +314,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.PresetExportSaved]: 'Written to {path}.',
     [UiText.PresetExportNoEngine]: 'Press Play once first: the file is written by the script, not by this page.',
     [UiText.PresetExportFailed]: 'The file could not be written: {error}',
+    [UiText.PresetImported]: 'Saved presets: {names}.',
 
     [UiText.LogNoSettings]: 'No settings found, using default ones',
     [UiText.LogLoadSettings]: 'Load settings',

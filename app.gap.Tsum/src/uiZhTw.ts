@@ -57,7 +57,7 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.SettingShareListing]: '複製時附上設定清單',
     [UiText.SettingShareListingHelp]: '附上技能類型，以及改過預設值的設定。',
     [UiText.SettingExportPresets]: '匯出組合',
-    [UiText.SettingExportPresetsHelp]: '每個組合一組設定碼，可貼回上面。',
+    [UiText.SettingExportPresetsHelp]: '每個組合一組設定碼，貼回上面即可還原組合。',
     [UiText.SettingAutoPlayGame]: '自動玩遊戲',
     [UiText.SettingAutoPlayGameHelp]: '沒有其他工作時就玩一局。關閉則只做雜項。',
     [UiText.SettingClickAssist]: '點擊輔助（點選即連線）',
@@ -306,6 +306,7 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.PresetExportSaved]: '已寫入 {path}。',
     [UiText.PresetExportNoEngine]: '請先按一次「播放」：檔案是由腳本寫入，不是這個頁面。',
     [UiText.PresetExportFailed]: '無法寫入檔案：{error}',
+    [UiText.PresetImported]: '已儲存組合：{names}。',
 
     [UiText.LogNoSettings]: '没有找到设置，使用默认设置',
     [UiText.LogLoadSettings]: '讀取設定',

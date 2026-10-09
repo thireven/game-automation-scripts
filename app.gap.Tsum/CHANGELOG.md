@@ -53,6 +53,7 @@ release note; they fold back in here when she ships.
 
 *Quick Bar and settings*
 - The Aa button opens Appearance: pick the style (Accessible or Felt), theme (Dark, Light or Device) and size (XS to L); Accessible now starts at Small.
+- Pasting a preset export into the Code box saves its presets (a single line also applies it).
 
 **Fixes**
 - Quick Bar dropdown labels (Preset, Bubble, Then) are no longer cut off at the top.
@@ -60,6 +61,7 @@ release note; they fold back in here when she ships.
 ### Changed
 
 - **Appearance panel**: Aa opens `#appearancePanel` (radio groups) instead of toggling felt. Size is `data-size` driving `--a-*` variables in `a11y.css`, Small by default, stored under `tsumtsumsize` (added to `gap-backup.json`).
+- **Preset import**: the Code box's Apply saves each `Name: code` line as a preset (`presetsFromText`, `importPresets`), replacing same-named ones; more than one line saves without applying.
 
 ### Fixed
 

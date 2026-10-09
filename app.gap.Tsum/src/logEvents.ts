@@ -522,6 +522,7 @@ namespace Log {
     PresetApplied              = 'settings.presetApplied',
     PresetDeleted              = 'settings.presetDeleted',
     PresetExported             = 'settings.presetExported',
+    PresetImported             = 'settings.presetImported',
     PresetSaved                = 'settings.presetSaved',
     PresetStoreFailed          = 'settings.presetStoreFailed',
     ReportAsked                = 'settings.reportAsked',

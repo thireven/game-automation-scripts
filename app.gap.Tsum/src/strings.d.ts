@@ -372,6 +372,8 @@ declare const enum UiText {
   PresetExportNoEngine = 'preset.exportNoEngine',
   /** `{error}` is whatever the engine said went wrong. */
   PresetExportFailed = 'preset.exportFailed',
+  /** Saved from a pasted export; `{names}` is the list, comma-separated. */
+  PresetImported = 'preset.imported',
 
   // --- the sentences this page's own log records carry ---------------------
   LogNoSettings = 'log.noSettings',

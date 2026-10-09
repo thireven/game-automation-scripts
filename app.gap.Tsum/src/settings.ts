@@ -2715,6 +2715,15 @@ function showShareText(text: string, focus: boolean, qrText?: string): void {
  */
 function applySettingsCodeText(text: string): void {
     ensureSharePanel();
+    // `Name: code` lines are a preset export: save them, and only apply one when
+    // it is the only line, so pasting a whole export does not load its first preset.
+    var named = presetsFromText(text);
+    var imported = named.length > 0 ? importPresets(named) : '';
+    if (named.length > 1) {
+        showShareText(text, false);
+        setShareStatus(imported, imported === i18nText(UiText.PresetStoreFailed));
+        return;
+    }
     var shared = parseSettingsCode(text);
     if (shared === undefined) {
         showShareText(text || '', false);
@@ -2728,7 +2737,7 @@ function applySettingsCodeText(text: string): void {
     // Two sentences rather than one with an optional tail: a language that puts
     // the skipped count somewhere else in the sentence has nowhere to put it
     // when the tail is glued on here.
-    setShareStatus(i18nFormat(
+    setShareStatus((imported !== '' ? imported + ' ' : '') + i18nFormat(
         result.skipped > 0 ? UiText.ShareAppliedSkipped : UiText.ShareApplied,
         {applied: result.applied, from: from, skipped: result.skipped}), false);
 }
@@ -3129,8 +3138,8 @@ var PRESET_FILE_NAME = 'presets.txt';
  * `SHARE_SLOTS` -- so nothing is lost on the way out and nothing has to be
  * invented on the way in. One line is one whole configuration, and
  * `parseSettingsCode` finds a code inside whatever text is wrapped around it, so
- * a line pasted into the Share settings box applies as it stands. That is the
- * import path, and it is the one that already existed.
+ * a line pasted into the Share settings box applies as it stands, and the same
+ * box saves `Name: code` lines back as presets (`presetsFromText`).
  */
 function presetsExportText(list: Preset[]): string {
     var lines: string[] = [];
@@ -3138,6 +3147,72 @@ function presetsExportText(list: Preset[]): string {
         lines.push(list[i].name + ': ' + buildSettingsCode(list[i].values));
     }
     return lines.join('\n');
+}
+
+/**
+ * The presets in a pasted export: each `Name: code` line whose code decodes.
+ * Values are complete -- every shared row, defaults filled in -- so the preset
+ * matches the form once applied, as one saved from the form would.
+ */
+function presetsFromText(text: string): Preset[] {
+    var found: Preset[] = [];
+    if (!text) {
+        return found;
+    }
+    var line = new RegExp('^\\s*([^\\n]+?)\\s*:\\s*(' + SHARE_PREFIX + '[A-Za-z0-9._%-]+' +
+        SHARE_SUFFIX + ')\\s*$', 'gm');
+    var byKey = sharedSettingsByKey();
+    var match: RegExpExecArray | null;
+    while ((match = line.exec(text)) !== null) {
+        var name = presetCleanName(match[1]);
+        var shared = parseSettingsCode(match[2]);
+        if (name === '' || shared === undefined) {
+            continue;
+        }
+        var values: SettingValues = {};
+        for (var key in byKey) {
+            var value = shared.s.hasOwnProperty(key) ? shared.s[key] : SHARE_DEFAULTS[key];
+            if (value !== undefined) {
+                values[key] = value;
+            }
+        }
+        found.push({name: name, values: values});
+    }
+    return found;
+}
+
+/**
+ * Saves `found` into the store, replacing presets of the same name, and says
+ * what happened. New names past `PRESET_MAX` are left out and reported.
+ */
+function importPresets(found: Preset[]): string {
+    var list = presetsLoad();
+    var names: string[] = [];
+    var left = 0;
+    for (var i = 0; i < found.length; i++) {
+        if (presetIndexOf(list, found[i].name) < 0 && list.length >= PRESET_MAX) {
+            left++;
+            continue;
+        }
+        list = presetsPut(list, found[i].name, found[i].values);
+        names.push(found[i].name);
+    }
+    if (names.length > 0 && !presetsStore(list)) {
+        logError(Log.Settings.PresetStoreFailed, 'The presets could not be stored',
+            {presets: names.length});
+        return i18nText(UiText.PresetStoreFailed);
+    }
+    if (names.length > 0) {
+        logInfo(Log.Settings.PresetImported, 'Saved presets pasted into the share box',
+            {presets: names.length, left: left});
+        presetsChanged();
+    }
+    var message = names.length > 0 ?
+        i18nFormat(UiText.PresetImported, {names: names.join(', ')}) : '';
+    if (left > 0) {
+        message += (message !== '' ? ' ' : '') + i18nFormat(UiText.PresetFull, {max: PRESET_MAX});
+    }
+    return message;
 }
 
 /** The panel under the Export presets row, built the first time it is used. */
