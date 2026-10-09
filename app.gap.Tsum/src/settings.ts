@@ -2981,6 +2981,7 @@ function openPresetPanel(): void {
         closePresetPanel();
         return;
     }
+    closeAppearancePanel();
     panel.hidden = false;
     // Opens on whatever is loaded, so the common act -- adjust a setting, save it
     // back -- is one tap. An empty box is what a new preset starts from.
@@ -3331,13 +3332,16 @@ function genStartCommand(settings: SettingSpec[][]): string {
     return command;
 }
 
-// --- Theme and style ---------------------------------------------------------
+// --- Appearance: theme, style and size -------------------------------------
 //
 // Theme: two states, and the device's own setting decides which one the page
-// opens in. A tap stores an explicit choice; until there is one, the page keeps
-// following the device, so turning the phone to dark at dusk turns this page
-// with it. Style: Accessible or Felt (src/pageStyle.ts, which also holds the
-// storage and device reads both pages share). The Quick Bar is told of either.
+// opens in. A tap stores an explicit choice; until there is one (or "Device" is
+// picked again), the page keeps following the device, so turning the phone to
+// dark at dusk turns this page with it. Style: Accessible or Felt. Size: the
+// Accessible style's control and type size. src/pageStyle.ts holds the storage
+// and device reads both pages share; the Quick Bar is told of style and theme.
+// The Aa button opens a panel with all three; the sun/moon button flips the
+// theme in one tap.
 
 /** The theme the page is showing right now. */
 function currentTheme(): string {
@@ -3362,20 +3366,164 @@ function setTheme(theme: string, remember: boolean): void {
         pageStoreSet(StorageKey.Theme, theme);
         broadcastStyle();
     }
+    refreshAppearancePanel();
+}
+
+/** Forgets the stored theme, so the page (and the strip) follow the device again. */
+function followDeviceTheme(): void {
+    pageStoreRemove(StorageKey.Theme);
+    setTheme(systemTheme(), false);
+    broadcastStyle();
 }
 
 /** Switches the style, as `setTheme` does the theme. */
 function setStyle(style: PageStyle, remember: boolean): void {
     applyPageStyle(style);
-    var toggle = document.getElementById('styleToggle');
-    if (toggle !== null) {
-        toggle.setAttribute('aria-label', i18nText(style === PageStyle.Felt ?
-            UiText.ChromeStyleToAccessible : UiText.ChromeStyleToFelt));
-    }
     if (remember) {
         pageStoreSet(StorageKey.Style, style);
         broadcastStyle();
     }
+    refreshAppearancePanel();
+}
+
+/** Switches the Accessible style's size. The strip has none, so nothing is broadcast. */
+function setSize(size: PageSize, remember: boolean): void {
+    applyPageSize(size);
+    if (remember) {
+        pageStoreSet(StorageKey.Size, size);
+    }
+    refreshAppearancePanel();
+}
+
+function appearancePanel(): HTMLElement | null {
+    return document.getElementById('appearancePanel');
+}
+
+/** Opens the panel, or closes it if open. One panel at a time, so Save closes. */
+function toggleAppearancePanel(): void {
+    var panel = appearancePanel();
+    if (panel === null) {
+        return;
+    }
+    if (!panel.hidden) {
+        closeAppearancePanel();
+        return;
+    }
+    closePresetPanel();
+    panel.hidden = false;
+    refreshAppearancePanel();
+    var button = document.getElementById('styleToggle');
+    if (button !== null) {
+        button.setAttribute('aria-expanded', 'true');
+    }
+    var checked = panel.querySelector('input:checked') as HTMLInputElement | null;
+    if (checked !== null) {
+        checked.focus();
+    }
+}
+
+function closeAppearancePanel(): void {
+    var panel = appearancePanel();
+    if (panel === null || panel.hidden) {
+        return;
+    }
+    panel.hidden = true;
+    var button = document.getElementById('styleToggle');
+    if (button !== null) {
+        button.setAttribute('aria-expanded', 'false');
+        button.focus();
+    }
+}
+
+/** Checks the radios that match what the page shows. Safe before the panel exists. */
+function refreshAppearancePanel(): void {
+    // querySelectorAll: the build's companion step runs this page in a stub DOM that has only that.
+    var check = function (name: string, value: string) {
+        var inputs = document.querySelectorAll('input[name="' + name + '"]');
+        for (var i = 0; i < inputs.length; i++) {
+            (inputs[i] as HTMLInputElement).checked = (inputs[i] as HTMLInputElement).value === value;
+        }
+    };
+    var style = pageStyle();
+    check('pageStyle', style);
+    check('pageTheme', storedTheme() || 'device');
+    check('pageSize', pageSize());
+    // Size only reaches the Accessible style; say so rather than hide the row.
+    var sizes = document.getElementById('sizeChoice') as HTMLFieldSetElement | null;
+    if (sizes !== null) {
+        sizes.disabled = style === PageStyle.Felt;
+    }
+    var note = document.getElementById('sizeFeltNote');
+    if (note !== null) {
+        note.hidden = style !== PageStyle.Felt;
+    }
+}
+
+/** The panel's text, rewritten on every language change by `localiseChrome`. */
+function localiseAppearance(): void {
+    var text = function (id: string, key: UiText) {
+        var element = document.getElementById(id);
+        if (element !== null) {
+            element.textContent = i18nText(key);
+        }
+    };
+    var label = function (id: string, key: UiText) {
+        var element = document.getElementById(id);
+        if (element !== null) {
+            element.setAttribute('aria-label', i18nText(key));
+        }
+    };
+    label('styleToggle', UiText.ChromeAppearance);
+    label('appearancePanel', UiText.ChromeAppearance);
+    text('styleLegend', UiText.ChromeStyle);
+    text('styleA11yText', UiText.ChromeStyleAccessible);
+    text('styleFeltText', UiText.ChromeStyleFelt);
+    text('themeLegend', UiText.ChromeTheme);
+    text('themeDarkText', UiText.ChromeThemeDark);
+    text('themeLightText', UiText.ChromeThemeLight);
+    text('themeDeviceText', UiText.ChromeThemeDevice);
+    text('sizeLegend', UiText.ChromeSize);
+    label('sizeXs', UiText.ChromeSizeXs);
+    label('sizeS', UiText.ChromeSizeS);
+    label('sizeM', UiText.ChromeSizeM);
+    label('sizeL', UiText.ChromeSizeL);
+    text('sizeFeltNote', UiText.ChromeSizeFeltNote);
+    text('appearanceClose', UiText.ChromeAppearanceClose);
+}
+
+/** Wires the Aa button and the panel's radios. Called once from `bootstrap`. */
+function bindAppearance(): void {
+    var button = document.getElementById('styleToggle');
+    if (button !== null) {
+        button.addEventListener('click', toggleAppearancePanel);
+    }
+    var close = document.getElementById('appearanceClose');
+    if (close !== null) {
+        close.addEventListener('click', closeAppearancePanel);
+    }
+    var panel = appearancePanel();
+    if (panel === null) {
+        return;
+    }
+    panel.addEventListener('change', function (event) {
+        var input = event.target as HTMLInputElement;
+        if (input.name === 'pageStyle') {
+            setStyle(input.value as PageStyle, true);
+        } else if (input.name === 'pageSize') {
+            setSize(input.value as PageSize, true);
+        } else if (input.name === 'pageTheme') {
+            if (input.value === 'device') {
+                followDeviceTheme();
+            } else {
+                setTheme(input.value, true);
+            }
+        }
+    });
+    panel.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeAppearancePanel();
+        }
+    });
 }
 
 /** Tells the Quick Bar to re-read the style and theme. */
@@ -3403,6 +3551,7 @@ function followSystemTheme(): void {
 // before the body is laid out, or the page flashes the wrong look.
 setTheme(storedTheme() || systemTheme(), false);
 setStyle(pageStyle(), false);
+setSize(pageSize(), false);
 
 // --- Run order -------------------------------------------------------------
 //
@@ -4493,9 +4642,9 @@ function localiseChrome(): void {
     if (note !== null && !note.hidden) {
         note.textContent = i18nText(UiText.ChromeRestartNow);
     }
-    // Relabels the two app bar toggles; neither stores or broadcasts.
+    // Relabels the theme button (neither call stores or broadcasts) and the Appearance panel.
     setTheme(currentTheme(), false);
-    setStyle(pageStyle(), false);
+    localiseAppearance();
     localisePresets();
 }
 
@@ -4570,13 +4719,8 @@ function bootstrap(): void {
             setTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);
         });
     }
-    var styleToggle = document.getElementById('styleToggle');
-    if (styleToggle !== null) {
-        styleToggle.addEventListener('click', function () {
-            setStyle(pageStyle() === PageStyle.Felt ? PageStyle.Accessible : PageStyle.Felt, true);
-        });
-    }
-    // Re-run now that the buttons exist, so they get their labels.
+    bindAppearance();
+    // Re-run now that the buttons exist, so they get their labels and the panel its state.
     setTheme(currentTheme(), false);
     setStyle(pageStyle(), false);
     followSystemTheme();

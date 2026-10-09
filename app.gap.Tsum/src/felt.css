@@ -478,6 +478,47 @@ body {
     font-size: 13px;
 }
 
+/* --- Save and Appearance panels: a felt patch of pills --------------------- */
+
+.preset-panel {
+    background-color: var(--surface);
+    background-image: var(--weave-soft);
+    border-bottom: 2px dashed var(--rule);
+    box-shadow: 0 4px 0 var(--edge);
+}
+
+.choice-legend {
+    color: var(--heading);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.choice span {
+    height: 30px;
+    min-height: 30px;
+    border-radius: var(--radius-pill);
+    background-color: var(--well);
+    box-shadow: 0 3px 0 var(--edge);
+    outline: 1.5px dashed var(--thread);
+    outline-offset: -4px;
+    font-weight: 700;
+}
+
+.choice input:checked + span {
+    background-color: var(--jade);
+    background-image: var(--weave-soft);
+    box-shadow: 0 3px 0 var(--jade-edge);
+    outline-color: var(--jade-thread);
+    color: var(--jade-ink);
+    font-weight: 800;
+}
+
+.choice input:focus-visible + span {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .preset-select,
     .copy-code,

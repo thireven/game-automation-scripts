@@ -293,9 +293,25 @@ declare const enum UiText {
   ChromeRestartNow = 'chrome.restartNow',
   ChromeThemeToLight = 'chrome.themeToLight',
   ChromeThemeToDark = 'chrome.themeToDark',
-  /** The style toggle's spoken name: what a tap switches to. */
-  ChromeStyleToFelt = 'chrome.styleToFelt',
-  ChromeStyleToAccessible = 'chrome.styleToAccessible',
+  /** The Aa button and the panel it opens: style, theme and size. */
+  ChromeAppearance = 'chrome.appearance',
+  ChromeAppearanceClose = 'chrome.appearanceClose',
+  ChromeStyle = 'chrome.style',
+  ChromeStyleAccessible = 'chrome.styleAccessible',
+  ChromeStyleFelt = 'chrome.styleFelt',
+  ChromeTheme = 'chrome.theme',
+  ChromeThemeDark = 'chrome.themeDark',
+  ChromeThemeLight = 'chrome.themeLight',
+  /** Follow the phone's light/dark setting. */
+  ChromeThemeDevice = 'chrome.themeDevice',
+  ChromeSize = 'chrome.size',
+  /** Spoken names; the buttons show XS / S / M / L. */
+  ChromeSizeXs = 'chrome.sizeXs',
+  ChromeSizeS = 'chrome.sizeS',
+  ChromeSizeM = 'chrome.sizeM',
+  ChromeSizeL = 'chrome.sizeL',
+  /** Under the size buttons while Felt is on. */
+  ChromeSizeFeltNote = 'chrome.sizeFeltNote',
   ChromeMoreTabs = 'chrome.moreTabs',
   /** The app bar's short copy-code button; `ChromeCopyCodeLabel` is its spoken name. */
   ChromeCopyCode = 'chrome.copyCode',

@@ -113,6 +113,14 @@ declare const enum PageStyle {
   Felt = 'felt',
 }
 
+/** The Accessible style's control and type size (`data-size`, src/a11y.css). Settings page only. */
+declare const enum PageSize {
+  ExtraSmall = 'xs',
+  Small = 's',
+  Medium = 'm',
+  Large = 'l',
+}
+
 /**
  * The localStorage keys the pages share.
  *
@@ -131,6 +139,8 @@ declare const enum StorageKey {
   Theme = 'tsumtsumtheme',
   /** A `PageStyle`; absent is Accessible. */
   Style = 'tsumtsumstyle',
+  /** A `PageSize`; absent is Small. */
+  Size = 'tsumtsumsize',
 }
 
 /** Anything one settings row can hold. */

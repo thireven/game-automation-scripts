@@ -289,6 +289,87 @@ p {
     margin-inline-start: auto;
 }
 
+/* --- Appearance panel: radio groups drawn as rows of buttons ---------------
+
+   The radio stays on top of its button, invisible, so a tap and the keyboard
+   both reach the real input. The legend is floated, which makes it an ordinary
+   flex item on its own row instead of sitting in the fieldset's border. */
+
+.appearance-panel {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.choice-legend {
+    float: left;
+    width: 100%;
+    margin-bottom: var(--space-1);
+    padding: 0;
+    color: var(--ink-muted);
+    font-weight: 700;
+}
+
+.choice label {
+    position: relative;
+    flex: 1 1 0;
+}
+
+.choice input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.choice span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--ctl);
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--tap-soft);
+    box-shadow: inset 0 0 0 1.5px var(--tap);
+    color: var(--ink);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.choice input:checked + span {
+    background: var(--selected);
+    box-shadow: none;
+    color: var(--on-selected);
+}
+
+.choice input:focus-visible + span {
+    outline: 3px solid var(--selected);
+    outline-offset: 2px;
+}
+
+.choice:disabled span {
+    opacity: .45;
+}
+
+.choice-note {
+    width: 100%;
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 12px;
+}
+
 /* --- Tabs: the scrolling variant -------------------------------------------
 
    Pills with the blue tap edge; the active one is solid `selected` with a

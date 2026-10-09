@@ -95,8 +95,9 @@
         </svg>
         <span id="copyCodeText"></span>
       </button>
-      <!-- Accessible / Felt style; settings.ts (`setStyle`) labels it. -->
-      <button id="styleToggle" class="style-toggle icon-button" type="button" aria-live="polite">Aa</button>
+      <!-- Opens the Appearance panel below; settings.ts labels it. -->
+      <button id="styleToggle" class="style-toggle icon-button" type="button"
+              aria-haspopup="dialog" aria-expanded="false" aria-controls="appearancePanel">Aa</button>
       <!-- Sun and moon are not in the GAP icon set yet; drawn to its 2px line style. -->
       <button id="themeToggle" class="theme-toggle icon-button" type="button" aria-live="polite">
         <svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true">
@@ -142,6 +143,37 @@
         <button id="presetClose" class="row-button preset-quiet" type="button"></button>
       </div>
       <p id="presetStatus" class="preset-status" role="status"></p>
+    </div>
+
+    <!--
+      The Appearance panel behind the Aa button: style, theme and size, each a
+      radio group drawn as a row of buttons. Static chrome like the Save panel;
+      settings.ts (`localiseAppearance`, `refreshAppearancePanel`) fills the
+      text and the checked state. Size is the Accessible style's only.
+    -->
+    <div id="appearancePanel" class="preset-panel appearance-panel" role="dialog" hidden>
+      <fieldset class="choice">
+        <legend id="styleLegend" class="choice-legend"></legend>
+        <label><input type="radio" name="pageStyle" value="a11y"><span id="styleA11yText"></span></label>
+        <label><input type="radio" name="pageStyle" value="felt"><span id="styleFeltText"></span></label>
+      </fieldset>
+      <fieldset class="choice">
+        <legend id="themeLegend" class="choice-legend"></legend>
+        <label><input type="radio" name="pageTheme" value="dark"><span id="themeDarkText"></span></label>
+        <label><input type="radio" name="pageTheme" value="light"><span id="themeLightText"></span></label>
+        <label><input type="radio" name="pageTheme" value="device"><span id="themeDeviceText"></span></label>
+      </fieldset>
+      <fieldset id="sizeChoice" class="choice">
+        <legend id="sizeLegend" class="choice-legend"></legend>
+        <label><input id="sizeXs" type="radio" name="pageSize" value="xs"><span aria-hidden="true">XS</span></label>
+        <label><input id="sizeS" type="radio" name="pageSize" value="s"><span aria-hidden="true">S</span></label>
+        <label><input id="sizeM" type="radio" name="pageSize" value="m"><span aria-hidden="true">M</span></label>
+        <label><input id="sizeL" type="radio" name="pageSize" value="l"><span aria-hidden="true">L</span></label>
+        <p id="sizeFeltNote" class="choice-note" hidden></p>
+      </fieldset>
+      <div class="preset-actions">
+        <button id="appearanceClose" class="row-button preset-quiet" type="button"></button>
+      </div>
     </div>
 
     <main id="tabPanels" class="container"></main>

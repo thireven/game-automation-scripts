@@ -68,7 +68,7 @@ release note; they fold back in here when she ships.
 
 *Quick Bar and settings*
 - Redesigned in the website's playful felt look, with cream and midnight themes, tighter rows that show more at once, and a Code button that copies the settings code.
-- New Accessible style, now the default: larger text and buttons, high contrast, no texture or motion, and a light Quick Bar. The Aa button switches to the felt look and back.
+- New Accessible style, now the default: larger text and buttons, high contrast, no texture or motion, and a light Quick Bar. The Aa button opens Appearance to pick the style (Accessible or Felt), theme (Dark, Light or Device) and size (XS to L).
 - Quick Bar shows average medals per round; tap the readout to copy the run's figures.
 
 *Tsum List*
@@ -244,7 +244,7 @@ release note; they fold back in here when she ships.
 
 - **Felt skin**: `src/felt.css` and `src/feltQuickbar.css` lay the website's "Midnight felt" (stitching, hard edges, tilts) over the GAP component sheets, and tighten the settings rows. Fonts are now Figtree and Caprasimo; Inter and Inter Display were dropped. An untitled settings group no longer draws an empty heading.
 
-- **Accessible style**: `src/a11y.css` and `src/a11yQuickbar.css` are the default style, felt the option. `src/pageStyle.ts` (both pages) switches the `data-style` sheets by `media`, stored under `tsumtsumstyle` (added to `gap-backup.json`); `PageMessage.Style` tells the strip. `tools/inline` now keeps `media` and `data-style` on inlined sheets. The strip's chips keep 1px borders plus an inset ring, since a 2px border clips the label.
+- **Accessible style**: `src/a11y.css` and `src/a11yQuickbar.css` are the default style, felt the option. `src/pageStyle.ts` (both pages) switches the `data-style` sheets by `media`, stored under `tsumtsumstyle` (added to `gap-backup.json`); `PageMessage.Style` tells the strip. `tools/inline` now keeps `media` and `data-style` on inlined sheets. The strip's chips keep 1px borders plus an inset ring, since a 2px border clips the label. The Aa button opens the Appearance panel (radio groups in `#appearancePanel`); size is `data-size` driving `--a-*` variables in `a11y.css`, Small by default, stored under `tsumtsumsize`.
 - **Quick Bar wide chips**: label over value was 27px in a 23px chip, and `.qb-select-value`'s 1.4 line height overrode `.qb-wide-value`'s; now 22px, clipped sideways only (`overflow-x: clip`).
 
 - **Website and starter moved out**: the Docusaurus site left `website/` for the sibling `tsum-tsum-website` repo (it reads this changelog's Summary for its Changelog page); the service starter was copied in as `starter/` (`TsumTsum-Starter` bundle).

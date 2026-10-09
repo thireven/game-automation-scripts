@@ -1,16 +1,63 @@
 /*
  * The settings page's Accessible style, the default (src/pageStyle.ts switches
  * between it and felt.css). The felt colours, flat: no weave, stitching, tilts,
- * display face or motion. Larger type, 44px targets, solid 2px edges. Colours
+ * display face or motion. Larger type and targets, solid 2px edges. Colours
  * keep text at 7:1 and control edges at 3:1 against what they sit on.
  *
- * index.css still owns layout; this owns colour, type and sizes.
+ * Every size is a `--a-*` variable: Small by default, the others by the root's
+ * `data-size` (the Appearance panel). index.css still owns layout.
  */
+
+/* --- Size: Small, then the other three ------------------------------------ */
+
+:root {
+    /* Control height: buttons, tabs, steppers, selects. */
+    --a-ctl: 36px;
+    /* Button and tab text. */
+    --a-font: 14px;
+    --a-title: 15px;
+    --a-help: 13.5px;
+    --a-group: 16px;
+    --a-switch-w: 46px;
+    --a-switch-h: 27px;
+}
+
+[data-size="xs"] {
+    --a-ctl: 32px;
+    --a-font: 13px;
+    --a-title: 14px;
+    --a-help: 13px;
+    --a-group: 15px;
+    --a-switch-w: 42px;
+    --a-switch-h: 24px;
+}
+
+[data-size="m"] {
+    --a-ctl: 40px;
+    --a-font: 15px;
+    --a-title: 16px;
+    --a-help: 14px;
+    --a-group: 17px;
+    --a-switch-w: 50px;
+    --a-switch-h: 29px;
+}
+
+[data-size="l"] {
+    --a-ctl: 44px;
+    --a-font: 16px;
+    --a-title: 17px;
+    --a-help: 15px;
+    --a-group: 19px;
+    --a-switch-w: 56px;
+    --a-switch-h: 32px;
+}
+
+/* --- Colour ---------------------------------------------------------------- */
 
 :root,
 [data-theme="dark"] {
-    --ctl: 44px;
-    --head-h: 56px;
+    --ctl: var(--a-ctl);
+    --head-h: calc(var(--a-ctl) + 12px);
     /* The device's own font: Roboto on Android. */
     --font-sans: system-ui, "Roboto", "Noto Sans JP", sans-serif;
 
@@ -60,8 +107,8 @@ body {
 
 body {
     color: var(--ink);
-    font-size: 16px;
-    line-height: 24px;
+    font-size: var(--a-font);
+    line-height: 1.5;
 }
 
 :focus-visible {
@@ -92,14 +139,14 @@ body {
 .row-button,
 .share-actions button,
 .reset-button {
-    min-height: 44px;
+    min-height: var(--a-ctl);
     height: auto;
     border: 2px solid var(--line);
     outline: 0;
     background: var(--surface);
     box-shadow: none;
     color: var(--ink);
-    font-size: 16px;
+    font-size: var(--a-font);
     font-weight: 700;
 }
 
@@ -127,12 +174,12 @@ body {
 }
 
 .icon-button {
-    width: 44px;
+    width: var(--a-ctl);
     border-radius: 12px;
 }
 
 .style-toggle {
-    font-size: 16px;
+    font-size: var(--a-font);
 }
 
 .copy-code {
@@ -146,7 +193,7 @@ body {
 }
 
 .tab-button {
-    padding: 0 18px;
+    padding: 0 16px;
     border-radius: 12px;
 }
 
@@ -170,10 +217,52 @@ body {
 
 /* index.css centres it with translateY; keep that. */
 .tab-more {
-    min-height: 36px;
-    height: 36px;
+    min-height: calc(var(--a-ctl) - 8px);
+    height: calc(var(--a-ctl) - 8px);
     padding: 0 10px;
-    font-size: 15px;
+    font-size: calc(var(--a-font) - 1px);
+}
+
+/* --- Save and Appearance panels -------------------------------------------- */
+
+.preset-panel {
+    background: var(--surface);
+    border-bottom: 2px solid var(--rule);
+    box-shadow: none;
+}
+
+.choice-legend {
+    color: var(--accent);
+    font-size: var(--a-font);
+    font-weight: 800;
+}
+
+.choice span {
+    min-height: var(--a-ctl);
+    border-radius: 12px;
+    background: var(--well);
+    box-shadow: inset 0 0 0 2px var(--line);
+    color: var(--ink);
+    font-size: var(--a-font);
+}
+
+/* Filled and underlined, as the open tab. */
+.choice input:checked + span {
+    background: var(--on);
+    box-shadow: inset 0 0 0 2px var(--on);
+    color: var(--on-ink);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+}
+
+.choice input:focus-visible + span {
+    outline-color: var(--accent);
+}
+
+.choice-note {
+    color: var(--ink-muted);
+    font-size: var(--a-help);
 }
 
 /* --- Groups and rows ------------------------------------------------------- */
@@ -184,8 +273,8 @@ body {
 
 .group-title {
     color: var(--accent);
-    font-size: 19px;
-    line-height: 26px;
+    font-size: var(--a-group);
+    line-height: 1.35;
     font-weight: 800;
 }
 
@@ -197,8 +286,8 @@ body {
 }
 
 .setting-row {
-    min-height: 60px;
-    padding: 10px 16px;
+    min-height: calc(var(--a-ctl) + 16px);
+    padding: calc(var(--a-ctl) / 4 - 1px) 16px;
 }
 
 .setting-row:not(:first-child) {
@@ -207,30 +296,30 @@ body {
 
 .row-title {
     color: var(--ink);
-    font-size: 17px;
-    line-height: 24px;
+    font-size: var(--a-title);
+    line-height: 1.4;
     font-weight: 700;
 }
 
 .row-help {
     color: var(--ink-muted);
-    font-size: 15px;
-    line-height: 22px;
+    font-size: var(--a-help);
+    line-height: 1.45;
 }
 
 /* --- Switch: on is jade with a tick ---------------------------------------- */
 
 .setting-switch {
-    width: 56px;
-    height: 32px;
+    width: var(--a-switch-w);
+    height: var(--a-switch-h);
     background: var(--well);
     box-shadow: inset 0 0 0 2px var(--line);
 }
 
 .setting-switch::before {
     left: 6px;
-    width: 20px;
-    height: 20px;
+    width: calc(var(--a-switch-h) - 12px);
+    height: calc(var(--a-switch-h) - 12px);
     background: var(--line);
 }
 
@@ -239,17 +328,18 @@ body {
     box-shadow: inset 0 0 0 2px var(--on);
 }
 
+/* The knob sits 4px in from the right; the tick is centred on it at 2/3 its size. */
 .setting-switch:checked::before {
-    left: 28px;
-    width: 24px;
-    height: 24px;
+    left: calc(var(--a-switch-w) - var(--a-switch-h) + 4px);
+    width: calc(var(--a-switch-h) - 8px);
+    height: calc(var(--a-switch-h) - 8px);
     background: var(--on-ink);
 }
 
 .setting-switch:checked::after {
-    left: 32px;
-    width: 16px;
-    height: 16px;
+    left: calc(var(--a-switch-w) - var(--a-switch-h) + 4px + (var(--a-switch-h) - 8px) / 6);
+    width: calc((var(--a-switch-h) - 8px) * 2 / 3);
+    height: calc((var(--a-switch-h) - 8px) * 2 / 3);
     background: var(--on);
 }
 
@@ -260,23 +350,23 @@ body {
 }
 
 .stepper .setting-number {
-    width: 52px;
-    height: 44px;
+    width: calc(var(--a-ctl) + 6px);
+    height: var(--a-ctl);
     color: var(--ink);
-    font-size: 18px;
+    font-size: calc(var(--a-title) + 1px);
     font-weight: 800;
 }
 
 .step,
 .step-fine {
-    min-width: 44px;
-    height: 44px;
+    min-width: var(--a-ctl);
+    height: var(--a-ctl);
     border-radius: 12px;
     background: var(--btn);
     box-shadow: none;
     outline: 0;
     color: var(--btn-ink);
-    font-size: 16px;
+    font-size: var(--a-font);
     font-weight: 800;
 }
 
@@ -294,7 +384,7 @@ body {
 .setting-text,
 .preset-input,
 .share-code {
-    min-height: 44px;
+    min-height: var(--a-ctl);
     height: auto;
     padding: 0 12px 0 14px;
     border-radius: 12px;
@@ -302,7 +392,7 @@ body {
     box-shadow: inset 0 0 0 2px var(--line);
     outline: 0;
     color: var(--ink);
-    font-size: 16px;
+    font-size: var(--a-font);
     font-weight: 700;
 }
 
@@ -345,9 +435,9 @@ body {
 }
 
 .select-option {
-    min-height: 48px;
+    min-height: calc(var(--a-ctl) + 4px);
     border-radius: 12px;
-    font-size: 17px;
+    font-size: var(--a-title);
     font-weight: 600;
 }
 
@@ -364,7 +454,7 @@ body {
 
 .select-group {
     color: var(--accent);
-    font-size: 15px;
+    font-size: var(--a-help);
     font-weight: 800;
 }
 
@@ -372,5 +462,5 @@ body {
 .app-title {
     color: var(--ink-muted);
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: var(--a-help);
 }
