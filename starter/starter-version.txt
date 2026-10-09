@@ -1,3 +1,3 @@
 # The starter scripts' own version. Bump it for every starter release:
 # bundles already out there update themselves when the published one is newer.
-version=1.0
+version=1.2
