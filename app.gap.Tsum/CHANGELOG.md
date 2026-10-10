@@ -54,9 +54,16 @@ release note; they fold back in here when she ships.
 *Presets*
 - Pasting a preset export into the Code box saves its presets (a single line also applies it).
 
+**Fixes**
+- Box Buying no longer stalls on the JP build when a maxed-out Pick-Up Capsule pays out a Premium Ticket.
+
 ### Added
 
 - **Preset import**: the Code box's Apply saves each `Name: code` line as a preset (`presetsFromText`, `importPresets`), replacing same-named ones; more than one line saves without applying.
+
+### Fixed
+
+- **JP GET! dialog** (`EventGiftJp`, variant `jp`): とじる covered two of `EventGift`'s Close probes, so the capsule's Premium Ticket prize read as `FriendInfo` and the reveal loop never closed it. Probes the button's flat gold beside and above the text instead.
 
 ## [5.0b2]
 

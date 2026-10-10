@@ -15,7 +15,8 @@
 // confirmation (`Page.ConfirmPurchaseCapsulePage`, under the box dialog's
 // name). What the reveal loop taps through differs: "TAP! OPEN!", the machine
 // turning for up to ~9s, and then either the reveal card a box ends on or,
-// for a prize that is an item, the game's GET! dialog (`EventGift`). The last
+// for a prize that is an item, the game's GET! dialog (`EventGift`) -- also
+// what a capsule whose tsums are all maxed pays out, as a Premium Ticket. The last
 // capsule adds one more: "Last Prize!" over the store, the same dialog under
 // another title (`EventGift`'s `lastPrize` configuration), closed the same
 // way. The store then draws the capsule sold out -- ribbon on the tab, blue

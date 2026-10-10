@@ -2110,6 +2110,30 @@ var Page = {
     back: {x: 540, y: 1400},
     next: {x: 540, y: 1400}
   },
+  // The JP build's GET! dialog -- here the Premium Ticket a Pick-Up Capsule
+  // pays out once every tsum in it is maxed. Same chrome and title, but the
+  // とじる glyphs run wider than "Close" and cover two of the entry above's
+  // button probes (diff 98 and 132), so the frame read as `FriendInfo` and the
+  // reveal loop tapped the dialog body until it gave up. These read the flat
+  // gold either side of the text and above it instead (worst 14-24 within
+  // +/-8px).
+  EventGiftJp: {
+    name: PageName.EventGift,
+    variant: 'jp',
+    colors: [
+      {x: 431, y:  539, r:  26, g: 193, b: 233, match: true, threshold: 50},  // header band
+      {x: 119, y:  551, r:  26, g: 197, b: 233, match: true, threshold: 50},  // header band
+      {x: 275, y: 1217, r:  31, g: 197, b: 238, match: true, threshold: 50},  // footer band
+      {x: 665, y: 1193, r:  31, g: 199, b: 239, match: true, threshold: 50},  // footer band
+      {x: 452, y:  662, r: 255, g: 251, b: 115, match: true, threshold: 40},  // GET! title
+      {x: 614, y:  662, r: 255, g: 251, b: 115, match: true, threshold: 40},  // GET! title
+      {x: 390, y: 1420, r: 250, g: 174, b:   6, match: true, threshold: 40},  // Close button, left of the text
+      {x: 700, y: 1420, r: 252, g: 175, b:   4, match: true, threshold: 40},  // Close button, right of the text
+      {x: 540, y: 1345, r: 252, g: 180, b:   4, match: true, threshold: 40}   // Close button, above the text
+    ],
+    back: {x: 540, y: 1400},
+    next: {x: 540, y: 1400}
+  },
   ClosePage: { // including EventPage, MyInfo, SettingPage, others
     name: PageName.ClosePage, // the close button at center bottom
     colors: [
@@ -2324,9 +2348,10 @@ var PageProfiles: PageProfileMap = {
     note: 'The GET! gift dialog ("Claim your gift from your mailbox") with its '
         + 'Close. The game\'s generic reward dialog; the event raises it after a '
         + 'card reveal, and the Pick-Up Capsule ends on it when the prize is an '
-        + 'item rather than a tsum. Also "Last Prize!" (the `lastPrize` '
-        + 'configuration), the same dialog over the store once the last capsule '
-        + 'is bought.'
+        + 'item rather than a tsum (a Premium Ticket once its tsums are maxed). '
+        + 'Also "Last Prize!" (the `lastPrize` configuration), the same dialog '
+        + 'over the store once the last capsule is bought, and the JP build\'s '
+        + 'とじる button (the `jp` configuration).'
   },
   MagicalTime: {
     kind: PageKind.Permanent,
