@@ -2745,8 +2745,9 @@ function applySettingsCodeText(text: string): void {
 /** localStorage key for the Copy with settings list switch. A page preference, so not a setting. */
 var SHARE_LISTING_KEY = 'tsumtsumsharelisting';
 
+/** On unless the player switched it off. */
 function shareListingOn(): boolean {
-    return localStorage !== undefined && localStorage.getItem(SHARE_LISTING_KEY) === '1';
+    return localStorage === undefined || localStorage.getItem(SHARE_LISTING_KEY) !== '0';
 }
 
 /** The Copy with settings list row: a switch drawn by hand, since it holds no setting. */

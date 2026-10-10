@@ -54,12 +54,19 @@ release note; they fold back in here when she ships.
 *Presets*
 - Pasting a preset export into the Code box saves its presets (a single line also applies it).
 
+*Settings code*
+- Copy with settings list is now on by default.
+
 **Fixes**
 - Box Buying no longer stalls on the JP build when a maxed-out Pick-Up Capsule pays out a Premium Ticket.
 
 ### Added
 
 - **Preset import**: the Code box's Apply saves each `Name: code` line as a preset (`presetsFromText`, `importPresets`), replacing same-named ones; more than one line saves without applying.
+
+### Changed
+
+- **Copy with settings list** defaults on: `shareListingOn` reads anything but a stored `'0'` as on.
 
 ### Fixed
 
