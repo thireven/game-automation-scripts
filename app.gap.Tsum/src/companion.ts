@@ -253,16 +253,27 @@ function gapRemoteStartPrepare(optsJson: string): string {
   if (settings === null || typeof settings !== 'object') {
     return JSON.stringify({ ok: false, why: 'state-unreadable' });
   }
-  return JSON.stringify({ settings: settings, workflow: opts.workflow || null });
+  // A chore Now pressed while stopped (`gapSettingsAction`): a run for that chore alone.
+  const chore = opts.workflow ? null : choreNowTakeArmed();
+  if (chore !== null) {
+    (settings as unknown as { [key: string]: unknown })[chore] = true;
+  }
+  return JSON.stringify({ settings: settings, workflow: opts.workflow || null, choreOnly: chore !== null });
 }
 
 /** Starts the run `gapRemoteStartPrepare` answered. Returns when the run ends. */
 // noinspection JSUnusedGlobalSymbols
 function gapRemoteStartRun(preparedJson: string): void {
-  const p = JSON.parse(preparedJson) as { settings: Settings; workflow: unknown };
+  const p = JSON.parse(preparedJson) as { settings: Settings; workflow: unknown; choreOnly?: boolean };
   if (p.workflow) {
     startWorkflow(p.settings, JSON.stringify(p.workflow));
   } else {
-    start(p.settings);
+    gChoreOnlyRun = p.choreOnly === true;
+    try {
+      start(p.settings);
+    } finally {
+      // `buildRun` takes it; cleared here too for a start that never got that far.
+      gChoreOnlyRun = false;
+    }
   }
 }

@@ -323,6 +323,11 @@ interface SettingButton {
   remote?: string;
   /** GAP Companion only: a question the phone asks before running `remote`. */
   confirm?: UiText;
+  /**
+   * GAP Companion only: `remote` also works with the script stopped, starting a
+   * run for it alone (`ChoreNowFlags`, src/index.ts). Otherwise it needs a run.
+   */
+  whenStopped?: boolean;
 }
 
 /** One card inside a tab panel: a heading, an optional note, and its rows. */

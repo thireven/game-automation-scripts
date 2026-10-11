@@ -455,7 +455,7 @@ var tabs: TabSpec[] = [
                         step: 1,
                         buttons: [
                             {text: i18nThunk(UiText.ButtonNow), onClick: function () { askUnlockLevelsNow(); },
-                                remote: 'unlockLevelsNow', confirm: UiText.CompanionConfirmSpendNow}
+                                remote: 'unlockLevelsNow', confirm: UiText.CompanionConfirmSpendNow, whenStopped: true}
                         ]
                     },
                     {
@@ -488,7 +488,7 @@ var tabs: TabSpec[] = [
                         step: 1,
                         buttons: [
                             {text: i18nThunk(UiText.ButtonNow), onClick: function () { askBuyBoxesNow(); },
-                                remote: 'buyBoxesNow', confirm: UiText.CompanionConfirmSpendNow}
+                                remote: 'buyBoxesNow', confirm: UiText.CompanionConfirmSpendNow, whenStopped: true}
                         ]
                     },
                     {
@@ -551,7 +551,7 @@ var tabs: TabSpec[] = [
                         status: ReleaseStatus.Beta,
                         buttons: [
                             {text: i18nThunk(UiText.ButtonNow), onClick: function () { askExportTsumListNow(); },
-                                remote: 'exportTsumListNow'}
+                                remote: 'exportTsumListNow', whenStopped: true}
                         ]
                     }
                 ]
