@@ -85,6 +85,11 @@ not renormalize a file whose committed blob already has CRLF — that is git's
 anti-churn guard, and clearing it needs the working tree converted by hand.
 
 Automatically commit changed files with a succinct message.
+**Version branches merge forward.** Release branches are named for their version
+(`4.0`, `5.0`, `6.0`, ...). A commit to one also belongs in every higher one: merge
+it up a step at a time (`5.0` into `6.0`, then `6.0` into the next), fixing any
+conflict on the higher branch, and push them together. Never merge a higher
+branch down. A lower version's changelog entry stays in its own section.
 Update the CODEMAP.md whenever it makes sense to. Such as when architectural updates are made, or new features, etc.
 Don't run the build process if it's not necessary.
 Comments by Claude should not be so verbose. It should be concise with enough information that a junior developer should be able to understand.
