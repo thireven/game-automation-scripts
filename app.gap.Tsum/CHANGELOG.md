@@ -47,9 +47,16 @@ release note; they fold back in here when she ships.
 
 ## [6.0a2]
 
-### Changed
+### Summary
 
-- Version bumped from 6.0a1 to 6.0a2.
+**Additions**
+
+*GAP Companion*
+- Chore Now buttons work with the script stopped: it starts, does that chore, then stops again.
+
+### Added
+
+- **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
 
 ## [6.0a1]
 
