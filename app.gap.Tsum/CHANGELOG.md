@@ -45,6 +45,19 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a1]
+
+### Summary
+
+**Additions**
+
+*GAP Companion*
+- GAP Companion can change a device's My Tsum (Stats tab, or Settings > Actions): pick from the device's Tsum List, favourites first; it is set between rounds, or when the script next runs if it is stopped.
+
+### Added
+
+- **6.0 is the GAP Companion line**, branched from 5.0b4 while 5.x finishes beta. The companion code itself (standard `gap*` globals, signed `dist/`) came in during 5.0.
+
 ## [5.0b4]
 
 ### Summary
