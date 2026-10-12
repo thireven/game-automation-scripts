@@ -17,7 +17,7 @@
 // The zip goes up before the catalogue, so a tester never reads an entry naming
 // a missing file. --dry-run does 1-3, writes the catalogue to build/prerelease/
 // and uploads nothing. --stage DIR does the same into DIR, zip included: the
-// deploy dashboard (GAP/tools/deploy) cuts that way and uploads it itself.
+// GAP Devkit's Release side (GAP/tools/deploy) cuts that way and uploads it itself.
 //
 // A folder listed in Prerelease.Private (alpha) is not public: the tester gate
 // Worker (GAP/tools/tester-gate) serves it only under <BaseUrl>/t/<token>/, one
@@ -108,7 +108,7 @@ async function main() {
     const token = testerToken();
     if (!token) {
       throw new Error(`${folder}/ is private, and there is no tester token to check the upload with. ` +
-        'Set GAP_TESTER_TOKEN, or add yourself under Testers in the deploy dashboard.');
+        'Set GAP_TESTER_TOKEN, or add yourself under Testers in the GAP Devkit (Release).');
     }
     readDir = `${pre.BaseUrl.replace(/\/$/, '')}/t/${token}/${folder}`;
   }

@@ -1135,7 +1135,7 @@ npm run prerelease:alpha -- --keep-old # don't delete zips past HistoryLimit fro
 source. `tools/release/prerelease.js` publishes to `<Prerelease.BaseUrl>/alpha/`
 (config.json) instead. That folder is listed in `Prerelease.Private`, so it is
 served only through the tester gate, at `<BaseUrl>/t/<token>/alpha/`, one token
-per tester (`GAP/tools/tester-gate`; the deploy dashboard's Testers panel hands
+per tester (`GAP/tools/tester-gate`; the GAP Devkit's Release → Testers panel hands
 them out). It reviews the note and builds like `release:*`, then reads the
 folder's catalogue from R2 to keep its `Versions` history, uploads the zip,
 checks the served zip hashes to `Hash`, uploads the catalogue last and checks it

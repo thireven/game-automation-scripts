@@ -271,7 +271,7 @@ While one is connected:
   was read from (`frame`). Nothing here asks for them except the board scan, which
   forces its own frame past the host's rate limit.
 
-The GAP Devkit's **Live debug** tab (host repo, `tools/gap-devkit`) draws all of
+The GAP Devkit's **Live debug** tab (Local side, `GAP/tools/devkit`) draws all of
 it: the board scan over its frame with a slider back through earlier scans, and
 the screen with its taps and marks. Frames are ~250 KB/s, so its recordings leave
 them out unless asked.
