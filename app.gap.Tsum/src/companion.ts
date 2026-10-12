@@ -32,14 +32,14 @@ const CompanionStats = [
   { key: 'avgRound', label: 'Avg round', unit: 'sec', event: 'round.end', field: 'seconds', op: 'avg' },
 ];
 
-/** Actions the phone can send. `role` names are standard, so the phone needs no Tsum code. */
-const CompanionRemoteActions = [
+/**
+ * Actions the phone can send. `role` names are standard, so the phone needs no
+ * Tsum code. Add-ons add theirs (`gapAddonActionList`, src/addons.ts).
+ */
+const CompanionRemoteActions: GapAddonAction[] = [
   { name: 'wrapUp', label: 'Stop after this round', role: 'stopAfter' },
   { name: 'cancelWrapUp', label: 'Keep playing', role: 'cancelStopAfter' },
   { name: 'lastSettings', label: 'Last run settings' },
-  // `list`: the options are this device's `tsums` workflow list, read on each use.
-  { name: 'selectTsum', label: 'Change My Tsum',
-    args: { tsum: { type: 'enum', label: 'Tsum', list: 'tsums' } } },
 ];
 
 // --- Notifications (cloud/adapters/README.md § Notifications) -----------------
@@ -128,21 +128,6 @@ function notifyChoreDone(chore: 'unlock' | 'boxes' | 'tsumList', outcome: LogFie
   gapNotify({ title: title, body: body, category: 'task', tag: 'chore.' + chore });
 }
 
-/** Change My Tsum finished (src/myTsumSelect.ts): `fail` is why not, or null when it worked. */
-function notifyMyTsumChanged(tsum: string, name: string, fail: string | null): void {
-  if (fail === null) {
-    gapNotify({ title: 'My Tsum changed', body: name, category: 'task', tag: 'chore.myTsum' });
-    return;
-  }
-  gapNotify({
-    title: 'Couldn\'t change My Tsum',
-    body: name + ': ' + fail,
-    category: 'task',
-    tag: 'chore.myTsum',
-    actions: [{ label: 'Try again', action: 'selectTsum', args: { tsum: tsum } }],
-  });
-}
-
 /** `remoteSettingsApply`'s refusal reasons as the contract's short codes. */
 const CompanionSetWhy: { [why: string]: string } = {
   'no run': 'no-run',
@@ -159,7 +144,8 @@ function companionNum(v: unknown): number | null {
 /** What the phone shows for this script: readouts, stats rules and actions. */
 // noinspection JSUnusedGlobalSymbols
 function gapCompanion(): string {
-  return JSON.stringify({ readouts: CompanionReadouts, stats: CompanionStats, actions: CompanionRemoteActions });
+  return JSON.stringify({ readouts: CompanionReadouts, stats: CompanionStats,
+    actions: CompanionRemoteActions.concat(gapAddonActionList()) });
 }
 
 /** The run as the phone sees it: `{active, values, readouts, flags, info}`. */
@@ -188,11 +174,10 @@ function gapRemoteState(): string {
       stopPending: s.stopAfterThisRound === true,
     },
     // Full names; myTsum is null until the pre-round screen identified it.
-    info: {
+    // Add-ons add their own fields (src/addons.ts).
+    info: Object.assign({
       myTsum: typeof s.myTsum === 'string' && s.myTsum !== '' ? s.myTsum : null,
-      // Change My Tsum's choice until it is set: on this run, or the next one.
-      nextTsum: selectTsumNextLoad()?.name ?? null,
-    },
+    }, gapAddonStateInfo()),
   });
 }
 
@@ -225,15 +210,10 @@ function gapRemoteAction(name: string, argsJson: string): string {
     return JSON.stringify(status === 'no run' ? { ok: false, why: 'no-run' }
       : { ok: true, status: status, armed: armed });
   }
-  if (name === 'selectTsum') {
-    // The adapter already checked `tsum` against the list.
-    const status = selectMyTsumNow(String(JSON.parse(argsJson).tsum));
-    return JSON.stringify(status === 'queued' || status === 'saved' ? { ok: true, status: status } : { ok: false, why: status });
-  }
   if (name === 'lastSettings') {
     return JSON.stringify({ ok: true, settings: lastRunSettings() });
   }
-  return JSON.stringify({ ok: false, why: 'unknown-action' });
+  return gapAddonAction(name, argsJson) ?? JSON.stringify({ ok: false, why: 'unknown-action' });
 }
 
 /**

@@ -22,6 +22,10 @@
     // on the way into dist/ anyway; taking them out here means build/index.js and
     // the shipped file differ in one thing only, which is the mangling.
     "removeComments": true,
+    // build/index.d.ts: every global this bundle declares, which is what an
+    // add-on (src/addons.ts) compiles against. tools/build/build.js prepends the
+    // ambient .d.ts files so it stands alone.
+    "declaration": true,
     "newLine": "lf",
     "strict": true,
     "skipLibCheck": true,
@@ -152,6 +156,9 @@
     // file whose methods its handlers call -- and before index.ts, which is
     // what starts anything running.
     "src/pageHandlers.ts",
+    // Script add-ons' hook API (gapAddonRegister) and the registries the
+    // companion globals, the screens and buildRun/endRun read. Before them all.
+    "src/addons.ts",
     // The GAP Companion workflow runner: generic and vendored verbatim by other
     // scripts, so it references nothing above. Before workflow.ts, which
     // registers Tsum's nodes into it at load.
@@ -165,7 +172,7 @@
     // everything else it touches (index.ts, quickbar.ts) only at run time.
     "src/workflow.ts",
     // The engine half of the Quick Bar. Reads `gRunActive` (index.ts) and taps
-    // through `ts`, so it is last; nothing calls into it from the bundle -- the
+    // through `ts`, so it follows them; nothing calls into it from the bundle -- the
     // host's WebView and its pause hook are the only callers.
     "src/quickbar.ts"
   ]

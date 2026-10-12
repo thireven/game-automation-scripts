@@ -72,12 +72,13 @@ function ensureBuild(force) {
 }
 
 /**
- * Top-level `class` declarations in the bundle, which are lexical rather than
- * properties of the global object. Kept as an explicit list so a new one that
- * the harness needs fails loudly here rather than as `undefined is not a
- * constructor` somewhere downstream.
+ * Top-level `class` (and the odd `const`) declarations in the bundle, which are
+ * lexical rather than properties of the global object. Kept as an explicit list
+ * so a new one that the harness needs fails loudly here rather than as
+ * `undefined is not a constructor` somewhere downstream. `GAP_ADDON_API` is
+ * what an add-on passes to `gapAddonRegister` (src/addons.ts).
  */
-const LexicalGlobals = ['Tsum', 'TsumTaskController', 'PageRouter', 'FeverWatcher'];
+const LexicalGlobals = ['Tsum', 'TsumTaskController', 'PageRouter', 'FeverWatcher', 'GAP_ADDON_API'];
 
 /**
  * Build (if stale), then evaluate the bundle against a fresh host shim.

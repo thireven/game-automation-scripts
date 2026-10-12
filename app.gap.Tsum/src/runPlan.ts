@@ -44,7 +44,8 @@ const enum JobPriority {
   UnlockNow = 10,
   BuyBoxesNow = 11,
   TsumListNow = 12,
-  SelectTsumNow = 13,
+  /** One add-on's one-shot task (src/addons.ts). */
+  AddonNow = 13,
   AppRestart = 20,
   UnlockLevel = 30,
   BuyBoxes = 31,

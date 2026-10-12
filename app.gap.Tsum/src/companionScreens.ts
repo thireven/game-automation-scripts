@@ -7,7 +7,7 @@
 // companion repo's cloud/adapters/README.md. Change it here; no phone or adapter
 // release is needed.
 
-/** Task names (`TaskName`, src/runPlan.ts, and the Now sweeps) as a person reads them. */
+/** Task names (`TaskName`, src/runPlan.ts, and the Now sweeps) as a person reads them. Add-ons add theirs. */
 const CompanionTasks: { [task: string]: string } = {
   sendHearts: 'Sending hearts',
   receiveOneItem: 'Opening the mailbox',
@@ -19,7 +19,6 @@ const CompanionTasks: { [task: string]: string } = {
   buyBoxes: 'Buying boxes',
   buyBoxesNow: 'Buying boxes',
   exportTsumListNow: 'Exporting the Tsum list',
-  selectTsumNow: 'Changing My Tsum',
   wrapUpNow: 'Stopping after this round',
   taskWalkthrough: 'Recording a walkthrough',
   taskPlayGameQuick: 'Playing rounds',
@@ -29,6 +28,9 @@ const SKILL_FACT = { label: 'Skill', bind: 'data.skill', format: 'option:skillTy
 const BONUSES = ['Bonuses: {data.settings|trueKeys:bonus}', 'No bonus items'];
 const NO_ROUNDS = 'Finished rounds show here.';
 const ROUND_ROWS = { from: 'events', event: 'round.end' };
+
+/** The Stats tab's My Tsum card; `gapScreens` fills its items, add-on parts included. */
+const CompanionMyTsumCard = { card: 'My Tsum', icon: 'tsum', items: [] as unknown[] };
 
 const CompanionScreens = {
   ui: 3,
@@ -41,13 +43,7 @@ const CompanionScreens = {
   barNote: [{ text: 'The run stops when this round ends.', when: 'state.flags.stopPending' }],
   tabs: [
     { id: 'stats', label: 'Stats', items: [
-      { card: 'My Tsum', icon: 'tsum', items: [
-        { facts: [
-          { label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum' },
-          { label: 'Next', bind: 'state.info.nextTsum', icon: 'tsum' },
-        ] },
-        { button: 'selectTsum' },
-      ] },
+      CompanionMyTsumCard,
       { slot: 'totals' },
       { card: 'This run', icon: 'play', items: [
         { stats: [
@@ -118,11 +114,22 @@ const CompanionScreens = {
   maps: { tasks: CompanionTasks },
 };
 
+/** The Stats tab's My Tsum card items: the base fact, then any add-on facts and buttons. */
+function companionMyTsumCard(): unknown[] {
+  return [
+    { facts: [{ label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum' }, ...gAddonMyTsumCard.facts] },
+    ...gAddonMyTsumCard.buttons,
+  ];
+}
+
 /**
  * The phone's screens as JSON. A standard global the companion adapter
- * library looks for (UI contract 3).
+ * library looks for (UI contract 3). Built per call, so an add-on that
+ * registered after load is included.
  */
 // noinspection JSUnusedGlobalSymbols
 function gapScreens(): string {
+  CompanionMyTsumCard.items = companionMyTsumCard();
+  CompanionScreens.maps.tasks = Object.assign({}, CompanionTasks, gAddonTaskLabels);
   return JSON.stringify(CompanionScreens);
 }

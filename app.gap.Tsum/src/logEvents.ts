@@ -386,7 +386,7 @@ namespace Log {
     Start           = 'tsumList.start',
     Unnamed         = 'tsumList.unnamed',
     WriteFailed     = 'tsumList.writeFailed',
-    /** `tsum_list_<device id>.json`, the list Select Tsum reads, was written. */
+    /** `tsum_list_<device id>.json`, the workflow's `tsums` list, was written. */
     FileWritten     = 'tsumList.fileWritten',
   }
 
@@ -396,20 +396,6 @@ namespace Log {
     Loop            = 'workflow.loop',
     Node            = 'workflow.node',
     NodeFailed      = 'workflow.nodeFailed',
-    /** Select Tsum (src/myTsumSelect.ts): the target was already the MyTsum. */
-    SelectTsumAlready = 'workflow.selectTsum.already',
-    /** Select Tsum: MyTsum Set took (the button greyed out). */
-    SelectTsumDone    = 'workflow.selectTsum.done',
-    /** Select Tsum: a step failed; `reason` says which. The node is retried. */
-    SelectTsumFailed  = 'workflow.selectTsum.failed',
-    /** Select Tsum: the card at the listed position is another tsum. */
-    SelectTsumStale   = 'workflow.selectTsum.stale',
-    /** Select Tsum: the last page no longer ends on the list's last tsum; walking from page 1. */
-    SelectTsumEndChanged = 'workflow.selectTsum.endChanged',
-    /** Select Tsum: going to the listed page and slot. */
-    SelectTsumStart   = 'workflow.selectTsum.start',
-    /** Change My Tsum from GAP Companion: queued for the next turn between rounds. */
-    SelectTsumNowQueued = 'workflow.selectTsum.nowQueued',
     /** `presetsMirror` could not write the presets file. */
     PresetsNotSaved = 'workflow.presetsNotSaved',
     /** A setting the workflow owns (`stopAfterGames`) was refused. */
@@ -575,5 +561,15 @@ namespace Log {
     UnknownSetting = 'quickBar.unknownSetting',
     /** An enum setting sent a value it does not have; refused. */
     InvalidValue   = 'quickBar.invalidValue',
+  }
+
+  /** Script add-ons (src/addons.ts). */
+  export const enum Addon {
+    /** `gapAddonRegister` took an add-on (debug). */
+    Registered = 'addon.registered',
+    /** `gapAddonRegister` refused one: another API version, or the id is taken. */
+    Refused    = 'addon.refused',
+    /** An add-on's install, hook or action threw; the base carried on. */
+    Failed     = 'addon.failed',
   }
 }

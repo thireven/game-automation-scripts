@@ -23,7 +23,7 @@
 //
 // A whole export (reason `end of list`) also writes
 // tsum_list_state.json in the device folder, overwritten each time: the list a
-// GAP Companion workflow's Select Tsum reads (src/workflow.ts). Keyed by the
+// GAP Companion workflow's `tsums` option list reads (src/workflow.ts). Keyed by the
 // device id rather than the name in the CSV's `device` column, because names
 // need not be unique and the storage folder may be seen by more than one install.
 // ---------------------------------------------------------------------------
@@ -654,8 +654,8 @@ Tsum.prototype.taskExportTsumList = function() {
   if (!this.isRunning) {
     reason = 'stopped';
   }
-  // Only a whole list: Select Tsum goes straight to a card by its position in
-  // it, so a partial one would send it to the wrong page.
+  // Only a whole list: a card's position in it must match the collection, so
+  // a partial one would point to the wrong page.
   if (reason === 'end of list') {
     tsumListSaveFile(rows, build);
   }
@@ -670,7 +670,7 @@ Tsum.prototype.taskExportTsumList = function() {
 /**
  * Tap card `slot` and wait out the portrait's animation. True once the card
  * reads gold (selected); a tap swallowed by an animation is tried again.
- * Shared with Select My Tsum (src/myTsumSelect.ts).
+ * Also used by add-ons.
  */
 function tsumListSelectCard(run: Tsum, slot: number): boolean {
   let selected = false;
@@ -686,7 +686,7 @@ function tsumListSelectCard(run: Tsum, slot: number): boolean {
 /**
  * Turn to the next page, or the previous one with `back`. A turn is proved by
  * the first card's portrait changing; a tap that landed mid-animation turns
- * nothing, so it is tried again. Shared with Select My Tsum (src/myTsumSelect.ts).
+ * nothing, so it is tried again. Also used by add-ons.
  */
 function tsumListTurnPage(run: Tsum, back?: boolean): boolean {
   const before = run.myTsumSignature(tsumListCellRect(0));

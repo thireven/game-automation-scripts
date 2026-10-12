@@ -12,7 +12,7 @@
 // Cases: per-loop values cycle; `loop {times}`; `stop`; running off the end
 // (implicit stop) and the empty workflow; retries then skip; `terminate`; the
 // check's refusals in its documented order; Tsum's Tsum List check; the presets
-// mirror round trip.
+// mirror round trip; the add-on hooks (src/addons.ts) with a test add-on.
 
 const fs = require('fs');
 const os = require('os');
@@ -217,11 +217,27 @@ check('begin: a refused workflow is terminated with the code, before any node',
   && r.names.join() === 'workflow.end', r);
 check('receive: bad payload is bad-sync', JSON.parse(ctx.gapWorkflowReceive('{"presets":[]}')).error === 'bad-sync');
 
+// --- the catalog's shape --------------------------------------------------------------
+const catalog = JSON.parse(ctx.gapWorkflowCatalog());
+const tsumTypes = catalog.nodes.map((n) => n.type).filter((t) => t.indexOf('test.') !== 0);
+check('catalog: api 1', catalog.api === 1, catalog.api);
+check('catalog: Tsum nodes in contract order', JSON.stringify(tsumTypes) === JSON.stringify(['restartApp',
+  'tsum.receiveHearts', 'tsum.sendHearts', 'tsum.skill', 'tsum.playRounds', 'loop', 'stop']), tsumTypes);
+check('catalog: no presets list (reserved)', catalog.lists.presets === undefined);
+check('catalog: listInfo for tsums', catalog.listInfo && catalog.listInfo.tsums.label === 'Tsum List', catalog.listInfo);
+check('catalog: skills include nokill', catalog.lists.skills.some((s) => s.value === 'skill:nokill'));
+
 // --- Tsum's Tsum List check ---------------------------------------------------------
 const listFile = path.join(ctx.getDevicePath(), 'tsum_list_state.json');
 fs.rmSync(listFile, { force: true });
-const select = (tsum) => node('s1', 'tsum.selectTsum', { tsum });
-receive([select({ perLoop: ['arielplus', 'goofyplus'] })]);
+// The check (workflowTsumCheck) applies to any param on the `tsums` list.
+ctx.gapWorkflowDefineNode({
+  type: 'test.pickTsum', label: 'Pick Tsum (test)',
+  params: [{ key: 'pick', label: 'Tsum', type: 'enum', lists: ['tsums'], perLoop: true, perDevice: true }],
+  run: () => 'done',
+});
+const pickTsum = (pick) => node('s1', 'test.pickTsum', { pick });
+receive([pickTsum({ perLoop: ['arielplus', 'goofyplus'] })]);
 check('tsum list: missing file', checkOf().error === 'tsum-list-missing', checkOf());
 check('tsum list: catalog lists.tsums is null', JSON.parse(ctx.gapWorkflowCatalog()).lists.tsums === null);
 r = runToEnd();
@@ -232,7 +248,7 @@ fs.writeFileSync(listFile, JSON.stringify({ at: '2026-10-04T00:00:00.000Z', buil
   { order: 1, tsum: 'arielplus', name: 'Ariel+' }, { order: 2, tsum: '', name: '' },
   { order: 3, tsum: 'mickey', name: 'Mickey' }] }));
 check('tsum list: a per-loop value not in it', checkOf().error === 'tsum-not-in-list:goofyplus', checkOf());
-receive([select({ perLoop: ['arielplus', 'mickey'] })]);
+receive([pickTsum({ perLoop: ['arielplus', 'mickey'] })]);
 check('tsum list: every value in it passes', checkOf().ok === true, checkOf());
 const tsums = JSON.parse(ctx.gapWorkflowCatalog()).lists.tsums;
 check('tsum list: catalog lists the named rows by full name',
@@ -255,7 +271,7 @@ function buildWorkflowRun() {
   out.after = run('gWorkflowRun');
   return out;
 }
-receive([select('mickey'), node('n2', 'tsum.playRounds', { rounds: 2 })]);
+receive([pickTsum('mickey'), node('n2', 'tsum.playRounds', { rounds: 2 })]);
 let built = buildWorkflowRun();
 check('mode: the armed ref is taken and cleared', built.armed === null && built.mode === true, built);
 check('mode: only the Workflow job is registered', built.tasks === 'workflow', built.tasks);
@@ -269,16 +285,6 @@ fs.rmSync(listFile, { force: true });
 built = buildWorkflowRun();
 check('mode: a refused workflow registers nothing and stops', built.tasks === '' && built.stopping === true, built);
 
-// --- the catalog's shape --------------------------------------------------------------
-const catalog = JSON.parse(ctx.gapWorkflowCatalog());
-const tsumTypes = catalog.nodes.map((n) => n.type).filter((t) => t.indexOf('test.') !== 0);
-check('catalog: api 1', catalog.api === 1, catalog.api);
-check('catalog: Tsum nodes in contract order', JSON.stringify(tsumTypes) === JSON.stringify(['restartApp',
-  'tsum.receiveHearts', 'tsum.sendHearts', 'tsum.selectTsum', 'tsum.skill', 'tsum.playRounds', 'loop', 'stop']), tsumTypes);
-check('catalog: no presets list (reserved)', catalog.lists.presets === undefined);
-check('catalog: listInfo for tsums', catalog.listInfo && catalog.listInfo.tsums.label === 'Tsum List', catalog.listInfo);
-check('catalog: skills include nokill', catalog.lists.skills.some((s) => s.value === 'skill:nokill'));
-
 // --- presets mirror ----------------------------------------------------------------------
 ctx.getScriptPath = () => storage;
 ctx.presetsMirror(JSON.stringify([{ name: 'A', values: { skillLevel: 3, bad: { x: 1 } } }, { nope: 1 }]));
@@ -286,6 +292,76 @@ check('presets mirror: round trip keeps scalar values only',
   ctx.gapPresetsLocal() === JSON.stringify([{ name: 'A', values: { skillLevel: 3 } }]), ctx.gapPresetsLocal());
 fs.rmSync(path.join(storage, 'presets-' + ctx.getDeviceId() + '.json'), { force: true });
 check('presets mirror: missing file is []', ctx.gapPresetsLocal() === '[]');
+
+// --- Script add-ons (src/addons.ts), with a test add-on -------------------------------
+let companion = JSON.parse(ctx.gapCompanion());
+check('addons: none loaded, only the base actions',
+  companion.actions.map((a) => a.name).join() === 'wrapUp,cancelWrapUp,lastSettings', companion.actions);
+let screens = JSON.parse(ctx.gapScreens());
+check('addons: none loaded, My Tsum card has the base fact only',
+  JSON.stringify(screens.tabs[0].items[0].items) === JSON.stringify([{ facts: [
+    { label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum' }] }]), screens.tabs[0].items[0]);
+let hookRan = false;
+let started = null;
+// A run already going: an add-on that loads now catches up on onRunStart.
+run('gRunActive = true; gAddonRunStarted = true; ts = { fake: 1 }; var realController = gTaskController; gTaskController = { fake: 2 }');
+check('addons: a test add-on registers',
+  ctx.gapAddonRegister('test.addon', ctx.GAP_ADDON_API, (host) => {
+    host.addActions([{ name: 'test.echo', label: 'Echo' }, { name: 'test.boom', label: 'Boom' }], (name, argsJson) => {
+      if (name === 'test.boom') throw new Error('boom');
+      return JSON.stringify({ ok: true, args: JSON.parse(argsJson) });
+    });
+    host.addStateInfo(() => ({ testInfo: 7 }));
+    host.addTaskLabels({ testTask: 'Testing' });
+    host.addMyTsumCard({ facts: [{ label: 'Test', bind: 'state.info.testInfo' }], buttons: [{ button: 'test.echo' }] });
+    host.onRunStart((r, controller) => { started = { r, controller }; });
+    host.onRunEnd(() => { hookRan = true; });
+  }) === true);
+check('addons: onRunStart replayed for a run already going',
+  started !== null && started.r.fake === 1 && started.controller.fake === 2, started);
+run('ts = undefined; gTaskController = realController');
+companion = JSON.parse(ctx.gapCompanion());
+check('addons: actions listed after the base actions',
+  companion.actions.map((a) => a.name).join() === 'wrapUp,cancelWrapUp,lastSettings,test.echo,test.boom', companion.actions);
+screens = JSON.parse(ctx.gapScreens());
+check('addons: My Tsum card has the add-on fact and button',
+  JSON.stringify(screens.tabs[0].items[0].items) === JSON.stringify([{ facts: [
+    { label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum' }, { label: 'Test', bind: 'state.info.testInfo' }] },
+  { button: 'test.echo' }]), screens.tabs[0].items[0]);
+check('addons: task label merged', screens.maps.tasks.testTask === 'Testing'
+  && screens.maps.tasks.buyBoxes === 'Buying boxes', screens.maps.tasks);
+check('addons: state info merged', JSON.parse(ctx.gapRemoteState()).info.testInfo === 7);
+check('addons: an action runs', JSON.parse(ctx.gapRemoteAction('test.echo', '{"a":1}')).args.a === 1);
+check('addons: unknown action still refused',
+  JSON.parse(ctx.gapRemoteAction('nope', '{}')).why === 'unknown-action');
+check('addons: a throwing action answers action-failed',
+  JSON.parse(ctx.gapRemoteAction('test.boom', '{}')).why === 'action-failed');
+check('addons: a duplicate id is refused', ctx.gapAddonRegister('test.addon', ctx.GAP_ADDON_API, () => {}) === false);
+check('addons: another api is refused', ctx.gapAddonRegister('test.other', ctx.GAP_ADDON_API + 1, () => {}) === false);
+ctx.endRun();
+check('addons: onRunEnd runs from endRun', hookRan === true);
+
+// A throwing install leaves nothing behind and does not use up its id.
+let halfStarted = false;
+const nodeCount = JSON.parse(ctx.gapWorkflowCatalog()).nodes.length;
+check('addons: a throwing install is refused',
+  ctx.gapAddonRegister('test.half', ctx.GAP_ADDON_API, (host) => {
+    host.addActions([{ name: 'test.half', label: 'Half' }], () => '{}');
+    host.addStateInfo(() => ({ halfInfo: 1 }));
+    host.onRunStart(() => { halfStarted = true; });
+    ctx.gapWorkflowDefineNode({ type: 'test.halfNode', label: 'Half', params: [], run: () => 'done' });
+    throw new Error('half');
+  }) === false);
+check('addons: a failed install adds no action',
+  JSON.parse(ctx.gapCompanion()).actions.every((a) => a.name !== 'test.half'));
+check('addons: a failed install adds no state info', JSON.parse(ctx.gapRemoteState()).info.halfInfo === undefined);
+check('addons: a failed install adds no workflow node',
+  JSON.parse(ctx.gapWorkflowCatalog()).nodes.length === nodeCount);
+ctx.gapAddonsRunStart({ fake: 3 }, { fake: 4 });
+check('addons: a failed install adds no run hook', halfStarted === false);
+ctx.gapAddonsRunEnd();
+check('addons: a failed id can register again',
+  ctx.gapAddonRegister('test.half', ctx.GAP_ADDON_API, () => {}) === true);
 
 // --- review fixes -------------------------------------------------------------------
 // A stale rev is reported under the rev that was started, not the synced one.

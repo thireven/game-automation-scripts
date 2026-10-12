@@ -13,11 +13,14 @@ docs), then drop its rows here.
 | `SettingKey.TsumListOnly` (start flag, no row) | Tsum List export: a run started for it stops after | `src/shared.d.ts`, `src/runPlan.ts`, `src/index.ts` | used |
 | `RowKey.ExportTsumList` + `GroupTsumList`/`SettingExportTsumList` strings | Tsum List Now button | `src/settings.d.ts`, `src/settings.ts`, `src/strings.d.ts`, `src/uiEn.ts` | used |
 | `CollectionSortDialog.ownedOnly*`, `sortCollection`'s `ownedOnly` | Tsum List: owned tsums only | `src/data.ts`, `src/levelCap.ts` | used |
+| `CollectionGrid.scrubFirst` / `scrubLast`, `skipCollectionToEnd`, `tsumListTurnPage`'s `back` | Collection scrubber: first/last page in one tap | `src/data.ts`, `src/levelCap.ts`, `src/tsumList.ts`, add-ons | used |
 | `CollectionGrid.nextPageSamples`, `body*`, `selected*` | Tsum List: last page, empty/selected slots | `src/data.ts` | used |
 | `StatsRegion.slash`, `StatsRegion.scale`, `StatsSlash` | Tsum List: "5/10" and the 9px dates | `src/globals.d.ts`, `src/roundStats.ts` | used |
 | `TsumListPortrait`, `TsumListRegions`, `src/tsumsCollection.dat` | Tsum List: naming by portrait, level/skill/date reads | `src/data.ts`, build, lexicon | used |
 | `TsumListRegions.skillBar`/`skillFill`, `readSkillProgress` | Tsum List: `skill_progress` column | `src/data.ts`, `src/tsumList.ts` | used |
 | `TsumListRegions.favorite`, `readTsumFavorite` | Tsum List: `favorite` column | `src/data.ts`, `src/tsumList.ts` | used |
+| `GapWorkflowListItem.favorite` | `tsums` list: favorites first and starred on the phone | `src/gapWorkflow.ts`, `src/workflow.ts`, companion `ListItem` / `Option.favorite` | used |
+| `gapAddonRegister`, `GapAddonHost`, `GAP_ADDON_API`, `JobPriority.AddonNow`, `addon.<name>.*` log events | Script add-ons' hook API | `src/addons.ts`, `src/runPlan.ts`, `src/logging.ts`, `src/companion.ts`, `src/companionScreens.ts`, `src/index.ts` | used |
 | `TsumListName`, `src/tsumNames.dat`, `myTsumUnpack` | Tsum List: printed-name fallback for art twins | `src/data.ts`, `src/tsumList.ts`, `src/roundStats.ts`, build, lexicon | used |
 | `SettingKey.StopAfterGames`, `SettingKey.StopAfterAction`, `StopAfterAction`, `src/stopAfterOptions.ts` | Stop after games | `src/shared.d.ts`, `src/settings.ts`, `src/quickbar.ts`, `src/quickbar.html`, `src/play.ts` | used |
 | `emitTrace()` / `traceAttached()` host natives, `src/trace.ts` (`Trace.Kind`, `traceOn`, `traceSend`), `Log.Log.TraceFailed`, `traceWantFrame()` / `traceFrameId()` host natives, `traceFrameAsk`, `traceFrameOf`, `traceMarks`, `Tsum.squareFrame` | Trace stream: live debug data, frames and marks for dev tools | `src/globals.d.ts`, `src/trace.ts`, `src/logging.ts`, `src/board.ts`, `src/forecast.ts`, `src/logEvents.ts`, host `api_system.cpp` / `TraceStream.kt` | used |

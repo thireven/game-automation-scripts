@@ -118,7 +118,9 @@ function checkBundle(file) {
                   'gapWorkflowCheck', 'startWorkflow', 'presetsMirror', 'gapPresetsLocal',
                   'gapScreens', 'gapSettingsSchema', 'gapSettingsAction', 'gapCompanion',
                   'gapRemoteState', 'gapRemoteSet', 'gapRemoteAction', 'gapRemoteStartPrepare',
-                  'gapRemoteStartRun'];
+                  'gapRemoteStartRun',
+                  // Script add-ons register through these (src/addons.ts).
+                  'gapAddonRegister', 'GAP_ADDON_API'];
   const missing = wanted.filter((name) => ctx[name] === undefined);
   if (missing.length) {
     console.error('[minify] the reprinted bundle lost: ' + missing.join(', '));

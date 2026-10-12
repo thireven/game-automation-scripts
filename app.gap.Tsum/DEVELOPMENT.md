@@ -1021,6 +1021,15 @@ check. Without the key the build is unsigned and the companion skips it;
 `release.js` warns loudly. GAP Devkit sets the key for DEV builds. Format: the
 host's `cloud/adapters/README.md` § Script signatures.
 
+**Script add-ons compile against `build/index.d.ts`.** `tsconfig.json` has
+`declaration` on, so `tsc:game` also writes the bundle's declarations, and the
+build prepends `src/shared.d.ts` and `src/globals.d.ts` so the file stands
+alone. An add-on is code GAP evaluates into the script's global scope after the
+bundle; it registers through `gapAddonRegister` (`src/addons.ts`) and calls any
+other base global by name. `const enum`s (`JobPriority`, `Log.*`) inline from
+the declarations, so changing one an add-on uses bumps `GAP_ADDON_API`.
+Private add-ons are not in this tree.
+
 `<archive>.zip.sha256` is written straight after the archive, so the two always
 describe the same bytes, and it says whether a copy that has travelled to a
 device is still the build it came from. The archive is written by

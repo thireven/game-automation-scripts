@@ -245,10 +245,23 @@ function devScriptKey() {
   return fs.existsSync(pem) ? pem : undefined;
 }
 
+/**
+ * build/index.d.ts, the types an add-on compiles against (src/addons.ts). tsc
+ * writes the bundle's own declarations; the ambient files it was compiled with
+ * (src/*.d.ts in tsconfig.json's `files`) are prepended so it stands alone.
+ */
+function addonTypes(log) {
+  const out = local('build', 'index.d.ts');
+  const ambient = ['src/shared.d.ts', 'src/globals.d.ts']
+    .map((f) => `// --- ${f} ---\n` + fs.readFileSync(local(f), 'utf8'));
+  fs.writeFileSync(out, ambient.join('\n') + '\n// --- the bundle ---\n' + fs.readFileSync(out, 'utf8'));
+  log('[build] build/index.d.ts: add-on types\n');
+}
+
 // Declaration order is print order. What actually runs when is decided by
 // `needs` alone.
 const steps = [
-  { id: 'tsc:game', run: ({ log }) => node(log, tsc) },
+  { id: 'tsc:game', run: async ({ log }) => { await node(log, tsc); addonTypes(log); } },
 
   // Regenerated from the bundle that was just built: the dispatch order is
   // computed by PageRouter.plan rather than written down, so the only honest way

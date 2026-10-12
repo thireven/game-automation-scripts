@@ -710,7 +710,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     }
   }
   // A workflow replaces the chore table: its nodes call the chores in its own
-  // order. Refused (e.g. no Tsum List for Select Tsum): nothing is registered
+  // order. Refused (e.g. a node needs the Tsum List): nothing is registered
   // and the run ends before any node runs.
   if (gWorkflowRun && !workflowBegin(workflowRef!)) {
     return;
@@ -719,22 +719,19 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   for (let i = 0; i < jobs.length; i++) {
     gTaskController.register(jobs[i], taskBody(ts, jobs[i].name));
   }
-  if (gWalkthroughRun) {
-    return;
+  if (!gWalkthroughRun) {
+    if (unlockFirst) {
+      queueUnlockSweep(ts, gTaskController, choreOnly);
+    }
+    if (buyBoxesFirst) {
+      queueBuyBoxSweep(ts, gTaskController, choreOnly);
+    }
+    if (tsumListOnly) {
+      queueTsumListExport(ts, gTaskController, true);
+    }
   }
-  if (unlockFirst) {
-    queueUnlockSweep(ts, gTaskController, choreOnly);
-  }
-  if (buyBoxesFirst) {
-    queueBuyBoxSweep(ts, gTaskController, choreOnly);
-  }
-  if (tsumListOnly) {
-    queueTsumListExport(ts, gTaskController, true);
-  }
-  // A MyTsum the phone picked while nothing ran.
-  if (!gWorkflowRun) {
-    selectTsumNextResume(ts, gTaskController);
-  }
+  // Add-ons (src/addons.ts) queue their own one-shots; each checks the run's mode.
+  gapAddonsRunStart(ts, gTaskController);
 }
 
 /**
@@ -777,7 +774,7 @@ function endRun(): void {
   gUnlockNowQueued = false;
   gBuyBoxNowQueued = false;
   gTsumListNowQueued = false;
-  gSelectTsumNowQueued = false;
+  gapAddonsRunEnd();
   // Before `ts` goes, so the workflow's closing banner still has somewhere to go.
   workflowRunEnded();
   // Read before `ts` is cleared below; the event itself goes out with the rest
