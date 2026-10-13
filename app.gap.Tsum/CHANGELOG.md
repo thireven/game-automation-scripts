@@ -69,7 +69,7 @@ release note; they fold back in here when she ships.
 ### Changed
 
 - **A GAP Companion feature moved to a private add-on**, with its own constants, probes and log events. The Tsum List check (`workflowTsumCheck`) now covers any node param on the `tsums` list; that list and the collection helpers stay here.
-- **Heart send waits**, merged up from 5.0b5 (details under [5.0b5]).
+- **Heart send waits**, merged up from 5.0b6 (details under [5.0b6]).
 
 ### Fixed
 
@@ -89,6 +89,18 @@ release note; they fold back in here when she ships.
 
 - **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
 
+## [5.0b6]
+
+### Summary
+
+**Fixes**
+- Sending hearts through the ranking is about 15% faster.
+
+### Changed
+
+- **Build warns on a dev-signed `dist/`**: with `GAP_SCRIPT_KEY` unset, `dist/` is signed with the dev key, which only a GAP started with `--cloud-script-key` trusts; the build now says so.
+- **Heart send waits** (`sendOneHeart`): a debug run beside a screen recording put each heart at 2.5 s, ~0.6 s of it three `settleScreen` calls watching a screen already still. Each step now polls its next page every 60 ms (`HeartPollMs`, one capture a look) with time budgets in place of poll counts; the dialog and the toast get a lead-free 60 ms settle for their fade-in; the toast's dismissal waits for `FriendPage` and taps again only while the toast still shows (`dismissHeartToast`). OK still waits until the dialog has been up 230 ms (`HeartDialogReadyMs`; earlier presses are ignored), and `Received` (the mailbox panel) is out of `heartSweepPages()`: the toast's first frame fingerprinted as it and was tapped away, ~0.6 s on 38% of sends. `FriendInfo` is tapped away only when two looks agree. The end-of-screenful toast check is one look unless a no-toast send may still raise one. `settleScreen` takes optional `leadMs` and `spacingMs`.
+
 ## [5.0b5]
 
 ### Summary
@@ -96,11 +108,6 @@ release note; they fold back in here when she ships.
 **Fixes**
 - Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
 - Cinderella's skill clears far more: its strokes are drawn slowly enough for the game to follow, stay on the board, and fill her skill time at every level.
-- Sending hearts through the ranking is about 15% faster.
-
-### Changed
-
-- **Heart send waits** (`sendOneHeart`): a debug run beside a screen recording put each heart at 2.5 s, ~0.6 s of it three `settleScreen` calls watching a screen already still. Each step now polls its next page every 60 ms (`HeartPollMs`, one capture a look) with time budgets in place of poll counts; the dialog and the toast get a lead-free 60 ms settle for their fade-in; the toast's dismissal waits for `FriendPage` and taps again only while the toast still shows (`dismissHeartToast`). OK still waits until the dialog has been up 230 ms (`HeartDialogReadyMs`; earlier presses are ignored), and `Received` (the mailbox panel) is out of `heartSweepPages()`: the toast's first frame fingerprinted as it and was tapped away, ~0.6 s on 38% of sends. `FriendInfo` is tapped away only when two looks agree. The end-of-screenful toast check is one look unless a no-toast send may still raise one. `settleScreen` takes optional `leadMs` and `spacingMs`.
 
 ### Fixed
 
