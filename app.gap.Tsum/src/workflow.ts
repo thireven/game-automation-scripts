@@ -263,16 +263,6 @@ const WorkflowTsumNodes: GapWorkflowNodeDef[] = [
     }),
   },
   {
-    type: 'tsum.selectTsum', label: 'Select Tsum', group: 'Tsum',
-    help: 'Sets My Tsum before the next round',
-    // perDevice: each device picks from its own Tsum List.
-    params: [{ key: 'tsum', label: 'Tsum', type: 'enum', lists: ['tsums'], perLoop: true, perDevice: true }],
-    // Straight to the card the Tsum List places it at (src/myTsumSelect.ts).
-    run: workflowChore(function(run, ctx) {
-      return selectMyTsum(String(ctx.params.tsum));
-    }),
-  },
-  {
     type: 'tsum.skill', label: 'Skill', group: 'Tsum',
     help: 'A preset or a skill, from the next round',
     params: [{ key: 'use', label: 'Use', type: 'enum', lists: ['presets', 'skills'], perLoop: true }],
@@ -414,34 +404,38 @@ function workflowSkillsList(): GapWorkflowListItem[] {
 }
 
 /**
- * The check hook: a Select Tsum needs this device's Tsum List, and every tsum
- * it names (each per-loop value too) has to be in it.
+ * The check hook: a node with a param on the `tsums` list needs this device's
+ * Tsum List, and every tsum it names (each per-loop value too) has to be in it.
  */
 function workflowTsumCheck(workflow: GapWorkflow): string | null {
   let file: TsumListFile | null | undefined;
   for (let i = 0; i < workflow.nodes.length; i++) {
     const node = workflow.nodes[i];
-    if (node.type !== 'tsum.selectTsum') {
-      continue;
-    }
-    if (file === undefined) {
-      file = tsumListLoadFile();
-    }
-    if (file === null) {
-      return 'tsum-list-missing';
-    }
-    const value = node.params.tsum;
-    if (value === undefined || value === null) {
-      continue;
-    }
-    const wanted = gapWorkflowValuesOf(value);
-    for (let w = 0; w < wanted.length; w++) {
-      let found = false;
-      for (let r = 0; r < file.tsums.length && !found; r++) {
-        found = file.tsums[r].tsum !== '' && file.tsums[r].tsum === wanted[w];
+    const def = gapWorkflowDef(node.type);
+    const params = def === undefined ? [] : def.params;
+    for (let p = 0; p < params.length; p++) {
+      if (params[p].lists === undefined || params[p].lists!.indexOf('tsums') < 0) {
+        continue;
       }
-      if (!found) {
-        return 'tsum-not-in-list:' + wanted[w];
+      if (file === undefined) {
+        file = tsumListLoadFile();
+      }
+      if (file === null) {
+        return 'tsum-list-missing';
+      }
+      const value = node.params[params[p].key];
+      if (value === undefined || value === null) {
+        continue;
+      }
+      const wanted = gapWorkflowValuesOf(value);
+      for (let w = 0; w < wanted.length; w++) {
+        let found = false;
+        for (let r = 0; r < file.tsums.length && !found; r++) {
+          found = file.tsums[r].tsum !== '' && file.tsums[r].tsum === wanted[w];
+        }
+        if (!found) {
+          return 'tsum-not-in-list:' + wanted[w];
+        }
       }
     }
   }

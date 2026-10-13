@@ -37,9 +37,6 @@ const CompanionRemoteActions = [
   { name: 'wrapUp', label: 'Stop after this round', role: 'stopAfter' },
   { name: 'cancelWrapUp', label: 'Keep playing', role: 'cancelStopAfter' },
   { name: 'lastSettings', label: 'Last run settings' },
-  // `list`: the options are this device's `tsums` workflow list, read on each use.
-  { name: 'selectTsum', label: 'Change My Tsum',
-    args: { tsum: { type: 'enum', label: 'Tsum', list: 'tsums' } } },
 ];
 
 // --- Notifications (cloud/adapters/README.md § Notifications) -----------------
@@ -128,21 +125,6 @@ function notifyChoreDone(chore: 'unlock' | 'boxes' | 'tsumList', outcome: LogFie
   gapNotify({ title: title, body: body, category: 'task', tag: 'chore.' + chore });
 }
 
-/** Change My Tsum finished (src/myTsumSelect.ts): `fail` is why not, or null when it worked. */
-function notifyMyTsumChanged(tsum: string, name: string, fail: string | null): void {
-  if (fail === null) {
-    gapNotify({ title: 'My Tsum changed', body: name, category: 'task', tag: 'chore.myTsum' });
-    return;
-  }
-  gapNotify({
-    title: 'Couldn\'t change My Tsum',
-    body: name + ': ' + fail,
-    category: 'task',
-    tag: 'chore.myTsum',
-    actions: [{ label: 'Try again', action: 'selectTsum', args: { tsum: tsum } }],
-  });
-}
-
 /** `remoteSettingsApply`'s refusal reasons as the contract's short codes. */
 const CompanionSetWhy: { [why: string]: string } = {
   'no run': 'no-run',
@@ -190,8 +172,6 @@ function gapRemoteState(): string {
     // Full names; myTsum is null until the pre-round screen identified it.
     info: {
       myTsum: typeof s.myTsum === 'string' && s.myTsum !== '' ? s.myTsum : null,
-      // Change My Tsum's choice until it is set: on this run, or the next one.
-      nextTsum: selectTsumNextLoad()?.name ?? null,
     },
   });
 }
@@ -224,11 +204,6 @@ function gapRemoteAction(name: string, argsJson: string): string {
     const status = armed ? stopAfterThisRound() : cancelStopAfterThisRound();
     return JSON.stringify(status === 'no run' ? { ok: false, why: 'no-run' }
       : { ok: true, status: status, armed: armed });
-  }
-  if (name === 'selectTsum') {
-    // The adapter already checked `tsum` against the list.
-    const status = selectMyTsumNow(String(JSON.parse(argsJson).tsum));
-    return JSON.stringify(status === 'queued' || status === 'saved' ? { ok: true, status: status } : { ok: false, why: status });
   }
   if (name === 'lastSettings') {
     return JSON.stringify({ ok: true, settings: lastRunSettings() });

@@ -220,8 +220,14 @@ check('receive: bad payload is bad-sync', JSON.parse(ctx.gapWorkflowReceive('{"p
 // --- Tsum's Tsum List check ---------------------------------------------------------
 const listFile = path.join(ctx.getDevicePath(), 'tsum_list_state.json');
 fs.rmSync(listFile, { force: true });
-const select = (tsum) => node('s1', 'tsum.selectTsum', { tsum });
-receive([select({ perLoop: ['arielplus', 'goofyplus'] })]);
+// The check (workflowTsumCheck) applies to any param on the `tsums` list.
+ctx.gapWorkflowDefineNode({
+  type: 'test.pickTsum', label: 'Pick Tsum (test)',
+  params: [{ key: 'pick', label: 'Tsum', type: 'enum', lists: ['tsums'], perLoop: true, perDevice: true }],
+  run: () => 'done',
+});
+const pickTsum = (pick) => node('s1', 'test.pickTsum', { pick });
+receive([pickTsum({ perLoop: ['arielplus', 'goofyplus'] })]);
 check('tsum list: missing file', checkOf().error === 'tsum-list-missing', checkOf());
 check('tsum list: catalog lists.tsums is null', JSON.parse(ctx.gapWorkflowCatalog()).lists.tsums === null);
 r = runToEnd();
@@ -232,7 +238,7 @@ fs.writeFileSync(listFile, JSON.stringify({ at: '2026-10-04T00:00:00.000Z', buil
   { order: 1, tsum: 'arielplus', name: 'Ariel+' }, { order: 2, tsum: '', name: '' },
   { order: 3, tsum: 'mickey', name: 'Mickey' }] }));
 check('tsum list: a per-loop value not in it', checkOf().error === 'tsum-not-in-list:goofyplus', checkOf());
-receive([select({ perLoop: ['arielplus', 'mickey'] })]);
+receive([pickTsum({ perLoop: ['arielplus', 'mickey'] })]);
 check('tsum list: every value in it passes', checkOf().ok === true, checkOf());
 const tsums = JSON.parse(ctx.gapWorkflowCatalog()).lists.tsums;
 check('tsum list: catalog lists the named rows by full name',
@@ -255,7 +261,7 @@ function buildWorkflowRun() {
   out.after = run('gWorkflowRun');
   return out;
 }
-receive([select('mickey'), node('n2', 'tsum.playRounds', { rounds: 2 })]);
+receive([pickTsum('mickey'), node('n2', 'tsum.playRounds', { rounds: 2 })]);
 let built = buildWorkflowRun();
 check('mode: the armed ref is taken and cleared', built.armed === null && built.mode === true, built);
 check('mode: only the Workflow job is registered', built.tasks === 'workflow', built.tasks);
@@ -274,7 +280,7 @@ const catalog = JSON.parse(ctx.gapWorkflowCatalog());
 const tsumTypes = catalog.nodes.map((n) => n.type).filter((t) => t.indexOf('test.') !== 0);
 check('catalog: api 1', catalog.api === 1, catalog.api);
 check('catalog: Tsum nodes in contract order', JSON.stringify(tsumTypes) === JSON.stringify(['restartApp',
-  'tsum.receiveHearts', 'tsum.sendHearts', 'tsum.selectTsum', 'tsum.skill', 'tsum.playRounds', 'loop', 'stop']), tsumTypes);
+  'tsum.receiveHearts', 'tsum.sendHearts', 'tsum.skill', 'tsum.playRounds', 'loop', 'stop']), tsumTypes);
 check('catalog: no presets list (reserved)', catalog.lists.presets === undefined);
 check('catalog: listInfo for tsums', catalog.listInfo && catalog.listInfo.tsums.label === 'Tsum List', catalog.listInfo);
 check('catalog: skills include nokill', catalog.lists.skills.some((s) => s.value === 'skill:nokill'));

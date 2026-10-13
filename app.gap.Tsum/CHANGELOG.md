@@ -114,6 +114,7 @@ release note; they fold back in here when she ships.
   server pushes to the phone (its `cloud/adapters/README.md` § Notifications).
   Sent by `wrapUpIfAsked` (`run` category, tag `run`), the three Now queues in
   `src/index.ts` from the sweep's outcome (`Tsum.lastChore`, set by the
+  tasks).
 
 - **Share round stats** (General, Beta, off by default): the script now sends
   its own round stats (`src/roundShare.ts`) instead of handing the CSV pattern
@@ -122,9 +123,6 @@ release note; they fold back in here when she ships.
   `dist/` by the `dist:env` step); requests go out as
   `httpRequest('POST', 'env:ROUND_STATS_URL', …)` and the reply is read from
   a network event, so the round loop never waits on the server.
-  non-workflow run's start queues it. Cleared once set or given up (a failed
-  step is tried 3 times). Refused during a workflow or walkthrough. The Stats
-  the button. Needs adapter 2.1.0.
 - **Tsum List `favorite` column** (`1`/`0`, empty when the card would not
   select), off the gold/blue star by the panel portrait
   (`TsumListRegions.favorite`); the workflow list file carries it too, and
@@ -139,8 +137,7 @@ release note; they fold back in here when she ships.
   `src/gapWorkflow.ts` is the generic runner other scripts vendor; `src/workflow.ts`
   is Tsum's catalog and nodes, and `startWorkflow` a run mode that registers
   only the Workflow job. A whole Tsum List export also writes
-  goes straight to the card's listed page and slot, confirms it with one read
-  (`tsum-list-stale` otherwise) and taps MyTsum Set. Pages mirror presets to
+  `tsum_list_<device id>.json` for the `tsums` list. Pages mirror presets to
   `presets-<device id>.json` for Import. `npm run workflow:check`. Restart app
   walks the startup screens to the friend list before handing off.
 - **GAP Companion screens** (`src/companionScreens.ts`, `gapScreens`): the
@@ -263,8 +260,8 @@ release note; they fold back in here when she ships.
 - **Collection scrubber.** The track under the grid jumps to the first page
   when tapped at its left end, the last at its right (`CollectionGrid.scrubFirst`
   / `scrubLast`). `rewindCollection` taps it first, keeping the chevron bursts
-  page and turns back (`tsumListTurnPage(run, true)`) when that is fewer turns
-  otherwise it walks from page 1. Confirmed on a device.
+  as fallback; `skipCollectionToEnd` and `tsumListTurnPage(run, true)` are new.
+  Confirmed on a device.
 - **Bubble popping.** Measured on a Villains Set recording: the scan found
   about half of a packed bottom row, and the 2s post-skill hold blocked pops
   for ~30% of the round.

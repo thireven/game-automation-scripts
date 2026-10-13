@@ -44,7 +44,6 @@ const enum JobPriority {
   UnlockNow = 10,
   BuyBoxesNow = 11,
   TsumListNow = 12,
-  SelectTsumNow = 13,
   AppRestart = 20,
   UnlockLevel = 30,
   BuyBoxes = 31,
