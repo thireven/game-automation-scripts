@@ -70,6 +70,17 @@ release note; they fold back in here when she ships.
 
 ### Fixed
 
+- **Event-forced bonus item**, merged up from 5.0b5 (details under [5.0b5]).
+
+## [5.0b5]
+
+### Summary
+
+**Fixes**
+- Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
+
+### Fixed
+
 - **Event-forced bonus item** (JP "流れ星に願いをかけよう!"): `checkGameItem` tapped it to turn it off, the popup that raised dimmed the screen, and the next pass read every toggle as on and tapped the lot. A toggle whose cost pill is the pink "1回無料" badge (`Button.outGameItemBadges`) is now left on, and each pass reads only a frame that fingerprints as `StartPage` (`awaitBonusItems`, which taps a popup away after 1.5s).
 
 ## [6.0a1]
