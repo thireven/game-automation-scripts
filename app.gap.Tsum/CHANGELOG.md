@@ -45,14 +45,13 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0a2]
+## [6.0a3]
 
 ### Summary
 
 **Additions**
 
 *GAP Companion*
-- Chore Now buttons work with the script stopped: it starts, does that chore, then stops again.
 - Some GAP Companion features now come as add-ons, sent to the accounts that have them.
 
 **Fixes**
@@ -61,7 +60,6 @@ release note; they fold back in here when she ships.
 
 ### Added
 
-- **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
 - **Script add-on hook API** (`src/addons.ts`): `gapAddonRegister(id, GAP_ADDON_API, install)`; the build writes `build/index.d.ts` for add-ons to compile against. An add-on logs as `addon.<name>.*` and queues its one-shot at `JobPriority.AddonNow`.
 
 ### Changed
@@ -71,6 +69,19 @@ release note; they fold back in here when she ships.
 ### Fixed
 
 - **Event-forced bonus item**, merged up from 5.0b5 (details under [5.0b5]).
+
+## [6.0a2]
+
+### Summary
+
+**Additions**
+
+*GAP Companion*
+- Chore Now buttons work with the script stopped: it starts, does that chore, then stops again.
+
+### Added
+
+- **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
 
 ## [5.0b5]
 
