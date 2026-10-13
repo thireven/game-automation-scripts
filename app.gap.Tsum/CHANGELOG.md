@@ -65,9 +65,7 @@ release note; they fold back in here when she ships.
   `src/gapWorkflow.ts` is the generic runner other scripts vendor; `src/workflow.ts`
   is Tsum's catalog and nodes, and `startWorkflow` a run mode that registers
   only the Workflow job. A whole Tsum List export also writes
-  goes straight to the card's listed page and slot, confirms it with one read
-  (`tsum-list-stale` otherwise) and taps MyTsum Set (its position still to
-  verify on a device, INTL and JP). Pages mirror presets to
+  `tsum_record/tsum_list_<device id>.json` for the `tsums` list. Pages mirror presets to
   `presets-<device id>.json` for Import. `npm run workflow:check`. Restart app
   walks the startup screens to the friend list before handing off.
 - **GAP Companion screens** (`src/companionScreens.ts`, `gapScreens`): the

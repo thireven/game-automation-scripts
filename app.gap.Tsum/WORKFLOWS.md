@@ -1,7 +1,7 @@
 # Workflows: how Tsum runs them
 
 A GAP Companion **workflow** is an ordered list of nodes (restart the game,
-collect hearts, pick a Tsum, play N rounds, loop...) built on the phone and
+collect hearts, pick a skill, play N rounds, loop...) built on the phone and
 assigned to a device. The binding contract, for every layer, is the host's
 `../game-automation-app/docs/WORKFLOWS.md` (on its `companion-app` branch).
 This document is what Tsum does with it.
@@ -92,6 +92,7 @@ list: `<storage>/tsum_record/tsum_list_<getDeviceId()>.json`,
   it); without it the catalog reports `null` and the phone shows "Needs Tsum
   List: Run Export Tsum List on the device".
 - **The check** (`gapWorkflowCheck` and `gapWorkflowBegin`): a workflow with a
+  node whose param is on the `tsums` list, on a device without the file → `tsum-list-missing`
   (banner "Run Export Tsum List first"); a chosen tsum, any per-loop value
   included, not in it → `tsum-not-in-list:<tsum>`.
 
@@ -105,6 +106,6 @@ a run on the host), which writes `<script folder>/presets-<device id>.json`.
 
 ## Checks
 
-collection); `npm run dispatch:eval` (preset `workflow.json`: only the Workflow
+`npm run workflow:check`; `npm run dispatch:eval` (preset `workflow.json`: only the Workflow
 job and the one-shots, Stop after this round first);
 `npm run events:docs:check` for the `workflow.*` events.

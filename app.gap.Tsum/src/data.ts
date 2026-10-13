@@ -2686,15 +2686,7 @@ var CollectionGrid = {
     {x: 410, y: 1600}, {x: 440, y: 1720}, {x: 540, y: 1720}, {x: 640, y: 1720}
   ],
   setButtonGreyColor: {r: 33, g: 140, b: 190},
-  setButtonGreyDiff: 60,
-  /**
-   * Where Select My Tsum (src/myTsumSelect.ts) taps the "MyTsum Set" button:
-   * its centre, between the samples above. Checked on INTL and JP screenshots
-   * (button body about x 340-744, y 1550-1760; same place on both builds).
-   * Still to verify: whether the tap brings up a confirmation before the
-   * button greys out.
-   */
-  setButton: {x: 540, y: 1655}
+  setButtonGreyDiff: 60
 };
 
 // ---------------------------------------------------------------------------
