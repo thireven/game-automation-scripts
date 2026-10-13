@@ -28,8 +28,8 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `workflow.loop` | `src/gapWorkflow.ts:700` | `id`, `loop` |
 | `workflow.nodeFailed` | `src/gapWorkflow.ts:745` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
 | `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:761` | `rounds` |
-| `gap.notify` | `src/companion.ts:63` | _none_ |
+| `run.stopped` | `src/index.ts:756` | `rounds` |
+| `gap.notify` | `src/companion.ts:60` | _none_ |
 
 ## The events
 
@@ -203,7 +203,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:761` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:756` — `emitScriptEvent(Emit.Run.Stopped, …)`
 
 ### `gap.notify`
 
@@ -213,4 +213,4 @@ Payload built elsewhere: `note`, of type `GapNote`.
 
 Emitted from:
 
-- `src/companion.ts:63` — `emitScriptEvent(Emit.Companion.Notify, …)`
+- `src/companion.ts:60` — `emitScriptEvent(Emit.Companion.Notify, …)`

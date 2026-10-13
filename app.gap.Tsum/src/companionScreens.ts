@@ -19,7 +19,6 @@ const CompanionTasks: { [task: string]: string } = {
   buyBoxes: 'Buying boxes',
   buyBoxesNow: 'Buying boxes',
   exportTsumListNow: 'Exporting the Tsum list',
-  selectTsumNow: 'Changing My Tsum',
   wrapUpNow: 'Stopping after this round',
   taskWalkthrough: 'Recording a walkthrough',
   taskPlayGameQuick: 'Playing rounds',
@@ -44,9 +43,7 @@ const CompanionScreens = {
       { card: 'My Tsum', icon: 'tsum', items: [
         { facts: [
           { label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum' },
-          { label: 'Next', bind: 'state.info.nextTsum', icon: 'tsum' },
         ] },
-        { button: 'selectTsum' },
       ] },
       { slot: 'totals' },
       { card: 'This run', icon: 'play', items: [

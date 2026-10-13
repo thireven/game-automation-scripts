@@ -673,7 +673,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     }
   }
   // A workflow replaces the chore table: its nodes call the chores in its own
-  // order. Refused (e.g. no Tsum List for Select Tsum): nothing is registered
+  // order. Refused (e.g. a node needs the Tsum List): nothing is registered
   // and the run ends before any node runs.
   if (gWorkflowRun && !workflowBegin(workflowRef!)) {
     return;
@@ -693,10 +693,6 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   }
   if (tsumListOnly) {
     queueTsumListExport(ts, gTaskController, true);
-  }
-  // A MyTsum the phone picked while nothing ran.
-  if (!gWorkflowRun) {
-    selectTsumNextResume(ts, gTaskController);
   }
 }
 
@@ -740,7 +736,6 @@ function endRun(): void {
   gUnlockNowQueued = false;
   gBuyBoxNowQueued = false;
   gTsumListNowQueued = false;
-  gSelectTsumNowQueued = false;
   // Before `ts` goes, so the workflow's closing banner still has somewhere to go.
   workflowRunEnded();
   // Read before `ts` is cleared below; the event itself goes out with the rest

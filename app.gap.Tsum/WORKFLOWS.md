@@ -1,7 +1,7 @@
 # Workflows: how Tsum runs them
 
 A GAP Companion **workflow** is an ordered list of nodes (restart the game,
-collect hearts, pick a Tsum, play N rounds, loop...) built on the phone and
+collect hearts, pick a skill, play N rounds, loop...) built on the phone and
 assigned to a device. The binding contract, for every layer, is the host's
 `../game-automation-app/docs/WORKFLOWS.md` (on its `companion-app` branch).
 This document is what Tsum does with it.
@@ -79,7 +79,8 @@ mirroring the adapter's SKILLS; the id for a skill missing there). `presets` is 
 
 ## The Tsum List file
 
-list: `<device folder>/tsum_list_state.json` (`getDevicePath()`, which is per device),
+A node param on the `tsums` list needs this device's list, where each tsum's
+`order` is its card's position in the collection: `<device folder>/tsum_list_state.json` (`getDevicePath()`, which is per device),
 `{at, build, tsums: [{order, tsum, name, favorite}]}`.
 
 - The Export Tsum List chore writes it, overwriting, only when an export ends
@@ -93,10 +94,11 @@ list: `<device folder>/tsum_list_state.json` (`getDevicePath()`, which is per de
   it); without it the catalog reports `null` and the phone shows "Needs Tsum
   List: Run Export Tsum List on the device".
 - **The check** (`gapWorkflowCheck` and `gapWorkflowBegin`): a workflow with a
+  node whose param is on the `tsums` list, on a device without the file → `tsum-list-missing`
   (banner "Run Export Tsum List first"); a chosen tsum, any per-loop value
   included, not in it → `tsum-not-in-list:<tsum>`.
-- **Per device**: the `tsum` param is `perDevice`, so one workflow can pick a
-  different Tsum on each device from that device's own list. The server sends
+- **Per device**: a param on the `tsums` list should be `perDevice`, so one
+  workflow can pick a different Tsum on each device from that device's own list. The server sends
   each device only its own value; nothing here sees the others.
 
 ## The presets mirror
@@ -109,6 +111,6 @@ a run on the host), which writes `<script folder>/presets-<device id>.json`.
 
 ## Checks
 
-collection); `npm run dispatch:eval` (preset `workflow.json`: only the Workflow
+`npm run workflow:check`; `npm run dispatch:eval` (preset `workflow.json`: only the Workflow
 job and the one-shots, Stop after this round first);
 `npm run events:docs:check` for the `workflow.*` events.
