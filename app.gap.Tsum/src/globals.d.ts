@@ -1311,9 +1311,11 @@ interface Tsum {
   sleepUntil(deadline: number): void;
   /**
    * Wait for the screen to stop moving, up to `maxMs` (`ScreenSettle.maxMs` when
-   * omitted). False means it never did, or the run stopped.
+   * omitted). False means it never did, or the run stopped. `leadMs` and
+   * `spacingMs` override `ScreenSettle`'s for a caller that has already seen
+   * the new screen arrive.
    */
-  settleScreen(maxMs?: number): boolean;
+  settleScreen(maxMs?: number, leadMs?: number, spacingMs?: number): boolean;
   /**
    * Wait for the tsums to stop moving, up to `maxMs` (`BoardSettle.maxMs` when
    * omitted) and not before `minMs` (`BoardSettle.minMs`): `settleScreen`'s
@@ -1483,15 +1485,17 @@ interface Tsum {
   readHeartColumn(img: NativeImage): Point[];
   /** Whether the row this heart belongs to shows no score at all. */
   friendRowScoreIsZero(img: NativeImage, heart: Point): boolean;
-  /**
-   * Poll the narrowed page set until `want` shows up, answering with the page
-   * it stopped on. `abortOn` ends the wait early once that page has held for
-   * `HeartOkLostPolls`.
-   */
   heartRowSent(heart: Point): boolean;
-  waitForHeartPage(want: PageName, polls: number, abortOn?: PageName, sentRow?: Point): PageName;
+  /**
+   * Poll the narrowed page set for up to `maxMs` until `want` shows up,
+   * answering with the page it stopped on. `abortOn` ends the wait early once
+   * `HeartOkLostMs` has passed.
+   */
+  waitForHeartPage(want: PageName, maxMs: number, abortOn?: PageName, sentRow?: Point): PageName;
   /** Tap one heart and see it through the gift dialog and the toast. */
   sendOneHeart(heart: Point): boolean;
+  /** Tap the "Heart sent!" toast away, again if the first tap was lost. */
+  dismissHeartToast(): void;
   /** Send every heart on the screenful in front of us. */
   sendHeartsOnPage(stopAtZeroScore: boolean): HeartPageResult;
   /** Drag the list one screenful; false when it did not move, so the list ended. */
@@ -1746,7 +1750,7 @@ interface Tsum {
   taskClickAssist(): void;
 
   // --- skills/cinderella.ts, skills/cptLy.ts ---------------------------
-  useCinderellaSkill(): void;
+  useCinderellaSkill(activatedAt?: number): void;
   /** `timing` defaults to the 60fps table; see CptLyTiming in skills/cptLy.ts. */
   useCptLySkill(activatedAt?: number, timing?: CptLyTiming): void;
 

@@ -2459,11 +2459,7 @@ var PageProfiles: PageProfileMap = {
 
   // --- Mail / hearts ---
   MailBox: {kind: PageKind.Permanent},
-  Received: {
-    kind: PageKind.Permanent,
-    roles: [PageRole.HeartSweep],
-    note: 'The received-items panel, with OK.'
-  },
+  Received: {kind: PageKind.Permanent, note: 'The received-items panel, with OK.'},
   ReceiveHeart: {kind: PageKind.Permanent},
   ReceiveHeartWithoutCoins: {kind: PageKind.Permanent},
   ReceiveSkillTicket: {kind: PageKind.Permanent},

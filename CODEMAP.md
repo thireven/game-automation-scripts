@@ -196,7 +196,7 @@ hundred lines and more.
 | `src/skills/moana.ts` | `SkillType.Moana` | |
 | `src/skills/mickeyH2015.ts` | `SkillType.HornHatMickey` | |
 | `src/skills/snowWhite.ts` | `SkillType.SnowWhite` | |
-| `src/skills/cinderella.ts` | `SkillType.Cinderella` | Has its own `useCinderellaSkill` |
+| `src/skills/cinderella.ts` | `SkillType.Cinderella` | Blind strokes, not planned chains: alternating serpentines fill the level's link-anything window (`CinderellaConfig.windowMs`), each point held a frame so the game reads it |
 | `src/skills/woody2.ts` | `SkillType.SheriffWoody` | |
 | `src/skills/cabbageMickey.ts` | `SkillType.CabbageMickey` | Face-colour probe |
 | `src/skills/cptLy.ts` | `SkillType.CptLightyear`, `SkillType.CptLightyear120` | Timing tables, one per frame rate |

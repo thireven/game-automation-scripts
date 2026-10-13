@@ -57,6 +57,8 @@ release note; they fold back in here when she ships.
 **Fixes**
 
 - Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
+- Cinderella's skill clears far more: its strokes are drawn slowly enough for the game to follow, stay on the board, and fill her skill time at every level.
+- Sending hearts through the ranking is about 15% faster.
 
 ### Added
 
@@ -65,10 +67,12 @@ release note; they fold back in here when she ships.
 ### Changed
 
 - **A GAP Companion feature moved to a private add-on**, with its own constants, probes and log events. The Tsum List check (`workflowTsumCheck`) now covers any node param on the `tsums` list; that list and the collection helpers stay here.
+- **Heart send waits**, merged up from 5.0b5 (details under [5.0b5]).
 
 ### Fixed
 
 - **Event-forced bonus item**, merged up from 5.0b5 (details under [5.0b5]).
+- **Cinderella's strokes**, merged up from 5.0b5 (details under [5.0b5]).
 
 ## [6.0a2]
 
@@ -89,10 +93,18 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
+- Cinderella's skill clears far more: its strokes are drawn slowly enough for the game to follow, stay on the board, and fill her skill time at every level.
+- Sending hearts through the ranking is about 15% faster.
+
+### Changed
+
+- **Heart send waits** (`sendOneHeart`): a debug run beside a screen recording put each heart at 2.5 s, ~0.6 s of it three `settleScreen` calls watching a screen already still. Each step now polls its next page every 60 ms (`HeartPollMs`, one capture a look) with time budgets in place of poll counts; the dialog and the toast get a lead-free 60 ms settle for their fade-in; the toast's dismissal waits for `FriendPage` and taps again only while the toast still shows (`dismissHeartToast`). OK still waits until the dialog has been up 230 ms (`HeartDialogReadyMs`; earlier presses are ignored), and `Received` (the mailbox panel) is out of `heartSweepPages()`: the toast's first frame fingerprinted as it and was tapped away, ~0.6 s on 38% of sends. `FriendInfo` is tapped away only when two looks agree. The end-of-screenful toast check is one look unless a no-toast send may still raise one. `settleScreen` takes optional `leadMs` and `spacingMs`.
 
 ### Fixed
 
 - **Event-forced bonus item** (JP "流れ星に願いをかけよう!"): `checkGameItem` tapped it to turn it off, the popup that raised dimmed the screen, and the next pass read every toggle as on and tapped the lot. A toggle whose cost pill is the pink "1回無料" badge (`Button.outGameItemBadges`) is now left on, and each pass reads only a frame that fingerprints as `StartPage` (`awaitBonusItems`, which taps a popup away after 1.5s).
+- **Cinderella's right stroke** mirrored about `screenResize` rather than the square's centre (`screenResize - tsumWidth`), so it sat a tsum width right and its first column landed off the board.
+- **Cinderella's strokes** went through `linkTsums` at 10ms a point, under one frame, so the game skipped points and the chain broke mid-stroke. Now `cinderellaDraw` holds each point 18ms, strokes alternate until the level's window (`CinderellaConfig.windowMs`, 3–4s, player-observed) would close, instead of a fixed 10, and `beforeActivate` pops the hoarded bubbles so a stroke does not cross one.
 
 ## [6.0a1]
 

@@ -341,8 +341,11 @@ function preTallyPages(): PageName[] {
 
 /**
  * What the heart sender can be looking at: the screens it branches on, plus the
- * interruptions with a handler able to act while `goal` is ''. Measured over
- * the corpus, 20 entries and 85 probes a pass instead of 58 and 332.
+ * interruptions with a handler able to act while `goal` is ''. A fraction of
+ * the full table's entries and probes a pass.
+ *
+ * `Received` is the mailbox's panel and was dropped from it: the toast's first
+ * fade-in frame fingerprinted as it, and the sender tapped it away.
  *
  * `ClosePage` is deliberately not among them: the single-pixel catch-all only
  * stays honest while the full table outranks it, and in a narrowed sweep it

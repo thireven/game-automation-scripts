@@ -194,7 +194,7 @@ roles put it in and in no other.
 | `OutOfMedals` | permanent | — | — | — | — | Two buttons; neither times out. |
 | `RubyResetDifficulty` | permanent | — | — | — | — | OK / Cancel. |
 | `MailBox` | permanent | — | — | — | — |  |
-| `Received` | permanent | `heartSweep` | — | — | — | The received-items panel, with OK. |
+| `Received` | permanent | — | — | — | — | The received-items panel, with OK. |
 | `ReceiveHeart` | permanent | — | — | — | — |  |
 | `ReceiveHeartWithoutCoins` | permanent | — | — | — | — |  |
 | `ReceiveSkillTicket` | permanent | — | — | — | — |  |
