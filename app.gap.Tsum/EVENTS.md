@@ -19,9 +19,9 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | event | emitted from | payload |
 |---|---|---|
 | `task.start` | `src/taskController.ts:93` | `task` |
-| `round.over` | `src/play.ts:367` | `id`, `round`, `seconds` |
-| `round.start` | `src/play.ts:547` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
-| `round.end` | `src/play.ts:919` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
+| `round.over` | `src/play.ts:412` | `id`, `round`, `seconds` |
+| `round.start` | `src/play.ts:592` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
+| `round.end` | `src/play.ts:964` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
 | `workflow.end` | `src/gapWorkflow.ts:589` | `id`, `rev`, `status`, `reason`, `loop`, `index` |
 | `workflow.start` | `src/gapWorkflow.ts:644` | `id`, `rev`, `name`, `total` |
 | `workflow.node` | `src/gapWorkflow.ts:686` | `id`, `loop`, `index`, `nodeId`, `node` |
@@ -57,7 +57,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:367` — `this.emit(Emit.Round.Over, …)`
+- `src/play.ts:412` — `this.emit(Emit.Round.Over, …)`
 
 ### `round.start`
 
@@ -75,7 +75,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:547` — `this.emit(Emit.Round.Start, …)`
+- `src/play.ts:592` — `this.emit(Emit.Round.Start, …)`
 
 ### `round.end`
 
@@ -98,7 +98,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:919` — `this.emit(Emit.Round.End, …)`
+- `src/play.ts:964` — `this.emit(Emit.Round.End, …)`
 
 ### `workflow.end`
 
