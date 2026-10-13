@@ -55,6 +55,10 @@ release note; they fold back in here when she ships.
 - Chore Now buttons work with the script stopped: it starts, does that chore, then stops again.
 - Some GAP Companion features now come as add-ons, sent to the accounts that have them.
 
+**Fixes**
+
+- Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
+
 ### Added
 
 - **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
@@ -63,6 +67,10 @@ release note; they fold back in here when she ships.
 ### Changed
 
 - **A GAP Companion feature moved to a private add-on**, with its own constants, probes and log events. The Tsum List check (`workflowTsumCheck`) now covers any node param on the `tsums` list; that list and the collection helpers stay here.
+
+### Fixed
+
+- **Event-forced bonus item** (JP "流れ星に願いをかけよう!"): `checkGameItem` tapped it to turn it off, the popup that raised dimmed the screen, and the next pass read every toggle as on and tapped the lot. A toggle whose cost pill is the pink "1回無料" badge (`Button.outGameItemBadges`) is now left on, and each pass reads only a frame that fingerprints as `StartPage` (`awaitBonusItems`, which taps a popup away after 1.5s).
 
 ## [6.0a1]
 

@@ -388,6 +388,17 @@ var Button = {
     {x: 424, y: 1170},   // 5>4
     {x: 610, y: 1175}    // +Combo
   ] as GameItemToggles,
+  // The right end of each toggle's cost pill, in the same order. An event can
+  // grant an item for free and force it on (JP "流れ星に願いをかけよう!"): its
+  // pill then turns into a pink "1回無料" badge, and tapping the item only raises
+  // a dimming popup. Pink here means "leave this toggle alone".
+  outGameItemBadges: [
+    {x: 288, y: 1032}, {x: 510, y: 1032}, {x: 733, y: 1032}, {x: 955, y: 1032},
+    {x: 288, y: 1304}, {x: 510, y: 1304}, {x: 733, y: 1304}
+  ] as GameItemToggles,
+  // A tap here is harmless on the pre-round screen (the caption box), and
+  // dismisses the free-item popup if one is up.
+  outGameItemsCaption: {x: 540, y: 680},
   outStart: {x: 500, y: 1592, color: {"a":0,"b":129,"g":111,"r":236}}, // 開始
   outClose: {x: 500, y: 1592, color: {"a":0,"b":7,"g":180,"r":236}}, // 關閉
   outReceive: {x: 910, y: 422},

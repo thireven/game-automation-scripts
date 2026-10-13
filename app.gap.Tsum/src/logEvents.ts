@@ -151,6 +151,8 @@ namespace Log {
   export const enum Play {
     BoardUp               = 'play.boardUp',
     BoardUpTimeout        = 'play.boardUpTimeout',
+    BonusItemLocked       = 'play.bonusItemLocked',
+    BonusItemsHidden      = 'play.bonusItemsHidden',
     BonusItemsToggled     = 'play.bonusItemsToggled',
     CheckBonusItems       = 'play.checkBonusItems',
     ConfirmingGameOver    = 'play.confirmingGameOver',

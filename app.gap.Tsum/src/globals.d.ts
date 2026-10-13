@@ -1405,6 +1405,8 @@ interface Tsum {
 
   // --- play.ts ---------------------------------------------------------
   checkGameItem(): void;
+  isBonusItemLocked(img: NativeImage, index: number): boolean;
+  awaitBonusItems(): NativeImage | null;
   /** After the Start tap: wait for the pre-round screen to leave and the board to arrive. */
   awaitRoundStart(): boolean;
   /**
