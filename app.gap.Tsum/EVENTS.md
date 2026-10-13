@@ -14,7 +14,7 @@ format are the host's document --
 Names are declared once, in `src/scriptEvents.ts`, and reached through
 `ts.emit()`, which is silent on a host too old to have `emitEvent`.
 
-`12` event(s) from `12` call site(s).
+`13` event(s) from `14` call site(s).
 
 | event | emitted from | payload |
 |---|---|---|
@@ -22,11 +22,12 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `round.over` | `src/play.ts:412` | `id`, `round`, `seconds` |
 | `round.start` | `src/play.ts:592` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
 | `round.end` | `src/play.ts:964` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
-| `workflow.end` | `src/gapWorkflow.ts:589` | `id`, `rev`, `status`, `reason`, `loop`, `index` |
-| `workflow.start` | `src/gapWorkflow.ts:644` | `id`, `rev`, `name`, `total` |
-| `workflow.node` | `src/gapWorkflow.ts:686` | `id`, `loop`, `index`, `nodeId`, `node` |
-| `workflow.loop` | `src/gapWorkflow.ts:700` | `id`, `loop` |
-| `workflow.nodeFailed` | `src/gapWorkflow.ts:745` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
+| `workflow.end` | `src/gapWorkflow.ts:669` | `id`, `rev`, `status`, `reason`, `loop`, `index` |
+| `workflow.start` | `src/gapWorkflow.ts:733` | `id`, `rev`, `name`, `total`, `resumed` |
+| `workflow.node` | `src/gapWorkflow.ts:777` | `id`, `loop`, `index`, `nodeId`, `node` |
+| `workflow.loop` | `src/gapWorkflow.ts:793` | `id`, `loop` |
+| `workflow.nodeFailed` | `src/gapWorkflow.ts:842`<br>`src/gapWorkflow.ts:944` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
+| `workflow.restart` | `src/gapWorkflow.ts:933` | `id`, `nodeId`, `index`, `loop`, `outcome`, `error`, `why`, `fps`, `captureMs` |
 | `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
 | `run.stopped` | `src/index.ts:795` | `rounds` |
 | `gap.notify` | `src/companion.ts:63` | _none_ |
@@ -115,11 +116,11 @@ Emitted from:
 
 Emitted from:
 
-- `src/gapWorkflow.ts:589` — `gapWorkflowHooksOf().emit('workflow.end', …)`
+- `src/gapWorkflow.ts:669` — `gapWorkflowHooksOf().emit('workflow.end', …)`
 
 ### `workflow.start`
 
-`Emit.Workflow.Start` — A workflow passed its check and its first node is next.
+`Emit.Workflow.Start` — A workflow passed its check and its first node is next. `resumed` (`{loop, index}`) when it carries on after a device restart.
 
 | field | type |
 |---|---|
@@ -127,10 +128,11 @@ Emitted from:
 | `rev` | `number` |
 | `name` | `string` |
 | `total` | `number` |
+| `resumed` | `{ loop: number; index: number; } \| undefined` |
 
 Emitted from:
 
-- `src/gapWorkflow.ts:644` — `gapWorkflowHooksOf().emit('workflow.start', …)`
+- `src/gapWorkflow.ts:733` — `gapWorkflowHooksOf().emit('workflow.start', …)`
 
 ### `workflow.node`
 
@@ -146,7 +148,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/gapWorkflow.ts:686` — `gapWorkflowHooksOf().emit('workflow.node', …)`
+- `src/gapWorkflow.ts:777` — `gapWorkflowHooksOf().emit('workflow.node', …)`
 
 ### `workflow.loop`
 
@@ -159,7 +161,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/gapWorkflow.ts:700` — `gapWorkflowHooksOf().emit('workflow.loop', …)`
+- `src/gapWorkflow.ts:793` — `gapWorkflowHooksOf().emit('workflow.loop', …)`
 
 ### `workflow.nodeFailed`
 
@@ -177,7 +179,28 @@ Emitted from:
 
 Emitted from:
 
-- `src/gapWorkflow.ts:745` — `gapWorkflowHooksOf().emit('workflow.nodeFailed', …)`
+- `src/gapWorkflow.ts:842` — `gapWorkflowHooksOf().emit('workflow.nodeFailed', …)`
+- `src/gapWorkflow.ts:944` — `gapWorkflowHooksOf().emit('workflow.nodeFailed', …)`
+
+### `workflow.restart`
+
+`Emit.Workflow.Restart` — A `restartDevice` / `restartIfSlow` step: `outcome` is restarting, skipped (`error` says why) or not-slow; `why`, `fps`, `captureMs` from the speed check.
+
+| field | type |
+|---|---|
+| `id` | `string` |
+| `nodeId` | `string` |
+| `index` | `number` |
+| `loop` | `number` |
+| `outcome` | `string` |
+| `error` | `string \| undefined` |
+| `why` | `string \| undefined` |
+| `fps` | `number \| undefined` |
+| `captureMs` | `number \| undefined` |
+
+Emitted from:
+
+- `src/gapWorkflow.ts:933` — `gapWorkflowHooksOf().emit('workflow.restart', …)`
 
 ### `run.started`
 

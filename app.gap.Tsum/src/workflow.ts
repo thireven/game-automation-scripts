@@ -328,16 +328,9 @@ const WorkflowTsumNodes: GapWorkflowNodeDef[] = [
   },
 ];
 
-/** A node type's label, for banners and the progress line. */
+/** A node type's label, for banners and the progress line: any script node (an add-on's too) or standard one. */
 function workflowNodeLabel(type: string): string {
-  if (type === 'loop') {
-    return 'Loop';
-  }
-  if (type === 'stop') {
-    return 'Stop';
-  }
-  // Any registered node, an add-on's included.
-  const def = gapWorkflowNodes[type];
+  const def = gapWorkflowDef(type);
   return def !== undefined ? def.label : type;
 }
 
@@ -449,10 +442,17 @@ function workflowSay(event: string, data: { [key: string]: unknown }): void {
   };
   const label = typeof data.node === 'string' ? workflowNodeLabel(data.node) : '';
   switch (event) {
-    case Emit.Workflow.Start:
-      logInfo(Log.Workflow.Start, 'Workflow started', data);
-      banner('Workflow: ' + data.name, 4000);
+    case Emit.Workflow.Start: {
+      const resumed = data.resumed as GapWorkflowAt | undefined;
+      if (resumed !== undefined) {
+        logInfo(Log.Workflow.Start, 'Workflow resumed after the restart', data);
+        banner('Workflow resumed: ' + data.name + ', step ' + (resumed.index + 1), 5000);
+      } else {
+        logInfo(Log.Workflow.Start, 'Workflow started', data);
+        banner('Workflow: ' + data.name, 4000);
+      }
       break;
+    }
     case Emit.Workflow.Node: {
       const state = JSON.parse(gapWorkflowState()) as GapWorkflowState | null;
       const total = state === null ? 0 : state.total;
@@ -468,8 +468,25 @@ function workflowSay(event: string, data: { [key: string]: unknown }): void {
       logWarn(Log.Workflow.NodeFailed, 'Workflow step failed; skipped', data);
       banner('Skipped ' + label + ': ' + data.error, 5000);
       break;
+    case Emit.Workflow.Restart:
+      if (data.outcome === 'restarting') {
+        logInfo(Log.Workflow.Restart, 'Restarting the device; the workflow carries on afterwards', data);
+        banner('Restarting the device', 5000);
+      } else if (data.outcome === 'not-slow') {
+        // `why` says when nothing could be measured, so "fine" is not claimed.
+        logInfo(Log.Workflow.Restart, 'Not slow; no restart', data);
+        banner(data.why === 'not-enough-data' ? 'Not enough speed data yet; no restart'
+          : data.why === 'no-baseline' ? 'No speed baseline yet; no restart'
+          : 'Speed is fine; no restart', 3000);
+      } else {
+        logWarn(Log.Workflow.Restart, 'Restart skipped', data);
+        banner('Restart skipped: ' + data.error, 5000);
+      }
+      break;
     case Emit.Workflow.End:
-      if (data.status === 'ended') {
+      if (data.status === 'ended' && data.reason === 'restart') {
+        logInfo(Log.Workflow.End, 'Workflow paused for the device restart', data);
+      } else if (data.status === 'ended') {
         logInfo(Log.Workflow.End, 'Workflow ended', data);
         banner(data.reason === 'stopped' ? 'Workflow stopped' : 'Workflow finished', 5000);
       } else {

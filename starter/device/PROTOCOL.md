@@ -25,6 +25,7 @@ into it fails before any verb can run.
 | `stop` | `pkill` plus the 1 s socket-release gap. |
 | `log` | Emits the `service.log` block and the running flag. |
 | `clean` | `rm -rf /data/local/tmp/gap`, or moves it aside when it is another user's. Forces a full re-stage next `start`. |
+| `watch` | One poll for the PC's watch mode (below). Reports only, apart from the files it writes in `/data/local/tmp/gap-watch`. |
 
 A service running under another uid — the app's own root launch — is out of
 reach of both `start` and `stop`: it cannot be killed from here, and a second
@@ -34,7 +35,8 @@ for it when the stamp matches and `--force` is absent.
 
 Flags: `--force` (restart a service already running from this build),
 `--tcp PORT`, `--script ID`. Passing `--tcp` or `--script` implies `--force`,
-because the running service was not started with them.
+because the running service was not started with them. `watch` takes
+`--take` and `--emulator NAME` instead.
 
 ## Output
 
@@ -83,6 +85,58 @@ rc=0
 
 `probe` reports `err=no-libs` with `rc=0`: it is a fact about the device, not a
 failure of the probe. `start` treats the same condition as `rc=1`.
+
+## `watch`
+
+The PC's watch mode (tsum-stats `internal/starter`) runs this every 15 s on
+each device it watches, to start GAP again after a restart and to restart a
+frozen emulator from the host. It shares `/data/local/tmp/gap-watch/` with the
+engine:
+
+| File | Written by | Holds |
+|---|---|---|
+| `stamp` | `watch`, every call | `<epochSec>`. A fresh one (< 180 s) tells the engine a watcher is there, so GAP can come back after a restart (`comesBack: host`). |
+| `request` | the engine | `<epochSec> <reason>`: restart this device from the host. The watcher takes it (`--take`) and restarts the emulator; when no watcher takes it within 60 s, the engine reboots from inside. |
+| `alive` | the engine, every 30 s | `<epochSec> <active 0\|1> <pid>`. Stale means the engine froze. |
+| `emulator` | `watch --emulator NAME` | The host's name for this emulator (`mumu`, `ldplayer`, `bluestacks`, ...). |
+
+```
+proto=1
+now=1755743001
+boot_id=6f1c2d3e-…
+booted=1
+uptime=842
+running=1
+uid=2000
+alive=1755742990
+alive_active=1
+request=1755742995 slow
+stamped=1
+rc=0
+```
+
+| Key | Meaning |
+|---|---|
+| `now` | The device clock, epoch seconds. Compare `alive` and `request` with this, not the PC's clock. |
+| `boot_id` | `/proc/sys/kernel/random/boot_id`. A new one means the device rebooted. |
+| `booted` | `1` once `sys.boot_completed` is set. |
+| `uptime` | Whole seconds since boot. |
+| `running` | `1`/`0`, as for the other verbs. |
+| `uid` | The running service's uid (`0` when the app started it as root), or empty. |
+| `alive`, `alive_active` | From `alive`: when the engine last wrote it (empty when it never has) and whether a run was active. |
+| `request` | The engine's restart request, as written, or empty. Printed before `--take` removes it. |
+| `taken` | With `--take` only: `1` when the request is gone, `0` when it could not be removed (it would be seen again next poll). |
+| `stamped` | `1` when `stamp` now holds `now`; `0` when it could not be written, so the engine will not see this watcher (`comesBack` is not `host`). |
+
+A write that fails (`taken=0`, `stamped=0`, or `emulator` not written) adds
+`err=watch-dir-unwritable` and a `msg` naming the files; usually the engine
+made the dir as root without handing it to the shell user. `rc=1` only when a
+write the call asked for failed (`--take`, `--emulator`); a failed `stamp`
+alone keeps `rc=0`, since the facts reported are still good.
+
+`--emulator` refuses a name with anything but letters, digits, `.`, `_` and
+`-` (`err=bad-usage`). The verb is an addition to protocol 1, so `proto` stays
+`1`: hosts push this script before every call, so the device always has it.
 
 ## Rules for a host implementation
 

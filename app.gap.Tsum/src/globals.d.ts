@@ -2056,6 +2056,26 @@ declare function showBanner(message: string, duration?: number, plays?: number):
 declare function pauseScript(): void;
 
 /**
+ * Asks the engine to restart the device (GAP Companion's Restart device).
+ * `optsJson`: `{reason: "workflow"|"slow", minUptimeMin?, workflow?: {id, rev,
+ * at: {loop, index}}}`; `workflow.at` is where the workflow resumes afterwards.
+ * Answers JSON `{ok: true, comesBack: "boot"|"host"}` (the engine then stops
+ * the run and reboots) or `{ok: false, error: "restart-…"}`. Same gate as
+ * `execute()`. Newer than the rest: the workflow runner (src/gapWorkflow.ts)
+ * reaches it through `globalThis`, only when it is there.
+ */
+declare function gapRestartDevice(optsJson: string): string;
+
+/**
+ * The engine's speed check: frames per second and capture time since
+ * `sinceMs`, against the baseline taken after the last restart. `optsJson`:
+ * `{sinceMs?, fpsDropPct?, captureRisePct?, minFps?, maxCaptureMs?, sustainMin?}`
+ * (missing = the device's restart-rules.json). Answers JSON `{ok, slow, why,
+ * fps, captureMs, minutes, base}`. Newer than the rest, like `gapRestartDevice`.
+ */
+declare function gapPerf(optsJson: string): string;
+
+/**
  * Broadcast one of this script's own events to tooling outside the device.
  *
  * The host defines no names and reads no payloads: it adds a sequence, a UTC

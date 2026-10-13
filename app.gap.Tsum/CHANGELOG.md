@@ -53,6 +53,7 @@ release note; they fold back in here when she ships.
 
 *GAP Companion*
 - Some GAP Companion features now come as add-ons, sent to the accounts that have them.
+- Workflows can restart the device, every time or only when the script has slowed down, and carry on at the next step.
 
 **Fixes**
 
@@ -62,6 +63,7 @@ release note; they fold back in here when she ships.
 
 ### Added
 
+- **Restart device workflow steps** (`src/gapWorkflow.ts`): `restartDevice` and `restartIfSlow`, offered when the engine has `gapRestartDevice`; end reason `restart`, event `workflow.restart`, and a ref's `at` resumes at the saved step (`workflow.start.resumed`). Tsum's banners and `Log.Workflow.Restart`; the host shim stubs both natives.
 - **Script add-on hook API** (`src/addons.ts`): `gapAddonRegister(id, GAP_ADDON_API, install)`; the build writes `build/index.d.ts` for add-ons to compile against. An add-on logs as `addon.<name>.*` and queues its one-shot at `JobPriority.AddonNow`.
 
 ### Changed

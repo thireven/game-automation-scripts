@@ -12,6 +12,7 @@
 #
 # Usage:  sh gap-service.sh <probe|start|stop|log|clean> [--force] [--tcp PORT]
 #                                                        [--script ID]
+#         sh gap-service.sh watch [--take] [--emulator NAME]
 #
 # Output is key=value lines plus sentinel-delimited raw blocks. See PROTOCOL.md.
 
@@ -20,18 +21,32 @@ PACKAGE=com.generalautomation.platform
 # The app's id before the rename; its service would hold the socket name.
 LEGACY_PACKAGE=com.gameautomation.platform
 STAGE_DIR=/data/local/tmp/gap
+# Shared with the engine for watch mode (PROTOCOL.md § watch). GAP_WATCH_DIR is
+# for the parity test only.
+WATCH_DIR=${GAP_WATCH_DIR:-/data/local/tmp/gap-watch}
 
 VERB=""
 FORCE=""
 TCP_PORT=""
 SCRIPT_ID=""
+TAKE=""
+EMULATOR=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    probe|start|stop|log|clean) VERB="$1"; shift ;;
+    probe|start|stop|log|clean|watch) VERB="$1"; shift ;;
     --force)  FORCE=1; shift ;;
     --tcp)    TCP_PORT="$2"; shift 2 ;;
     --script) SCRIPT_ID="$2"; shift 2 ;;
+    --take)   TAKE=1; shift ;;
+    --emulator)
+      EMULATOR="${2:-}"
+      case "$EMULATOR" in
+        ''|*[!A-Za-z0-9._-]*)
+          echo "proto=$PROTO"; echo "err=bad-usage"; echo "msg=--emulator needs a name of letters, digits, . _ -"
+          echo "rc=2"; exit 2 ;;
+      esac
+      shift 2 ;;
     *) echo "proto=$PROTO"; echo "err=bad-usage"; echo "msg=unknown option: $1"
        echo "rc=2"; exit 2 ;;
   esac
@@ -96,6 +111,67 @@ emit_log() {
 }
 
 # --------------------------------------------- verbs needing no package lookup
+
+# watch: one poll of the PC's watch mode. Reports the boot, the service and the
+# engine's files in WATCH_DIR, and stamps `stamp` so the engine knows a watcher
+# is there. --take removes a restart request once it has been read;
+# --emulator NAME tells the engine which emulator the host can restart.
+if [ "$VERB" = watch ]; then
+  mkdir -p "$WATCH_DIR" 2>/dev/null
+  chmod 755 "$WATCH_DIR" 2>/dev/null
+  NOW=$(date +%s)
+  echo "now=$NOW"
+  echo "boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)"
+  if [ "$(getprop sys.boot_completed 2>/dev/null)" = 1 ]; then echo "booted=1"; else echo "booted=0"; fi
+  UPTIME=$(cut -d' ' -f1 /proc/uptime 2>/dev/null)
+  echo "uptime=${UPTIME%%.*}"
+  if service_running; then echo "running=1"; else echo "running=0"; fi
+  echo "uid=$(service_uid)"
+  # alive: "<epochSec> <active 0|1> <pid>", rewritten by the engine every 30 s.
+  ALIVE=$(cat "$WATCH_DIR/alive" 2>/dev/null)
+  ALIVE_AT=$(echo "$ALIVE" | cut -d' ' -f1)
+  ALIVE_ACTIVE=$(echo "$ALIVE" | cut -d' ' -f2)
+  echo "alive=$ALIVE_AT"
+  if [ "$ALIVE_ACTIVE" = 1 ]; then echo "alive_active=1"; else echo "alive_active=0"; fi
+  # request: "<epochSec> <reason>", written by the engine to ask for a host restart.
+  echo "request=$(head -1 "$WATCH_DIR/request" 2>/dev/null)"
+  # Every write is checked: a dir the engine made as root (not chowned to the
+  # shell user) refuses them, and a request left in place is taken again.
+  # WATCH_RC=1 only when an asked-for write (--take, --emulator) failed.
+  WATCH_RC=0
+  WATCH_BAD=""
+  if [ -n "$TAKE" ]; then
+    rm -f "$WATCH_DIR/request" 2>/dev/null
+    if [ -e "$WATCH_DIR/request" ]; then
+      echo "taken=0"; WATCH_RC=1; WATCH_BAD="request"
+    else
+      echo "taken=1"
+    fi
+  fi
+  if [ -n "$EMULATOR" ]; then
+    rm -f "$WATCH_DIR/emulator" 2>/dev/null
+    { echo "$EMULATOR" > "$WATCH_DIR/emulator"; } 2>/dev/null
+    if [ "$(cat "$WATCH_DIR/emulator" 2>/dev/null)" != "$EMULATOR" ]; then
+      WATCH_RC=1; WATCH_BAD="${WATCH_BAD:+$WATCH_BAD }emulator"
+    fi
+  fi
+  # rm first: a file the engine wrote as root can be unlinked here but not opened.
+  rm -f "$WATCH_DIR/stamp" 2>/dev/null
+  { echo "$NOW" > "$WATCH_DIR/stamp"; } 2>/dev/null
+  chmod 644 "$WATCH_DIR/stamp" 2>/dev/null
+  if [ "$(cat "$WATCH_DIR/stamp" 2>/dev/null)" = "$NOW" ]; then
+    echo "stamped=1"
+  else
+    # Still rc=0: the facts above are good; only the engine cannot see us.
+    echo "stamped=0"; WATCH_BAD="${WATCH_BAD:+$WATCH_BAD }stamp"
+  fi
+  if [ -n "$WATCH_BAD" ]; then
+    echo "err=watch-dir-unwritable"
+    echo "msg=could not write $WATCH_BAD in $WATCH_DIR (owner or mode?)"
+  fi
+  echo "rc=$WATCH_RC"
+  exit "$WATCH_RC"
+fi
 
 if [ "$VERB" = clean ]; then
   discard_stage_dir

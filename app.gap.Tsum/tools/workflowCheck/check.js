@@ -12,7 +12,9 @@
 // Cases: per-loop values cycle; `loop {times}`; `stop`; running off the end
 // (implicit stop) and the empty workflow; retries then skip; `terminate`; the
 // check's refusals in its documented order; Tsum's Tsum List check; the presets
-// mirror round trip; the add-on hooks (src/addons.ts) with a test add-on.
+// mirror round trip; the add-on hooks (src/addons.ts) with a test add-on; the
+// restart nodes (`restartDevice`, `restartIfSlow`) against the host shim's
+// stubbed natives, and resuming at a saved cursor (`at`).
 
 const fs = require('fs');
 const os = require('os');
@@ -21,7 +23,7 @@ const vm = require('vm');
 const { createRuntime } = require('../runtime/load');
 
 const storage = fs.mkdtempSync(path.join(os.tmpdir(), 'gap-workflow-check-'));
-const { ctx } = createRuntime({ quiet: true, storagePath: storage, build: process.argv.indexOf('--no-build') < 0 });
+const { ctx, host } = createRuntime({ quiet: true, storagePath: storage, build: process.argv.indexOf('--no-build') < 0 });
 const run = (code) => vm.runInContext(code, ctx);
 
 let failures = 0;
@@ -87,15 +89,15 @@ function receive(nodes, presets) {
   const workflow = nodes === null ? null : { id: 'wf_check', rev, name: 'check', nodes };
   return JSON.parse(ctx.gapWorkflowReceive(JSON.stringify({ hash: 'h' + rev, presets: presets || [], workflow })));
 }
-const ref = () => JSON.stringify({ id: 'wf_check', rev });
+const ref = (at) => JSON.stringify(at === undefined ? { id: 'wf_check', rev } : { id: 'wf_check', rev, at });
 const node = (id, type, params) => ({ id, type, params: params || {} });
 
-/** Begins the received workflow and steps it to the end. */
-function runToEnd(limit) {
+/** Begins the received workflow (at `at` when given) and steps it to the end. */
+function runToEnd(limit, at) {
   calls = [];
   events = [];
   twice = 0;
-  const refused = ctx.gapWorkflowBegin(ref());
+  const refused = ctx.gapWorkflowBegin(ref(at));
   const answers = [];
   if (refused === null) {
     for (let i = 0; i < (limit || 200); i++) {
@@ -222,10 +224,231 @@ const catalog = JSON.parse(ctx.gapWorkflowCatalog());
 const tsumTypes = catalog.nodes.map((n) => n.type).filter((t) => t.indexOf('test.') !== 0);
 check('catalog: api 1', catalog.api === 1, catalog.api);
 check('catalog: Tsum nodes in contract order', JSON.stringify(tsumTypes) === JSON.stringify(['restartApp',
-  'tsum.receiveHearts', 'tsum.sendHearts', 'tsum.skill', 'tsum.playRounds', 'loop', 'stop']), tsumTypes);
+  'tsum.receiveHearts', 'tsum.sendHearts', 'tsum.skill', 'tsum.playRounds',
+  'restartDevice', 'restartIfSlow', 'loop', 'stop']), tsumTypes);
+const restartDef = catalog.nodes.filter((n) => n.type === 'restartDevice')[0];
+const slowDef = catalog.nodes.filter((n) => n.type === 'restartIfSlow')[0];
+check('catalog: restart nodes labelled, no group', restartDef.label === 'Restart device'
+  && slowDef.label === 'Restart if slow' && restartDef.group === undefined, [restartDef, slowDef]);
+check('catalog: restartIfSlow params', slowDef.params.map((p) => p.key).join() === 'over,fpsDrop,captureRise'
+  && slowDef.params[0].options.map((o) => o.value).join() === 'loop,run,recent', slowDef.params);
 check('catalog: no presets list (reserved)', catalog.lists.presets === undefined);
 check('catalog: listInfo for tsums', catalog.listInfo && catalog.listInfo.tsums.label === 'Tsum List', catalog.listInfo);
 check('catalog: skills include nokill', catalog.lists.skills.some((s) => s.value === 'skill:nokill'));
+
+// --- device restart: the restart nodes and resuming --------------------------------
+const realRestart = ctx.gapRestartDevice;
+const realPerf = ctx.gapPerf;
+const restartEvents = () => events.filter((e) => e.event === 'workflow.restart').map((e) => e.data);
+const failedEvents = () => events.filter((e) => e.event === 'workflow.nodeFailed').map((e) => e.data);
+function withoutNatives(body) {
+  delete ctx.gapRestartDevice;
+  delete ctx.gapPerf;
+  try {
+    return body();
+  } finally {
+    ctx.gapRestartDevice = realRestart;
+    ctx.gapPerf = realPerf;
+  }
+}
+const resetRestart = (answer, perfAnswer) => {
+  host.restart.calls.length = 0;
+  host.restart.perfCalls.length = 0;
+  host.restart.answer = answer;
+  host.restart.perfAnswer = perfAnswer || { ok: true, slow: false, why: 'not-enough-data', fps: null,
+    captureMs: null, minutes: 0, base: null };
+};
+
+const plainTypes = withoutNatives(() => JSON.parse(ctx.gapWorkflowCatalog()).nodes.map((n) => n.type)
+  .filter((t) => t.indexOf('test.') !== 0));
+check('restart: without the native, not in the catalog', JSON.stringify(plainTypes) === JSON.stringify([
+  'restartApp', 'tsum.receiveHearts', 'tsum.sendHearts', 'tsum.skill', 'tsum.playRounds', 'loop', 'stop']),
+plainTypes);
+receive([node('n1', 'restartDevice')]);
+check('restart: without the native, a workflow with it is unsupported',
+  withoutNatives(() => checkOf().error) === 'workflow-unsupported:restartDevice');
+check('restart: with the native, it passes the check', checkOf().ok === true, checkOf());
+for (const reserved of ['restartDevice', 'restartIfSlow', 'loop', 'stop']) {
+  let threw = false;
+  try {
+    ctx.gapWorkflowDefineNode({ type: reserved, label: 'X', params: [], run: () => 'done' });
+  } catch (e) {
+    threw = true;
+  }
+  check('restart: ' + reserved + ' is reserved', threw);
+}
+receive([node('n1', 'restartDevice', { minUptime: 20 })]);
+check('restart: minUptime off its step is refused', checkOf().error === 'bad-workflow:n1', checkOf());
+receive([node('n1', 'restartIfSlow', { over: 'week' })]);
+check('restart: unknown `over` is refused', checkOf().error === 'bad-workflow:n1', checkOf());
+
+// Accepted: ends as `restart`, saving the next step as the resume cursor.
+resetRestart({ ok: true, comesBack: 'boot' });
+receive([node('n1', 'test.record', { value: 'a' }), node('n2', 'restartDevice', { minUptime: 30 }),
+  node('n3', 'test.record', { value: 'never' })]);
+r = runToEnd();
+check('restartDevice: ends the workflow as ended/restart', endOf().status === 'ended'
+  && endOf().reason === 'restart' && r.state.reason === 'restart', endOf());
+check('restartDevice: nodes after it do not run here', calls.length === 1 && calls[0].value === 'a', calls);
+const restartCall = host.restart.calls[0];
+check('restartDevice: asks with the next step as `at`', host.restart.calls.length === 1
+  && restartCall.reason === 'workflow' && restartCall.minUptimeMin === 30
+  && JSON.stringify(restartCall.workflow) === JSON.stringify({ id: 'wf_check', rev, at: { loop: 1, index: 2 } }),
+restartCall);
+check('restartDevice: one workflow.restart, restarting',
+  JSON.stringify(restartEvents()) === JSON.stringify([{ id: 'wf_check', nodeId: 'n2', index: 1, loop: 1,
+    outcome: 'restarting' }]), restartEvents());
+check('restartDevice: the run is told to finish', r.answers[r.answers.length - 1] === 'finished', r.answers);
+
+// Refused by the device's limits: skipped, not a failed step.
+resetRestart({ ok: false, error: 'restart-cooldown' });
+receive([node('n1', 'restartDevice'), node('n2', 'test.record', { value: 'after' })]);
+r = runToEnd();
+check('restartDevice: a cooldown refusal skips to the next step', calls.length === 1 && calls[0].value === 'after'
+  && endOf().reason === 'end', { calls, end: endOf() });
+check('restartDevice: the refusal is reported, not failed', restartEvents().length === 1
+  && restartEvents()[0].outcome === 'skipped' && restartEvents()[0].error === 'restart-cooldown'
+  && failedEvents().length === 0, events);
+check('restartDevice: no minUptime param sends none', host.restart.calls[0].minUptimeMin === undefined,
+  host.restart.calls[0]);
+check('restartDevice: after a refusal the job rests', r.answers[0] === 'wait', r.answers);
+
+// A loop of only restart nodes rests on every refusal instead of spinning.
+resetRestart({ ok: false, error: 'restart-cooldown' });
+receive([node('n1', 'restartDevice'), node('n2', 'loop', { times: 0 })]);
+r = runToEnd(6);
+check('restartDevice: a refused restart-only loop alternates wait and continue',
+  JSON.stringify(r.answers) === JSON.stringify(['wait', 'continue', 'wait', 'continue', 'wait', 'continue']),
+  r.answers);
+ctx.gapWorkflowAbort('stopped');
+
+// Refused for another reason: skipped and a failed step, without retries.
+resetRestart({ ok: false, error: 'restart-no-return' });
+receive([node('n1', 'restartDevice'), node('n2', 'test.record', { value: 'after' })]);
+r = runToEnd();
+check('restartDevice: other refusals fail the step once and move on', host.restart.calls.length === 1
+  && failedEvents().length === 1 && failedEvents()[0].error === 'restart-no-return'
+  && calls.length === 1 && calls[0].value === 'after', { failed: failedEvents(), calls });
+
+// A native that throws or answers garbage is restart-failed.
+ctx.gapRestartDevice = () => 'not json';
+receive([node('n1', 'restartDevice')]);
+r = runToEnd();
+ctx.gapRestartDevice = realRestart;
+check('restartDevice: a garbage answer is restart-failed', restartEvents()[0].error === 'restart-failed'
+  && endOf().reason === 'end', restartEvents());
+
+// restartIfSlow, not slow: moves on without asking for a restart.
+resetRestart({ ok: true, comesBack: 'host' }, { ok: true, slow: false, why: null, fps: 30, captureMs: 12,
+  minutes: 9, base: { fps: 31, captureMs: 11, at: 1 } });
+receive([node('n1', 'restartIfSlow', { fpsDrop: 50 }), node('n2', 'test.record', { value: 'after' })]);
+r = runToEnd();
+check('restartIfSlow: not slow moves on', host.restart.calls.length === 0 && calls.length === 1
+  && endOf().reason === 'end', { calls: host.restart.calls, end: endOf() });
+check('restartIfSlow: not slow rests before the next step', r.answers[0] === 'wait', r.answers);
+check('restartIfSlow: not-slow event carries the speed',
+  JSON.stringify(restartEvents()) === JSON.stringify([{ id: 'wf_check', nodeId: 'n1', index: 0, loop: 1,
+    outcome: 'not-slow', fps: 30, captureMs: 12 }]), restartEvents());
+check('restartIfSlow: param overrides go to gapPerf', host.restart.perfCalls[0].fpsDropPct === 50
+  && host.restart.perfCalls[0].captureRisePct === undefined, host.restart.perfCalls[0]);
+
+// The `over` windows: this loop (the default), this run, the last 30 minutes.
+resetRestart({ ok: true }, { ok: true, slow: false, why: 'not-enough-data', fps: null, captureMs: null,
+  minutes: 0, base: null });
+receive([node('n0', 'test.record', { value: 'a' }), node('n1', 'restartIfSlow', { over: 'run' }),
+  node('n2', 'restartIfSlow'), node('n3', 'restartIfSlow', { over: 'recent' }), node('n4', 'loop', { times: 2 })]);
+run('var gapCheckNow = Date.now; var gapCheckClock = Date.now(); Date.now = function() { return gapCheckClock; };');
+try {
+  calls = [];
+  events = [];
+  ctx.gapWorkflowBegin(ref());
+  const t0 = run('gapCheckClock');
+  for (let i = 0; i < 4; i++) ctx.gapWorkflowStep();     // loop 1: work, run, loop, recent
+  run('gapCheckClock += 60000');
+  for (let i = 0; i < 4; i++) ctx.gapWorkflowStep();     // the loop node, then loop 2: work, run, loop
+  const since = host.restart.perfCalls.map((c) => c.sinceMs);
+  check('restartIfSlow: `run` and `loop` start at the run start in loop 1',
+    since[0] === t0 && since[1] === t0, since);
+  check('restartIfSlow: `recent` is the last 30 minutes', since[2] === t0 - 30 * 60000, since);
+  check('restartIfSlow: in loop 2, `run` keeps the run start and `loop` the loop start',
+    since[3] === t0 && since[4] === t0 + 60000, since);
+  ctx.gapWorkflowAbort('stopped');
+
+  // First in the loop, `loop` measures the previous pass: this one has done nothing yet.
+  receive([node('n1', 'restartIfSlow'), node('n2', 'test.record', { value: 'a' }),
+    node('n3', 'loop', { times: 0 })]);
+  host.restart.perfCalls.length = 0;
+  ctx.gapWorkflowBegin(ref());
+  const t1 = run('gapCheckClock');
+  ctx.gapWorkflowStep();                                 // pass 1: restartIfSlow
+  ctx.gapWorkflowStep();                                 // pass 1: work
+  run('gapCheckClock += 60000');
+  for (let i = 0; i < 3; i++) ctx.gapWorkflowStep();     // loop, pass 2: restartIfSlow, work
+  run('gapCheckClock += 60000');
+  for (let i = 0; i < 2; i++) ctx.gapWorkflowStep();     // loop, pass 3: restartIfSlow
+  const first = host.restart.perfCalls.map((c) => c.sinceMs);
+  check('restartIfSlow: first in the loop, `loop` is the previous pass',
+    JSON.stringify(first) === JSON.stringify([t1, t1, t1 + 60000]), first);
+  ctx.gapWorkflowAbort('stopped');
+} finally {
+  run('Date.now = gapCheckNow;');
+}
+
+// restartIfSlow, slow: restarts with reason `slow`.
+resetRestart({ ok: true, comesBack: 'boot' }, { ok: true, slow: true, why: 'fps', fps: 12, captureMs: 30,
+  minutes: 10, base: { fps: 30, captureMs: 12, at: 1 } });
+receive([node('n1', 'test.record', { value: 'a' }), node('n2', 'restartIfSlow', { over: 'run', captureRise: 200 }),
+  node('n3', 'test.record', { value: 'never' })]);
+r = runToEnd();
+check('restartIfSlow: slow restarts with reason slow', host.restart.calls.length === 1
+  && host.restart.calls[0].reason === 'slow' && host.restart.calls[0].workflow.at.index === 2
+  && host.restart.perfCalls[0].captureRisePct === 200, host.restart.calls);
+check('restartIfSlow: slow ends the workflow as restart', endOf().reason === 'restart'
+  && restartEvents()[0].outcome === 'restarting' && restartEvents()[0].why === 'fps'
+  && restartEvents()[0].fps === 12, restartEvents());
+resetRestart({ ok: false, error: 'restart-no-return' });
+
+// Resuming: `at` starts there, and workflow.start says so.
+receive([node('n1', 'test.record', { value: { perLoop: ['a', 'b'] } }), node('n2', 'test.record', { value: 'c' }),
+  node('n3', 'loop', { times: 2 })]);
+check('resume: the check takes a ref with `at`', JSON.parse(ctx.gapWorkflowCheck(ref({ loop: 2, index: 1 }))).ok
+  === true);
+check('resume: a bad `at` is bad-args', JSON.parse(ctx.gapWorkflowCheck(ref({ loop: 0, index: 1 }))).error
+  === 'bad-args' && JSON.parse(ctx.gapWorkflowCheck(ref({ loop: 1, index: -1 }))).error === 'bad-args'
+  && JSON.parse(ctx.gapWorkflowCheck(ref({ loop: 1.5, index: 0 }))).error === 'bad-args');
+r = runToEnd(50, { loop: 1, index: 1 });
+check('resume: starts at `at`', JSON.stringify(calls.map((c) => c.value + c.loop + c.index))
+  === JSON.stringify(['c11', 'b20', 'c21']), calls);
+check('resume: workflow.start carries resumed', events[0].event === 'workflow.start'
+  && JSON.stringify(events[0].data.resumed) === JSON.stringify({ loop: 1, index: 1 }), events[0]);
+r = runToEnd(50, { loop: 2, index: 0 });
+check('resume: per-loop values follow the resumed loop', calls[0].value === 'b' && calls[0].loop === 2, calls);
+r = runToEnd(50, { loop: 1, index: 3 });
+check('resume: `at` past the end ends as `end` with no node run', r.refused === null && calls.length === 0
+  && endOf().reason === 'end' && endOf().status === 'ended', { calls, end: endOf() });
+check('resume: `at` past the end starts plainly (no resumed)', events[0].event === 'workflow.start'
+  && events[0].data.resumed === undefined, events[0]);
+r = runToEnd(50);
+check('resume: a plain start has no resumed', events[0].data.resumed === undefined, events[0]);
+
+// Tsum's half: labels from the runner, and the banners' log lines.
+check('tsum: restart node labels', ctx.workflowNodeLabel('restartIfSlow') === 'Restart if slow'
+  && withoutNatives(() => ctx.workflowNodeLabel('restartDevice')) === 'restartDevice');
+let said = true;
+try {
+  ctx.workflowSay('workflow.start', { id: 'wf_check', name: 'check', total: 3, resumed: { loop: 1, index: 1 } });
+  for (const outcome of ['restarting', 'skipped', 'not-slow']) {
+    ctx.workflowSay('workflow.restart', { id: 'wf_check', nodeId: 'n1', index: 0, loop: 1, outcome,
+      error: 'restart-cooldown' });
+  }
+  for (const why of ['not-enough-data', 'no-baseline']) {
+    ctx.workflowSay('workflow.restart', { id: 'wf_check', nodeId: 'n1', index: 0, loop: 1, outcome: 'not-slow', why });
+  }
+  ctx.workflowSay('workflow.end', { id: 'wf_check', status: 'ended', reason: 'restart', loop: 1, index: 0 });
+} catch (e) {
+  said = e.message;
+}
+check('tsum: restart and resume banners', said === true, said);
 
 // --- Tsum's Tsum List check ---------------------------------------------------------
 const listFile = path.join(ctx.getDevicePath(), 'tsum_list_state.json');

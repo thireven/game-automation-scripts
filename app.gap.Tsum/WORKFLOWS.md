@@ -10,7 +10,7 @@ This document is what Tsum does with it.
 
 | Part | File | Does |
 |:--|:--|:--|
-| Runner library | `src/gapWorkflow.ts` | Generic and vendored verbatim by other scripts: the catalog, the last sync, `gapWorkflowCheck`, the cursor `{loop, index}`, per-loop values (they cycle), `loop` / `stop`, retries, state and events. References nothing else in this tree; `npm run typecheck:workflow` compiles it alone |
+| Runner library | `src/gapWorkflow.ts` | Generic and vendored verbatim by other scripts: the catalog, the last sync, `gapWorkflowCheck`, the cursor `{loop, index}`, per-loop values (they cycle), `loop` / `stop`, `restartDevice` / `restartIfSlow`, resuming at a saved cursor, retries, state and events. References nothing else in this tree (the engine's `gapRestartDevice` / `gapPerf` only through `globalThis`, when present); `npm run typecheck:workflow` compiles it alone |
 | Tsum's half | `src/workflow.ts` | The node catalog and lists, each node's implementation, the Tsum List check, the run mode, the presets mirror |
 | Run mode | `src/index.ts` (`buildRun`), `src/runPlan.ts` (`workflowTaskTable`) | A workflow run registers the Workflow job instead of the chore table |
 | Add-ons | not in this tree | GAP Companion may send private add-ons to the accounts that have them; they register through `src/addons.ts`, so their nodes come after the base's |
@@ -29,7 +29,7 @@ the adapter has already run `gapWorkflowCheck`), which calls
    off** (`ts.stopAfterGames = 0`; the setting itself is untouched).
 3. `gapWorkflowBegin` checks the workflow again and snapshots it. A refusal ends
    the workflow (`workflow.end`, status `terminated`) and the run, before any
-   node runs.
+   node runs. A ref with `at` (a resume after a device restart) starts there.
 4. Only the **Workflow** job is registered (priority 90, every 3 s). The chore
    table is not: the workflow's order replaces the coded one. The Now one-shots
    (unlock, boxes, Tsum List) and Stop after this round still run, ahead of it.
@@ -72,11 +72,43 @@ so the scheduler's five-throws restart can never loop.
 | `tsum.sendHearts` | `taskSendHearts` once. `toZeroScore` sets `sentToZero`; `maxRuntime` (minutes) sets `sendHeartMaxDuring` |
 | `tsum.skill` | `preset:<id>`: the synced preset's round keys (`WorkflowPresetKeys`, the adapter's `presets.fields`) through `applyLiveSettings`; `skill:<id>`: `skillType`. Next-round keys land at the next whistle, as from the Quick Bar |
 | `tsum.playRounds` | `taskPlayGameQuick` until `rounds` more rounds finished, counted by the change in `ts.runClock.rounds` (not the return value). Answers `wait` during the round delay or while a Now sweep waits, unless a round is already on the board. Detail: `N/M rounds`, or `playing round N of M` while one plays |
+| `restartDevice`, `restartIfSlow` | The library, listed only when the engine has `gapRestartDevice` (below) |
 | `loop`, `stop` | The library: `loop {times}` (0 = forever) restarts at the first node; `stop` ends the workflow. Running off the end is an implicit stop |
 
 Option lists: `tsums` (below) and `skills`, every skill this build has a handler
 for plus `nokill`, as `skill:<id>` with a readable name (`WorkflowSkillLabels`,
 mirroring the adapter's SKILLS; the id for a skill missing there). `presets` is the phone's, from the account.
+
+## Restarting the device
+
+The library's own nodes, after the script's in the catalog (`…, restartDevice,
+restartIfSlow, loop, stop`), offered only when the engine has `gapRestartDevice`.
+
+- `restartDevice {minUptime?}` asks the engine for a restart
+  (`gapRestartDevice`, reason `workflow`) with the **next** step as the resume
+  cursor. Accepted: `workflow.restart` `restarting`, then the workflow ends as
+  `ended` / `restart` and the run stops; the engine reboots and starts the run
+  again with `at`.
+- `restartIfSlow {over, fpsDrop?, captureRise?}` first asks `gapPerf` about the
+  window `over`: `loop` (since this pass began; the previous pass when no
+  script node has run yet in this one, e.g. the node is first in the loop),
+  `run` (since the run began) or `recent` (the last 30 minutes). Not slow:
+  `workflow.restart` `not-slow` (with `why` when nothing could be measured),
+  next step. Slow: as `restartDevice`, reason `slow`. Missing params come from the
+  device's `restart-rules.json`.
+- A refusal (`restart-*`) is `workflow.restart` `skipped` with the `error`, and
+  the workflow moves on. `restart-cooldown`, `restart-too-soon` and
+  `restart-limit` are the device's limits at work; any other refusal also emits
+  `workflow.nodeFailed` (never retried).
+- Any outcome but a restart answers `wait`: the job rests its interval before
+  the next step, so a loop of only these nodes cannot spin.
+- **Resume**: `gapWorkflowBegin` with `at {loop, index}` starts there and emits
+  `workflow.start` with `resumed`. An `at` past the last node (a restart that
+  was the last step) emits a plain `workflow.start`, then ends as `end`.
+- Banners: "Restarting the device", "Restart skipped: <error>", "Speed is fine;
+  no restart" (or "Not enough speed data yet; no restart" / "No speed baseline
+  yet; no restart" for `why` `not-enough-data` / `no-baseline`), "Workflow
+  resumed: <name>, step N".
 
 ## The Tsum List file
 

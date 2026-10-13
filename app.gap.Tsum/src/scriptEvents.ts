@@ -72,7 +72,10 @@ namespace Emit {
    * sets, so the call sites carry these strings rather than the members.
    */
   export const enum Workflow {
-    /** A workflow passed its check and its first node is next. */
+    /**
+     * A workflow passed its check and its first node is next. `resumed`
+     * (`{loop, index}`) when it carries on after a device restart.
+     */
     Start      = 'workflow.start',
     /** A node's first call in this pass (not repeated for again, wait or a retry). */
     Node       = 'workflow.node',
@@ -82,6 +85,11 @@ namespace Emit {
     NodeFailed = 'workflow.nodeFailed',
     /** The workflow is over: `status` is ended, failed or terminated, `reason` why. */
     End        = 'workflow.end',
+    /**
+     * A `restartDevice` / `restartIfSlow` step: `outcome` is restarting, skipped
+     * (`error` says why) or not-slow; `why`, `fps`, `captureMs` from the speed check.
+     */
+    Restart    = 'workflow.restart',
   }
 
   /**

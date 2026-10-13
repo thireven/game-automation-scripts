@@ -219,7 +219,8 @@ function gapRemoteAction(name: string, argsJson: string): string {
 /**
  * What a remote start runs with: the defaults with the last run's settings on
  * top, so a device that never ran the script starts too. `optsJson` is `{}` or
- * `{workflow: {id, rev}}`, already checked by the adapter.
+ * `{workflow: {id, rev, at?}}` (`at`: resume after a device restart), already
+ * checked by the adapter.
  */
 // noinspection JSUnusedGlobalSymbols
 function gapRemoteStartPrepare(optsJson: string): string {

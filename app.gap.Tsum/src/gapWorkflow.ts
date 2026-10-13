@@ -2,18 +2,21 @@
 //
 // **Vendor this file verbatim.** Copy it into another script's `src/`, list it
 // before `index.ts` in that script's tsconfig, and add its globals to the
-// minifier's `wanted` list. It references nothing outside itself: no host
-// natives, no game. The contract it implements is the app repo's
+// minifier's `wanted` list. It references nothing outside itself and no game.
+// The only host natives it uses, `gapRestartDevice` and `gapPerf`, are looked
+// up on `globalThis` when present. The contract it implements is the app repo's
 // `docs/WORKFLOWS.md` (§ 3 running, § 6 globals, § 7 state, § 8 events).
 //
 // What it does:
 //   * keeps the catalog: the script's nodes (`gapWorkflowDefineNode`), its option
-//     lists (`gapWorkflowDefineList`), plus the standard `loop` and `stop`
+//     lists (`gapWorkflowDefineList`), plus the standard `loop` and `stop`, and
+//     `restartDevice` / `restartIfSlow` when the engine can restart the device
 //   * keeps the last sync (`gapWorkflowReceive`): the assigned workflow and the
 //     account's presets, in memory only -- the engine re-delivers after a load
 //   * checks a workflow against the catalog (`gapWorkflowCheck`)
-//   * runs one: a cursor `{loop, index}`, per-loop values that cycle, `loop` and
-//     `stop` itself, and one node call per `gapWorkflowStep()`
+//   * runs one: a cursor `{loop, index}`, per-loop values that cycle, the
+//     standard nodes itself, and one node call per `gapWorkflowStep()`
+//   * resumes one at a saved cursor (the ref's `at`) after a device restart
 //   * reports state (`gapWorkflowState`) and emits events through the script's hook
 //
 // What the script does: define its nodes and lists, set the hooks, and from its
@@ -34,6 +37,12 @@ const GAP_WORKFLOW_MAX_PER_LOOP = 20;
 const GAP_WORKFLOW_MAX_STRING = 200;
 /** A node type or param key: `NAME` in the contract. */
 const GAP_WORKFLOW_NAME = /^[A-Za-z][A-Za-z0-9._-]{0,63}$/;
+/** Standard node types a script may not define. */
+const GAP_WORKFLOW_RESERVED = ['loop', 'stop', 'restartDevice', 'restartIfSlow'];
+/** `restartIfSlow`'s window for `over: recent`: the last 30 minutes. */
+const GAP_WORKFLOW_RECENT_MS = 30 * 60 * 1000;
+/** Restart refusals that are the device's limits at work, not a failing step. */
+const GAP_WORKFLOW_RESTART_LIMITS = ['restart-cooldown', 'restart-too-soon', 'restart-limit'];
 
 type GapWorkflowScalar = string | number | boolean;
 /** A node param value: a scalar, or one value per loop pass (they cycle). */
@@ -111,6 +120,12 @@ interface GapWorkflow {
   nodes: GapWorkflowNode[];
 }
 
+/** A cursor: pass `loop` (from 1), node `index` (from 0). */
+interface GapWorkflowAt {
+  loop: number;
+  index: number;
+}
+
 interface GapWorkflowPreset {
   id: string;
   name: string;
@@ -146,9 +161,15 @@ interface GapWorkflowRun {
   state: GapWorkflowState;
   /** Tries of the node under the cursor; 0 until its first call. */
   tries: number;
+  /** When the run (or the resumed run) began, epoch ms: `restartIfSlow` `over: run`. */
+  startedAt: number;
+  /** When the current loop pass began, epoch ms: `restartIfSlow` `over: loop`. */
+  loopStartedAt: number;
+  /** When the previous pass began: `over: loop` before this pass ran any work. */
+  prevLoopStartedAt: number;
 }
 
-/** Node types in catalog order; `loop` and `stop` are always last. */
+/** Script node types in catalog order; the standard ones follow them. */
 let gapWorkflowNodeOrder: string[] = [];
 let gapWorkflowNodes: { [type: string]: GapWorkflowNodeDef } = {};
 let gapWorkflowListOrder: string[] = [];
@@ -161,9 +182,9 @@ let gapWorkflowRun: GapWorkflowRun | null = null;
 
 // --- Registration (called by the script at load) ----------------------------
 
-/** Registers a node type. `loop` and `stop` are the library's own. */
+/** Registers a node type. The standard types (`GAP_WORKFLOW_RESERVED`) are the library's own. */
 function gapWorkflowDefineNode(def: GapWorkflowNodeDef): void {
-  if (!GAP_WORKFLOW_NAME.test(def.type) || def.type === 'loop' || def.type === 'stop') {
+  if (!GAP_WORKFLOW_NAME.test(def.type) || GAP_WORKFLOW_RESERVED.indexOf(def.type) >= 0) {
     throw new Error('gapWorkflowDefineNode: bad type ' + def.type);
   }
   if (gapWorkflowNodes[def.type] === undefined) {
@@ -218,8 +239,34 @@ function gapWorkflowHooksOf(): GapWorkflowHooks {
 
 // --- The standard nodes -------------------------------------------------------
 
-/** `loop` and `stop`. Their behaviour is in `gapWorkflowStep`; `run` is never called. */
+/**
+ * The standard nodes, in catalog order. Their behaviour is in `gapWorkflowStep`
+ * (the restart pair in `gapWorkflowRestartStep`); `run` is never called.
+ */
 const GapWorkflowStandard: GapWorkflowNodeDef[] = [
+  {
+    type: 'restartDevice', label: 'Restart device',
+    help: 'Restarts the device. The workflow carries on at the next step.',
+    params: [{ key: 'minUptime', label: 'Minimum uptime', type: 'int', min: 0, max: 1440, step: 15,
+      unit: 'min', optional: true,
+      help: 'Skip the restart when the device has been up for less. Empty = the device setting.' }],
+    run: function() { return 'done'; },
+  },
+  {
+    type: 'restartIfSlow', label: 'Restart if slow',
+    help: 'Restarts the device when the script ran slower than after the last restart. '
+      + 'The workflow carries on at the next step.',
+    params: [
+      { key: 'over', label: 'Measured over', type: 'enum', default: 'loop', optional: true,
+        options: [{ value: 'loop', label: 'This loop' }, { value: 'run', label: 'This run' },
+          { value: 'recent', label: 'Last 30 minutes' }] },
+      { key: 'fpsDrop', label: 'Frame rate drop', type: 'int', min: 5, max: 95, step: 5, unit: '%',
+        optional: true, help: 'Empty = the device setting.' },
+      { key: 'captureRise', label: 'Capture slower by', type: 'int', min: 10, max: 1000, step: 10,
+        unit: '%', optional: true, help: 'Empty = the device setting.' },
+    ],
+    run: function() { return 'done'; },
+  },
   {
     type: 'loop', label: 'Loop', help: '0 = forever',
     params: [{ key: 'times', label: 'Times', type: 'int', min: 0, max: 999, step: 1,
@@ -229,10 +276,25 @@ const GapWorkflowStandard: GapWorkflowNodeDef[] = [
   { type: 'stop', label: 'Stop', params: [], run: function() { return 'done'; } },
 ];
 
-/** A script node, or a standard one; undefined for a type nobody defined. */
+/** A host native that takes and answers JSON, or null when this engine lacks it. */
+function gapWorkflowNative(name: 'gapRestartDevice' | 'gapPerf'): ((json: string) => string) | null {
+  const fn = (globalThis as unknown as { [key: string]: unknown })[name];
+  return typeof fn === 'function' ? fn as (json: string) => string : null;
+}
+
+/** The standard types this device offers: the restart pair only when the engine has `gapRestartDevice`. */
+function gapWorkflowStandardTypes(): string[] {
+  return gapWorkflowNative('gapRestartDevice') !== null
+    ? ['restartDevice', 'restartIfSlow', 'loop', 'stop'] : ['loop', 'stop'];
+}
+
+/** A script node, or a standard one; undefined for a type nobody defined (or a restart node without the native). */
 function gapWorkflowDef(type: string): GapWorkflowNodeDef | undefined {
   if (gapWorkflowNodes[type] !== undefined) {
     return gapWorkflowNodes[type];
+  }
+  if (gapWorkflowStandardTypes().indexOf(type) < 0) {
+    return undefined;
   }
   for (let i = 0; i < GapWorkflowStandard.length; i++) {
     if (GapWorkflowStandard[i].type === type) {
@@ -263,7 +325,7 @@ function gapWorkflowListValues(): { [name: string]: GapWorkflowListItem[] | null
 /** JSON `{api, nodes, lists, listInfo?}` -- the companion adapter adds `syncHash`, `presetFields`, `stats` and `screens`. */
 function gapWorkflowCatalog(): string {
   const nodes: { [key: string]: unknown }[] = [];
-  const types = gapWorkflowNodeOrder.concat(['loop', 'stop']);
+  const types = gapWorkflowNodeOrder.concat(gapWorkflowStandardTypes());
   for (let i = 0; i < types.length; i++) {
     const def = gapWorkflowDef(types[i])!;
     const node: { [key: string]: unknown } = { type: def.type, label: def.label };
@@ -536,7 +598,24 @@ function gapWorkflowCheckWorkflow(workflow: GapWorkflow, presets: GapWorkflowPre
   return null;
 }
 
-/** The error code for starting `refJson` (`{id, rev}`), or null when it may start. */
+/** A cursor `{loop >= 1, index >= 0}` (whole numbers), or null when `raw` is not one. */
+function gapWorkflowAtOf(raw: unknown): GapWorkflowAt | null {
+  if (!gapWorkflowIsObject(raw)) {
+    return null;
+  }
+  const loop = raw.loop;
+  const index = raw.index;
+  if (typeof loop !== 'number' || typeof index !== 'number' || Math.floor(loop) !== loop
+      || Math.floor(index) !== index || loop < 1 || index < 0) {
+    return null;
+  }
+  return { loop: loop, index: index };
+}
+
+/**
+ * The error code for starting `refJson` (`{id, rev, at?}`), or null when it may
+ * start. `at` (where a resume starts) must be a valid cursor when present.
+ */
 function gapWorkflowCheckRef(refJson: string): string | null {
   let ref: unknown;
   try {
@@ -544,7 +623,8 @@ function gapWorkflowCheckRef(refJson: string): string | null {
   } catch (e) {
     return 'bad-args';
   }
-  if (!gapWorkflowIsObject(ref) || typeof ref.id !== 'string' || typeof ref.rev !== 'number') {
+  if (!gapWorkflowIsObject(ref) || typeof ref.id !== 'string' || typeof ref.rev !== 'number'
+      || (ref.at !== undefined && ref.at !== null && gapWorkflowAtOf(ref.at) === null)) {
     return 'bad-args';
   }
   // 1. Is it the one this device holds?
@@ -614,6 +694,10 @@ function gapWorkflowResolve(node: GapWorkflowNode, loop: number): { [key: string
  * Starts the workflow `refJson` names, at run start. Checks it, snapshots it
  * (with the presets) and emits `workflow.start`. Returns null, or the error
  * code after ending the workflow as `terminated` with it.
+ *
+ * A ref with `at` resumes there (after a device restart): `workflow.start`
+ * carries `resumed: {loop, index}`. An `at` past the last node starts it
+ * plainly (no `resumed`) and the first step ends it as `end`.
  */
 function gapWorkflowBegin(refJson: string): string | null {
   const error = gapWorkflowCheckRef(refJson);
@@ -628,35 +712,42 @@ function gapWorkflowBegin(refJson: string): string | null {
       nodes: [] };
   const presets: GapWorkflowPreset[] = gapWorkflowSynced !== null
     ? JSON.parse(JSON.stringify(gapWorkflowSynced.presets)) : [];
+  const now = Date.now();
   const run: GapWorkflowRun = {
-    workflow: workflow, presets: presets, tries: 0,
+    workflow: workflow, presets: presets, tries: 0, startedAt: now, loopStartedAt: now,
+    prevLoopStartedAt: now,
     state: {
       id: workflow.id, rev: workflow.rev, name: workflow.name, loop: 1, index: 0,
       nodeId: null, node: null, total: workflow.nodes.length, detail: null, status: 'running',
     },
   };
-  gapWorkflowMoveTo(run, 1, 0);
+  const at = error === null ? ref.at : null;
+  gapWorkflowMoveTo(run, at !== null ? at.loop : 1, at !== null ? at.index : 0);
   gapWorkflowRun = run;
   if (error !== null) {
     gapWorkflowFinish(run, 'terminated', error);
     return error;
   }
+  // Only a step that exists is resumed; past the end there is nothing to resume.
+  const resumed = at !== null && gapWorkflowCurrent(run) !== undefined;
   gapWorkflowHooksOf().emit('workflow.start', {
     id: workflow.id, rev: workflow.rev, name: workflow.name, total: workflow.nodes.length,
+    resumed: resumed && at !== null ? { loop: at.loop, index: at.index } : undefined,
   });
   return null;
 }
 
-/** The ref's id and rev, '' and 0 where unreadable. */
-function gapWorkflowRefOf(refJson: string): { id: string; rev: number } {
+/** The ref's id, rev and `at`: '', 0 and null where unreadable. */
+function gapWorkflowRefOf(refJson: string): { id: string; rev: number; at: GapWorkflowAt | null } {
   try {
     const ref = JSON.parse(refJson);
     return {
       id: gapWorkflowIsObject(ref) && typeof ref.id === 'string' ? ref.id : '',
       rev: gapWorkflowIsObject(ref) && typeof ref.rev === 'number' ? ref.rev : 0,
+      at: gapWorkflowIsObject(ref) ? gapWorkflowAtOf(ref.at) : null,
     };
   } catch (e) {
-    return { id: '', rev: 0 };
+    return { id: '', rev: 0, at: null };
   }
 }
 
@@ -697,11 +788,17 @@ function gapWorkflowStep(): 'continue' | 'wait' | 'finished' {
     const times = typeof params.times === 'number' ? params.times : 0;
     if (times === 0 || state.loop < times) {
       gapWorkflowMoveTo(run, state.loop + 1, 0);
+      run.prevLoopStartedAt = run.loopStartedAt;
+      run.loopStartedAt = Date.now();
       gapWorkflowHooksOf().emit('workflow.loop', { id: state.id, loop: state.loop });
     } else {
       gapWorkflowAdvance(run);
     }
     return 'continue';
+  }
+  if ((node.type === 'restartDevice' || node.type === 'restartIfSlow')
+      && gapWorkflowDef(node.type) !== undefined) {
+    return gapWorkflowRestartStep(run, node, params);
   }
 
   const def = gapWorkflowNodes[node.type];
@@ -752,6 +849,120 @@ function gapWorkflowStep(): 'continue' | 'wait' | 'finished' {
   run.tries++;
   // A retry rests first: whatever failed is unlikely to pass a moment later.
   return 'wait';
+}
+
+/** A native's JSON answer as an object; `{ok: false, error: fallback}` when it is missing, throws or answers garbage. */
+function gapWorkflowCallNative(name: 'gapRestartDevice' | 'gapPerf', opts: { [key: string]: unknown },
+                               fallback: string): { [key: string]: unknown } {
+  const fn = gapWorkflowNative(name);
+  if (fn === null) {
+    return { ok: false, error: fallback };
+  }
+  try {
+    const answer = JSON.parse(fn(JSON.stringify(opts)));
+    return gapWorkflowIsObject(answer) ? answer : { ok: false, error: fallback };
+  } catch (e) {
+    return { ok: false, error: fallback };
+  }
+}
+
+/** A finite number from a native's answer, or undefined (so the event leaves it out). */
+function gapWorkflowNumberOf(v: unknown): number | undefined {
+  return typeof v === 'number' && isFinite(v) ? v : undefined;
+}
+
+/**
+ * `restartDevice` and `restartIfSlow`, one call. `restartIfSlow` first asks
+ * `gapPerf` whether the script ran slow over its window (`over`); not slow
+ * moves on. A restart the engine accepts ends the workflow as `restart`, saving
+ * the next step as the cursor it resumes at. A refusal moves on; one that is
+ * not just the device's limits (cooldown, too soon, daily limit) also counts
+ * as a failed step. Every outcome emits one `workflow.restart`. Any outcome
+ * but a restart answers `wait`, so a loop of only these nodes rests between
+ * passes instead of spinning.
+ */
+function gapWorkflowRestartStep(run: GapWorkflowRun, node: GapWorkflowNode,
+                                params: { [key: string]: GapWorkflowScalar }): 'wait' | 'finished' {
+  const state = run.state;
+  let outcome: 'restarting' | 'skipped' | 'not-slow' = 'restarting';
+  let error: string | undefined;
+  let why: string | undefined;
+  let fps: number | undefined;
+  let captureMs: number | undefined;
+  let slow = true;
+  if (node.type === 'restartIfSlow') {
+    const now = Date.now();
+    const sinceMs = params.over === 'run' ? run.startedAt
+      : params.over === 'recent' ? now - GAP_WORKFLOW_RECENT_MS
+      : gapWorkflowPassWorked(run) ? run.loopStartedAt : run.prevLoopStartedAt;
+    const opts: { [key: string]: unknown } = { sinceMs: sinceMs };
+    if (typeof params.fpsDrop === 'number') {
+      opts.fpsDropPct = params.fpsDrop;
+    }
+    if (typeof params.captureRise === 'number') {
+      opts.captureRisePct = params.captureRise;
+    }
+    const perf = gapWorkflowCallNative('gapPerf', opts, 'perf-failed');
+    why = typeof perf.why === 'string' ? perf.why : undefined;
+    fps = gapWorkflowNumberOf(perf.fps);
+    captureMs = gapWorkflowNumberOf(perf.captureMs);
+    if (perf.ok !== true) {
+      outcome = 'skipped';
+      error = typeof perf.error === 'string' ? perf.error : 'perf-failed';
+      slow = false;
+    } else if (perf.slow !== true) {
+      outcome = 'not-slow';
+      slow = false;
+    }
+  }
+  if (slow) {
+    const opts: { [key: string]: unknown } = {
+      reason: node.type === 'restartIfSlow' ? 'slow' : 'workflow',
+      // The step after this one: the workflow carries on there after the restart.
+      workflow: { id: state.id, rev: state.rev, at: { loop: state.loop, index: state.index + 1 } },
+    };
+    if (node.type === 'restartDevice' && typeof params.minUptime === 'number') {
+      opts.minUptimeMin = params.minUptime;
+    }
+    const answer = gapWorkflowCallNative('gapRestartDevice', opts, 'restart-failed');
+    if (answer.ok !== true) {
+      outcome = 'skipped';
+      error = typeof answer.error === 'string' ? answer.error : 'restart-failed';
+    }
+  }
+  gapWorkflowHooksOf().emit('workflow.restart', {
+    id: state.id, nodeId: node.id, index: state.index, loop: state.loop, outcome: outcome,
+    error: error, why: why, fps: fps, captureMs: captureMs,
+  });
+  if (outcome === 'restarting') {
+    // The engine stops the run and reboots; the script just ends its run.
+    gapWorkflowFinish(run, 'ended', 'restart');
+    return 'finished';
+  }
+  if (outcome === 'skipped' && error !== undefined && GAP_WORKFLOW_RESTART_LIMITS.indexOf(error) < 0) {
+    // Not retried: a refusal would only repeat.
+    gapWorkflowHooksOf().emit('workflow.nodeFailed', {
+      id: state.id, loop: state.loop, index: state.index, nodeId: node.id, node: node.type,
+      error: error, tries: run.tries,
+    });
+  }
+  gapWorkflowAdvance(run);
+  return 'wait';
+}
+
+/**
+ * True when a script node came before the cursor in this pass. Before that
+ * (e.g. `restartIfSlow` first in the loop) this pass measured nothing yet, so
+ * `over: loop` looks at the previous pass instead.
+ */
+function gapWorkflowPassWorked(run: GapWorkflowRun): boolean {
+  const nodes = run.workflow.nodes;
+  for (let i = 0; i < run.state.index && i < nodes.length; i++) {
+    if (GAP_WORKFLOW_RESERVED.indexOf(nodes[i].type) < 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** The run is ending early: `stopped` (status `ended`), or `error` (status `failed`). */

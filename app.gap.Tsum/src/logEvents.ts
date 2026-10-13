@@ -398,6 +398,8 @@ namespace Log {
     Loop            = 'workflow.loop',
     Node            = 'workflow.node',
     NodeFailed      = 'workflow.nodeFailed',
+    /** A restart step restarted the device, skipped it, or found the script not slow. */
+    Restart         = 'workflow.restart',
     /** `presetsMirror` could not write the presets file. */
     PresetsNotSaved = 'workflow.presetsNotSaved',
     /** A setting the workflow owns (`stopAfterGames`) was refused. */

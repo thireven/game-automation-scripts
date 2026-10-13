@@ -292,6 +292,59 @@ bad="$(grep -nE '\[\[|\bmapfile\b|<<<|\$\{[A-Za-z_]+//' "$BUNDLE/device/gap-serv
        | grep -v '^9:' | head -3)"
 check "no bashisms" "${bad:-none}" "none"
 
+# The watch verb against a scratch watch dir, with getprop stubbed: the files
+# it reads and writes are the engine contract (PROTOCOL.md § watch).
+echo
+echo "device script -- watch verb (synthetic)"
+WATCH_FIX="${TMPDIR:-/tmp}/gap-parity-watch.$$"
+mkdir -p "$WATCH_FIX/bin" "$WATCH_FIX/dir"
+printf '#!/bin/sh\n[ "$1" = sys.boot_completed ] && echo 1\n' > "$WATCH_FIX/bin/getprop"
+chmod +x "$WATCH_FIX/bin/getprop"
+printf '1700000000 1 4242\n' > "$WATCH_FIX/dir/alive"
+printf '1700000005 slow\n' > "$WATCH_FIX/dir/request"
+watch_verb() { PATH="$WATCH_FIX/bin:$PATH" GAP_WATCH_DIR="$WATCH_FIX/dir" sh "$BUNDLE/device/gap-service.sh" watch "$@"; }
+W="$(watch_verb --emulator mumu)"
+check "watch proto"            "$(kv "$W" proto)"         "1"
+check "watch booted"           "$(kv "$W" booted)"        "1"
+check "watch running"          "$(kv "$W" running)"       "0"
+check "watch alive"            "$(kv "$W" alive)"         "1700000000"
+check "watch alive_active"     "$(kv "$W" alive_active)"  "1"
+check "watch request"          "$(kv "$W" request)"       "1700000005 slow"
+check "watch rc"               "$(kv "$W" rc)"            "0"
+check "watch stamped"          "$(kv "$W" stamped)"       "1"
+check "watch no err"           "$(kv "$W" err)"           ""
+check "watch writes stamp"     "$(cat "$WATCH_FIX/dir/stamp" 2>/dev/null)" "$(kv "$W" now)"
+check "watch --emulator"       "$(cat "$WATCH_FIX/dir/emulator" 2>/dev/null)" "mumu"
+check "request kept w/o take"  "$([ -f "$WATCH_FIX/dir/request" ] && echo kept || echo gone)" "kept"
+W="$(watch_verb --take)"
+check "--take still reports"   "$(kv "$W" request)"       "1700000005 slow"
+check "--take removes it"      "$([ -f "$WATCH_FIX/dir/request" ] && echo kept || echo gone)" "gone"
+check "--take says taken"      "$(kv "$W" taken)"         "1"
+W="$(watch_verb)"
+check "no request is empty"    "$(kv "$W" request)"       ""
+W="$(watch_verb --emulator 'mu mu')"
+check "bad emulator refused"   "$(kv "$W" err)/$(kv "$W" rc)" "bad-usage/2"
+# A dir the shell user cannot write (made by the engine as root): every write
+# fails, and the poll says so. chmod is stubbed to fail, as it does on a dir we
+# do not own. Skipped as root, which writes anyway.
+if [ "$(id -u)" != 0 ]; then
+  printf '1700000005 slow\n' > "$WATCH_FIX/dir/request"
+  printf '1\n' > "$WATCH_FIX/dir/stamp"    # stale, so a same-second poll cannot match
+  chmod 444 "$WATCH_FIX/dir/stamp"
+  chmod 555 "$WATCH_FIX/dir"
+  printf '#!/bin/sh\nexit 1\n' > "$WATCH_FIX/bin/chmod"
+  /bin/chmod +x "$WATCH_FIX/bin/chmod"
+  W="$(watch_verb --take)"
+  check "locked: take fails"     "$(kv "$W" taken)/$(kv "$W" rc)" "0/1"
+  check "locked: request kept"   "$([ -f "$WATCH_FIX/dir/request" ] && echo kept || echo gone)" "kept"
+  check "locked: err"            "$(kv "$W" err)"           "watch-dir-unwritable"
+  W="$(watch_verb)"
+  check "locked: not stamped"    "$(kv "$W" stamped)/$(kv "$W" rc)" "0/0"
+  rm -f "$WATCH_FIX/bin/chmod"
+  chmod 755 "$WATCH_FIX/dir"
+fi
+rm -rf "$WATCH_FIX"
+
 # ------------------------------------------------------------------ live run
 if [ -n "$LIVE_SERIAL" ]; then
   echo

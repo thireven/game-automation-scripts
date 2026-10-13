@@ -41,6 +41,16 @@ function createHost(options) {
   const calls = Object.create(null);
   const noted = (name) => { calls[name] = (calls[name] || 0) + 1; };
 
+  // Device restart natives: their answers are settable, their calls recorded.
+  // Defaults: no restart possible here, and too little speed data to judge.
+  const restart = {
+    answer: { ok: false, error: 'restart-no-return' },
+    perfAnswer: { ok: true, slow: false, why: 'not-enough-data', fps: null, captureMs: null,
+      minutes: 0, base: null },
+    calls: [],                 // parsed opts of each gapRestartDevice call
+    perfCalls: [],             // parsed opts of each gapPerf call
+  };
+
   let capture = null;          // Bitmap the fake screen returns
   let screenSize = { width: 0, height: 0 };
   const storagePath = opts.storagePath || path.join(os.tmpdir(), 'gap-runtime-storage');
@@ -334,6 +344,18 @@ function createHost(options) {
     // Same: nothing is listening for events in the harness. Stubbed rather than
     // left out so `ts.emit`'s typeof guard is not what the harness is testing.
     emitEvent: () => {},
+    // GAP Companion's Restart device (the engine's DeviceRestart / PerfMonitor).
+    // JSON in, JSON out, like the device; never restarts anything.
+    gapRestartDevice: (optsJson) => {
+      noted('gapRestartDevice');
+      restart.calls.push(JSON.parse(String(optsJson)));
+      return JSON.stringify(restart.answer);
+    },
+    gapPerf: (optsJson) => {
+      noted('gapPerf');
+      restart.perfCalls.push(JSON.parse(String(optsJson)));
+      return JSON.stringify(restart.perfAnswer);
+    },
 
     // --- input: recorded, never performed ----------------------------------
     // A classifier must not tap. If one of these fires during an eval it means
@@ -501,6 +523,12 @@ function createHost(options) {
     },
     setScreenSize(width, height) { screenSize = { width, height }; },
     getCapture: () => capture,
+    /**
+     * The restart natives' answers (`answer`, `perfAnswer`: set them) and
+     * recorded opts (`calls`, `perfCalls`). Delete the globals from the vm
+     * context to play an engine without them.
+     */
+    restart,
     /** Handles still outstanding. Should be 0 between frames. */
     liveImages: () => images.size,
     peakImages: () => peakLive,
