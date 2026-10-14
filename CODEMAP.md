@@ -502,9 +502,9 @@ every starter release), `starter/build-starter.sh` adds the `update_url`, and
 `--scripts-only` writes the `starter.txt` to upload with the archives. After
 the page's **Update the starter**, tsum-stats exits 76 (`SITE_RELOAD_CODE`,
 passed as `GAP_STARTER_RELOAD_CODE`) and the launcher starts itself again.
-On Windows, `gap.ps1` transcribes each run to `starter-log.txt` in the bundle
+On Windows, `starter/bin/win/gap.ps1` transcribes each run to `starter-log.txt` in the bundle
 (`Start-Windows.cmd` keeps the one before as `starter-log.prev.txt`, and writes
-the log itself when PowerShell never reached `gap.ps1`). The terminal menu and the
+the log itself when PowerShell never reached that script). The terminal menu and the
 command-line actions (`bin/posix`, `bin/win`) remain, and the device side is
 still only `device/gap-service.sh`, now with three hosts reading it. Its
 `watch` verb (`starter/device/PROTOCOL.md`) is what tsum-stats' watch mode polls to start GAP
