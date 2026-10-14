@@ -58,6 +58,52 @@ function Show-Table {
   Write-Rule
 }
 
+# What to do next, read off the Service column. Worded the same as
+# menu_next_step in gap-menu.sh.
+function Write-NextStep {
+  param($Row, [bool]$HasApk)
+
+  switch ($Row.Service) {
+    'running' {
+      Write-Host '  Next: nothing -- the service is up. Use the app on the device. After'
+      Write-Host '  the device reboots, come back here and choose 1 again.'
+    }
+    'stopped' {
+      Write-Host '  Next: choose 1 to start the service. The app needs it running before'
+      Write-Host '  a script can run.'
+    }
+    'not installed' {
+      if ($HasApk) {
+        Write-Host '  Next: install the app -- 6 for the APK in this bundle, or 8 for the'
+        Write-Host '  latest published one -- then 1 to start the service.'
+      } else {
+        Write-Host '  Next: choose 8 to download and install the app, then 1 to start the'
+        Write-Host '  service.'
+      }
+    }
+    'wrong ABI' {
+      Write-Host '  Next: the installed app was built for another processor. Choose 8,'
+      Write-Host "  which fetches the build for $($Row.Abi), then 1 to start the service."
+    }
+    'unreadable' {
+      Write-Host '  Next: the device answered, but not in a way this tool could read.'
+      Write-Host '  Choose r to try again; if it stays like this, reconnect the device.'
+    }
+    'unauthorized' {
+      Write-Host '  Next: look at the device and tap Allow on the "Allow USB debugging?"'
+      Write-Host '  prompt, then choose r.'
+    }
+    'offline' {
+      Write-Host '  Next: choose 7 to reconnect, then r. If it stays offline, restart the'
+      Write-Host '  emulator, or unplug the phone and plug it in again.'
+    }
+    default {
+      Write-Host "  Next: adb reports this device as `"$($Row.State)`". Put that right on the"
+      Write-Host '  device, then choose r.'
+    }
+  }
+}
+
 function Wait-Enter {
   Write-Host ''
   Read-Host '  [enter] to continue' | Out-Null

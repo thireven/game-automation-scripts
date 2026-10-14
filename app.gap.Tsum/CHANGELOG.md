@@ -123,6 +123,7 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Sending hearts on the Japanese game no longer stalls about 5 seconds after every heart.
+- On Windows, choosing a device in the starter no longer fails with "Write-NextStep is not recognized".
 
 ### Changed
 
@@ -132,6 +133,7 @@ release note; they fold back in here when she ships.
 
 ### Fixed
 
+- **Windows starter device page crashed**: `gap-menu.ps1` called `Write-NextStep`, which was never written. Ported from `menu_next_step` in `gap-menu.sh`, same wording.
 - **JP heart toast never matched**: `HeartSent`'s panel probe sat at (540, 890), under the JP wording ("ハートをプレゼントしました!", near full width), so every send waited out `HeartToastMs` (5 s), logged `Hearts.NoToast` and went uncounted. Moved to (540, 820), above the text; within 14 per channel on every toast frame of a JP and an EN recording.
 
 ## [5.0b6]

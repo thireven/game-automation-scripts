@@ -108,3 +108,4 @@ machinery all go in the sections below it. Lay the Summary out as `**Additions**
 (bullets under an italic `*Area*` line each) then `**Fixes**` (flat bullets):
 the release note and the Discord post render it as written.
 For new skills and settings, a running list of things added should be kept and marked as used or not so that a cleanup step at the end can remove all things that were added that are no longer needed in the final product.
+**Deployments** (local, testers, production, any repo): read `../tools/DEPLOYMENTS.md` first.
