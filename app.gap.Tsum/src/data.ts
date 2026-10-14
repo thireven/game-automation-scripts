@@ -1030,7 +1030,9 @@ var Page = {
       {x: 300, y: 1050, r: 33, g: 199, b: 239, match: true, threshold: 80},
       {x: 140, y: 1050, r: 24, g: 186, b: 231, match: true, threshold: 80},
       {x: 940, y: 1080, r: 41, g: 207, b: 247, match: true, threshold: 80},
-      {x: 540, y: 890 , r: 49, g: 85 , b: 132, match: true, threshold: 80}
+      // Panel just above the message: the JP wording runs nearly edge to edge
+      // and put a glyph under (540, 890), so the toast never matched there.
+      {x: 540, y: 820 , r: 54, g: 91 , b: 143, match: true, threshold: 80}
     ],
     // The toast swallows a tap anywhere, so aim at the toast itself: if the
     // game ever stops swallowing it, this still lands on the panel rather than
@@ -1486,7 +1488,7 @@ var Page = {
   // `HeartSent` and `LevelCapRaised` -- cyan band, message band, cyan band with
   // the logo -- so it is `targeted` for the reason those are: outside the
   // wording every pixel is theirs too, and a sweep over this toast answers
-  // `HeartSent`, whose centre probe lands between this toast's two lines. Only
+  // `HeartSent`, whose panel probe sits above the wording. Only
   // `awaitBoxDialog` asks for it, by name, right after pressing the button that
   // raises it, which is all `matches()` needs.
   //
