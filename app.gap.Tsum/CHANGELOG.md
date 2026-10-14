@@ -45,6 +45,29 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a4]
+
+### Summary
+
+**Additions**
+
+*Starter tool*
+- On Windows the starter logs each run to starter-log.txt and stays open on an error, so a window that closed straight away can be diagnosed.
+- The starter page has a Stop button, so the tool no longer has to be closed with Ctrl+C or by closing its window.
+
+**Fixes**
+
+- Cinderella's skill clears far more: its strokes are drawn slowly enough for the game to follow, stay on the board, and fill her skill time at every level.
+- Sending hearts through the ranking is about 15% faster.
+
+### Changed
+
+- **Windows starter log**, **Starter Stop button**, **dev-key build warning** and **Heart send waits**, merged up from 5.0b6 (details under [5.0b6]).
+
+### Fixed
+
+- **Cinderella's strokes**, merged up from 5.0b5 (details under [5.0b5]).
+
 ## [6.0a3]
 
 ### Summary
@@ -55,15 +78,9 @@ release note; they fold back in here when she ships.
 - Some GAP Companion features now come as add-ons, sent to the accounts that have them.
 - Workflows can restart the device, every time or only when the script has slowed down, and carry on at the next step.
 
-*Starter tool*
-- On Windows the starter logs each run to starter-log.txt and stays open on an error, so a window that closed straight away can be diagnosed.
-- The starter page has a Stop button, so the tool no longer has to be closed with Ctrl+C or by closing its window.
-
 **Fixes**
 
 - Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
-- Cinderella's skill clears far more: its strokes are drawn slowly enough for the game to follow, stay on the board, and fill her skill time at every level.
-- Sending hearts through the ranking is about 15% faster.
 
 ### Added
 
@@ -72,14 +89,11 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
-- **Windows starter log** and **Starter Stop button**, merged up from 5.0b6 (details under [5.0b6]).
 - **A GAP Companion feature moved to a private add-on**, with its own constants, probes and log events. The Tsum List check (`workflowTsumCheck`) now covers any node param on the `tsums` list; that list and the collection helpers stay here.
-- **Heart send waits**, merged up from 5.0b6 (details under [5.0b6]).
 
 ### Fixed
 
 - **Event-forced bonus item**, merged up from 5.0b5 (details under [5.0b5]).
-- **Cinderella's strokes**, merged up from 5.0b5 (details under [5.0b5]).
 
 ## [6.0a2]
 
