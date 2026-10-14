@@ -136,11 +136,15 @@ interface WalkSession {
 interface HeartPageResult {
   /** Hearts the game confirmed with its "Heart sent!" toast. */
   sent: number;
+  /** Sends that never confirmed; a list end right after one is rechecked harder. */
+  failed: number;
   /**
    * A row scoring zero was reached. The ranking is ordered by score, so every
    * row below it scores zero too and the downward half has nothing left to do.
    */
   zeroScore: boolean;
+  /** Retry on the network error dialog stopped helping; the sweep stops unfinished. */
+  networkDown: boolean;
 }
 
 /**
@@ -1492,6 +1496,12 @@ interface Tsum {
    * `HeartOkLostMs` has passed.
    */
   waitForHeartPage(want: PageName, maxMs: number, abortOn?: PageName, sentRow?: Point): PageName;
+  /** Press Retry on the game's network error dialog. */
+  retryNetworkError(page: PageName, waitingFor: PageName): void;
+  /** Wait `ms` for a frozen list to come back, pressing Retry on any network error. */
+  waitOutHeartNetwork(ms: number): void;
+  /** Recheck a drag that did not move; true when the list moved after all. */
+  friendListMovesAfterAll(down: boolean, sendFailed: boolean): boolean;
   /** Tap one heart and see it through the gift dialog and the toast. */
   sendOneHeart(heart: Point): boolean;
   /** Tap the "Heart sent!" toast away, again if the first tap was lost. */

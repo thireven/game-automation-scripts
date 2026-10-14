@@ -19,6 +19,11 @@
 // end is now the point where the list will not move, and the rows are wherever
 // the pink is.
 //
+// A slow connection puts a "Loading" spinner over the list, which blocks input
+// and can end in a timeout dialog. So a send whose row is still pink is waited
+// on, the dialog gets Retry, and a drag that did not move is tried again before
+// it counts as the end of the list.
+//
 // The running total lives at the bottom of this file: `readRecord` /
 // `saveRecord` are `hearts.json`, which counts hearts sent from here
 // and hearts received in mail.ts.
@@ -87,6 +92,22 @@ const HeartNoToastMs = 2000;
  * if something keeps reading as movement when the list is not moving.
  */
 const HeartSweepMaxScreenfuls = 300;
+/**
+ * Extra wait for a send the game is still working on: OK landed, the list is
+ * back and the row is still pink. On a slow connection a "Loading" spinner sits
+ * over the list here for 10s or more, ending in the toast or the timeout dialog.
+ */
+const HeartSlowNetworkMs = 15000;
+/** Retry presses one wait may make on the game's network error dialog. */
+const HeartNetworkRetries = 3;
+/**
+ * Pause before a drag that went nowhere is tried again. The loading spinner
+ * blocks input, so a list it froze reads exactly like the end of the list.
+ */
+const HeartListEndRecheckMs = 3000;
+/** Rechecks a list end gets; more when that screenful had a send fail. */
+const HeartListEndRechecks = 1;
+const HeartListEndRechecksAfterFailure = 3;
 
 /**
  * Reopen the ranking, which puts our own row back in view.
@@ -182,17 +203,33 @@ Tsum.prototype.heartRowSent = function(heart) {
  * back with that row no longer pink means the heart went out with no toast to
  * wait for. The page it ends on is the answer, so a caller can tell "the screen
  * never moved" from "it moved and the one I wanted never came".
+ *
+ * The game's network error dialog is answered with Retry, and the wait starts
+ * over: the game is sending again. After `HeartNetworkRetries` it gives up and
+ * sets `heartNetworkDown`.
  */
 Tsum.prototype.waitForHeartPage = function(want, maxMs, abortOn, sentRow) {
-  const startedAt = Date.now();
+  let startedAt = Date.now();
   let page = PageName.Unknown;
   let previous = PageName.Unknown;
+  let retries = 0;
   while (this.isRunning) {
     previous = page;
     page = gPages.detect(1, 0, heartSweepPages());
     const elapsed = Date.now() - startedAt;
     if (page === want) {
       return page;
+    }
+    if (isNetworkErrorPage(page) && previous === page) {
+      if (retries >= HeartNetworkRetries) {
+        heartNetworkDown = true;
+        return page;
+      }
+      retries++;
+      this.retryNetworkError(page, want);
+      startedAt = Date.now();
+      page = PageName.Unknown;
+      continue;
     }
     if (abortOn !== undefined && page === abortOn && elapsed >= HeartOkLostMs) {
       return page;
@@ -217,11 +254,44 @@ Tsum.prototype.waitForHeartPage = function(want, maxMs, abortOn, sentRow) {
   return page;
 }
 
+function isNetworkErrorPage(page: PageName): boolean {
+  return page === PageName.NetworkTimeout || page === PageName.NetworkDisable;
+}
+
+/** Press Retry on the network error dialog; never its other button, which goes to the title screen. */
+Tsum.prototype.retryNetworkError = function(page, waitingFor) {
+  logInfo(Log.Hearts.NetworkRetry, 'Connection error; pressing Retry', {page: page, waitingFor: waitingFor});
+  this.settleScreen(HeartStepSettleMs, 0, HeartPollMs);
+  this.tap(page === PageName.NetworkTimeout ? Page.NetworkTimeout.back : Page.NetworkDisable.back);
+  this.settleScreen(HeartStepSettleMs);
+}
+
+/**
+ * Wait `ms` for whatever froze the list to end, answering a network error
+ * dialog if one comes up meanwhile.
+ */
+Tsum.prototype.waitOutHeartNetwork = function(ms) {
+  const until = Date.now() + ms;
+  while (this.isRunning && Date.now() < until) {
+    const page = gPages.detect(1, 0, heartSweepPages());
+    if (isNetworkErrorPage(page)) {
+      this.retryNetworkError(page, PageName.FriendPage);
+    }
+    this.sleep(250);
+  }
+}
+
 /**
  * Set by a send counted off its blue row: its toast may still turn up, and
  * `sendHeartsOnPage` gives it time to before leaving the screenful.
  */
 let heartToastMayBeLate = false;
+
+/**
+ * Set when Retry on the network error dialog has stopped helping. The sweep
+ * stops there rather than fail every heart left and call the frozen list its end.
+ */
+let heartNetworkDown = false;
 
 Tsum.prototype.sendOneHeart = function(heart) {
   this.tap(heart);
@@ -247,6 +317,12 @@ Tsum.prototype.sendOneHeart = function(heart) {
     logDebug(Log.Hearts.SendStep, {step: 'okLost', y: heart.y, press: press});
   }
 
+  if (page === PageName.FriendPage && !this.heartRowSent(heart)) {
+    // OK landed but the row is still pink: the game is still sending, behind
+    // its loading spinner. Giving up here loses a heart that lands moments later.
+    logDebug(Log.Hearts.SendStep, {step: 'slowNetwork', y: heart.y});
+    page = this.waitForHeartPage(PageName.HeartSent, HeartSlowNetworkMs, undefined, heart);
+  }
   if (page === PageName.FriendPage && this.heartRowSent(heart)) {
     // No toast, but the row has turned blue, which is the game's own record of
     // the send. ~6% of sends on BlueStacks, each of which used to wait out the
@@ -292,7 +368,7 @@ function heartRefused(refused: number[], heart: Point): boolean {
 }
 
 Tsum.prototype.sendHeartsOnPage = function(stopAtZeroScore) {
-  const result: HeartPageResult = {sent: 0, zeroScore: false};
+  const result: HeartPageResult = {sent: 0, failed: 0, zeroScore: false, networkDown: false};
   // Rows that would not send. Without them a stuck button is found by every
   // rescan and the loop never ends.
   const refused: number[] = [];
@@ -347,6 +423,11 @@ Tsum.prototype.sendHeartsOnPage = function(stopAtZeroScore) {
       result.sent++;
       this.record[RecordKey.HeartsCount]!.sentCount++;
     } else {
+      result.failed++;
+      if (heartNetworkDown) {
+        result.networkDown = true;
+        return result;
+      }
       refused.push(next.y);
       // Whatever the failed send left up, the next scan has to read the list.
       gPages.navigate(PageName.FriendPage);
@@ -362,6 +443,23 @@ Tsum.prototype.scrollFriendList = function(down) {
   logDebug(Log.Hearts.Scrolled,
     {down: down, moved: moved, needed: FriendListSample.minMoved});
   return moved >= FriendListSample.minMoved;
+}
+
+/**
+ * Give a drag that went nowhere another go before calling it the end of the
+ * list. The loading spinner blocks input, so a list it froze does not move
+ * either; one recheck costs a few seconds per half at the real end.
+ */
+Tsum.prototype.friendListMovesAfterAll = function(down, sendFailed) {
+  const tries = sendFailed ? HeartListEndRechecksAfterFailure : HeartListEndRechecks;
+  for (let attempt = 1; attempt <= tries && this.isRunning; attempt++) {
+    this.waitOutHeartNetwork(HeartListEndRecheckMs);
+    if (this.scrollFriendList(down)) {
+      logInfo(Log.Hearts.ListEndRecheck, 'The list moved on a second try', {down: down, attempt: attempt});
+      return true;
+    }
+  }
+  return false;
 }
 
 Tsum.prototype.outOfHeartTime = function(startTime) {
@@ -400,6 +498,12 @@ Tsum.prototype.sweepHearts = function(down, startTime) {
       logInfo(Log.Hearts.ZeroScore, {screenfuls: screenfuls});
       return true;
     }
+    if (page.networkDown) {
+      // Unfinished: the list is frozen, not ended, so the next run tries again.
+      logWarn(Log.Hearts.NetworkDown, 'Retry keeps failing; stopping the heart sweep for now',
+        {down: down, screenfuls: screenfuls});
+      return false;
+    }
     if (this.yieldAsked) {
       // Unfinished, like running out of time: the next run carries on from
       // here, since `sendHeartsDownwards` survives between runs.
@@ -409,7 +513,7 @@ Tsum.prototype.sweepHearts = function(down, startTime) {
     if (this.outOfHeartTime(startTime)) {
       return false;
     }
-    if (!this.scrollFriendList(down)) {
+    if (!this.scrollFriendList(down) && !this.friendListMovesAfterAll(down, page.failed !== 0)) {
       logInfo(Log.Hearts.ListEnd, {down: down, screenfuls: screenfuls});
       return true;
     }
@@ -431,6 +535,7 @@ Tsum.prototype.taskSendHearts = function() {
   logInfo(Log.Hearts.SendStart);
 
   const startTime = Date.now();
+  heartNetworkDown = false;
   // With no budget every run is a whole sweep, so it starts from our own row
   // rather than wherever the last one left the list -- which is what the
   // setting's "0 starts from the first place every time" means. With a budget
