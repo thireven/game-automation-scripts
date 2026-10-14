@@ -24,7 +24,8 @@ whether the ending is shown is a setting on your computer, and either way the
 name in front of the dot is the one to look for.) The same page installs the app, exports the
 script log and your round stats as one zip, clears them off the phone, and
 links to Tsum Tsum Stats, which runs alongside it. Keep the terminal window it
-was started from open while you use it; closing it stops the page. Nothing gets
+was started from open while you use it. To stop the tool, press Stop at the
+top of the page; closing the window works too. Nothing gets
 installed on your computer.
 
 The page is served by Tsum Tsum Stats' program, tsum-stats @STATS_VERSION@.

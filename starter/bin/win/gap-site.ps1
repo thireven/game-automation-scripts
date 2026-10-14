@@ -136,7 +136,7 @@ function Start-Site {
   } else {
     Write-Log ""
     Write-Log "Opening the starter in your browser: http://127.0.0.1:8090/starter/"
-    Write-Log "Keep this window open while you use it. Ctrl+C here (or closing the window) stops it."
+    Write-Log "Keep this window open while you use it. To stop, press Stop on the page (or Ctrl+C here)."
     Write-Log ""
   }
   $env:TSUM_STATS_RESTART_CODE = "$global:SiteRestartCode"

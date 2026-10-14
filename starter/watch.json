@@ -1,0 +1,16 @@
+{
+  "devices": {},
+  "limits": {
+    "startAfterBootSec": 20,
+    "startsPerHour": 4,
+    "aliveStaleSec": 180,
+    "forceStartsPerHour": 3,
+    "adbDeadSec": 90,
+    "emulatorRestartsPer6h": 3,
+    "emulatorRestartGapMin": 10,
+    "emulatorGiveUpAfter": 3,
+    "requestMaxAgeSec": 50,
+    "bootStuckSec": 300
+  },
+  "help": "Watch mode keeps GAP running on the devices turned on under devices, while the starter runs. limits: startAfterBootSec = wait after Android starts before starting GAP; startsPerHour = most starts of a stopped GAP; aliveStaleSec = GAP not answering this long counts as frozen; forceStartsPerHour = most restarts of a frozen GAP (0 = never); adbDeadSec = adb unable to reach the device this long before recovering (adb connect, adb reboot, then the emulator); emulatorRestartsPer6h = most emulator restarts in 6 hours (0 = never); emulatorRestartGapMin = minutes between them, doubled after each failure; emulatorGiveUpAfter = failed emulator restarts in a row before giving up; requestMaxAgeSec = GAP's restart requests older than this are left to GAP, which restarts by itself; bootStuckSec = Android still starting after this long is restarted (the emulator, else adb reboot, once an hour)."
+}

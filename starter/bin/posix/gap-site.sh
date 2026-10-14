@@ -144,7 +144,7 @@ run_site() {
   else
     log_line ""
     log_line "Opening the starter in your browser: http://127.0.0.1:8090/starter/"
-    log_line "Keep this window open while you use it. Ctrl-C here (or closing the window) stops it."
+    log_line "Keep this window open while you use it. To stop, press Stop on the page (or Ctrl-C here)."
     log_line ""
   fi
   while :; do

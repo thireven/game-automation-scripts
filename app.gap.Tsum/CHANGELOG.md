@@ -57,6 +57,7 @@ release note; they fold back in here when she ships.
 
 *Starter tool*
 - On Windows the starter logs each run to starter-log.txt and stays open on an error, so a window that closed straight away can be diagnosed.
+- The starter page has a Stop button, so the tool no longer has to be closed with Ctrl+C or by closing its window.
 
 **Fixes**
 
@@ -72,6 +73,7 @@ release note; they fold back in here when she ships.
 ### Changed
 
 - **Windows starter log** (starter 1.4): `gap.ps1` transcribes each run to `starter-log.txt` (previous run kept as `.prev.txt`), tsum-stats' stderr included, with a trap for the stack trace and the exit code at the end. `Start-Windows.cmd` now pauses on any non-zero exit (negative ones used to close the window) and writes the log itself when PowerShell never reached `gap.ps1`; only new bundles get it, since updates never replace that file.
+- **Starter Stop button**: the page's Stop (tsum-stats `POST /api/starter/quit`) shuts the server down for exit 0, so the launcher ends and its window closes. Needs the tsum-stats that adds it; the console hint now points to it.
 - **A GAP Companion feature moved to a private add-on**, with its own constants, probes and log events. The Tsum List check (`workflowTsumCheck`) now covers any node param on the `tsums` list; that list and the collection helpers stay here.
 - **Heart send waits**, merged up from 5.0b6 (details under [5.0b6]).
 
