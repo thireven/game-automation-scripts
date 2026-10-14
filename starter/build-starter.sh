@@ -432,6 +432,12 @@ else
     grep -qF "$want_base" "$BUNDLE/$f" && grep -qF "$want_manifest" "$BUNDLE/$f" \
       || release_bad="$release_bad $f"
   done
+  # The page's Update APK runs in tsum-stats, so its default has to agree too.
+  # Checked in the source beside the pin; the pinned release must include it.
+  stats_apk="$(dirname "$STATS_PIN")/internal/starter/apk.go"
+  if [[ -f "$stats_apk" ]]; then
+    grep -qF "$want_base" "$stats_apk" || release_bad="$release_bad $stats_apk"
+  fi
   if [[ -n "$release_bad" ]]; then
     gate "release channel matches Config.kt" "$want_base / $want_manifest missing from$release_bad"
   else

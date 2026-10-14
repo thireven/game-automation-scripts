@@ -128,6 +128,7 @@ release note; they fold back in here when she ships.
 
 - **Windows starter log** (starter 1.4): `gap.ps1` transcribes each run to `starter-log.txt` (previous run kept as `.prev.txt`), tsum-stats' stderr included, with a trap for the stack trace and the exit code at the end. `Start-Windows.cmd` now pauses on any non-zero exit (negative ones used to close the window) and writes the log itself when PowerShell never reached `gap.ps1`; only new bundles get it, since updates never replace that file.
 - **Starter Stop button**: the page's Stop (tsum-stats `POST /api/starter/quit`) shuts the server down for exit 0, so the launcher ends and its window closes. Needs the tsum-stats that adds it; the console hint now points to it.
+- **Release-channel gate covers tsum-stats** (`build-starter.sh`): also checks tsum-stats' `defaultReleaseBase`, which kept the old `game-automation-platform` org after the rename, so the page's Update APK got a 404 ("Could not reach the release page").
 
 ### Fixed
 
