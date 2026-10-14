@@ -64,7 +64,7 @@ release note; they fold back in here when she ships.
 ### Changed
 
 - **Dev-key build warning** and **Heart send waits**, merged up from 5.0b6 (details under [5.0b6]).
-- **Windows starter log** and **Starter Stop button**, merged up from 5.0b7 (details under [5.0b7]).
+- **Windows starter log**, **Starter Stop button** and **release-channel gate covers tsum-stats**, merged up from 5.0b7 (details under [5.0b7]).
 
 ### Fixed
 
