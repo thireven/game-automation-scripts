@@ -45,6 +45,17 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a5]
+
+### Summary
+
+**Fixes**
+- Sending hearts on a slow connection waits out the game's loading and timeout error instead of skipping the rest of the ranking.
+
+### Fixed
+
+- **Heart sweep lost its place on a slow connection**, merged up from 5.0b8 (details under [5.0b8]).
+
 ## [6.0a4]
 
 ### Summary
@@ -111,6 +122,17 @@ release note; they fold back in here when she ships.
 
 - **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
 
+## [5.0b8]
+
+### Summary
+
+**Fixes**
+- Sending hearts on a slow connection waits out the game's loading and timeout error instead of skipping the rest of the ranking.
+
+### Fixed
+
+- **Heart sweep lost its place on a slow connection**: the send's 5 s toast budget ran out under the "Loading" spinner, the spinner then blocked the next drag, and the unmoved list read as `Hearts.ListEnd` — so the downward half ended early and the heart, sent on the later Retry, went uncounted. Now a still-pink row after OK gets `HeartSlowNetworkMs` (15 s) more, `waitForHeartPage` presses Retry on `NetworkTimeout`/`NetworkDisable` and restarts its clock (`HeartNetworkRetries`, then `Hearts.NetworkDown` ends the run unfinished), and a drag that does not move is retried after 3 s (three times after a failed send) before it counts as the end.
+
 ## [5.0b7]
 
 ### Summary
@@ -123,7 +145,6 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Sending hearts on the Japanese game no longer stalls about 5 seconds after every heart.
-- Sending hearts on a slow connection waits out the game's loading and timeout error instead of skipping the rest of the ranking.
 - On Windows, choosing a device in the starter no longer fails with "Write-NextStep is not recognized".
 
 ### Changed
@@ -136,7 +157,6 @@ release note; they fold back in here when she ships.
 
 - **Windows starter device page crashed**: `gap-menu.ps1` called `Write-NextStep`, which was never written. Ported from `menu_next_step` in `gap-menu.sh`, same wording.
 - **JP heart toast never matched**: `HeartSent`'s panel probe sat at (540, 890), under the JP wording ("ハートをプレゼントしました!", near full width), so every send waited out `HeartToastMs` (5 s), logged `Hearts.NoToast` and went uncounted. Moved to (540, 820), above the text; within 14 per channel on every toast frame of a JP and an EN recording.
-- **Heart sweep lost its place on a slow connection**: the send's 5 s toast budget ran out under the "Loading" spinner, the spinner then blocked the next drag, and the unmoved list read as `Hearts.ListEnd` — so the downward half ended early and the heart, sent on the later Retry, went uncounted. Now a still-pink row after OK gets `HeartSlowNetworkMs` (15 s) more, `waitForHeartPage` presses Retry on `NetworkTimeout`/`NetworkDisable` and restarts its clock (`HeartNetworkRetries`, then `Hearts.NetworkDown` ends the run unfinished), and a drag that does not move is retried after 3 s (three times after a failed send) before it counts as the end.
 
 ## [5.0b6]
 
