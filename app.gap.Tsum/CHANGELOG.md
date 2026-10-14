@@ -55,6 +55,9 @@ release note; they fold back in here when she ships.
 - Some GAP Companion features now come as add-ons, sent to the accounts that have them.
 - Workflows can restart the device, every time or only when the script has slowed down, and carry on at the next step.
 
+*Starter tool*
+- On Windows the starter logs each run to starter-log.txt and stays open on an error, so a window that closed straight away can be diagnosed.
+
 **Fixes**
 
 - Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
@@ -68,6 +71,7 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
+- **Windows starter log** (starter 1.4): `gap.ps1` transcribes each run to `starter-log.txt` (previous run kept as `.prev.txt`), tsum-stats' stderr included, with a trap for the stack trace and the exit code at the end. `Start-Windows.cmd` now pauses on any non-zero exit (negative ones used to close the window) and writes the log itself when PowerShell never reached `gap.ps1`; only new bundles get it, since updates never replace that file.
 - **A GAP Companion feature moved to a private add-on**, with its own constants, probes and log events. The Tsum List check (`workflowTsumCheck`) now covers any node param on the `tsums` list; that list and the collection helpers stay here.
 - **Heart send waits**, merged up from 5.0b6 (details under [5.0b6]).
 

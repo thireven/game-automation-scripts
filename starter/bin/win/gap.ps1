@@ -22,6 +22,35 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $Bundle = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+
+# Everything this console shows also goes to starter-log.txt, so a window that
+# closes too fast to read still leaves a record. A reload runs this file again
+# inside the same transcript; an -Action caller is not logged.
+$ownLog = $false
+if (-not $Action -and -not $global:GapStarterLogging) {
+  $log = if ($env:GAP_STARTER_LOG) { $env:GAP_STARTER_LOG } else { Join-Path $Bundle 'starter-log.txt' }
+  try {
+    Start-Transcript -LiteralPath $log -Force | Out-Null
+    $global:GapStarterLogging = $ownLog = $true
+  } catch {}
+}
+
+# Every exit goes through here, so the log ends with how the run ended.
+function Exit-Starter {
+  param([int]$Code)
+  if ($ownLog) {
+    if ($Code -ne 0) { Write-Host "Starter exited with code $Code." }
+    try { Stop-Transcript | Out-Null } catch {}
+  }
+  exit $Code
+}
+
+# An unhandled error: record where it came from, not just the message.
+trap {
+  Write-Host "error: $_" -ForegroundColor Red
+  Write-Host $_.ScriptStackTrace
+  Exit-Starter 1
+}
 # Before Resolve-Adb, which may ask; gap-menu.ps1 sets it again for itself.
 if ($Yes) { $global:AssumeYes = $true }
 
@@ -35,7 +64,7 @@ Get-ChildItem -LiteralPath $Bundle -Recurse -Include *.ps1, *.cmd -ErrorAction S
 . "$Bundle\bin\win\gap-site.ps1"
 
 if ($Channel) {
-  if (-not (Set-Channel -Url $Channel)) { exit 2 }
+  if (-not (Set-Channel -Url $Channel)) { Exit-Starter 2 }
 } elseif (Test-ChannelActive) {
   Write-Host "release channel: $global:ReleaseBase"
 }
@@ -48,13 +77,13 @@ if (-not $Action -and -not $Menu) {
     # so Start-Windows.cmd is not read again until the very end.
     $env:GAP_STARTER_RELOADED = '1'
     & "$Bundle\bin\win\gap.ps1" @PSBoundParameters
-    exit $LASTEXITCODE
+    Exit-Starter $LASTEXITCODE
   }
-  exit $rc
+  Exit-Starter $rc
 }
 
-if (-not (Resolve-Adb -Bundle $Bundle)) { exit 1 }
+if (-not (Resolve-Adb -Bundle $Bundle)) { Exit-Starter 1 }
 Start-AdbServer
 
 & "$Bundle\bin\win\gap-menu.ps1" -Bundle $Bundle -Serial $Serial -Action $Action -Yes:$Yes
-exit $LASTEXITCODE
+Exit-Starter $LASTEXITCODE

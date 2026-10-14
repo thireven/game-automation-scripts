@@ -12,6 +12,7 @@ starter/adb/
 starter/server/
 starter/collected/
 starter/last-device.txt
+starter/starter-log*.txt
 starter/channel.txt
 
 # Starter bundle builds and the platform-tools cache.
