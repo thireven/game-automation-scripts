@@ -45,6 +45,21 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a7]
+
+### Summary
+
+**Fixes**
+- Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
+
+### Changed
+
+- **`MinHost` raised to 4.0** (`config.json`): the alpha host line, which has `gapRestartDevice`, `gapPerf` and the multi-display focus fix.
+
+### Fixed
+
+- **Focus read on multi-display dumps**, merged up from 5.0b10 (details under [5.0b10]).
+
 ## [6.0a6]
 
 ### Summary
