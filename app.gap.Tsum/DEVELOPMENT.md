@@ -1156,7 +1156,7 @@ opt-in: `release:beta`. The app side of the folder (APKs, starter) is in
 Each one builds its channel and writes three files into the catalogue repository:
 
 ```
-../general-automation-catalogue/Official/LineTsumTsum/<Alpha|Beta|Production>/
+../tsum-tsum-catalogue/LineTsumTsum/<Alpha|Beta|Production>/
 ├── TsumTsum-Alpha-0.2.zip     the build, named from config.json + package.json
 ├── TsumTsum-Alpha-0.1.zip     and the ones before it, up to HistoryLimit
 ├── metadata.json              the entry that describes the newest, and lists the rest
@@ -1165,8 +1165,8 @@ Each one builds its channel and writes three files into the catalogue repository
 
 That path is the whole point of the exercise — it is what the catalogue's own
 `build-catalogue.sh` scans to regenerate `catalogue.json`, the index the app
-fetches. **Run that script in the catalogue, then commit and push there**;
-nothing on this side touches it.
+fetches. **Publish it with the GAP Devkit's Tsum Tsum catalogue card**
+(`../tools/DEPLOYMENTS.md`); nothing on this side touches it.
 
 `config.json`, beside the build scripts, is the release identity — the one place
 the game name and the channels live. **The version is not there: it is
