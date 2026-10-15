@@ -6,7 +6,7 @@
   "DefaultChannel": "Alpha",
   "MessageMaxChars": 0,
   "HistoryLimit": 5,
-  "MinHost": "3.1",
+  "MinHost": "4.0",
   "Prerelease": {
     "Remote": "r2:app-assets",
     "BaseUrl": "https://app-assets.gapapp.app",
