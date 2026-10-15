@@ -144,6 +144,13 @@ release note; they fold back in here when she ships.
 *Boxes*
 - Buy open capsule box until sold out: open a capsule in the store yourself (such as the JP one on the store's second page), press Now, and it is bought one at a time until it is gone.
 
+**Fixes**
+- Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
+
+### Fixed
+
+- **Focus read on multi-display dumps** (`src/appLifecycle.ts`, `focusedPackage`): GAP 3.12 and earlier parse only the first `mCurrentFocus` line, which MuMu on Android 15 prints as `null` for another display, so `isAppOn` never saw the game and every `startApp` waited out `AppUpWaitMs` (`app.upTimeout`, `looks:0`). A host answer that is not a package name now falls back to reading every `mCurrentFocus`, then `mFocusedApp`, line of `dumpsys window`. The host itself is fixed in the same way.
+
 ### Added
 
 - **Buy Open Capsule** (`src/boxes.ts`, `buyOpenCapsuleNow`): a Now-only chore that taps no tab and never navigates, so it reaches capsules the tab table does not know. Reuses `buyOneBox` 1-Time and the reveal loop; stops on sold out, no Coins, three misses, or a box drawing the 1-Time/10-Time pair (not a capsule), then stops the run.

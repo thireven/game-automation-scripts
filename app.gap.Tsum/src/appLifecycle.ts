@@ -61,13 +61,47 @@ Tsum.prototype.isAppOn = function() {
   return isOn;
 };
 
+/** An Android package name; the misread below (`mCurrentFocus=null`) is not one. */
+const PackageNamePattern = /^[A-Za-z]\w*(\.\w+)+$/;
+/** The `pkg/Activity` inside a `Window{...}` or `ActivityRecord{...}`. */
+const FocusComponentPattern = /\s([\w.]+)\/[\w.$]+/;
+
 /**
  * The package of the focused window, or null when the host cannot say.
  * `isAppOn` asks whether it is the game, `focusedGameBuild` which build of it.
  */
 function focusedPackage(): string | null {
   const app = foregroundApp();
-  return app === null ? null : app.package;
+  if (app !== null && PackageNamePattern.test(app.package)) {
+    return app.package;
+  }
+  // GAP 3.12 and earlier read only the first `mCurrentFocus` line, and a dump
+  // has one per display: MuMu on Android 15 puts a `null` one first, which
+  // came back as the package `mCurrentFocus=null`. Read them all here instead.
+  return focusedPackageInDump(execute('dumpsys window'));
+}
+
+/**
+ * The focused package in a `dumpsys window` dump: the first `mCurrentFocus`
+ * that names an app, else the first `mFocusedApp` (a system window such as the
+ * notification shade can hold focus over the game).
+ */
+function focusedPackageInDump(dump: string): string | null {
+  const lines = dump.split('\n');
+  const keys = ['mCurrentFocus=', 'mFocusedApp='];
+  for (const key of keys) {
+    for (const line of lines) {
+      const at = line.indexOf(key);
+      if (at === -1) {
+        continue;
+      }
+      const match = FocusComponentPattern.exec(line.substring(at + key.length));
+      if (match !== null) {
+        return match[1];
+      }
+    }
+  }
+  return null;
 }
 
 /** Which build of the game is in front, or null when neither is. */
