@@ -149,7 +149,7 @@ release note; they fold back in here when she ships.
 
 ### Fixed
 
-- **Focus read on multi-display dumps** (`src/appLifecycle.ts`, `focusedPackage`): GAP 3.12 and earlier parse only the first `mCurrentFocus` line, which MuMu on Android 15 prints as `null` for another display, so `isAppOn` never saw the game and every `startApp` waited out `AppUpWaitMs` (`app.upTimeout`, `looks:0`). A host answer that is not a package name now falls back to reading every `mCurrentFocus`, then `mFocusedApp`, line of `dumpsys window`. The host itself is fixed in the same way.
+- **Focus read on multi-display dumps** (`src/appLifecycle.ts`, `focusedPackage`): GAP hosts before 3.3 (alpha: 4.0) parse only the first `mCurrentFocus` line, which MuMu on Android 15 prints as `null` for another display, so `isAppOn` never saw the game and every `startApp` waited out `AppUpWaitMs` (`app.upTimeout`, `looks:0`). A host answer that is not a package name now falls back to reading every `mCurrentFocus`, then `mFocusedApp`, line of `dumpsys window`. The host has the same fix from 3.3 (production) and 4.0 (alpha).
 
 ### Added
 

@@ -75,7 +75,7 @@ function focusedPackage(): string | null {
   if (app !== null && PackageNamePattern.test(app.package)) {
     return app.package;
   }
-  // GAP 3.12 and earlier read only the first `mCurrentFocus` line, and a dump
+  // GAP hosts before 3.3 (alpha: 4.0) read only the first `mCurrentFocus` line, and a dump
   // has one per display: MuMu on Android 15 puts a `null` one first, which
   // came back as the package `mCurrentFocus=null`. Read them all here instead.
   return focusedPackageInDump(execute('dumpsys window'));
