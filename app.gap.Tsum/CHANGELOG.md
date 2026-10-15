@@ -45,6 +45,19 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a6]
+
+### Summary
+
+**Additions**
+
+*Boxes*
+- Buy open capsule box until sold out: open a capsule in the store yourself (such as the JP one on the store's second page), press Now, and it is bought one at a time until it is gone.
+
+### Added
+
+- **Buy Open Capsule**, merged up from 5.0b9 (details under [5.0b9]). Its job priority is 14 here: 13 is `AddonNow`.
+
 ## [6.0a5]
 
 ### Summary
@@ -122,7 +135,7 @@ release note; they fold back in here when she ships.
 
 - **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
 
-## [5.0b8]
+## [5.0b9]
 
 ### Summary
 
@@ -131,12 +144,16 @@ release note; they fold back in here when she ships.
 *Boxes*
 - Buy open capsule box until sold out: open a capsule in the store yourself (such as the JP one on the store's second page), press Now, and it is bought one at a time until it is gone.
 
-**Fixes**
-- Sending hearts on a slow connection waits out the game's loading and timeout error instead of skipping the rest of the ranking.
-
 ### Added
 
 - **Buy Open Capsule** (`src/boxes.ts`, `buyOpenCapsuleNow`): a Now-only chore that taps no tab and never navigates, so it reaches capsules the tab table does not know. Reuses `buyOneBox` 1-Time and the reveal loop; stops on sold out, no Coins, three misses, or a box drawing the 1-Time/10-Time pair (not a capsule), then stops the run.
+
+## [5.0b8]
+
+### Summary
+
+**Fixes**
+- Sending hearts on a slow connection waits out the game's loading and timeout error instead of skipping the rest of the ranking.
 
 ### Fixed
 
