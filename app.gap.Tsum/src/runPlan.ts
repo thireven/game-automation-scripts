@@ -46,6 +46,7 @@ const enum JobPriority {
   TsumListNow = 12,
   /** One add-on's one-shot task (src/addons.ts). */
   AddonNow = 13,
+  BuyOpenCapsuleNow = 14,
   AppRestart = 20,
   UnlockLevel = 30,
   BuyBoxes = 31,
@@ -100,9 +101,9 @@ function runTaskTable(settings: RunSettings): TaskSpec[] {
       intervalMs: 1000, dueAtStart: true });
     return jobs;
   }
-  // A run the Tsum List Now button started does the export and nothing else;
-  // `buildRun` queues it.
-  if (on(SettingKey.TsumListOnly)) {
+  // A run the Tsum List or Buy Open Capsule Now button started does that
+  // and nothing else; `buildRun` queues it.
+  if (on(SettingKey.TsumListOnly) || on(SettingKey.BuyOpenCapsuleOnly)) {
     return jobs;
   }
   if (on(SettingKey.ReceiveHeartsOneByOne)) {

@@ -141,6 +141,8 @@ declare const enum UiText {
   SettingBuyBoxSizeHelp = 'setting.buyBoxSize.help',
   SettingBuyBoxMax = 'setting.buyBoxMax',
   SettingBuyBoxMaxHelp = 'setting.buyBoxMax.help',
+  SettingBuyOpenCapsule = 'setting.buyOpenCapsule',
+  SettingBuyOpenCapsuleHelp = 'setting.buyOpenCapsule.help',
   BoxPremiumPlus = 'box.premiumPlus',
   BoxPremium = 'box.premium',
   BoxSelect = 'box.select',

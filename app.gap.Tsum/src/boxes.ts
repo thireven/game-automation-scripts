@@ -661,3 +661,88 @@ Tsum.prototype.taskBuyBoxes = function() {
   }
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Buy Open Capsule: 1-Time purchases of the capsule the store has open, until
+// it reads sold out. The player opens the capsule first and nothing here taps a
+// tab, which is how a capsule the tab table does not know is bought -- the JP
+// build's on the store's second page. Purchases and reveals are the sweep's own
+// (`buyOneBox`), so GET! and Last Prize! clear as above.
+// ---------------------------------------------------------------------------
+
+/** Runaway guard on one run. A capsule holds 15, so this is never the real end. */
+const BuyOpenCapsuleMaxPurchases = 300;
+
+/**
+ * Buy the open capsule until it is sold out, out of Coins, or something else
+ * stops it. Returns the fields for `Log.Box.End`, or null when the run stopped.
+ *
+ * A capsule draws one centred 1-Time button. A box showing the 1-Time/10-Time
+ * pair is not a capsule -- the player opened the wrong one, or the store came
+ * back on another box -- so the run stops rather than buying it.
+ */
+Tsum.prototype.buyOpenCapsule = function() {
+  let bought = 0;
+  let misses = 0;
+
+  while (this.mayContinue() && bought < BuyOpenCapsuleMaxPurchases) {
+    this.banner('Buying capsule ' + (bought + 1), BuyBoxBannerMs, 1);
+    if (!gPages.matches(PageName.TsumTsumStorePage)
+        && !this.awaitPage(PageName.TsumTsumStorePage, BuyBoxReturnWaitMs, Log.Box.PageMissed)) {
+      // No navigating back: the store would open on its first page, not the capsule.
+      return {bought: bought, reason: 'store not open'};
+    }
+    const offer = this.awaitBoxPurchase(BuyBoxLoadWaitMs);
+    if (offer.tenTime !== null || (offer.oneTime !== null && offer.oneTime.x !== BoxStore.onlyOneX)) {
+      logWarn(Log.Box.OpenCapsuleWrongBox, 'The open box is not a capsule', {bought: bought});
+      return {bought: bought, reason: 'not a capsule'};
+    }
+
+    const outcome = this.buyOneBox(false, bought + 1, BuyOpenCapsuleMaxPurchases);
+    if (outcome === 'bought') {
+      misses = 0;
+      bought++;
+      continue;
+    }
+    if (outcome === 'soldOut') {
+      return {bought: bought, reason: 'sold out'};
+    }
+    if (outcome === 'noCoins') {
+      return {bought: bought, reason: 'not enough coins'};
+    }
+    if (outcome === 'unavailable') {
+      return {bought: bought, reason: 'box unavailable'};
+    }
+    if (outcome === 'stuck') {
+      bought++;
+    }
+    misses++;
+    if (misses >= BuyBoxMaxMisses) {
+      return {bought: bought, misses: misses, reason: 'purchase failed'};
+    }
+    logInfo(Log.Box.Retrying, {misses: misses});
+  }
+
+  if (!this.isRunning) {
+    return null;
+  }
+  if (bought >= BuyOpenCapsuleMaxPurchases) {
+    logInfo(Log.Box.PurchaseLimit, {bought: bought, limit: BuyOpenCapsuleMaxPurchases});
+    return {bought: bought, reason: 'purchase limit'};
+  }
+  return {bought: bought, reason: 'stood aside'};
+}
+
+// False only when it stood aside for a round in progress, as `taskBuyBoxes`.
+Tsum.prototype.taskBuyOpenCapsule = function() {
+  if (roundInProgress()) {
+    return false;
+  }
+  logInfo(Log.Box.OpenCapsuleStart);
+  const outcome = this.buyOpenCapsule();
+  this.lastChore = outcome;
+  if (outcome !== null) {
+    logInfo(Log.Box.End, outcome);
+  }
+  return true;
+}

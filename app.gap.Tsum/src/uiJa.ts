@@ -119,6 +119,8 @@ i18nRegister(Locale.Japanese, '日本語', {
     [UiText.SettingBuyBoxSizeHelp]: 'ショップが10連を断ったとき、「10連」は停止し、「10連→1回ずつ」は1回ずつ買い切ります。',
     [UiText.SettingBuyBoxMax]: '1回あたりの購入上限',
     [UiText.SettingBuyBoxMaxHelp]: '1回の実行での安全上限。10連は1回と数えます。',
+    [UiText.SettingBuyOpenCapsule]: '表示中のガチャを売り切れまで購入',
+    [UiText.SettingBuyOpenCapsuleHelp]: '先にショップでガチャを表示してください。「今すぐ」で売り切れかコイン不足まで1回購入を繰り返し、終わったら停止します。他のBOXは購入しません。',
     [UiText.BoxSizeOne]: '1回ずつ',
     [UiText.BoxSizeTen]: '10連',
     [UiText.BoxSizeTenThenOne]: '10連→売り切れまで1回ずつ',

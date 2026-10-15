@@ -126,8 +126,17 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*Boxes*
+- Buy open capsule box until sold out: open a capsule in the store yourself (such as the JP one on the store's second page), press Now, and it is bought one at a time until it is gone.
+
 **Fixes**
 - Sending hearts on a slow connection waits out the game's loading and timeout error instead of skipping the rest of the ranking.
+
+### Added
+
+- **Buy Open Capsule** (`src/boxes.ts`, `buyOpenCapsuleNow`): a Now-only chore that taps no tab and never navigates, so it reaches capsules the tab table does not know. Reuses `buyOneBox` 1-Time and the reveal loop; stops on sold out, no Coins, three misses, or a box drawing the 1-Time/10-Time pair (not a capsule), then stops the run.
 
 ### Fixed
 

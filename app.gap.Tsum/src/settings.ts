@@ -536,6 +536,17 @@ var tabs: TabSpec[] = [
                         min: 1,
                         max: 50,
                         step: 1
+                    },
+                    {
+                        // A one-off on the capsule the player opened -- see `askBuyOpenCapsuleNow`.
+                        key: RowKey.BuyOpenCapsule,
+                        title: UiText.SettingBuyOpenCapsule,
+                        help: UiText.SettingBuyOpenCapsuleHelp,
+                        status: ReleaseStatus.Beta,
+                        buttons: [
+                            {text: i18nThunk(UiText.ButtonNow), onClick: function () { askBuyOpenCapsuleNow(); },
+                                remote: 'buyOpenCapsuleNow', confirm: UiText.CompanionConfirmSpendNow, whenStopped: true}
+                        ]
                     }
                 ]
             },
@@ -2242,6 +2253,24 @@ function askBuyBoxesNow(): void {
     iface.runScript('typeof buyBoxesNow === "function" && buyBoxesNow('
         + JSON.stringify(startSettings(settings)) + ');');
     logInfo(Log.Settings.BuyBoxesNowAsked, 'Asked the run to buy boxes now');
+}
+
+/**
+ * Buy Open Capsule's Now button. As `askBuyBoxesNow`, except that the run
+ * stops once the open capsule is sold out (`buyOpenCapsuleNow`).
+ */
+// noinspection JSUnusedGlobalSymbols
+function askBuyOpenCapsuleNow(): void {
+    var iface = bridge();
+    if (iface === undefined) {
+        return;
+    }
+    flushSettings();
+    iface.hideMenu();
+    iface.showMenu();
+    iface.runScript('typeof buyOpenCapsuleNow === "function" && buyOpenCapsuleNow('
+        + JSON.stringify(startSettings(settings)) + ');');
+    logInfo(Log.Settings.BuyOpenCapsuleNowAsked, 'Asked the run to buy the open capsule until sold out');
 }
 
 /**

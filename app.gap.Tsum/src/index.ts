@@ -126,6 +126,7 @@ const LastSettingsOneShot: SettingKey[] = [
   SettingKey.UnlockLevelsFirst,
   SettingKey.BuyBoxesFirst,
   SettingKey.TsumListOnly,
+  SettingKey.BuyOpenCapsuleOnly,
 ];
 
 /**
@@ -274,7 +275,7 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.SendHeartsMinWait]: RemoteKind.Int,
   [SettingKey.TsumAppRestartFrequency]: RemoteKind.Int,
 } satisfies Record<Exclude<SettingKey, SettingKey.Locale | SettingKey.UnlockLevelsFirst
-  | SettingKey.BuyBoxesFirst | SettingKey.TsumListOnly>, RemoteKind>;
+  | SettingKey.BuyBoxesFirst | SettingKey.TsumListOnly | SettingKey.BuyOpenCapsuleOnly>, RemoteKind>;
 
 /** `<script folder>/remote-settings-<device id>.json`, or '' without the natives. */
 function remoteSettingsPath(): string {
@@ -411,6 +412,7 @@ const CompanionActions: { [name: string]: () => string } = {
   unlockLevelsNow: () => unlockLevelsNow(),
   buyBoxesNow: () => buyBoxesNow(),
   exportTsumListNow: () => exportTsumListNow(),
+  buyOpenCapsuleNow: () => buyOpenCapsuleNow(),
   roundDelaySkip: () => roundDelaySkip(),
 };
 
@@ -491,6 +493,7 @@ const ChoreNowFlags: { [name: string]: SettingKey } = {
   unlockLevelsNow: SettingKey.UnlockLevelsFirst,
   buyBoxesNow: SettingKey.BuyBoxesFirst,
   exportTsumListNow: SettingKey.TsumListOnly,
+  buyOpenCapsuleNow: SettingKey.BuyOpenCapsuleOnly,
 };
 
 /** How long an armed chore waits for the phone's `start`. */
@@ -691,6 +694,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   const unlockFirst = settings.unlockLevelsFirst === true;
   const buyBoxesFirst = settings.buyBoxesFirst === true;
   const tsumListOnly = settings.tsumListOnly === true;
+  const buyOpenCapsuleOnly = settings.buyOpenCapsuleOnly === true;
 
   // The walkthrough recorder is a mode, not a task alongside the others: it is
   // watching a person play, so nothing else may touch the screen. The table
@@ -707,6 +711,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     }
     if (tsumListOnly) {
       logWarn(Log.TsumList.NowRefused, { reason: 'walkthrough' });
+    }
+    if (buyOpenCapsuleOnly) {
+      logWarn(Log.Box.NowRefused, { reason: 'walkthrough' });
     }
   }
   // A workflow replaces the chore table: its nodes call the chores in its own
@@ -729,6 +736,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     if (tsumListOnly) {
       queueTsumListExport(ts, gTaskController, true);
     }
+  }
+  if (buyOpenCapsuleOnly) {
+    queueBuyOpenCapsule(ts, gTaskController);
   }
   // Add-ons (src/addons.ts) queue their own one-shots; each checks the run's mode.
   gapAddonsRunStart(ts, gTaskController);
@@ -1247,6 +1257,68 @@ function exportTsumListNow(settings?: Settings): string {
     return 'already queued';
   }
   queueTsumListExport(ts, gTaskController, false);
+  return 'queued';
+}
+
+/** Name of the one-shot task `buyOpenCapsuleNow` queues. */
+const BuyOpenCapsuleNowTask = 'buyOpenCapsuleNow';
+
+/** Set while a Buy Open Capsule run waits for its turn. */
+let gBuyOpenCapsuleNowQueued = false;
+
+/**
+ * Registers Buy Open Capsule on `controller`, the way `queueBuyBoxSweep`
+ * does. It always stops the run afterwards: the player set the store up for
+ * it, so nothing else the run would do is wanted.
+ */
+function queueBuyOpenCapsule(run: Tsum, controller: TsumTaskController): void {
+  gBuyOpenCapsuleNowQueued = true;
+  run.yieldAsked = true;
+  let waited = false;
+  controller.newTask(BuyOpenCapsuleNowTask, function() {
+    run.yieldAsked = false;
+    if (!run.taskBuyOpenCapsule()) {
+      run.yieldAsked = true;
+      if (!waited) {
+        waited = true;
+        logInfo(Log.Box.NowWaiting);
+      }
+      return;
+    }
+    gBuyOpenCapsuleNowQueued = false;
+    controller.removeTask(BuyOpenCapsuleNowTask);
+    notifyChoreDone('boxes', run.lastChore);
+    requestStop();
+  }, UnlockNowRetryMs, 0, false, JobPriority.BuyOpenCapsuleNow);
+  logInfo(Log.Box.OpenCapsuleNowQueued);
+  run.banner('Buying the capsule next', 4000);
+}
+
+/**
+ * Buys the capsule open in the store until it is sold out, then stops the run.
+ * A global the settings page reaches by name, like `exportTsumListNow`: queued
+ * on a live run, or a run started for it alone when nothing is running.
+ *
+ * Returns what it decided, which the host writes to the log.
+ */
+// noinspection JSUnusedGlobalSymbols
+function buyOpenCapsuleNow(settings?: Settings): string {
+  if (!gRunActive || ts === undefined || gTaskController === undefined) {
+    if (settings === undefined) {
+      return 'no run';
+    }
+    settings.buyOpenCapsuleOnly = true;
+    start(settings);
+    return 'started';
+  }
+  if (gWalkthroughRun) {
+    logWarn(Log.Box.NowRefused, { reason: 'walkthrough' });
+    return 'walkthrough recording';
+  }
+  if (gBuyOpenCapsuleNowQueued) {
+    return 'already queued';
+  }
+  queueBuyOpenCapsule(ts, gTaskController);
   return 'queued';
 }
 

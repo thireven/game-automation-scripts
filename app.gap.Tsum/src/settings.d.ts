@@ -188,6 +188,8 @@ declare const enum RowKey {
   DetectMyTsum = 'detectMyTsum',
   /** The Tsum List export's Now button. */
   ExportTsumList = 'exportTsumList',
+  /** Buy Open Capsule's Now button. */
+  BuyOpenCapsule = 'buyOpenCapsule',
 }
 
 /** One row of the settings schema (a `rows` entry of a `GroupSpec`). */

@@ -351,6 +351,7 @@ declare const enum SettingKey {
   BuyBoxMaxPurchases = 'buyBoxMaxPurchases',
   BuyBoxesFirst = 'buyBoxesFirst',
   TsumListOnly = 'tsumListOnly',
+  BuyOpenCapsuleOnly = 'buyOpenCapsuleOnly',
   ReceiveAllHearts = 'receiveAllHearts',
   ReceiveAllHeartsMinWait = 'receiveAllHeartsMinWait',
   ReceiveHeartsOneByOne = 'receiveHeartsOneByOne',
@@ -519,6 +520,11 @@ interface Settings {
    * schema entry; `exportTsumListNow()` sets it.
    */
   [SettingKey.TsumListOnly]?: boolean;
+  /**
+   * A run started by Buy Open Capsule's Now button: it buys the open capsule
+   * until sold out and stops. Not a schema entry; `buyOpenCapsuleNow()` sets it.
+   */
+  [SettingKey.BuyOpenCapsuleOnly]?: boolean;
   [SettingKey.ReceiveAllHearts]: boolean;
   [SettingKey.ReceiveAllHeartsMinWait]: number;
   [SettingKey.ReceiveHeartsOneByOne]: boolean;

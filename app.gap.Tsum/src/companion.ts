@@ -97,7 +97,7 @@ function notifyWrapUp(run: Tsum, atRoundEnd: boolean): void {
 }
 
 /** Chore endings that mean it did all it could; any other reason is said. */
-const ChoreDoneReasons = ['end of list', 'no more capped', 'purchase limit'];
+const ChoreDoneReasons = ['end of list', 'no more capped', 'purchase limit', 'sold out'];
 
 /**
  * A chore started with Now finished (the Now queues in src/index.ts). `outcome`
