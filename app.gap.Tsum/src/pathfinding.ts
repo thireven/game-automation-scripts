@@ -261,10 +261,12 @@ function findLongestTsumPath(
 // now sweeps the board a row at a time and hands this a row's tsums instead,
 // so nothing passes it today. Kept because it costs nothing and the
 // development toolkit's coverage harness still drives it.
+// `linkReach` overrides the "Link reach" setting, in tsum widths, the same way:
+// the play loop passes the skill's (`skillLinkReach`).
 function calculatePaths(
     board: BoardPoint[],
     myTsumIdx: number, prioritizeMyTsum: boolean, maxChain?: number,
-    lowFirst?: boolean): TsumPath[] {
+    lowFirst?: boolean, linkReach?: number): TsumPath[] {
   const startTime = Date.now();
   const groups: { [tsumIdx: string]: BoardPoint[] } = {};
   for (const t in board) {
@@ -279,7 +281,7 @@ function calculatePaths(
   // is the constraint that decides how long a chain can get -- not "Maximum
   // Chain Number", which can only cap what this has already made reachable.
   // Both ends of its range cost something; see `TsumConfig.linkReach`.
-  const threshold = tsumSpan() * Config.linkReach;
+  const threshold = tsumSpan() * (linkReach || Config.linkReach);
   const maxDistSq = threshold * threshold;
   const paths: TsumPath[] = [];
   // A cap makes the search stop as soon as a chain that long is found, so short

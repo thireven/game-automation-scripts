@@ -239,6 +239,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SkillLightningMcQueenPlus]: 'Lightning McQueen+',
     [UiText.SkillNightmareSet]: 'Nightmare Before Christmas (Set)',
     [UiText.SkillVillainsSet]: 'Disney Villains (Set)',
+    [UiText.SkillColorfulMickeySet]: 'Colorful Mickey (Set)',
     [UiText.SkillFormalBeast]: 'Formal Beast',
     [UiText.SkillGaston]: 'Gaston',
     [UiText.SkillTiaraMinniePlus]: 'Tiara Minnie+',

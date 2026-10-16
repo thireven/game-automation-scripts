@@ -795,9 +795,10 @@ Tsum.prototype.taskPlayGameQuick = function() {
     }
     logDebug(Log.Board.PathStart);
     // The cap is the "Maximum Chain Number" setting unless the selected skill
-    // overrides it (`SkillHandler.chainLimits`).
+    // overrides it (`SkillHandler.chainLimits`); the reach likewise
+    // (`SkillHandler.linkReach`).
     let paths = calculatePaths(board, this.myTsumIdx, skillMyTsumPriority(this),
-      skillMaxChain(this));
+      skillMaxChain(this), false, skillLinkReach(this));
     // The selected skill may have an opinion about which of those to link and
     // in what order -- Formal Suit Beast keeps his two gauges level. Before the
     // cut below, so a skill choosing between colours can reach past the longest

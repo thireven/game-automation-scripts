@@ -127,6 +127,7 @@
     "src/skills/lightningMcQueenPlus.ts",
     "src/skills/nbcSet.ts",
     "src/skills/villainsSet.ts",
+    "src/skills/colorfulMickeySet.ts",
     "src/skills/formalBeast.ts",
     "src/skills/tiaraMinniePlus.ts",
     "src/skills/coronationElsa.ts",

@@ -102,6 +102,12 @@ declare const enum SkillType {
    * `src/skills/villainsSet.ts`.
    */
   VillainsSet = 'villains_set',
+  /**
+   * Colorful Mickey (Set). Plays as a burst, but for a while after it the game
+   * links tsums from most of the board apart, so the chains are planned at that
+   * reach -- see `src/skills/colorfulMickeySet.ts`.
+   */
+  ColorfulMickeySet = 'colorful_mickey_set',
   PairTsum = 'pair_tsum',
   /** Offered in the dropdown; short-circuited in useSkill, so it has no handler. */
   NoSkill = 'nokill',

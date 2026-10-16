@@ -95,6 +95,8 @@ var SkillsDeclared: SkillOption[] = [
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
     {key: SkillType.CabbageMickey, share: 'g', title: UiText.SkillCabbageMickey,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
+    {key: SkillType.ColorfulMickeySet, share: 'M', title: UiText.SkillColorfulMickeySet,
+     status: ReleaseStatus.Alpha, group: UiText.SkillGroupBurst},
     {key: SkillType.CptLightyear, share: 'l', title: UiText.SkillCptLightyear,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
     {key: SkillType.CptLightyear120, share: 'L', title: UiText.SkillCptLightyear120,

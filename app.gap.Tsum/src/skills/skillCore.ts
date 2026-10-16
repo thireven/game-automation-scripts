@@ -141,6 +141,11 @@ interface SkillHandler {
   // On a board of dark, vivid tsums the saturation swings more than the hue,
   // so capping it lets hue decide the clusters.
   chromaCap?: number;
+  // How far apart two same-colour tsums may be and still be planned as one
+  // chain, in tsum widths, for this scan -- or 0 to keep the "Link reach"
+  // setting. For a skill that lets the game link farther than usual for a
+  // while (Colorful Mickey Set). Asked once per scan.
+  linkReach?: (ts: Tsum) => number;
   // The last activation is still in effect, so a tap now would waste the
   // gauge: Gaston's window is a timed mode, and an activation inside it only
   // restarts the animation over the seconds it had left. While this answers
@@ -244,6 +249,14 @@ function skillColorBlur(ts: Tsum): number {
 function skillChromaCap(ts: Tsum): number {
   const handler = SkillHandlers[ts.skillType];
   return handler && handler.chromaCap ? handler.chromaCap : Infinity;
+}
+
+// The play loop's link reach in tsum widths. See `SkillHandler.linkReach`;
+// every other skill plays at the "Link reach" setting (`Config.linkReach`).
+function skillLinkReach(ts: Tsum): number {
+  const handler = SkillHandlers[ts.skillType];
+  const reach = handler && handler.linkReach ? handler.linkReach(ts) : 0;
+  return reach > 0 ? reach : Config.linkReach;
 }
 
 // Whether bubbles on the board belong to the skill rather than to the Bubble

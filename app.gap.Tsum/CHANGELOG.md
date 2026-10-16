@@ -53,8 +53,15 @@ release note; they fold back in here when she ships.
 *Play*
 - Rounds play faster: shorter taps on GAP 4.0, and quicker large Tsum detection.
 
+*Skills*
+- Colorful Mickey (Set) skill added.
+
 **Fixes**
 - Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
+
+### Added
+
+- **Colorful Mickey (Set) skill** (`src/skills/colorfulMickeySet.ts`, Alpha): a burst whose window (8.5–15 s by level, from the activation tap) plans chains at 80% of the board's width. New `SkillHandler.linkReach` hook, passed to `calculatePaths` by the play loop.
 
 ### Changed
 
