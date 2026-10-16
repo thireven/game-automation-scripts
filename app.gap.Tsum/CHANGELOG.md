@@ -52,6 +52,10 @@ release note; they fold back in here when she ships.
 **Fixes**
 - Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
 
+### Added
+
+- **Add-on hooks `addStatsCard` and `onRoundStats`** (`src/addons.ts`): a card on the Stats tab, and a call after each round's stats row while the score page is still up. Additive, so `GAP_ADDON_API` stays 1.
+
 ### Changed
 
 - **`MinHost` raised to 4.0** (`config.json`): the alpha host line, which has `gapRestartDevice`, `gapPerf` and the multi-display focus fix.

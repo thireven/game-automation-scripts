@@ -4,8 +4,9 @@
 // the bundle loads (GAP Companion delivers it to the accounts it is granted
 // to). It calls `gapAddonRegister` once, and the base reads the registries
 // below where it builds the phone's actions, state and screens
-// (src/companion.ts, src/companionScreens.ts) and at a run's start and end
-// (`buildRun` / `endRun`, src/index.ts). Workflow nodes need no hook: an add-on
+// (src/companion.ts, src/companionScreens.ts), at a run's start and end
+// (`buildRun` / `endRun`, src/index.ts) and after each round's stats row
+// (`finishRoundStats`, src/roundStats.ts). Workflow nodes need no hook: an add-on
 // calls `gapWorkflowDefineNode` (src/gapWorkflow.ts) itself.
 //
 // Every other base global is reachable directly, since the bundle is one
@@ -38,10 +39,17 @@ interface GapAddonHost {
   addTaskLabels(labels: Record<string, string>): void;
   /** Extra facts and screen items (e.g. `{button: name}`) on the Stats tab's My Tsum card. */
   addMyTsumCard(part: { facts?: unknown[]; buttons?: unknown[] }): void;
+  /** A card (`{card, icon, items}`) on the Stats tab, after the My Tsum card. */
+  addStatsCard(card: unknown): void;
   /** Called at each run's start; at once if a run is already going. */
   onRunStart(fn: (run: Tsum, controller: TsumTaskController) => void): void;
   /** Called as each run ends, before `ts` is cleared. */
   onRunEnd(fn: () => void): void;
+  /**
+   * Called once a round's stats row is written, with the finished score page
+   * still on screen (not called when it never showed). `round` is what was read.
+   */
+  onRoundStats(fn: (run: Tsum, round: RoundOutcome) => void): void;
 }
 
 /** Registered add-on ids, in order. */
@@ -52,8 +60,10 @@ const gAddonActions: { actions: GapAddonAction[]; run: (name: string, argsJson: 
 const gAddonStateInfo: { id: string; fn: () => Record<string, unknown> }[] = [];
 const gAddonTaskLabels: { [task: string]: string } = {};
 const gAddonMyTsumCard: { facts: unknown[]; buttons: unknown[] } = { facts: [], buttons: [] };
+const gAddonStatsCards: unknown[] = [];
 const gAddonRunStart: { id: string; fn: (run: Tsum, controller: TsumTaskController) => void }[] = [];
 const gAddonRunEnd: { id: string; fn: () => void }[] = [];
+const gAddonRoundStats: { id: string; fn: (run: Tsum, round: RoundOutcome) => void }[] = [];
 /** True between `gapAddonsRunStart` and `gapAddonsRunEnd`, so a late add-on can catch up. */
 let gAddonRunStarted = false;
 
@@ -80,6 +90,8 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
   const buttons: unknown[] = [];
   const runStart: ((run: Tsum, controller: TsumTaskController) => void)[] = [];
   const runEnd: (() => void)[] = [];
+  const statsCards: unknown[] = [];
+  const roundStats: ((run: Tsum, round: RoundOutcome) => void)[] = [];
   const host: GapAddonHost = {
     api: GAP_ADDON_API,
     addActions: function(list, run) { actions.push({ actions: list, run: run }); },
@@ -89,8 +101,10 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
       facts.push(...(part.facts || []));
       buttons.push(...(part.buttons || []));
     },
+    addStatsCard: function(card) { statsCards.push(card); },
     onRunStart: function(fn) { runStart.push(fn); },
     onRunEnd: function(fn) { runEnd.push(fn); },
+    onRoundStats: function(fn) { roundStats.push(fn); },
   };
   // Workflow nodes and lists go straight into the runner: snapshot to undo them.
   const nodeOrder = gapWorkflowNodeOrder.slice();
@@ -115,7 +129,9 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
   Object.assign(gAddonTaskLabels, taskLabels);
   gAddonMyTsumCard.facts.push(...facts);
   gAddonMyTsumCard.buttons.push(...buttons);
+  gAddonStatsCards.push(...statsCards);
   runEnd.forEach(function(fn) { gAddonRunEnd.push({ id: id, fn: fn }); });
+  roundStats.forEach(function(fn) { gAddonRoundStats.push({ id: id, fn: fn }); });
   runStart.forEach(function(fn) {
     gAddonRunStart.push({ id: id, fn: fn });
     // Add-ons can arrive after Start; catch up with the run in progress.
@@ -185,5 +201,13 @@ function gapAddonsRunEnd(): void {
   gAddonRunStarted = false;
   for (let i = 0; i < gAddonRunEnd.length; i++) {
     gapAddonCall(gAddonRunEnd[i].id, 'onRunEnd', gAddonRunEnd[i].fn);
+  }
+}
+
+/** Called by `finishRoundStats` after the row is written, on the score page. */
+function gapAddonsRoundStats(run: Tsum, round: RoundOutcome): void {
+  for (let i = 0; i < gAddonRoundStats.length; i++) {
+    const entry = gAddonRoundStats[i];
+    gapAddonCall(entry.id, 'onRoundStats', function() { entry.fn(run, round); });
   }
 }

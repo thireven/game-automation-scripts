@@ -43,6 +43,7 @@ const CompanionScreens = {
   ],
   barNote: [{ text: 'The run stops when this round ends.', when: 'state.flags.stopPending' }],
   tabs: [
+    // `gapScreens` puts the add-ons' cards in after the My Tsum card.
     { id: 'stats', label: 'Stats', items: [
       CompanionMyTsumCard,
       { slot: 'totals' },
@@ -74,8 +75,8 @@ const CompanionScreens = {
           { label: 'Coins', bind: 'data.finalCoins', format: 'number', icon: 'coins', bold: true },
         ] } },
       ] },
-    ] },
-    { id: 'settings', label: 'Settings', items: [{ slot: 'settings' }] },
+    ] as unknown[] },
+    { id: 'settings', label: 'Settings', items: [{ slot: 'settings' }] as unknown[] },
     { id: 'events', label: 'Events', items: [{ slot: 'events' }] },
   ],
   // Event shapes: EVENTS.md. The first template that fills in wins.
@@ -115,6 +116,9 @@ const CompanionScreens = {
   maps: { tasks: CompanionTasks },
 };
 
+/** The Stats tab's own items, before any add-on card goes in. */
+const CompanionStatsItems: unknown[] = CompanionScreens.tabs[0].items.slice();
+
 /** The Stats tab's My Tsum card items: the base fact, then any add-on facts and buttons. */
 function companionMyTsumCard(): unknown[] {
   return [
@@ -131,6 +135,7 @@ function companionMyTsumCard(): unknown[] {
 // noinspection JSUnusedGlobalSymbols
 function gapScreens(): string {
   CompanionMyTsumCard.items = companionMyTsumCard();
+  CompanionScreens.tabs[0].items = [CompanionStatsItems[0], ...gAddonStatsCards, ...CompanionStatsItems.slice(1)];
   CompanionScreens.maps.tasks = Object.assign({}, CompanionTasks, gAddonTaskLabels);
   return JSON.stringify(CompanionScreens);
 }
