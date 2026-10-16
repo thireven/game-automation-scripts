@@ -2117,6 +2117,10 @@ Tsum.prototype.finishRoundStats = function() {
       medals: medals,
     };
     this.writeRoundStats(new Date(), seconds, score, baseCoins, finalCoins, medals);
+    // Add-ons that read the score page do it now, before anything taps it away.
+    if (sawScorePage) {
+      gapAddonsRoundStats(this, this.lastRound);
+    }
     // The Quick Bar's running average, off the same two figures the row carries.
     // A missing one is left out of its own total rather than counted as zero --
     // see `RunCoinTally`.

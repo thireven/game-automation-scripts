@@ -524,8 +524,10 @@ let screens = JSON.parse(ctx.gapScreens());
 check('addons: none loaded, My Tsum card has the base fact only',
   JSON.stringify(screens.tabs[0].items[0].items) === JSON.stringify([{ facts: [
     { label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum' }] }]), screens.tabs[0].items[0]);
+const baseStatsItems = screens.tabs[0].items.length;
 let hookRan = false;
 let started = null;
+const roundStatsSeen = [];
 // A run already going: an add-on that loads now catches up on onRunStart.
 run('gRunActive = true; gAddonRunStarted = true; ts = { fake: 1 }; var realController = gTaskController; gTaskController = { fake: 2 }');
 check('addons: a test add-on registers',
@@ -539,6 +541,8 @@ check('addons: a test add-on registers',
     host.addMyTsumCard({ facts: [{ label: 'Test', bind: 'state.info.testInfo' }], buttons: [{ button: 'test.echo' }] });
     host.onRunStart((r, controller) => { started = { r, controller }; });
     host.onRunEnd(() => { hookRan = true; });
+    host.addStatsCard({ card: 'Test card', icon: 'coins', items: [{ stats: [{ label: 'T', bind: 'state.info.testInfo' }] }] });
+    host.onRoundStats((r, round) => { roundStatsSeen.push({ r, round }); throw new Error('reads nothing'); });
   }) === true);
 check('addons: onRunStart replayed for a run already going',
   started !== null && started.r.fake === 1 && started.controller.fake === 2, started);
@@ -551,6 +555,14 @@ check('addons: My Tsum card has the add-on fact and button',
   JSON.stringify(screens.tabs[0].items[0].items) === JSON.stringify([{ facts: [
     { label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum' }, { label: 'Test', bind: 'state.info.testInfo' }] },
   { button: 'test.echo' }]), screens.tabs[0].items[0]);
+check('addons: stats card goes in after the My Tsum card',
+  screens.tabs[0].items.length === baseStatsItems + 1 && screens.tabs[0].items[1].card === 'Test card'
+  && screens.tabs[0].items[2].slot === 'totals', screens.tabs[0].items.map((i) => i.card || i.slot));
+check('addons: stats card added once, however often the screens are built',
+  JSON.parse(ctx.gapScreens()).tabs[0].items.length === baseStatsItems + 1);
+ctx.gapAddonsRoundStats({ fake: 5 }, { seconds: 60, score: 1, baseCoins: 2, finalCoins: 3, medals: 4 });
+check('addons: onRoundStats gets the run and the round; a throw stays in the add-on',
+  roundStatsSeen.length === 1 && roundStatsSeen[0].r.fake === 5 && roundStatsSeen[0].round.finalCoins === 3, roundStatsSeen);
 check('addons: task label merged', screens.maps.tasks.testTask === 'Testing'
   && screens.maps.tasks.buyBoxes === 'Buying boxes', screens.maps.tasks);
 check('addons: state info merged', JSON.parse(ctx.gapRemoteState()).info.testInfo === 7);
@@ -572,6 +584,8 @@ check('addons: a throwing install is refused',
     host.addActions([{ name: 'test.half', label: 'Half' }], () => '{}');
     host.addStateInfo(() => ({ halfInfo: 1 }));
     host.onRunStart(() => { halfStarted = true; });
+    host.addStatsCard({ card: 'Half card', items: [] });
+    host.onRoundStats(() => { halfStarted = true; });
     ctx.gapWorkflowDefineNode({ type: 'test.halfNode', label: 'Half', params: [], run: () => 'done' });
     throw new Error('half');
   }) === false);
@@ -580,8 +594,11 @@ check('addons: a failed install adds no action',
 check('addons: a failed install adds no state info', JSON.parse(ctx.gapRemoteState()).info.halfInfo === undefined);
 check('addons: a failed install adds no workflow node',
   JSON.parse(ctx.gapWorkflowCatalog()).nodes.length === nodeCount);
+check('addons: a failed install adds no stats card',
+  JSON.parse(ctx.gapScreens()).tabs[0].items.every((i) => i.card !== 'Half card'));
 ctx.gapAddonsRunStart({ fake: 3 }, { fake: 4 });
-check('addons: a failed install adds no run hook', halfStarted === false);
+ctx.gapAddonsRoundStats({ fake: 3 }, null);
+check('addons: a failed install adds no run or round hook', halfStarted === false);
 ctx.gapAddonsRunEnd();
 check('addons: a failed id can register again',
   ctx.gapAddonRegister('test.half', ctx.GAP_ADDON_API, () => {}) === true);

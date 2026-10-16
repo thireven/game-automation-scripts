@@ -62,6 +62,7 @@ release note; they fold back in here when she ships.
 ### Added
 
 - **Colorful Mickey (Set) skill** (`src/skills/colorfulMickeySet.ts`, Alpha): a burst. While its timer bar is on the board's rim, chains are planned at 80% of the board's width with no chain cap. The bar is read off a crop each scan; it opens on two sightings in a row and closes 1.5 s after the last. New `SkillHandler.linkReach` hook, passed to `calculatePaths` by the play loop.
+- **Add-on hooks `addStatsCard` and `onRoundStats`** (`src/addons.ts`): a card on the Stats tab, and a call after each round's stats row while the score page is still up. Additive, so `GAP_ADDON_API` stays 1.
 
 ### Changed
 
