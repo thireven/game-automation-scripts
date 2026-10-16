@@ -756,8 +756,10 @@ gPages.subscribe({
   id: 'nav.move.unknown',
   category: PageCategory.Navigate,
   order: 30,
-  what: 'Blind escape from a screen nothing fingerprinted: look for a native dialog '
-      + 'first, then work through the cancel and close buttons the game reuses.',
+  what: 'Escape from a screen nothing fingerprinted. With a director add-on, ask the '
+      + 'user to direct the device first (`directUnknownPage`); Continue or a stop ends it '
+      + 'there. Otherwise, blind: look for a native dialog first, then work through the '
+      + 'cancel and close buttons the game reuses.',
   pages: [PageName.Unknown],
   // The frame is evidence until this touches it. Both are in the Unknown queue,
   // so this is a real edge rather than a formality -- the band priorities would
@@ -766,7 +768,9 @@ gPages.subscribe({
   every: true,
   steps: [
     { do: 'call', name: 'exitUnknownPage', run: function() {
-      this.exitUnknownPage();
+      if (!this.directUnknownPage()) {
+        this.exitUnknownPage();
+      }
     } }
   ]
 });

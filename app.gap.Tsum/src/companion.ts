@@ -7,7 +7,8 @@
 // companion repo's cloud/adapters/README.md. JSON crosses as strings both ways.
 //
 // Rule from the contract: nothing here may tap, sleep or wait (except
-// `gapRemoteStartRun`). The engine calls these outside the pause gate.
+// `gapRemoteStartRun`, and `requestUserDirection`, which the run thread calls).
+// The engine calls these outside the pause gate.
 
 /** Readouts the phone shows for a run; keys match `gapRemoteState().readouts`. */
 const CompanionReadouts = [
@@ -126,6 +127,105 @@ function notifyChoreDone(chore: 'unlock' | 'boxes' | 'tsumList', outcome: LogFie
     body += ' Stopped: ' + reason + '.';
   }
   gapNotify({ title: title, body: body, category: 'task', tag: 'chore.' + chore });
+}
+
+// --- User direction (the companion's IUD-PLAN.md) ------------------------------
+//
+// The script pauses and the user directs the device from the phone: taps and
+// drags on a screenshot, then Continue. The director add-on (src/addons.ts,
+// `setDirector`) does the work; without one nothing here does anything.
+
+/** The `gap.direct` event: one request's state, for the server and the phones. */
+interface GapDirectEvent {
+  /** [A-Za-z0-9_-]{8,64}, new per request. */
+  id: string;
+  state: 'waiting' | 'working' | 'closed';
+  /** 1, then +1 after each play. */
+  step: number;
+  title?: string;
+  body?: string;
+  /** ISO UTC; when a waiting request stops waiting. */
+  expiresAt?: string;
+  /** How many actions one play may carry. */
+  maxActions?: number;
+  /** Closed only. */
+  reason?: 'continue' | 'timeout' | 'stopped' | 'error';
+}
+
+/** Sends a request's state. The director calls it; nothing happens without GAP Companion. */
+function gapDirectEmit(event: GapDirectEvent): void {
+  emitScriptEvent(Emit.Companion.Direct, event);
+}
+
+/**
+ * The phone's `direct.play` / `direct.continue` (args already checked by the
+ * adapter), handed to the director. Companion thread: check and store only.
+ */
+// noinspection JSUnusedGlobalSymbols
+function gapDirect(op: string, argsJson: string): string {
+  const d = gAddonDirector;
+  if (d === null) {
+    return JSON.stringify({ ok: false, why: 'no-direct' });
+  }
+  if (op !== 'play' && op !== 'continue') {
+    return JSON.stringify({ ok: false, why: 'unknown-op' });
+  }
+  let args: unknown = null;
+  try {
+    args = JSON.parse(argsJson);
+  } catch (e) {
+    // The director refuses null args.
+  }
+  try {
+    const res = d.director.receive(op, args);
+    if (res === null || typeof res !== 'object' || typeof res.ok !== 'boolean') {
+      throw new Error('bad answer');
+    }
+    return JSON.stringify(res);
+  } catch (e) {
+    logError(Log.Addon.Failed, 'Add-on hook failed', { addon: d.id, hook: 'direct', errorText: String(e) });
+    return JSON.stringify({ ok: false, why: 'direct-failed' });
+  }
+}
+
+/**
+ * Asks the user to direct the device, from the run thread; returns when the
+ * request ends. 'unavailable' at once without a director or a run. The stall
+ * guard does not count the wait (`Tsum#stallResets`).
+ */
+function requestUserDirection(opts?: GapAddonDirectOptions): GapAddonDirectOutcome | 'unavailable' {
+  const d = gAddonDirector;
+  const run = ts;
+  if (d === null || run === undefined) {
+    return 'unavailable';
+  }
+  if (!run.isRunning) {
+    return 'stopped';
+  }
+  const ask: GapAddonDirectOptions = {};
+  if (opts !== undefined && typeof opts.title === 'string') {
+    ask.title = opts.title.slice(0, 80);
+  }
+  if (opts !== undefined && typeof opts.body === 'string') {
+    ask.body = opts.body.slice(0, 300);
+  }
+  const startedAt = Date.now();
+  logInfo(Log.Direct.Asked, 'Asking for direction on the phone', { addon: d.id, body: ask.body ?? null });
+  // A throw or a bad answer is a timeout, so the caller's old path runs.
+  let outcome: GapAddonDirectOutcome = 'timeout';
+  try {
+    const got = d.director.request(run, ask);
+    if (got === 'continue' || got === 'timeout' || got === 'stopped') {
+      outcome = got;
+    } else {
+      logError(Log.Addon.Failed, 'Add-on hook failed', { addon: d.id, hook: 'request', errorText: 'bad outcome ' + String(got) });
+    }
+  } catch (e) {
+    logError(Log.Addon.Failed, 'Add-on hook failed', { addon: d.id, hook: 'request', errorText: String(e) });
+  }
+  run.stallResets++;
+  logInfo(Log.Direct.Ended, 'Direction request ended', { outcome: outcome, ms: Date.now() - startedAt });
+  return outcome;
 }
 
 /** `remoteSettingsApply`'s refusal reasons as the contract's short codes. */

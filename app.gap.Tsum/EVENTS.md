@@ -14,7 +14,7 @@ format are the host's document --
 Names are declared once, in `src/scriptEvents.ts`, and reached through
 `ts.emit()`, which is silent on a host too old to have `emitEvent`.
 
-`13` event(s) from `14` call site(s).
+`14` event(s) from `15` call site(s).
 
 | event | emitted from | payload |
 |---|---|---|
@@ -30,7 +30,8 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `workflow.restart` | `src/gapWorkflow.ts:933` | `id`, `nodeId`, `index`, `loop`, `outcome`, `error`, `why`, `fps`, `captureMs` |
 | `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
 | `run.stopped` | `src/index.ts:805` | `rounds` |
-| `gap.notify` | `src/companion.ts:63` | _none_ |
+| `gap.notify` | `src/companion.ts:64` | _none_ |
+| `gap.direct` | `src/companion.ts:157` | _none_ |
 
 ## The events
 
@@ -236,4 +237,14 @@ Payload built elsewhere: `note`, of type `GapNote`.
 
 Emitted from:
 
-- `src/companion.ts:63` — `emitScriptEvent(Emit.Companion.Notify, …)`
+- `src/companion.ts:64` — `emitScriptEvent(Emit.Companion.Notify, …)`
+
+### `gap.direct`
+
+`Emit.Companion.Direct` — A user direction request's state (`waiting`, `working`, `closed`), sent by the director add-on. The server takes the screenshot and asks the phones.
+
+Payload built elsewhere: `event`, of type `GapDirectEvent`.
+
+Emitted from:
+
+- `src/companion.ts:157` — `emitScriptEvent(Emit.Companion.Direct, …)`

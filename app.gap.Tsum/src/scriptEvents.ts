@@ -96,10 +96,15 @@ namespace Emit {
    * GAP Companion's push channel (the app repo's cloud/adapters/README.md §
    * Notifications). The server turns it into a notification on the phones of
    * the device's account and keeps it out of the event history; `gap.*` names
-   * are the platform's. Sent only by `gapNotify` (src/companion.ts).
+   * are the platform's. Sent only by `gapNotify` and `gapDirectEmit` (src/companion.ts).
    */
   export const enum Companion {
     /** A notification: title, body, category, tag, lines, progress, actions. */
     Notify = 'gap.notify',
+    /**
+     * A user direction request's state (`waiting`, `working`, `closed`), sent by
+     * the director add-on. The server takes the screenshot and asks the phones.
+     */
+    Direct = 'gap.direct',
   }
 }

@@ -1071,6 +1071,8 @@ interface StallGuard {
   restarts: number;
   /** The page `nav.noRoute` was last reported for, so a stall on one page says so once. */
   noRoute: PageName | '';
+  /** `Tsum#stallResets` when last checked: a direction request since starts the count over. */
+  resets: number;
 }
 
 // --- Click Assist (clickAssist.ts) ---
@@ -1291,6 +1293,11 @@ interface Tsum {
    * `nav.move.unknown` subscription calls and a few tasks call directly.
    */
   exitUnknownPage(): void;
+  /**
+   * Asks the user to direct the device off an unknown screen. True when that
+   * handled it (Continue, or the run stopped); false runs `exitUnknownPage`.
+   */
+  directUnknownPage(): boolean;
   isOnScreenshot(img: NativeImage, pageObject: Coord, colorDiff?: number): boolean;
   /**
    * Queue one line for the floating window's banner. See `showBanner`.
@@ -1405,6 +1412,10 @@ interface Tsum {
   boardScaleTrend: number;
   /** Until when `waitOutEdgeWash` skips waiting, after a wait that ran out. */
   edgeWashBackoffUntil: number;
+  /** Bumped after each user direction request; the stall guard starts over on it. */
+  stallResets: number;
+  /** Until when an unknown screen asks for no direction, after one timed out. */
+  directQuietUntil: number;
   updateBoardScale(grayImg: NativeImage): void;
   waitOutEdgeWash(grayImg: NativeImage): boolean;
   scanBoardQuick(): BoardPoint[];

@@ -12,7 +12,9 @@
 // Cases: per-loop values cycle; `loop {times}`; `stop`; running off the end
 // (implicit stop) and the empty workflow; retries then skip; `terminate`; the
 // check's refusals in its documented order; Tsum's Tsum List check; the presets
-// mirror round trip; the add-on hooks (src/addons.ts) with a test add-on; the
+// mirror round trip; the add-on hooks (src/addons.ts) with a test add-on, the
+// director and user direction (gapDirect, requestUserDirection, the unknown
+// screen, the stall guard starting over); the
 // restart nodes (`restartDevice`, `restartIfSlow`) against the host shim's
 // stubbed natives, and resuming at a saved cursor (`at`).
 
@@ -602,6 +604,74 @@ check('addons: a failed install adds no run or round hook', halfStarted === fals
 ctx.gapAddonsRunEnd();
 check('addons: a failed id can register again',
   ctx.gapAddonRegister('test.half', ctx.GAP_ADDON_API, () => {}) === true);
+
+// User direction: gapDirect and requestUserDirection go to the one director.
+const directRun = { isRunning: true, stallResets: 0, directQuietUntil: 0 };
+run('var realController2 = gTaskController; gTaskController = { runningTask: "sendHearts" }');
+ctx.ts = directRun;
+check('direct: no director answers no-direct',
+  JSON.parse(ctx.gapDirect('play', '{"id":"abcdefgh"}')).why === 'no-direct');
+check('direct: no director, requestUserDirection is unavailable', ctx.requestUserDirection({}) === 'unavailable');
+check('direct: no director, the unknown screen runs the escape',
+  ctx.Tsum.prototype.directUnknownPage.call(directRun) === false && directRun.stallResets === 0);
+const directSeen = { received: [], asked: [] };
+let directAnswer = 'continue';
+check('direct: an add-on sets the director',
+  ctx.gapAddonRegister('test.director', ctx.GAP_ADDON_API, (host) => {
+    host.setDirector({
+      request: (r, opts) => {
+        directSeen.asked.push(opts);
+        if (directAnswer === 'throw') throw new Error('boom');
+        return directAnswer;
+      },
+      receive: (op, args) => {
+        directSeen.received.push({ op, args });
+        if (op === 'continue') throw new Error('boom');
+        return { ok: true, accepted: 1 };
+      },
+    });
+  }) === true);
+check('direct: a second director is refused',
+  ctx.gapAddonRegister('test.director2', ctx.GAP_ADDON_API, (host) => {
+    host.setDirector({ request: () => 'timeout', receive: () => ({ ok: true }) });
+  }) === false);
+check('direct: setDirector twice in one install is refused',
+  ctx.gapAddonRegister('test.director3', ctx.GAP_ADDON_API, (host) => {
+    host.setDirector({ request: () => 'timeout', receive: () => ({ ok: true }) });
+    host.setDirector({ request: () => 'timeout', receive: () => ({ ok: true }) });
+  }) === false);
+check('direct: gapDirect passes op and parsed args',
+  JSON.parse(ctx.gapDirect('play', '{"id":"abcdefgh","actions":[]}')).accepted === 1
+  && directSeen.received[0].op === 'play' && directSeen.received[0].args.id === 'abcdefgh', directSeen.received);
+check('direct: a throwing receive answers direct-failed',
+  JSON.parse(ctx.gapDirect('continue', '{"id":"abcdefgh"}')).why === 'direct-failed');
+check('direct: an unknown op is refused', JSON.parse(ctx.gapDirect('tap', '{}')).why === 'unknown-op');
+check('direct: the outcome passes through, the stall guard is pardoned',
+  ctx.requestUserDirection({ title: 'T', body: 'B' }) === 'continue' && directRun.stallResets === 1
+  && directSeen.asked[0].title === 'T' && directSeen.asked[0].body === 'B', directSeen.asked);
+directAnswer = 'throw';
+check('direct: a throwing request is a timeout', ctx.requestUserDirection() === 'timeout');
+directAnswer = 'continue';
+check('direct: unknown screen, Continue handles it with the task in the body',
+  ctx.Tsum.prototype.directUnknownPage.call(directRun) === true
+  && directSeen.asked[directSeen.asked.length - 1].body === 'Paused on an unfamiliar screen (Sending hearts).',
+  directSeen.asked[directSeen.asked.length - 1]);
+directAnswer = 'timeout';
+const askedBefore = directSeen.asked.length;
+check('direct: unknown screen, a timeout runs the escape',
+  ctx.Tsum.prototype.directUnknownPage.call(directRun) === false && directRun.directQuietUntil > Date.now());
+check('direct: after a timeout the next unknown screen does not ask',
+  ctx.Tsum.prototype.directUnknownPage.call(directRun) === false && directSeen.asked.length === askedBefore + 1);
+directRun.isRunning = false;
+check('direct: a stopped run is stopped at once', ctx.requestUserDirection() === 'stopped');
+// The stall guard starts over after a request.
+const guardTsum = { stallResets: 0, dismissSystemDialog: () => false };
+const guard = ctx.Tsum.prototype.newStallGuard.call(guardTsum, 'test');
+for (let i = 0; i < 10; i++) ctx.Tsum.prototype.checkStall.call(guardTsum, guard, 'Unknown');
+guardTsum.stallResets++;
+ctx.Tsum.prototype.checkStall.call(guardTsum, guard, 'Unknown');
+check('direct: the stall guard starts over after a request', guard.repeats === 0 && guard.rounds === 1, guard);
+run('ts = undefined; gTaskController = realController2');
 
 // --- review fixes -------------------------------------------------------------------
 // A stale rev is reported under the rev that was started, not the synced one.

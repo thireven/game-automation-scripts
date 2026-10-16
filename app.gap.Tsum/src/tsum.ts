@@ -71,6 +71,10 @@ class Tsum {
   boardScaleReads: number[];
   boardScaleTrend: number;
   edgeWashBackoffUntil: number;
+  /** Bumped after each user direction request; the stall guard starts over on it. */
+  stallResets: number;
+  /** Until when an unknown screen asks for no direction, after one timed out. */
+  directQuietUntil: number;
   devicePath: string;
   originScreenWidth: number;
   originScreenHeight: number;
@@ -393,6 +397,8 @@ class Tsum {
     this.boardScaleReads = [];
     this.boardScaleTrend = 0;
     this.edgeWashBackoffUntil = 0;
+    this.stallResets = 0;
+    this.directQuietUntil = 0;
     // Optional safety poll: fire the skill the instant it's ready, even mid-link,
     // rather than only at the end of each board-scan cycle (see maybeAutoTapSkill).
     this.skillAutoTap = false;
@@ -874,4 +880,27 @@ Tsum.prototype.exitUnknownPage = function() {
   this.tap(Button.outClose);
   this.tap(Button.gameStop);
   this.sleep(500);
+}
+
+// Before the blind escape: ask the user to direct the device (a director
+// add-on, `requestUserDirection` in companion.ts). Called only by the navigate
+// band's `nav.move.unknown`, which never runs mid-round (a bare `detect()` in
+// the play loop does not offer that band). Continue or a stop means the screen
+// was handled; a timeout or no director runs the escape. After a timeout
+// nobody is watching, so the next unknown screens skip asking for a while.
+const UnknownDirectQuietMs = 30 * 60 * 1000;
+
+Tsum.prototype.directUnknownPage = function() {
+  if (Date.now() < this.directQuietUntil) {
+    return false;
+  }
+  const task = gTaskController !== undefined ? gTaskController.runningTask : '';
+  const label = task === '' ? '' : (gAddonTaskLabels[task] || CompanionTasks[task] || '');
+  const outcome = requestUserDirection({
+    body: 'Paused on an unfamiliar screen' + (label === '' ? '.' : ' (' + label + ').'),
+  });
+  if (outcome === 'timeout') {
+    this.directQuietUntil = Date.now() + UnknownDirectQuietMs;
+  }
+  return outcome === 'continue' || outcome === 'stopped';
 }

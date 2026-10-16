@@ -91,7 +91,7 @@ line said `roundId` or `round_id` is a viewer you cannot filter.
 `unlock` · `box` (buying boxes in the store) · `tsumList` · `stats` · `dialog` · `stall` ·
 `corpus` · `report` (the folder a player sends in) · `walk` · `assist` · `log` ·
 `settings` (the settings page) · `quickBar` · `workflow` (a GAP Companion workflow run,
-`WORKFLOWS.md`) · `addon` (script add-ons, `src/addons.ts`; an add-on's own events are `addon.<name>.*`, named in the add-on) · `host` (the host app's own lines).
+`WORKFLOWS.md`) · `addon` (script add-ons, `src/addons.ts`; an add-on's own events are `addon.<name>.*`, named in the add-on) · `direct` (user direction requests, `src/companion.ts`) · `host` (the host app's own lines).
 
 One `const enum` per component in [`src/logEvents.ts`](src/logEvents.ts), in
 this order, and the enums are the only place an event name is spelled out:

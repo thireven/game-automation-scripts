@@ -585,4 +585,12 @@ namespace Log {
     /** An add-on's install, hook or action threw; the base carried on. */
     Failed     = 'addon.failed',
   }
+
+  /** User direction requests (`requestUserDirection`, src/companion.ts). */
+  export const enum Direct {
+    /** A request opened: the phone shows the screen and waits for the user. */
+    Asked = 'direct.asked',
+    /** It ended: `outcome` continue, timeout or stopped; `ms` how long it took. */
+    Ended = 'direct.ended',
+  }
 }

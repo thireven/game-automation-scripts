@@ -496,10 +496,19 @@ const StallRestartAfter = 30;  // ~40s stuck: bounce the game app
 const StallMaxRestarts = 3;
 
 Tsum.prototype.newStallGuard = function(where) {
-  return {where: where, page: '', repeats: 0, rounds: 0, dialogTried: false, restarts: 0, noRoute: ''};
+  return {where: where, page: '', repeats: 0, rounds: 0, dialogTried: false, restarts: 0, noRoute: '',
+    resets: this.stallResets};
 };
 
 Tsum.prototype.checkStall = function(guard, page) {
+  // A user direction request waited on the user, not on a stuck screen: start over.
+  if (guard.resets !== this.stallResets) {
+    guard.resets = this.stallResets;
+    guard.page = '';
+    guard.repeats = 0;
+    guard.rounds = 0;
+    guard.dialogTried = false;
+  }
   guard.rounds++;
   if (page !== guard.page) {
     guard.page = page;

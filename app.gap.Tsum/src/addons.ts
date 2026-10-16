@@ -6,8 +6,10 @@
 // below where it builds the phone's actions, state and screens
 // (src/companion.ts, src/companionScreens.ts), at a run's start and end
 // (`buildRun` / `endRun`, src/index.ts) and after each round's stats row
-// (`finishRoundStats`, src/roundStats.ts). Workflow nodes need no hook: an add-on
-// calls `gapWorkflowDefineNode` (src/gapWorkflow.ts) itself.
+// (`finishRoundStats`, src/roundStats.ts). One add-on may be the director, which
+// answers user direction requests (`requestUserDirection`, `gapDirect`,
+// src/companion.ts). Workflow nodes need no hook: an add-on calls
+// `gapWorkflowDefineNode` (src/gapWorkflow.ts) itself.
 //
 // Every other base global is reachable directly, since the bundle is one
 // script. An add-on compiles against build/index.d.ts, which the build writes.
@@ -26,6 +28,35 @@ interface GapAddonAction {
   label: string;
   role?: string;
   args?: { [key: string]: unknown };
+}
+
+/** What a user direction request asks; the server has defaults for both. */
+interface GapAddonDirectOptions {
+  /** ≤ 80 characters. */
+  title?: string;
+  /** ≤ 300 characters, e.g. "Paused on an unfamiliar screen." */
+  body?: string;
+}
+
+/** How a request ended: Continue pressed, the wait ran out, or the run stopped. */
+type GapAddonDirectOutcome = 'continue' | 'timeout' | 'stopped';
+
+/**
+ * Handles user direction requests (the companion's IUD-PLAN.md): the phone
+ * shows the screen, the user sends taps and drags, then Continue.
+ */
+interface GapAddonDirector {
+  /**
+   * Opens a request and waits for it to end, on the run thread. Performs the
+   * actions `receive` queued. Must return when `run.isRunning` goes false.
+   */
+  request(run: Tsum, opts: GapAddonDirectOptions): GapAddonDirectOutcome;
+  /**
+   * `gapDirect`'s op ('play' | 'continue') and parsed args (null when unparsable),
+   * on the companion's thread outside the pause gate: check and store only,
+   * never tap or sleep. Answers `{ok: true, ...}` or `{ok: false, why}`.
+   */
+  receive(op: string, args: unknown): { ok: boolean; why?: string; [key: string]: unknown };
 }
 
 /** What an add-on's `install` is handed. */
@@ -50,6 +81,8 @@ interface GapAddonHost {
    * still on screen (not called when it never showed). `round` is what was read.
    */
   onRoundStats(fn: (run: Tsum, round: RoundOutcome) => void): void;
+  /** Makes this add-on the director. One per script: a second one is refused. */
+  setDirector(director: GapAddonDirector): void;
 }
 
 /** Registered add-on ids, in order. */
@@ -64,6 +97,8 @@ const gAddonStatsCards: unknown[] = [];
 const gAddonRunStart: { id: string; fn: (run: Tsum, controller: TsumTaskController) => void }[] = [];
 const gAddonRunEnd: { id: string; fn: () => void }[] = [];
 const gAddonRoundStats: { id: string; fn: (run: Tsum, round: RoundOutcome) => void }[] = [];
+/** The one director, with its add-on's id; null without one. */
+let gAddonDirector: { id: string; director: GapAddonDirector } | null = null;
 /** True between `gapAddonsRunStart` and `gapAddonsRunEnd`, so a late add-on can catch up. */
 let gAddonRunStarted = false;
 
@@ -92,6 +127,7 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
   const runEnd: (() => void)[] = [];
   const statsCards: unknown[] = [];
   const roundStats: ((run: Tsum, round: RoundOutcome) => void)[] = [];
+  const directors: GapAddonDirector[] = [];
   const host: GapAddonHost = {
     api: GAP_ADDON_API,
     addActions: function(list, run) { actions.push({ actions: list, run: run }); },
@@ -105,6 +141,12 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
     onRunStart: function(fn) { runStart.push(fn); },
     onRunEnd: function(fn) { runEnd.push(fn); },
     onRoundStats: function(fn) { roundStats.push(fn); },
+    setDirector: function(d) {
+      if (directors.length > 0) {
+        throw new Error('setDirector called twice');
+      }
+      directors.push(d);
+    },
   };
   // Workflow nodes and lists go straight into the runner: snapshot to undo them.
   const nodeOrder = gapWorkflowNodeOrder.slice();
@@ -112,18 +154,29 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
   const listOrder = gapWorkflowListOrder.slice();
   const lists = Object.assign({}, gapWorkflowLists);
   const listInfos = Object.assign({}, gapWorkflowListInfos);
-  try {
-    install(host);
-  } catch (e) {
+  const undoNodes = function() {
     gapWorkflowNodeOrder = nodeOrder;
     gapWorkflowNodes = nodes;
     gapWorkflowListOrder = listOrder;
     gapWorkflowLists = lists;
     gapWorkflowListInfos = listInfos;
+  };
+  try {
+    install(host);
+  } catch (e) {
+    undoNodes();
     logError(Log.Addon.Failed, 'Add-on failed to install', { addon: id, errorText: String(e) });
     return false;
   }
+  if (directors.length > 0 && gAddonDirector !== null) {
+    undoNodes();
+    logWarn(Log.Addon.Refused, 'Another add-on already directs', { addon: id, director: gAddonDirector.id });
+    return false;
+  }
   gAddonIds.push(id);
+  if (directors.length > 0) {
+    gAddonDirector = { id: id, director: directors[0] };
+  }
   gAddonActions.push(...actions);
   stateInfo.forEach(function(fn) { gAddonStateInfo.push({ id: id, fn: fn }); });
   Object.assign(gAddonTaskLabels, taskLabels);
