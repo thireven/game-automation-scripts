@@ -52,6 +52,7 @@ var LogsEn = {
   [Log.Skill.LorcanaAuroraStayed]: '[Lorcana Aurora] Bubbles stayed; chain not taken',
   [Log.Skill.LorcanaAuroraSwept]: '[Lorcana Aurora] Bubbles popped in place',
   [Log.Skill.NbcOogie]: '[NBC Set] Oogie Boogie up; holding for his dice',
+  [Log.Skill.ColorfulMickeyReach]: '[Colorful Mickey Set] Long reach changed',
   [Log.Skill.NbcDice]: '[NBC Set] Dice read',
   [Log.Skill.NbcDiceUnread]: '[NBC Set] Dice not read',
   [Log.Play.GameStart]: 'Game Start',

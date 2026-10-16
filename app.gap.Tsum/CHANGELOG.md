@@ -61,7 +61,7 @@ release note; they fold back in here when she ships.
 
 ### Added
 
-- **Colorful Mickey (Set) skill** (`src/skills/colorfulMickeySet.ts`, Alpha): a burst whose window (8.5–15 s by level, from the activation tap) plans chains at 80% of the board's width. New `SkillHandler.linkReach` hook, passed to `calculatePaths` by the play loop.
+- **Colorful Mickey (Set) skill** (`src/skills/colorfulMickeySet.ts`, Alpha): a burst. While its timer bar is on the board's rim, chains are planned at 80% of the board's width with no chain cap. The bar is read off a crop each scan; it opens on two sightings in a row and closes 1.5 s after the last. New `SkillHandler.linkReach` hook, passed to `calculatePaths` by the play loop.
 
 ### Changed
 

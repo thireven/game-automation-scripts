@@ -204,6 +204,8 @@ namespace Log {
     ElsaPass              = 'skill.elsa.pass',
     ElsaSalvo             = 'skill.elsa.salvo',
     ElsaRoundOver         = 'skill.elsa.roundOver',
+    /** Colorful Mickey Set: its bar came up (long reach on) or went (off). */
+    ColorfulMickeyReach   = 'skill.colorfulMickey.reach',
     FeverHoldOff          = 'skill.feverHoldOff',
     FormalBeastModeEnd    = 'skill.formalBeast.modeEnd',
     FormalBeastModeStart  = 'skill.formalBeast.modeStart',
