@@ -45,6 +45,18 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a9]
+
+### Summary
+
+**Additions**
+*Run control*
+- With GAP Companion, a screen the script doesn't know can wait for your direction from your phone instead of being escaped.
+
+### Added
+
+- **User direction hooks** (`src/addons.ts`, `src/companion.ts`): `host.setDirector` (one director add-on), the standard global `gapDirect` (`no-direct` without one), `requestUserDirection` and the `gap.direct` event. An unknown screen met while navigating asks first (`directUnknownPage`); Continue or a stop skips the blind escape, and the stall guard does not count the wait. After a timeout it does not ask again for 30 minutes. Additive, so `GAP_ADDON_API` stays 1.
+
 ## [6.0a8]
 
 ### Summary
@@ -60,7 +72,6 @@ release note; they fold back in here when she ships.
 
 - **Colorful Mickey (Set) skill** (`src/skills/colorfulMickeySet.ts`, Alpha): a burst. While its timer bar is on the board's rim, chains are planned at 80% of the board's width with no chain cap. The bar is read off a crop each scan; it opens on two sightings in a row and closes 1.5 s after the last. New `SkillHandler.linkReach` hook, passed to `calculatePaths` by the play loop.
 - **Add-on hooks `addStatsCard` and `onRoundStats`** (`src/addons.ts`): a card on the Stats tab, and a call after each round's stats row while the score page is still up. Additive, so `GAP_ADDON_API` stays 1.
-- **User direction hooks** (`src/addons.ts`, `src/companion.ts`): `host.setDirector` (one director add-on), the standard global `gapDirect` (`no-direct` without one), `requestUserDirection` and the `gap.direct` event. An unknown screen met while navigating asks first (`directUnknownPage`); Continue or a stop skips the blind escape, and the stall guard does not count the wait. After a timeout it does not ask again for 30 minutes. Additive, so `GAP_ADDON_API` stays 1.
 
 ### Changed
 
