@@ -752,13 +752,19 @@ Tsum.prototype.isOnScreenshot = function(img, pageObject, colorDiff) {
 // would go to whatever screen is up by then. The host drops them as well when
 // the stop is its own (Stop button, Close); this also covers a run `start()`
 // replaces. A gesture already begun is finished -- see `gestureOpen`.
+// How long every tap holds the finger down. The game took 10 ms presses as
+// reliably as GAP's default 40 (pause button, mid-round, 15/15), and the 30 ms
+// saved per tap was about a tenth of a tap-heavy skill's round. A host before
+// GAP 4.0 ignores it and holds 40.
+const TapHoldMs = 10;
+
 Tsum.prototype.tap = function(xy, during) {
   if (!this.isRunning) { return; }
   if (during === undefined) {
     during = 50;
   }
   const rxy = this.toRealXYs(xy);
-  tap(rxy.x, rxy.y, during);
+  tap(rxy.x, rxy.y, during, TapHoldMs);
   // Whatever gesture was open, this tap's release ended it.
   this.gestureOpen = false;
 }

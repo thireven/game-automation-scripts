@@ -499,7 +499,7 @@ Tsum.prototype.popLorcanaStoneBubble = function() {
     const b = targets[i];
     const x = Math.floor(this.playOffsetX + b.x * this.playWidth / this.playResizeWidth);
     const y = Math.floor(this.playOffsetY + b.y * this.playHeight / this.playResizeHeight);
-    tap(x, y, cfg.stoneTapDuring);
+    tap(x, y, cfg.stoneTapDuring, TapHoldMs);
   }
   logDebug(Log.Lorcana.StonePopped, {
     // `aimed: false` with a `seen` of one or two is an ordinary board the pass

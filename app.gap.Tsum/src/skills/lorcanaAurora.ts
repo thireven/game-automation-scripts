@@ -551,7 +551,7 @@ function lorcanaAuroraPopOneBubble(ts: Tsum): boolean {
     }
   }
   const p = lorcanaAuroraToScreen(ts, bubbles[best]);
-  tap(p.x, p.y, cfg.tapDuring);
+  tap(p.x, p.y, cfg.tapDuring, TapHoldMs);
   return true;
 }
 
@@ -632,7 +632,7 @@ function lorcanaAuroraChainBubbles(ts: Tsum, look: LorcanaAuroraLook, from: numb
     burst = lorcanaAuroraBurstCheck(ts, route);
   } else if (route.length === 1) {
     const p = lorcanaAuroraToScreen(ts, route[0]);
-    tap(p.x, p.y, cfg.tapDuring);
+    tap(p.x, p.y, cfg.tapDuring, TapHoldMs);
   }
 
   const fields = {
@@ -929,7 +929,7 @@ function lorcanaAuroraSweepBubbles(ts: Tsum, from: number): void {
   const pop = (list: Point[]) => {
     for (let i = 0; i < list.length && ts.isRunning; i++) {
       const p = lorcanaAuroraToScreen(ts, list[i]);
-      tap(p.x, p.y, cfg.tapDuring);
+      tap(p.x, p.y, cfg.tapDuring, TapHoldMs);
       tapped++;
     }
   };

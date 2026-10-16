@@ -361,7 +361,7 @@ Tsum.prototype.tapDialogButtonViaUi = function(box) {
   }
   logInfo(Log.Dialog.TapViaUi, 'Tapping a dialog button found by uiautomator',
     { label: target.text, x: target.x, y: target.y });
-  tap(target.x, target.y, 60);
+  tap(target.x, target.y, 60, TapHoldMs);
   return true;
 };
 
@@ -388,7 +388,7 @@ Tsum.prototype.tryDismissDialog = function(box, hint) {
   if (btn !== null) {
     logInfo(Log.Dialog.TapRightmostLabel, 'Tapping the rightmost label in the dialog button row',
       { x: btn.x, y: btn.y });
-    tap(btn.x, btn.y, 60);
+    tap(btn.x, btn.y, 60, TapHoldMs);
     if (this.dialogChanged(box)) {
       return true;
     }

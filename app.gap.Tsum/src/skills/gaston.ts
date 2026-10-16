@@ -1466,7 +1466,7 @@ function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): Game
   for (let i = 0; i < far.length; i++) {
     const x = Math.floor(ts.playOffsetX + far[i].b.x * ts.playWidth / ts.playResizeWidth);
     const y = Math.floor(ts.playOffsetY + far[i].b.y * ts.playHeight / ts.playResizeHeight);
-    tap(x, y, GastonConfig.cancelTapMs);
+    tap(x, y, GastonConfig.cancelTapMs, TapHoldMs);
     went.push(far[i].b);
     gastonForgetBubble(far[i].b);
     // What the blast clears refills as Gaston, so it is no longer a leftover.

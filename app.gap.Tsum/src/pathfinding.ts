@@ -685,45 +685,62 @@ function findLargeTsums(img: NativeImage, circles: HoughCircle[]): LargeCircle[]
   }
   const tolSq = L.tolerance * L.tolerance;
 
-  // The share of `ring` samples within tolerance of `ref` (all of them when
-  // `outside` is false; those past it when true), or -1 when too many fall
-  // off the frame to say.
-  function share(gx: number, gy: number, ring: number[][], ref: Color, differ: boolean): number {
-    let n = 0, hit = 0;
-    for (let k = 0; k < ring.length; k++) {
-      const x = gx + ring[k][0], y = gy + ring[k][1];
-      if (x < 0 || y < 0 || x >= cols || y >= rows) { continue; }
-      const c = grid[y * cols + x];
-      const db = c.b - ref.b, dg = c.g - ref.g, dr = c.r - ref.r;
-      const far = db * db + dg * dg + dr * dr > tolSq;
-      n++;
-      if (far === differ) { hit++; }
-    }
-    return n < ring.length * 0.8 ? -1 : hit / n;
-  }
-
-  function median(v: number[]): number {
-    v.sort(function(a, b) { return a - b; });
-    return v[v.length >> 1];
-  }
+  // The grid as one typed array per channel, and the rings as offset arrays:
+  // in QuickJS that is several times cheaper than reading {r, g, b} objects,
+  // and a typed array sorts numerically without a comparator callback. The
+  // tests, their order and the result are what the object version gave.
+  const cells = rows * cols;
+  const gb = new Int16Array(cells), gg = new Int16Array(cells), gr = new Int16Array(cells);
+  for (let i = 0; i < cells; i++) { const c = grid[i]; gb[i] = c.b; gg[i] = c.g; gr[i] = c.r; }
+  const nIn = LargeRingInner.length, nOut = LargeRingOuter.length;
+  const inX = new Int8Array(nIn), inY = new Int8Array(nIn);
+  const outX = new Int8Array(nOut), outY = new Int8Array(nOut);
+  for (let k = 0; k < nIn; k++) { inX[k] = LargeRingInner[k][0]; inY[k] = LargeRingInner[k][1]; }
+  for (let k = 0; k < nOut; k++) { outX[k] = LargeRingOuter[k][0]; outY[k] = LargeRingOuter[k][1]; }
+  // One centre's in-bounds inner samples: their cells, and copies to sort.
+  const idx = new Int32Array(nIn);
+  const vb = new Int16Array(nIn), vg = new Int16Array(nIn), vr = new Int16Array(nIn);
 
   const hits: { score: number, gx: number, gy: number }[] = [];
   for (let gy = 5; gy < rows; gy += 2) {
     for (let gx = 5; gx < cols; gx += 2) {
-      // The reference colour: the median of the inner ring, per channel.
-      const bs: number[] = [], gs: number[] = [], rs: number[] = [];
-      for (let k = 0; k < LargeRingInner.length; k++) {
-        const x = gx + LargeRingInner[k][0], y = gy + LargeRingInner[k][1];
+      let n = 0;
+      for (let k = 0; k < nIn; k++) {
+        const x = gx + inX[k], y = gy + inY[k];
         if (x < 0 || y < 0 || x >= cols || y >= rows) { continue; }
-        const c = grid[y * cols + x];
-        bs.push(c.b); gs.push(c.g); rs.push(c.r);
+        const i = y * cols + x;
+        idx[n] = i; vb[n] = gb[i]; vg[n] = gg[i]; vr[n] = gr[i];
+        n++;
       }
-      if (bs.length < LargeRingInner.length * 0.8) { continue; }
-      const ref = {b: median(bs), g: median(gs), r: median(rs)};
-      if (Math.max(ref.b, ref.g, ref.r) < L.minValue) { continue; }
-      const flat = share(gx, gy, LargeRingInner, ref, false);
+      if (n < nIn * 0.8) { continue; }
+      // The reference colour: the median of the inner ring, per channel. Most
+      // centres have the whole ring on the frame, and sort it without a view.
+      const whole = n === nIn;
+      const rb = (whole ? vb : vb.subarray(0, n)).sort()[n >> 1];
+      const rg = (whole ? vg : vg.subarray(0, n)).sort()[n >> 1];
+      const rr = (whole ? vr : vr.subarray(0, n)).sort()[n >> 1];
+      if (Math.max(rb, rg, rr) < L.minValue) { continue; }
+      // Flat: the share of the inner samples within `tolerance` of it.
+      let near = 0;
+      for (let k = 0; k < n; k++) {
+        const i = idx[k];
+        const db = gb[i] - rb, dg = gg[i] - rg, dr = gr[i] - rr;
+        if (db * db + dg * dg + dr * dr <= tolSq) { near++; }
+      }
+      const flat = near / n;
       if (flat < L.minFlat) { continue; }
-      if (share(gx, gy, LargeRingOuter, ref, true) < L.minEdge) { continue; }
+      // Edge: the share of the outer ring past it, when enough of it is on
+      // the frame to say.
+      let on = 0, far = 0;
+      for (let k = 0; k < nOut; k++) {
+        const x = gx + outX[k], y = gy + outY[k];
+        if (x < 0 || y < 0 || x >= cols || y >= rows) { continue; }
+        const i = y * cols + x;
+        const db = gb[i] - rb, dg = gg[i] - rg, dr = gr[i] - rr;
+        on++;
+        if (db * db + dg * dg + dr * dr > tolSq) { far++; }
+      }
+      if (on < nOut * 0.8 || far / on < L.minEdge) { continue; }
       hits.push({score: flat, gx: gx, gy: gy});
     }
   }

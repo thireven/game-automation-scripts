@@ -241,7 +241,7 @@ function richestFirst(bubbles: GameBubble[]): GameBubble[] {
 function tapGameBubble(ts: Tsum, b: GameBubble): void {
   const x = Math.floor(ts.playOffsetX + b.x * ts.playWidth / ts.playResizeWidth);
   const y = Math.floor(ts.playOffsetY + b.y * ts.playHeight / ts.playResizeHeight);
-  tap(x, y, GameBubbleConfig.tapDuring);
+  tap(x, y, GameBubbleConfig.tapDuring, TapHoldMs);
   b.popped = true;
 }
 

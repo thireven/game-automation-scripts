@@ -121,7 +121,7 @@ Tsum.prototype.friendPageGoToSelf = function() {
   gPages.navigate(PageName.FriendPage);
   // Upstream's, and still wanted: on an emulator the pointer parks where it
   // last tapped, and the score row below is read by colour.
-  tap(0, 0, 20);
+  tap(0, 0, 20, TapHoldMs);
   this.sleep(1000);
   logDebug(Log.Hearts.GoToSelfDone);
 }

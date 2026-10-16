@@ -1827,7 +1827,8 @@ declare const enum KeyCode {
 // no native behind it typechecks and throws ReferenceError at run time: the
 // old API's getImageWidth/Height did, mid-drag, on 2026-09-23.
 declare function sleep(ms: number): void;
-declare function tap(x: number, y: number, during?: number): void;
+/** `holdMs`: how long the finger stays down (GAP 4.0+; default 40, an older host ignores it). */
+declare function tap(x: number, y: number, during?: number, holdMs?: number): void;
 declare function tapDown(x: number, y: number, during?: number): void;
 declare function tapUp(x: number, y: number, during?: number): void;
 /**

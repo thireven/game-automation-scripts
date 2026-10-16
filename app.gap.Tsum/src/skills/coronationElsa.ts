@@ -1005,7 +1005,7 @@ Tsum.prototype.elsaBurstFrozen = function(frozen) {
       + (p.x + Config.tsumWidth / 2) * this.playWidth / this.playResizeWidth);
     const y = Math.floor(this.playOffsetY
       + (p.y + Config.tsumWidth / 2) * this.playHeight / this.playResizeHeight);
-    tap(x, y, cfg.burstTapDuring);
+    tap(x, y, cfg.burstTapDuring, TapHoldMs);
   }
   this.popGameBubbles(this.gameBubbles.length);
   logDebug(Log.Skill.ElsaBurst, { aimedAt: taps, read: frozen.length });
