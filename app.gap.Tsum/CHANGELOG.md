@@ -45,7 +45,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0a7]
+## [6.0a8]
 
 ### Summary
 
@@ -56,9 +56,6 @@ release note; they fold back in here when she ships.
 *Skills*
 - Colorful Mickey (Set) skill added.
 
-**Fixes**
-- Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
-
 ### Added
 
 - **Colorful Mickey (Set) skill** (`src/skills/colorfulMickeySet.ts`, Alpha): a burst. While its timer bar is on the board's rim, chains are planned at 80% of the board's width with no chain cap. The bar is read off a crop each scan; it opens on two sightings in a row and closes 1.5 s after the last. New `SkillHandler.linkReach` hook, passed to `calculatePaths` by the play loop.
@@ -66,9 +63,19 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
-- **`MinHost` raised to 4.0** (`config.json`): the alpha host line, which has `gapRestartDevice`, `gapPerf` and the multi-display focus fix.
 - **Taps hold 10 ms** (`TapHoldMs`, passed as `tap`'s `holdMs`, new in GAP 4.0). GAP's default 40 ms was about a tenth of a round for a skill that taps a lot. On MuMu, mid-round, 15 of 15 pause-button taps held 10–25 ms registered, and three full rounds plus the gift and heart flows ran clean on 10 ms. An older GAP ignores the argument and holds 40.
 - **`findLargeTsums` reads its grid through typed arrays**: 11.8 → 6.7 ms median, out of a ~20 ms scan. Results are unchanged: across 1,275 live scans it matched the old version, and it matched again on the same scans with loosened thresholds (10,595 hits).
+
+## [6.0a7]
+
+### Summary
+
+**Fixes**
+- Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
+
+### Changed
+
+- **`MinHost` raised to 4.0** (`config.json`): the alpha host line, which has `gapRestartDevice`, `gapPerf` and the multi-display focus fix.
 
 ### Fixed
 
