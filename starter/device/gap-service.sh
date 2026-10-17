@@ -135,6 +135,8 @@ if [ "$VERB" = watch ]; then
   if [ "$ALIVE_ACTIVE" = 1 ]; then echo "alive_active=1"; else echo "alive_active=0"; fi
   # request: "<epochSec> <reason>", written by the engine to ask for a host restart.
   echo "request=$(head -1 "$WATCH_DIR/request" 2>/dev/null)"
+  # updating: "<epochSec> <version>", while the engine restarts itself on a new build.
+  echo "updating=$(head -1 "$WATCH_DIR/updating" 2>/dev/null)"
   # Every write is checked: a dir the engine made as root (not chowned to the
   # shell user) refuses them, and a request left in place is taken again.
   # WATCH_RC=1 only when an asked-for write (--take, --emulator) failed.

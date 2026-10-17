@@ -96,6 +96,7 @@ engine:
 | File | Written by | Holds |
 |---|---|---|
 | `stamp` | `watch`, every call | `<epochSec>`. A fresh one (< 180 s) tells the engine a watcher is there, so GAP can come back after a restart (`comesBack: host`). |
+| `updating` | the engine | `<epochSec> <version>`: GAP is restarting its own service on a new build (GAP Companion's Update GAP). The watcher leaves GAP alone while it is under 2 minutes old; the new service deletes it. |
 | `request` | the engine | `<epochSec> <reason>`: restart this device from the host. The watcher takes it (`--take`) and restarts the emulator; when no watcher takes it within 60 s, the engine reboots from inside. |
 | `alive` | the engine, every 30 s | `<epochSec> <active 0\|1> <pid>`. Stale means the engine froze. |
 | `emulator` | `watch --emulator NAME` | The host's name for this emulator (`mumu`, `ldplayer`, `bluestacks`, ...). |
@@ -125,6 +126,7 @@ rc=0
 | `uid` | The running service's uid (`0` when the app started it as root), or empty. |
 | `alive`, `alive_active` | From `alive`: when the engine last wrote it (empty when it never has) and whether a run was active. |
 | `request` | The engine's restart request, as written, or empty. Printed before `--take` removes it. |
+| `updating` | The engine's update marker, as written, or empty. |
 | `taken` | With `--take` only: `1` when the request is gone, `0` when it could not be removed (it would be seen again next poll). |
 | `stamped` | `1` when `stamp` now holds `now`; `0` when it could not be written, so the engine will not see this watcher (`comesBack` is not `host`). |
 
