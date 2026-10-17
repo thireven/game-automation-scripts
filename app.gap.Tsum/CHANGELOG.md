@@ -45,6 +45,18 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a10]
+
+### Summary
+
+**Additions**
+*Settings*
+- Game Region setting: choose whether the International or Japanese Tsum Tsum is launched when both are installed.
+
+### Added
+
+- **Game Region**, merged up from 5.0b10 (details under [5.0b10]).
+
 ## [6.0a9]
 
 ### Summary
