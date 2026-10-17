@@ -342,10 +342,10 @@ be helpful when troubleshooting.
 |:-----------|:----------------------------------------------------------------------------------------------------------------------------------------|
 | Report a problem | Saves what is on screen, the screens before it, your settings and this run's recent log to `reports/`. Share it from Run History in the app. See [Reporting a problem](#reporting-a-problem) above — this is the one thing on this tab meant for everybody. |
 | Debug logs | Adds more details to the logging output. A report carries those lines whether or not this is on; what this changes is whether they also reach the log file. |
-| Debug game | Saves screenshots while playing the game with different color transformations used by the script. Also keeps a screenshot of *every* screen the script visits in `history/` rather than only the last few, and logs the last few screens with how long each was up. Really not useful for non-developers. |
+| Debug game | Saves screenshots while playing the game with different color transformations used by the script. Also keeps a screenshot of every screen the script visits in `history/`, and logs the last few screens with how long each was up. Really not useful for non-developers. |
 | Walkthrough recorder | Records instead of playing. Nothing else runs: you drive the game by hand, and the script writes down every screen it recognises, where you tapped on it, and which screen followed, into `walkthrough/`. It is how the project maps out what the game can actually do — screens it has never seen, and the buttons that reach them. Turn it off again to play. |
 | Collect unknown screens | Saves any screen the script cannot recognise to `corpus/`, so it can be sent in and turned into a fix. Rate-limited and capped per run. |
-| Page history depth | How many recent screens the script remembers (default 20). A picture of the last few is kept in `history/` for a report to send; with "Debug game" on, every remembered screen keeps one. Each is deleted as it drops off the end, so the folder never grows past this number. 0 turns the history off. |
+| Page history depth | How many recent screens the script remembers (default 20). With "Debug game" on, every remembered screen also keeps a picture in `history/`, which a report sends. Each is deleted as it drops off the end, so the folder never grows past this number. 0 turns the history off. |
 
 ## Getting logs, stats and screenshots off the device
 

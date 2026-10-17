@@ -667,11 +667,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   if (typeof settings.deviceFps === 'number' && settings.deviceFps > 0) {
     gPages.fps = settings.deviceFps;
   }
-  // The trail's frames are on for every run, because an issue report copies
-  // them and the person who needs one has already hit the bug -- see
-  // `PageRouter.keepShots`. What "Debug game" still buys is *depth*: the whole
-  // trail rather than the handful a report takes.
-  gPages.keepShots = gPages.historyDepth > 0;
+  // Trail frames cost a capture and a write per page change, so they are only
+  // saved with "Debug game" on -- see `PageRouter.keepShots`.
+  gPages.keepShots = ts.debug && gPages.historyDepth > 0;
   gPages.shotDepth = ts.debug ? gPages.historyDepth : Config.reportTrailFrames;
 
   ts.noSkillLastFeverSec = settings.noSkillLastFeverSec;
