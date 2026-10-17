@@ -19,3 +19,6 @@ starter/channel.txt
 # Starter bundle builds and the platform-tools cache.
 /build/
 starter/apk/
+
+# macOS Finder metadata.
+.DS_Store
