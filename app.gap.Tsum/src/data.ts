@@ -3230,7 +3230,9 @@ var NavPlans: NavPlanMap = {
     }
   },
   GamePlaying: {
-    times: 2,
+    // One pass: the second only re-looked 100ms later, every mover on the way
+    // here settles after its tap, and `drive` re-confirms the arrival.
+    times: 1,
     timeout: 2000,
     holdMs: 0,
     // No `settleMaxMs`: a board is moving for the whole round, so it never goes

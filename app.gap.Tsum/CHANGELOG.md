@@ -56,6 +56,7 @@ release note; they fold back in here when she ships.
 
 - **Page history frames only with Debug game**, merged up from 5.2 (details under [5.2]).
 - **Buy Open Capsule and Export Tsum List out of beta, Share Round Stats alpha-only**, merged up from 5.3 (details under [5.3]).
+- **One pass on the way to the board**: the `GamePlaying` nav plan looks once, not twice. The second pass only re-looked 100ms later, and `drive` confirms the arrival anyway (~0.3s a round).
 
 ## [6.0a11]
 
