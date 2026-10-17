@@ -45,6 +45,7 @@ function cinderellaStroke(right: boolean): Point[] {
 /** Draw a stroke, holding each point for a frame. False if cut by a pause. */
 function cinderellaDraw(ts: Tsum, path: Point[]): boolean {
   const cfg = CinderellaConfig;
+  if (!ts.mayTouchBoard()) { return false; }
   const pauses = ts.pauses;
   let x = 0, y = 0;
   for (let i = 0; i < path.length; i++) {

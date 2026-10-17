@@ -920,7 +920,7 @@ function elsaKindChain(ts: Tsum, head: BoardPoint, pool: BoardPoint[], obstacles
   const kc = cfg.kind;
   const from = Date.now();
   const out: ElsaKind = { path: null, pool: pool.length, kept: 0, drops: [], ms: 0 };
-  if (!ts.isRunning) { return out; }
+  if (!ts.mayTouchBoard()) { return out; }
   const base = skillFloorRead(ts, pool, kc.grid, kc.step);
   const at = elsaToScreen(ts, head);
   let finger = at;
@@ -987,8 +987,8 @@ function elsaPostBurstSettleMs(pile: number): number {
  * the game ignores it.
  */
 Tsum.prototype.elsaBurstFrozen = function(frozen) {
-  // Raw taps below bypass `ts.tap`, so the stopped-run rule is applied here.
-  if (!this.isRunning) { return 0; }
+  // Raw taps below bypass `ts.tap`, so its rules are applied here.
+  if (!this.mayTouchBoard()) { return 0; }
   const cfg = CoronationElsaConfig;
   // Highest ice first, working down: a tap spends the group of ice it lands
   // in, clearing a group drops everything above it, and nothing below a tap

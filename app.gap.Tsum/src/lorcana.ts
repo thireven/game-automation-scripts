@@ -477,7 +477,7 @@ function lorcanaFindBubbles(ts: Tsum): LorcanaBubble[] {
  * Returns how many taps went out.
  */
 Tsum.prototype.popLorcanaStoneBubble = function() {
-  if (!this.isRunning) { return 0; }
+  if (!this.mayTouchBoard()) { return 0; }
   const cfg = LorcanaConfig;
   const bubbles = lorcanaFindBubbles(this);
   if (bubbles.length === 0) { return 0; }

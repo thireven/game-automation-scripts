@@ -264,6 +264,12 @@ Tsum.prototype.confirmGameOver = function() {
         { page: page, looks: looks, idleMs: Date.now() - startedAt });
       return true;
     }
+    // Not an ending either: the game went from the front. Wait for it, then
+    // let the board look decide.
+    if (this.gameAway()) {
+      this.awaitGameBack();
+      return false;
+    }
     // Everything else -- `Unknown`, or a page the game cannot reach from a
     // running round -- is an animation or a misread, not an ending. Keep
     // polling: either the HUD comes back or the grace window runs out.
@@ -313,6 +319,61 @@ interface HudWatch {
   misses: number;
   /** When that run of them started, epoch ms. Only read while `misses` is up. */
   firstMissAt: number;
+}
+
+/** Between the looks of a turn whose board is held (`boardIsHeld`). */
+const HeldBoardPollMs = 250;
+/** How often a missed board may pay for a focus read: an animation misses it many turns running. */
+const FrontCheckMs = 1000;
+/** Between focus reads while the game is away. */
+const GameAwayPollMs = 500;
+/**
+ * Away this long and the script brings the game back itself (Auto launch only),
+ * then again at the same interval. Long enough not to fight a quick look at
+ * another app.
+ */
+const GameAwayRelaunchMs = 30000;
+
+/** Whether the game has left the front, read at most once per `FrontCheckMs`. */
+Tsum.prototype.gameAway = function() {
+  const now = Date.now();
+  if (now - this._frontCheckedAt < FrontCheckMs) {
+    return false;
+  }
+  this._frontCheckedAt = now;
+  return !this.gameInFront();
+}
+
+/**
+ * Mid-round, the game is not in front. Hold the board, so nothing taps whatever
+ * is showing, and wait for the game to come back -- bringing it back past
+ * `GameAwayRelaunchMs`. It returns on its pause menu, which the play loop's held
+ * turns press Continue on. The time away is taken off the round's clock.
+ */
+Tsum.prototype.awaitGameBack = function() {
+  const leftAt = Date.now();
+  const pauses = this.pauses;
+  this.boardHeld = true;
+  logWarn(Log.Play.GameAway, 'The game is not in front; holding the round until it is back');
+  let relaunchAt = leftAt + GameAwayRelaunchMs;
+  let relaunches = 0;
+  while (this.isRunning && !this.gameInFront()) {
+    if (this.autoLaunch && Date.now() >= relaunchAt) {
+      relaunches++;
+      logInfo(Log.Play.GameAwayRelaunch, 'The game is still not back; bringing it to the front',
+        { awayMs: Date.now() - leftAt, relaunches: relaunches });
+      this.startApp();
+      relaunchAt = Date.now() + GameAwayRelaunchMs;
+    }
+    this.sleep(GameAwayPollMs);
+  }
+  const awayMs = Date.now() - leftAt;
+  // A host pause in between has had `onResume` credit its share already.
+  if (this.pauses === pauses && this.roundStartedAt !== 0) {
+    this.roundStartedAt += awayMs;
+  }
+  logInfo(Log.Play.GameBack, 'The game is back; waiting for the board',
+    { awayMs: awayMs, relaunches: relaunches });
 }
 
 /** What one liveness look says about the round. */
@@ -372,6 +433,15 @@ Tsum.prototype.watchRoundEnd = function(hud) {
     // standing in the same places, which is the stall's signature without being
     // the stall. The pause handler is already resuming it.
     return page === PageName.GamePause ? RoundLook.Unreadable : RoundLook.Playing;
+  }
+  // A missed board can also be the game gone from the front: the host does not
+  // pause for an overlay in the game's own task, the notification shade, or a
+  // run with "pause when behind" off. Waiting it out beats the debounce below,
+  // which would end the round and play on over whatever is showing.
+  if (!isRoundOverPage(page) && this.gameAway()) {
+    hud.misses = 0;
+    this.awaitGameBack();
+    return RoundLook.Unreadable;
   }
   if (!isRoundOverPage(page) && stillDebouncing) {
     // Nothing matched, or something matched that a running round cannot turn
@@ -673,6 +743,8 @@ Tsum.prototype.taskPlayGameQuick = function() {
   this.roundStartedAt = Date.now();
   // A new round's first activation is never held by the last round's.
   this.skillActivatedAt = 0;
+  // Nor its board by a hold the last round never cleared.
+  this.boardHeld = false;
   // Every round starts with normal-size tsums.
   Config.boardScale = 1;
   this.boardScaleReads = [];
@@ -740,6 +812,18 @@ Tsum.prototype.taskPlayGameQuick = function() {
         nextCoastBeatAt = Date.now() + RoundCoastHeartbeatMs;
       }
       this.sleep(RoundCoastPollMs);
+      if (this.watchRoundEnd(hud) === RoundLook.Over) {
+        break;
+      }
+      continue;
+    }
+    if (this.boardIsHeld()) {
+      // Back from a pause or a lost focus with the board not yet seen: look
+      // only. The look presses Continue on the pause menu (`dismiss.resumeGame`)
+      // and seeing the board lifts the hold (`observe.boardBack`).
+      drawnChain = null;
+      deadScans = 0;
+      this.sleep(HeldBoardPollMs);
       if (this.watchRoundEnd(hud) === RoundLook.Over) {
         break;
       }

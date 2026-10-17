@@ -17,7 +17,8 @@
 
 Tsum.prototype.linkTsums = function(path) {
   // Whole drags only: a chain begun is finished, one not begun never starts.
-  if (!this.isRunning) { return; }
+  // Nor on a held board (`boardIsHeld`): it may be the pause menu by now.
+  if (!this.mayTouchBoard()) { return; }
   // Drag timings (ms). Measured, not chosen: these were 30/20/20 here for a
   // while because at 10ms the game was observed to miss the initial press or
   // skip intermediate tsums, so a found 3+ chain never cleared -- and 10/10/10
@@ -239,6 +240,7 @@ function richestFirst(bubbles: GameBubble[]): GameBubble[] {
 
 /** Tap one bubble at its scan position, and mark it popped. */
 function tapGameBubble(ts: Tsum, b: GameBubble): void {
+  if (!ts.mayTouchBoard()) { return; }
   const x = Math.floor(ts.playOffsetX + b.x * ts.playWidth / ts.playResizeWidth);
   const y = Math.floor(ts.playOffsetY + b.y * ts.playHeight / ts.playResizeHeight);
   tap(x, y, GameBubbleConfig.tapDuring, TapHoldMs);

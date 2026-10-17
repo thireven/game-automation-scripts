@@ -1275,7 +1275,10 @@ interface Tsum {
   getColorBlocks(img: NativeImage, xys: Coord[]): Color[][];
   toRealXY(x: number, y: number): Point;
   toRealXYs(xy: Coord): Point;
+  /** A board move: dropped while the board is held after a pause (`boardIsHeld`). */
   tap(xy: Coord, during?: number): void;
+  /** A press on a button a look has just found; lands even while the board is held. */
+  tapButton(xy: Coord, during?: number): void;
   tapDown(xy: Coord, during?: number): void;
   /** `wait` is the native `moveTo`'s: return once the game has taken the move. */
   moveTo(xy: Coord, during?: number, wait?: boolean): void;
@@ -1337,6 +1340,10 @@ interface Tsum {
   settleBoard(maxMs?: number, minMs?: number, onMoving?: () => void): boolean;
   /** `isRunning`, and no level-cap sweep waiting to take the screen (`yieldAsked`). */
   mayContinue(): boolean;
+  /** A round's board went out of sight and no look has seen it back yet. */
+  boardIsHeld(): boolean;
+  /** `isRunning` and the board not held: the rule every raw board touch checks first. */
+  mayTouchBoard(): boolean;
 
   // --- appLifecycle.ts -------------------------------------------------
   isAppOn(): boolean;
@@ -1351,6 +1358,8 @@ interface Tsum {
   awaitAppOff(): boolean;
   forceRestartApp(): boolean;
   taskTsumAppRestart(): void;
+  /** Whether the game (or GAP's own overlay) has focus, read now; true when it cannot tell. */
+  gameInFront(): boolean;
   /** Start the boot phase (a launch, or a startup screen seen); a phase already running keeps its clock. */
   beginBoot(): void;
   /** The game is between launch and the hub, inside the budget. */
@@ -1447,6 +1456,10 @@ interface Tsum {
    * `roundEndedAt` and emits `round.over` on the turn it answers `Over`.
    */
   watchRoundEnd(hud: HudWatch): RoundLook;
+  /** Whether the game has left the front; reads focus at most once a second. */
+  gameAway(): boolean;
+  /** Mid-round, the game is not in front: hold the board and wait for it to come back. */
+  awaitGameBack(): void;
   /** What is left of the between-rounds delay, in ms; 0 when none is running. */
   roundDelayRemainingMs(): number;
   /**

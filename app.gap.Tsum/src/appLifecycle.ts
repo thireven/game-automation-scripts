@@ -108,6 +108,29 @@ function focusedPackageInDump(dump: string): string | null {
   return null;
 }
 
+/** GAP's own package: its panel or Quick Bar holding focus leaves the game in front. */
+const HostPackage = 'com.generalautomation.platform';
+
+/**
+ * Whether the game has focus, read now and whatever Auto launch says. The play
+ * loop asks this when the board stops showing, to tell a lost focus from an
+ * animation. "Cannot tell" answers yes: that is the old behaviour.
+ */
+Tsum.prototype.gameInFront = function() {
+  const packageName = focusedPackage();
+  return packageName === null || packageName === HostPackage
+    || buildOfPackage(packageName) !== null;
+};
+
+/** Whether the game's process is alive; false when the shell cannot say. */
+function gameRunning(build: GameBuild): boolean {
+  try {
+    return execute('pidof ' + GamePackages[build]).trim() !== '';
+  } catch (e) {
+    return false;
+  }
+}
+
 /** Which build of the game is in front, or null when neither is. */
 function focusedGameBuild(): GameBuild | null {
   const packageName = focusedPackage();
@@ -231,8 +254,17 @@ Tsum.prototype.startApp = function() {
   }
   logInfo(Log.App.Start);
   this.invalidateAppOn();
-  this.beginBoot();
-  startTsumTsumApp(this.gameBuild());
+  const build = this.gameBuild();
+  // A game still running comes back where it was (mid-round: its pause menu),
+  // so it is no boot, and the boot phase's TAP TO START taps would land on it.
+  // A game that did restart shows its title, and `observe.startupPhase` starts
+  // the phase from there.
+  if (gameRunning(build)) {
+    logInfo(Log.App.Resumed, 'The game is still running; bringing it back to the front');
+  } else {
+    this.beginBoot();
+  }
+  startTsumTsumApp(build);
   this.awaitAppUp();
   logInfo(Log.App.Started, 'TsumTsum app starting');
 }
@@ -313,6 +345,8 @@ Tsum.prototype.forceRestartApp = function() {
   stopApp(GamePackages[this.gameBuild()]);
   this.awaitAppOff();
   this.isStartupPhase = true;
+  // Its own boot: a stopped process can still answer `pidof` for a moment.
+  this.beginBoot();
   this.startApp();
   return true;
 }
@@ -383,6 +417,7 @@ Tsum.prototype.taskTsumAppRestart = function () {
     stopApp(GamePackages[this.gameBuild()]);
     this.awaitAppOff();
     if (!this.isAppOn()) {
+        this.beginBoot();
         this.startApp();
     }
     gPages.navigate(PageName.FriendPage);

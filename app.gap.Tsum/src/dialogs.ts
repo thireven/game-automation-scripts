@@ -401,7 +401,7 @@ Tsum.prototype.tryDismissDialog = function(box, hint) {
   if (hint !== undefined && hint !== null) {
     logInfo(Log.Dialog.TapPageHint, 'Trying the coordinates recorded for the matched page variant',
       { x: hint.x, y: hint.y });
-    this.tap(hint);
+    this.tapButton(hint);
     if (this.dialogChanged(box)) {
       return true;
     }

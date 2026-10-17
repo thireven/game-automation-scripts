@@ -387,7 +387,7 @@ function rapunzelChain(board: BoardPoint[], maxLen: number): TsumPath | null {
  */
 function rapunzelLinkChain(ts: Tsum, path: TsumPath): number {
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
-  if (!ts.isRunning) { return 0; }
+  if (!ts.mayTouchBoard()) { return 0; }
   const cfg = RapunzelPlusConfig;
   const xs: number[] = [];
   const ys: number[] = [];

@@ -34,6 +34,8 @@ function createFake(ctx, host, trace, clock) {
   // pixels needs geometry a fake screen does not have, and the table is what a
   // trace should be read against anyway.
   fake.tap = (xy) => { note('tap', xy.x, xy.y); };
+  // The ungated tap the dispatch presses buttons with; the same in a trace.
+  fake.tapButton = fake.tap;
   ctx.keycode = (code) => { note('keycode', code); };
 
   // --- the waits --------------------------------------------------------------

@@ -50,6 +50,8 @@ namespace Log {
     ChosenBuildMissing = 'app.chosenBuildMissing',
     Off              = 'app.off',
     OffTimeout       = 'app.offTimeout',
+    /** `startApp` found the game still running: a resume, so no boot phase. */
+    Resumed          = 'app.resumed',
     Restarted        = 'app.restarted',
     Restarting       = 'app.restarting',
     RestartPreparing = 'app.restartPreparing',
@@ -153,12 +155,19 @@ namespace Log {
   /** A round, start to finish. */
   export const enum Play {
     BoardUp               = 'play.boardUp',
+    /** The board seen again after a pause or lost focus; touches resume. */
+    BoardReleased         = 'play.boardReleased',
     BoardUpTimeout        = 'play.boardUpTimeout',
     BonusItemLocked       = 'play.bonusItemLocked',
     BonusItemsHidden      = 'play.bonusItemsHidden',
     BonusItemsToggled     = 'play.bonusItemsToggled',
     CheckBonusItems       = 'play.checkBonusItems',
     ConfirmingGameOver    = 'play.confirmingGameOver',
+    /** Mid-round the game lost focus; the board is held until it is back. */
+    GameAway              = 'play.gameAway',
+    /** Still away after the wait, so the script brings it back itself. */
+    GameAwayRelaunch      = 'play.gameAwayRelaunch',
+    GameBack              = 'play.gameBack',
     GameOver              = 'play.gameOver',
     GameOverAssumed       = 'play.gameOverAssumed',
     GameOverConfirmed     = 'play.gameOverConfirmed',

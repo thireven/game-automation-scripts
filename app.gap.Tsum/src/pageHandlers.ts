@@ -131,6 +131,24 @@ gPages.subscribe({
   ]
 });
 
+gPages.subscribe({
+  id: 'observe.boardBack',
+  category: PageCategory.Observe,
+  what: 'The board seen again lifts the hold a pause or a lost focus put on board '
+      + 'touches (`Tsum#boardHeld`): what the play loop draws from here is planned '
+      + 'off a board that is really there.',
+  pages: [PageName.GamePlaying],
+  every: true,
+  steps: [
+    { do: 'call', name: 'releaseBoard', run: function() {
+      if (this.boardHeld) {
+        this.boardHeld = false;
+        logInfo(Log.Play.BoardReleased, 'The board is back; touching it again');
+      }
+    } }
+  ]
+});
+
 // ===========================================================================
 // record -- measurements that are only valid while the screen is untouched.
 // ===========================================================================

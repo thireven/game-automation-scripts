@@ -1103,7 +1103,7 @@ function gastonLinkChain(ts: Tsum, path: TsumPath, holds: (headAt: number, chain
     rewinds: [], stallCounts: [], countKept: 0, coins: null, trimmed: 0, planned: null, startedAt: 0, slotEnd: 0, closing: false, pausedMs: 0,
   };
   // A stopped run draws no new chain, as in `linkTsums`.
-  if (!ts.isRunning || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
+  if (!ts.mayTouchBoard() || path.length < 1 || (oracle === null && path.length < 2)) { return drag; }
   const cfg = GastonConfig;
   const half = Config.tsumWidth / 2;
   const base = oracle !== null ? gastonFloorRead(ts, oracle.board) : null;
@@ -1432,6 +1432,7 @@ function gastonAwaitDrop(ts: Tsum, before: number): number {
  * is the read bubble furthest from the board's middle; a lone one is tapped.
  */
 function gastonTapBubbles(ts: Tsum, path: TsumPath, bubbles: GameBubble[]): GameBubble[] {
+  if (!ts.mayTouchBoard()) { return []; }
   const far: { b: GameBubble, d: number }[] = [];
   for (let b = 0; b < bubbles.length; b++) {
     // With no chain, leftovers alone set the order.
@@ -1541,6 +1542,7 @@ function gastonCrossesBubble(path: TsumPath, bubbles: GameBubble[]): boolean {
 
 /** A plain drag at the window's pace: no paint read, no counter, no hold. */
 function gastonDrawPlain(ts: Tsum, path: TsumPath): void {
+  if (!ts.mayTouchBoard()) { return; }
   const cfg = GastonConfig;
   const dwellMs = GastonConfig.dwellMs;
   let p = gastonToScreen(ts, path[0]);

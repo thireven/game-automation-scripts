@@ -51,12 +51,20 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Game startup taps straight through the opening video and TAP TO START to the home screen, whatever the month's title art.
+- A round interrupted by another app picks up where it left off: the script presses Continue on the pause menu instead of tapping around or ending the round.
 
 ### Added
 
 - **Startup screens** (`TitleStart`, `TitleWait`, `PageRole.Boot`): fingerprinted off the white frame and the TAP TO START pill's bands, never the seasonal art; one entry each covers INTL and JP. Before this, only the root warning was recognised, and TAP TO START was hit only by the blind escape or the one-probe `ClosePage`.
 - **Boot phase** (`Tsum#inBoot`, `src/appLifecycle.ts`): from a launch, or a startup screen seen, to the hub, 90s at most. During it an unknown screen gets a native-dialog check and then one tap on TAP TO START's spot (`nav.move.bootUnknown`), which skips the video, instead of the blind escape or a direction request. The 5s startup settle is skipped, and the stall guard leaves startup screens alone. `app.bootDone` logs launch-to-hub time.
 - Dispatch eval: `unknown@boot` rows pin the boot path; the fake resets the boot fields per row.
+
+### Fixed
+
+- **Board hold** (`Tsum#boardHeld`): set when a round's board goes out of sight (`onPause`, `awaitGameBack`), lifted by the next look that sees it (`observe.boardBack`). Board touches are dropped meanwhile — `Tsum#tap`/`tapDown` and every raw-touch skill path via `mayTouchBoard` — because code a pause froze resumes with a plan for a board that may now be the pause menu, whose Try Again and To Home Screen sit mid-board. Button presses use the ungated `tapButton`. The play loop turns a held board into look-only turns.
+- **`onResume`** waits up to 6s for the game to redraw (was 1.5s), presses Continue, and needs the board to hold 600ms, since the first frames back can be the pre-pause board. Unconfirmed, the hold stays. `onPause` no longer reads or taps when the game is behind another app.
+- **Lost focus mid-round** (`gameAway`, `awaitGameBack`): a missed board reads focus (at most once a second) before counting toward game over, and `confirmGameOver` does too, so a focus change the host does not pause for no longer ends the round after 20s and plays on over another app. Brought back after 30s with Auto launch.
+- **`startApp`** skips the boot phase when the game's process is alive (`pidof`): a resume lands on the pause menu, which TAP TO START taps would hit. Restarts start it explicitly.
 
 ## [6.0a10]
 

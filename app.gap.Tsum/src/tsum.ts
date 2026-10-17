@@ -142,6 +142,8 @@ class Tsum {
   _skillCooldownUntil: number;
   /** When the last real `dumpsys window` focus check ran; 0 means never. */
   _appOnCheckedAt: number;
+  /** When the play loop last read focus over a missed board (`watchRoundEnd`). */
+  _frontCheckedAt: number;
   /** The build last seen in front or resolved by `gameBuild`; null until one is. */
   _gameBuild: GameBuild | null;
   /** The build the Game Region setting picks, if installed; null leaves it to `gameBuild`. */
@@ -303,6 +305,13 @@ class Tsum {
   pauses: number;
   pausedAt: number;
   pausedInRound: boolean;
+  /**
+   * Set when a round's board goes out of sight (a pause, the game losing
+   * focus); cleared by the next look that sees the board (`observe.boardBack`).
+   * Until then board touches are dropped: the code a pause froze resumes with
+   * a plan for a board that may now be the pause menu. See `boardIsHeld`.
+   */
+  boardHeld: boolean;
   roundEndedAt: number;
   roundBaseCoins: number;
   /**
@@ -418,6 +427,7 @@ class Tsum {
     this._lastSkillAutoTap = 0;
     this._skillCooldownUntil = 0;
     this._appOnCheckedAt = 0;
+    this._frontCheckedAt = 0;
     this._gameBuild = null;
     this.chosenBuild = null;
     // Burst-skill overload: set after a link batch so the next scan issues one
@@ -495,6 +505,7 @@ class Tsum {
     this.pauses = 0;
     this.pausedAt = 0;
     this.pausedInRound = false;
+    this.boardHeld = false;
     this.roundEndedAt = 0;
     this.roundBaseCoins = -1;
     this.tallyRow = {buttons: false, medals: false, play: false};
@@ -777,7 +788,25 @@ Tsum.prototype.isOnScreenshot = function(img, pageObject, colorDiff) {
 // GAP 4.0 ignores it and holds 40.
 const TapHoldMs = 10;
 
+/**
+ * Whether board touches are held: `boardHeld`, and only while a round is on.
+ * Scoped to the round so a hold nothing cleared cannot outlive it and swallow
+ * the next chore's taps.
+ */
+Tsum.prototype.boardIsHeld = function() {
+  return this.boardHeld && this.roundStartedAt !== 0 && this.roundEndedAt === 0;
+}
+
+Tsum.prototype.mayTouchBoard = function() {
+  return this.isRunning && !this.boardIsHeld();
+}
+
 Tsum.prototype.tap = function(xy, during) {
+  if (this.boardIsHeld()) { return; }
+  this.tapButton(xy, during);
+}
+
+Tsum.prototype.tapButton = function(xy, during) {
   if (!this.isRunning) { return; }
   if (during === undefined) {
     during = 50;
@@ -789,7 +818,7 @@ Tsum.prototype.tap = function(xy, during) {
 }
 
 Tsum.prototype.tapDown = function(xy, during) {
-  if (!this.isRunning) { return; }
+  if (!this.mayTouchBoard()) { return; }
   if (during === undefined) {
     during = 50;
   }

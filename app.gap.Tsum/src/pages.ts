@@ -1223,11 +1223,12 @@ class PageRouter {
             throw new Error(sub.id + ' presses `' + step.anchor + '`, which entry '
               + (event.key === '' ? '(none)' : event.key) + ' does not carry');
           }
-          tsum.tap(at);
+          // A button this look found, so it lands even while the board is held.
+          tsum.tapButton(at);
           break;
         }
         case 'tapAt':
-          tsum.tap(step.at);
+          tsum.tapButton(step.at);
           break;
         case 'settle':
           tsum.settleScreen(step.ms);

@@ -550,6 +550,7 @@ function lorcanaAuroraPopOneBubble(ts: Tsum): boolean {
       best = i;
     }
   }
+  if (!ts.mayTouchBoard()) { return false; }
   const p = lorcanaAuroraToScreen(ts, bubbles[best]);
   tap(p.x, p.y, cfg.tapDuring, TapHoldMs);
   return true;
@@ -630,7 +631,7 @@ function lorcanaAuroraChainBubbles(ts: Tsum, look: LorcanaAuroraLook, from: numb
     drag = lorcanaAuroraDrag(ts, route);
     dragMs = Date.now() - dragAt;
     burst = lorcanaAuroraBurstCheck(ts, route);
-  } else if (route.length === 1) {
+  } else if (route.length === 1 && ts.mayTouchBoard()) {
     const p = lorcanaAuroraToScreen(ts, route[0]);
     tap(p.x, p.y, cfg.tapDuring, TapHoldMs);
   }
@@ -864,7 +865,7 @@ function lorcanaAuroraRoute(bubbles: LorcanaBubble[]): Point[] {
  */
 function lorcanaAuroraDrag(ts: Tsum, route: Point[]): {moves: number, reaimed: number} {
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
-  if (!ts.isRunning || route.length < 2) { return {moves: 0, reaimed: 0}; }
+  if (!ts.mayTouchBoard() || route.length < 2) { return {moves: 0, reaimed: 0}; }
   const cfg = LorcanaAuroraConfig;
   let moves = 1;
   let reaimed = 0;
@@ -927,7 +928,7 @@ function lorcanaAuroraSweepBubbles(ts: Tsum, from: number): void {
   const look = lorcanaAuroraWaitForBubbles(ts, from, from + cfg.sweepWaitMs, cfg.bubbleMinCount);
   let tapped = 0;
   const pop = (list: Point[]) => {
-    for (let i = 0; i < list.length && ts.isRunning; i++) {
+    for (let i = 0; i < list.length && ts.mayTouchBoard(); i++) {
       const p = lorcanaAuroraToScreen(ts, list[i]);
       tap(p.x, p.y, cfg.tapDuring, TapHoldMs);
       tapped++;

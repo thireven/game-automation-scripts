@@ -929,54 +929,59 @@ function onPause(): string {
   // A round with its clock running counts even when the game is not in front
   // (the front watch pauses then): it comes back on the pause menu.
   t.pausedInRound = t.roundStartedAt !== 0;
+  // The code this pause froze resumes with a plan for the board as it was, so
+  // nothing touches the board until a look sees it back (`boardHeld`).
+  t.boardHeld = t.pausedInRound;
+  // Behind another app (the front watch's pause) the screen is that app's:
+  // nothing on it is the game's to read or press.
+  if (!t.gameInFront()) {
+    return 'the game is behind another app';
+  }
   const def = gPages.peek(1, 0);
   if (def === null) {
     return 'nothing recognised on screen';
   }
   if (def.name === PageName.GamePause) {
     t.pausedInRound = true;
+    t.boardHeld = true;
     return 'the round is already paused';
   }
   if (def.name !== PageName.GamePlaying) {
     return 'not in a round (' + def.name + ')';
   }
   t.pausedInRound = true;
+  t.boardHeld = true;
   // `back` and `next` are both the round's Pause button -- see PageRoutes in
   // data.ts, which declares the GamePlaying -> GamePause edge it presses.
-  t.tap(def.back);
+  t.tapButton(def.back);
   logInfo(Log.QuickBar.PausedRound, 'Paused the round so the Quick Bar can be used');
   return 'paused the round';
 }
 
-/** Longest wait for the pause menu once the overlay is gone. */
-const ResumeMenuWaitMs = 1500;
-/** Longest wait for the board after Continue, re-press included. */
-const ResumeBoardWaitMs = 4000;
+/**
+ * Longest wait for the round to be back, Continue presses included. A game
+ * coming back from behind another app can show stale or black frames for a few
+ * seconds first. Bounded because the host runs this on its front-watch thread.
+ */
+const ResumeRoundWaitMs = 6000;
+/**
+ * How long the board must hold before it counts as back. The first frames after
+ * a return can be the board from before the pause, with the menu still to come;
+ * it also covers the game's count-in after Continue.
+ */
+const ResumeBoardHoldMs = 600;
 /** Continue still up this long after a press: the press was missed. */
 const ResumeRepressMs = 1500;
-/** The game counts back in after the menu closes; same as `dismiss.resumeGame`. */
-const ResumeCountInMs = 500;
 const ResumePollMs = 100;
-
-/** Peeks until a page in `names` shows or `ms` runs out; the last look either way. */
-function resumePeek(t: Tsum, names: string[], ms: number): PageDef | null {
-  const deadline = Date.now() + ms;
-  for (;;) {
-    const def = gPages.peek(1, 0);
-    if ((def !== null && names.indexOf(def.name) >= 0) || Date.now() >= deadline) {
-      return def;
-    }
-    t.sleep(ResumePollMs);
-  }
-}
 
 /**
  * Called by the host before the pause lifts, and gated in for it.
  *
- * Puts back the round `onPause` paused: presses Continue (twice if the first
- * press is missed), waits for the board, and credits the paused time to the
- * round's clock so Max Round Duration does not count it. Anything it cannot
- * resolve is left to the play loop, as before. The string goes to the host log.
+ * Puts back the round `onPause` paused: waits for the game to redraw, presses
+ * Continue (again if a press is missed), and waits for the board to hold. Also
+ * credits the paused time to the round's clock so Max Round Duration does not
+ * count it. A round it cannot confirm stays held (`boardHeld`): the play loop
+ * then only looks until it sees the board. The string goes to the host log.
  */
 function onResume(): string {
   if (!quickBarRunning()) {
@@ -988,35 +993,48 @@ function onResume(): string {
   if (t.roundStartedAt !== 0) {
     t.roundStartedAt += pausedMs;
   }
-  // Only a round we know of is worth waiting for: the menu can take a moment
-  // to show once the overlay has gone.
-  const waitMs = t.pausedInRound ? ResumeMenuWaitMs : 0;
-  let def = resumePeek(t, [PageName.GamePause, PageName.GamePlaying], waitMs);
-  if (def === null || def.name !== PageName.GamePause) {
-    return t.pausedInRound
-      ? 'paused in a round, found ' + (def === null ? 'nothing recognised' : def.name)
-      : 'not in a round';
+  if (!t.pausedInRound) {
+    return 'not in a round';
   }
   const startedAt = Date.now();
   let presses = 0;
-  while (def !== null && def.name === PageName.GamePause
-      && Date.now() - startedAt < ResumeBoardWaitMs) {
-    if (presses === 0 || Date.now() - startedAt >= ResumeRepressMs * presses) {
-      // `next` is Continue -- the menu's only exit (PageRoutes, data.ts).
-      t.tap(def.next);
-      presses++;
+  let pressedAt = 0;
+  let boardSince = 0;
+  let back = false;
+  let def: PageDef | null = null;
+  while (t.isRunning && Date.now() - startedAt < ResumeRoundWaitMs) {
+    def = gPages.peek(1, 0);
+    const now = Date.now();
+    if (def !== null && def.name === PageName.GamePause) {
+      boardSince = 0;
+      if (presses === 0 || now - pressedAt >= ResumeRepressMs) {
+        // `next` is Continue -- the menu's only exit (PageRoutes, data.ts).
+        t.tapButton(def.next);
+        presses++;
+        pressedAt = now;
+      }
+    } else if (def !== null && def.name === PageName.GamePlaying) {
+      if (boardSince === 0) {
+        boardSince = now;
+      } else if (now - boardSince >= ResumeBoardHoldMs) {
+        back = true;
+        break;
+      }
+    } else if (def !== null && isRoundOverPage(def.name)) {
+      // Ended while away: the play loop's look sees it out.
+      break;
+    } else {
+      boardSince = 0;
     }
     t.sleep(ResumePollMs);
-    def = gPages.peek(1, 0);
   }
-  const back = def !== null && def.name === PageName.GamePlaying;
   const detail = { presses: presses, pausedMs: pausedMs, ms: Date.now() - startedAt,
     page: def === null ? '' : def.name };
   if (!back) {
     logWarn(Log.QuickBar.ResumeFailed, detail);
-    return 'pressed Continue ' + presses + 'x, board not back';
+    return 'pressed Continue ' + presses + 'x, board not back; holding it until it is';
   }
-  t.sleep(ResumeCountInMs);
+  t.boardHeld = false;
   logInfo(Log.QuickBar.ResumedRound, detail);
-  return 'pressed Continue, round back';
+  return presses > 0 ? 'pressed Continue, round back' : 'round back';
 }
