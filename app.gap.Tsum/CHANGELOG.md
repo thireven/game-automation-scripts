@@ -53,12 +53,7 @@ release note; they fold back in here when she ships.
 *Run control*
 - With GAP Companion, a screen the script doesn't know can wait for your direction from your phone instead of being escaped.
 
-*Settings*
-- Game Region setting: choose whether the International or Japanese Tsum Tsum is launched when both are installed.
-
 ### Added
-
-- **Game Region** (`SettingKey.GameRegion`, General › Run): Automatic, International or Japan. A chosen build wins over the one in front (`chosenGameBuild`, `src/appLifecycle.ts`), and the other build in front counts as off, so it gets replaced. A chosen build that is not installed falls back to Automatic with `app.chosenBuildMissing`. Needs a restart to apply; not shared.
 
 - **User direction hooks** (`src/addons.ts`, `src/companion.ts`): `host.setDirector` (one director add-on), the standard global `gapDirect` (`no-direct` without one), `requestUserDirection` and the `gap.direct` event. An unknown screen met while navigating asks first (`directUnknownPage`); Continue or a stop skips the blind escape, and the stall guard does not count the wait. After a timeout it does not ask again for 30 minutes. Additive, so `GAP_ADDON_API` stays 1.
 
@@ -192,8 +187,16 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+*Settings*
+- Game Region setting: choose whether the International or Japanese Tsum Tsum is launched when both are installed.
+
 **Fixes**
 - Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
+
+### Added
+
+- **Game Region** (`SettingKey.GameRegion`, General › Run): Automatic, International or Japan. A chosen build wins over the one in front (`chosenGameBuild`, `src/appLifecycle.ts`), and the other build in front counts as off, so it gets replaced. A chosen build that is not installed falls back to Automatic with `app.chosenBuildMissing`. Needs a restart to apply; not shared.
 
 ### Changed
 
