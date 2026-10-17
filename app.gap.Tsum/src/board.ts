@@ -25,6 +25,11 @@ Tsum.prototype.linkTsums = function(path) {
   // is what it turned out to accept once the rest of the input path was right.
   // Raise all three together if that ever comes back; a chain drawn faster than
   // the game samples is `DRIVING_SCREENS.md` § 5.
+  //
+  // The first point is the press alone. A move to the same point after it,
+  // inherited, bought nothing the game could see: an A/B on two emulators drew
+  // 11-17% more chains a second without it, with no more chains registered one
+  // short. Skills' own drags keep theirs; their rests are tuned.
   const grabDuring = 10;
   const releaseDuring = 10;
   // Whether to read the game's chain counter before the release, for the
@@ -39,8 +44,9 @@ Tsum.prototype.linkTsums = function(path) {
     const y = Math.floor(this.playOffsetY + (point.y + Config.tsumWidth / 2) * this.playHeight / this.playResizeHeight);
     if (j === 0) {
       tapDown(x, y, grabDuring);
+    } else {
+      moveTo(x, y, moveDuring);
     }
-    moveTo(x, y, moveDuring);
     // Paused mid-drag: the rest of the path is off a board from before it.
     if (this.pauses !== pauses) {
       tapUp(x, y, releaseDuring);
@@ -332,12 +338,9 @@ Tsum.prototype.link = function(paths, board) {
   // Overloading (burst skills): erased MyTsums keep counting into the gauge
   // for a moment after the drag, and firing the skill right as the gauge tops
   // off lets the rest of that count spill into the next gauge instead of
-  // capping at 100%. Tapping a not-yet-full skill button is a no-op the game
-  // ignores, so the cheap way to catch the fill instant is a single
-  // fire-and-forget tap after each drag: no waits, no change to the link
-  // cadence, and a capture only when there are bubbles on the board to hold
-  // (`maybeAutoTapSkill`). The game itself fires the skill on whichever tap
-  // lands first after the gauge fills.
+  // capping at 100%. So after each drag a crop read of the button decides, and
+  // a tap goes out when it reads full: no waits, no change to the link cadence
+  // (`maybeAutoTapSkill`). The game fires the skill on that tap.
   // Choreographed skills can't ride blind taps (activating without the
   // follow-up aiming wastes the skill) and go through maybeAutoTapSkill,
   // which verifies readiness before handing over to useSkill.

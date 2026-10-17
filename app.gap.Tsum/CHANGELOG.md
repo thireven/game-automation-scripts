@@ -70,6 +70,7 @@ release note; they fold back in here when she ships.
 - **Mail opens on the mailbox, not a clock**: `receiveOneOpenMail` waits for the MailBox fingerprint and a no-lead settle, instead of 1s either side of the tap. A half-open mailbox still gets the settle before any tap (~1.5s a run).
 - **One look per play-loop turn**: `useSkill`'s look hands its frame to the first gauge read (`detectWithFrame`), the fever read uses the look's frame instead of its own capture (`untouchedFrame`), and `watchRoundEnd` reuses a fresh `GamePlaying` verdict (`freshPage`). Each applies only while nothing has touched the screen since the look. ~3.5 page captures a turn down to ~1 (~20ms a turn).
 - **Page scoring caches probe coordinates** per entry and geometry (`scoreProbePoints`) instead of converting every probe on every score.
+- **A chain's first tsum is the press alone**: `linkTsums` no longer moves to the point it just pressed. An A/B on two emulators drew 11-17% more chains a second without it, with no more chains registered one short. Skills' own drags are unchanged.
 
 ## [6.0a11]
 
