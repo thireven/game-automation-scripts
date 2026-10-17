@@ -644,6 +644,10 @@ var LargeTsum = {
   sameSpot: 8,
   // Scans in a row a hit has to repeat before it is used.
   confirmScans: 3,
+  // With nothing found on the last read, read only every this many scans. A
+  // large tsum stays put until linked, so its confirmation starting a few scans
+  // late costs nothing, and most reads find nothing: it is ~5ms a scan.
+  idleEvery: 4,
 };
 
 // Ring offsets from a centre, in grid steps of `LargeTsum.step` (4px), so

@@ -580,6 +580,8 @@ Tsum.prototype.waitOutEdgeWash = function(grayImg) {
 var gLargeSeen = 0;
 /** The large tsums the scan before found, which a hit has to repeat. */
 var gLargePrev: LargeCircle[] = [];
+/** Scans skipped since the last large-tsum read (`LargeTsum.idleEvery`). */
+var gLargeSkipped = 0;
 
 Tsum.prototype.scanBoardQuick = function() {
   // load game tsums
@@ -636,7 +638,13 @@ Tsum.prototype.scanBoardQuick = function() {
     let large: LargeCircle[] = [];
     if (animating) {
       gLargePrev = [];
+      // The first scan after the animation reads.
+      gLargeSkipped = LargeTsum.idleEvery;
+    } else if (gLargePrev.length === 0 && gLargeSkipped < LargeTsum.idleEvery - 1) {
+      // Nothing pending or confirmed: this scan skips the read.
+      gLargeSkipped++;
     } else {
+      gLargeSkipped = 0;
       // A large tsum barely moves, so a hit counts once it has been found at
       // the same spot for `LargeTsum.confirmScans` scans running; the flat
       // patches a refill leaves are gone within two.
