@@ -71,6 +71,7 @@ release note; they fold back in here when she ships.
 - **One look per play-loop turn**: `useSkill`'s look hands its frame to the first gauge read (`detectWithFrame`), the fever read uses the look's frame instead of its own capture (`untouchedFrame`), and `watchRoundEnd` reuses a fresh `GamePlaying` verdict (`freshPage`). Each applies only while nothing has touched the screen since the look. ~3.5 page captures a turn down to ~1 (~20ms a turn).
 - **Page scoring caches probe coordinates** per entry and geometry (`scoreProbePoints`) instead of converting every probe on every score.
 - **A chain's first tsum is the press alone**: `linkTsums` no longer moves to the point it just pressed. An A/B on two emulators drew 11-17% more chains a second without it, with no more chains registered one short. Skills' own drags are unchanged.
+- **Skill auto-tap reads the gauge first**: a bare-tap skill's tap goes out only when a crop read of the button says full. 95% of the old blind taps (~21ms each) landed on a gauge not yet full, and the read costs ~3-8ms. A gauge filling between reads fires on the next one, or at the end of the turn.
 
 ## [6.0a11]
 

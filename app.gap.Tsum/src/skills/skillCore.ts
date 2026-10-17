@@ -478,10 +478,9 @@ const SkillGaugeCropRadius = 24;
 // own stage timings (the platform app's README, "capture timings"), the grab is
 // ~2.35ms warm and the region+convert is ~1.83ms at 360x640 but ~0.29ms at
 // 200x200 -- so a full screenshot() is ~4.2ms and this is ~2.4ms, against a
-// tap's >=10ms (the host holds the touch for `during`). A gauge read is now
-// cheaper than the blind tap that existed to avoid it, which is the assumption
-// the blind-spam design in link() was built on and is worth re-measuring on the
-// device with GAP_CAPTURE_TIMING=1 before it is leaned on further.
+// tap's >=10ms (the host holds the touch for `during`). Measured on MuMu: the
+// crop ~3-8ms against a blind tap's ~21ms, and 95% of blind taps landing on a
+// gauge not yet full -- so `maybeAutoTapSkill` reads before it taps.
 //
 // No resize is requested, so the probe coordinate stays crop-local and cannot
 // drift with resizeRatio the way getColor's toResizeXYs mapping would.
@@ -533,8 +532,8 @@ const SkillOverloadCooldownMs = 1500;
 // Answers whether a *choreographed* activation ran, so a caller holding a plan
 // made before it knows that plan is stale: a choreography is seconds of taps,
 // drags and waits, and the board it hands back is not the one it was given.
-// `Tsum.link` ends its batch on it. A bare-tap skill's blind tap answers false
-// -- nothing here knows whether it fired, which is the whole point of that path.
+// `Tsum.link` ends its batch on it. A bare-tap skill's tap answers false: its
+// batch carries on, as it did when the tap was blind.
 Tsum.prototype.maybeAutoTapSkill = function(board) {
   if (!this.skillAutoTap) { return false; }
   // Before the interval stamp, so the first probe after the window closes is
@@ -547,26 +546,30 @@ Tsum.prototype.maybeAutoTapSkill = function(board) {
   const interval = overload ? SkillOverloadProbeIntervalMs : this.skillAutoTapInterval;
   if (now - this._lastSkillAutoTap < interval) { return false; }
   this._lastSkillAutoTap = now;
-  // A bare tap is a complete activation for burst skills, and it's a no-op
-  // while the gauge isn't full -- skip the screenshots entirely. Not with a
-  // "Wait for Settle" set: a blind tap cannot wait for the board, since nothing
-  // knows whether it fired, so those skills take the gauge read and `useSkill`
-  // below instead, where the settle wait sits before the tap. Same for "Delay
-  // Skill ReActivation": the delay runs from a tap known to have fired.
+  // A bare tap is a complete activation for burst skills. It used to go out
+  // blind -- the game ignores it until the gauge is full -- but a crop read is
+  // cheaper than the tap, and 95% of blind taps landed on a gauge not yet full,
+  // so the read decides. A gauge that fills between the read and the next one
+  // is caught then, or by `useSkill` at the end of the turn. Not with a "Wait
+  // for Settle" set: this tap cannot wait for the board, so those skills take
+  // the gauge read and `useSkill` below instead, where the settle wait sits
+  // before the tap. Same for "Delay Skill ReActivation": the delay runs from a
+  // tap known to have fired.
   if (skillBareTapActivates(this.skillType) && this.skillSettleMs <= 0
       && this.skillReactivationMs <= 0) {
+    if (this.checkSkillReadinessFast() !== SkillReadiness.Active) {
+      return false;
+    }
     this.tap(Button.gameSkill1, 10);
-    // Did that one take? Nothing else here knows, and the Bubble Strategy's
-    // next pop would land in the hole the burst is about to leave. One ~2.4ms
-    // crop of the button after the tap: still Active means it was full, so
-    // the tap fired it (the animation reads Active too). Asked only with
-    // bubbles on the board and no hold standing: those are what the hold is
-    // for, since the bubbles the burst itself makes are new to the next scan
-    // and `ripeGameBubbles` holds them by age. The scan's bubbles go with the
+    // Full before the tap, so the tap fired it, and the Bubble Strategy's next
+    // pop would land in the hole the burst is about to leave (the animation
+    // reads Active too, as it always did here). Held only with bubbles on the
+    // board and no hold standing: those are what the hold is for, since the
+    // bubbles the burst itself makes are new to the next scan and
+    // `ripeGameBubbles` holds them by age. The scan's bubbles go with the
     // hold: their positions and blast counts were read off the board being
     // cleared.
-    if (this.gameBubbles.length > 0 && Date.now() >= this.bubbleHoldUntil
-        && this.checkSkillReadinessFast() === SkillReadiness.Active) {
+    if (this.gameBubbles.length > 0 && Date.now() >= this.bubbleHoldUntil) {
       logDebug(Log.Skill.BlindTapFired, { bubbles: this.gameBubbles.length });
       this.holdBubblesAfterSkill(Date.now());
       this.gameBubbles = [];
