@@ -55,6 +55,7 @@ release note; they fold back in here when she ships.
 ### Changed
 
 - **Page history frames only with Debug game**, merged up from 5.2 (details under [5.2]).
+- **Buy Open Capsule and Export Tsum List out of beta, Share Round Stats alpha-only**, merged up from 5.3 (details under [5.3]).
 
 ## [6.0a11]
 
@@ -230,6 +231,21 @@ release note; they fold back in here when she ships.
 ### Added
 
 - **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
+
+## [5.3]
+
+### Summary
+
+**Additions**
+*Settings*
+- Buy Open Capsule and Export Tsum List are out of beta.
+
+### Changed
+
+- `RowKey.BuyOpenCapsule` and `RowKey.ExportTsumList` drop `ReleaseStatus.Beta`
+  (`src/settings.ts`), so Production offers them.
+- `SettingKey.ShareRoundStats` moved from Beta to Alpha: stats are contributed
+  through the local stats site, so Beta and Production hide it.
 
 ## [5.2]
 

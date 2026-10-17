@@ -542,7 +542,6 @@ var tabs: TabSpec[] = [
                         key: RowKey.BuyOpenCapsule,
                         title: UiText.SettingBuyOpenCapsule,
                         help: UiText.SettingBuyOpenCapsuleHelp,
-                        status: ReleaseStatus.Beta,
                         buttons: [
                             {text: i18nThunk(UiText.ButtonNow), onClick: function () { askBuyOpenCapsuleNow(); },
                                 remote: 'buyOpenCapsuleNow', confirm: UiText.CompanionConfirmSpendNow, whenStopped: true}
@@ -559,7 +558,6 @@ var tabs: TabSpec[] = [
                         key: RowKey.ExportTsumList,
                         title: UiText.SettingExportTsumList,
                         help: UiText.SettingExportTsumListHelp,
-                        status: ReleaseStatus.Beta,
                         buttons: [
                             {text: i18nThunk(UiText.ButtonNow), onClick: function () { askExportTsumListNow(); },
                                 remote: 'exportTsumListNow', whenStopped: true}
@@ -738,9 +736,9 @@ var tabs: TabSpec[] = [
                         title: UiText.SettingShareRoundStats,
                         help: UiText.SettingShareRoundStatsHelp,
                         default: SettingDefaults[SettingKey.ShareRoundStats],
-                        // Beta. Inert until the user sets ROUND_STATS_URL
-                        // and allows network access in GAP (gap-env.json).
-                        status: ReleaseStatus.Beta,
+                        // Alpha-only: stats are shared through the local stats
+                        // site. Inert until ROUND_STATS_URL is set (gap-env.json).
+                        status: ReleaseStatus.Alpha,
                         neverShared: true
                     }
                 ]
