@@ -201,7 +201,7 @@ interface SettingSpec {
    * value, which is why the skill, bubble, box, round-cap and board-model
    * vocabularies are in the union too.
    */
-  key?: SettingKey | RowKey | SkillType | BubbleStrategy | BoxType | BoxPurchaseSize | MaxRoundAction | StopAfterAction;
+  key?: SettingKey | RowKey | SkillType | BubbleStrategy | BoxType | BoxPurchaseSize | MaxRoundAction | StopAfterAction | GameRegion;
   /** A `UiText` key, resolved at render time -- see `src/strings.d.ts`. */
   title?: UiText;
   /**

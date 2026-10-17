@@ -136,6 +136,8 @@ class Tsum {
   _appOnCheckedAt: number;
   /** The build last seen in front or resolved by `gameBuild`; null until one is. */
   _gameBuild: GameBuild | null;
+  /** The build the Game Region setting picks, if installed; null leaves it to `gameBuild`. */
+  chosenBuild: GameBuild | null;
   overloadPending: boolean;
   unlockLevelHoursWait: number;
   /** The "Auto Unlock MyTsum Level" setting. */
@@ -407,6 +409,7 @@ class Tsum {
     this._skillCooldownUntil = 0;
     this._appOnCheckedAt = 0;
     this._gameBuild = null;
+    this.chosenBuild = null;
     // Burst-skill overload: set after a link batch so the next scan issues one
     // carry-over tap on the skill button (see link / scanBoardQuick).
     this.overloadPending = false;

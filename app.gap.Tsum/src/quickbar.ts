@@ -303,6 +303,11 @@ const QuickBarEnumValues: { [key: string]: { [value: string]: true } } = {
     [StopAfterAction.Pause]: true,
     [StopAfterAction.Stop]: true,
   } satisfies Record<StopAfterAction, true>,
+  [SettingKey.GameRegion]: {
+    [GameRegion.Auto]: true,
+    [GameRegion.Global]: true,
+    [GameRegion.Japan]: true,
+  } satisfies Record<GameRegion, true>,
 };
 
 /**

@@ -627,6 +627,19 @@ var tabs: TabSpec[] = [
                         help: UiText.SettingAutoLaunchAppHelp,
                         default: SettingDefaults[SettingKey.AutoLaunchApp]
                     },
+                    {
+                        // Device-specific, so never shared. Read by `buildRun`.
+                        key: SettingKey.GameRegion,
+                        title: UiText.SettingGameRegion,
+                        help: UiText.SettingGameRegionHelp,
+                        default: SettingDefaults[SettingKey.GameRegion],
+                        dropdown: ([
+                            {key: GameRegion.Auto, title: UiText.GameRegionAuto},
+                            {key: GameRegion.Global, title: UiText.GameRegionGlobal},
+                            {key: GameRegion.Japan, title: UiText.GameRegionJapan}
+                        ] satisfies { key: GameRegion; title: UiText }[]),
+                        neverShared: true
+                    },
                     // {
                     //     key: SettingKey.ClickAssist,
                     //     title: UiText.SettingClickAssist,

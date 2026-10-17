@@ -49,6 +49,7 @@ var SettingDefaults: Readonly<Settings> = {
   [SettingKey.SpecialScreenRatio]: false,
   [SettingKey.DeviceFps]: 60,
   [SettingKey.AutoLaunchApp]: true,
+  [SettingKey.GameRegion]: GameRegion.Auto,
   [SettingKey.AutoPlayGame]: true,
   [SettingKey.ClickAssist]: false,
   [SettingKey.RoundDelayMinutes]: 0,

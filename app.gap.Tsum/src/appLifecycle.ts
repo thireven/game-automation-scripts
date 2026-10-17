@@ -6,11 +6,11 @@
 // `await*` waits either side of a restart watch focus and the first fingerprint
 // rather than a clock.
 //
-// The game is two packages, one per build (`GameBuild`), and nothing on the
-// settings page says which the device has. `gameBuild` works it out: the one
-// in front, else the one last seen in front, else the one installed. That is
-// what `startApp` launches, the restarts stop, and `selectedTsum` names a tsum
-// by.
+// The game is two packages, one per build (`GameBuild`). The Game Region
+// setting can pick one (`chosenBuild`); on Automatic `gameBuild` works it out:
+// the one in front, else the one last seen in front, else the one installed.
+// That is what `startApp` launches, the restarts stop, and `selectedTsum` names
+// a tsum by.
 //
 // `taskTsumAppRestart` is the scheduled bounce and navigates to a known screen
 // at both ends. `forceRestartApp` deliberately does not -- it is the recovery
@@ -56,7 +56,11 @@ Tsum.prototype.isAppOn = function() {
   if (build !== null) {
     this._gameBuild = build;
   }
-  const isOn = packageName.indexOf('LGTMTM') !== -1;
+  // With a build chosen, the other one in front counts as off, so it is
+  // replaced by the chosen one.
+  const isOn = this.chosenBuild !== null
+    ? packageName === GamePackages[this.chosenBuild]
+    : packageName.indexOf('LGTMTM') !== -1;
   this._appOnCheckedAt = isOn ? Date.now() : 0;
   return isOn;
 };
@@ -152,16 +156,38 @@ function installedGameBuilds(): GameBuild[] {
 }
 
 /**
+ * The build the Game Region setting picks, or null for Automatic. A chosen
+ * build that is not installed is ignored with a warning, since launching it
+ * could never succeed. Read once per run, by `buildRun`.
+ */
+function chosenGameBuild(region: GameRegion | undefined): GameBuild | null {
+  if (region !== GameRegion.Global && region !== GameRegion.Japan) {
+    return null;
+  }
+  const build = region as string as GameBuild;
+  if (!isInstalled(GamePackages[build])) {
+    logWarn(Log.App.ChosenBuildMissing,
+      'The game region chosen is not installed; picking one automatically', { build: build });
+    return null;
+  }
+  return build;
+}
+
+/**
  * Which build of the game this device plays.
  *
- * The one in front settles it. With neither in front -- before the first
- * launch, or after a force-stop -- the build last seen in front stands, and
- * failing that the one installed. Both installed (a region switcher) or, more
+ * The Game Region setting settles it when it names one. Otherwise the one in
+ * front does. With neither in front -- before the first launch, or after a
+ * force-stop -- the build last seen in front stands, and failing that the one
+ * installed. Both installed (a region switcher) or, more
  * oddly, neither answers global, which is what the script always assumed
  * before it looked. The answer is remembered, so the installed-package read
  * happens at most once a run.
  */
 Tsum.prototype.gameBuild = function() {
+  if (this.chosenBuild !== null) {
+    return this.chosenBuild;
+  }
   const focused = focusedGameBuild();
   if (focused !== null) {
     this._gameBuild = focused;

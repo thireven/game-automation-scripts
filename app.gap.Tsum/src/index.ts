@@ -224,6 +224,7 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.DeviceFps]: RemoteKind.Int,
   [SettingKey.PageHistoryDepth]: RemoteKind.Int,
   [SettingKey.AutoLaunchApp]: RemoteKind.Bool,
+  [SettingKey.GameRegion]: RemoteKind.Enum,
   [SettingKey.AutoPlayGame]: RemoteKind.Bool,
   [SettingKey.TrackRoundStats]: RemoteKind.Bool,
   [SettingKey.ShareRoundStats]: RemoteKind.Bool,
@@ -543,6 +544,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   ts.prioritizeMyTsum = settings.prioritizeMyTsum;
   // A workflow runs unattended, and its Restart app node launches the game.
   ts.autoLaunch = settings.autoLaunchApp || gWorkflowRun;
+  ts.chosenBuild = chosenGameBuild(settings.gameRegion);
   ts.scoreItem = settings.bonusScore;
   ts.coinItem = settings.bonusCoin;
   ts.expItem = settings.bonusExp;
