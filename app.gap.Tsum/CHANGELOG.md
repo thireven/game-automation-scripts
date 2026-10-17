@@ -45,6 +45,17 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a12]
+
+### Summary
+
+**Fixes**
+- Page history no longer saves screenshots unless "Debug game" is on.
+
+### Changed
+
+- **Page history frames only with Debug game**, merged up from 5.2 (details under [5.2]).
+
 ## [6.0a11]
 
 ### Summary
