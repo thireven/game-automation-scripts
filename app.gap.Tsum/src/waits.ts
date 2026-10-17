@@ -29,6 +29,16 @@ Tsum.prototype.sleepUntil = function(deadline) {
   }
 }
 
+/**
+ * Whether `settleScreen` saw the screen hold still within `withinMs` and no
+ * touch wrapper has sent anything since. Raw native taps are not counted, so
+ * this is only for screens no raw tap reaches that quickly (the system dialog
+ * handlers wait 1.2s after theirs).
+ */
+Tsum.prototype.stillSinceTouch = function(withinMs) {
+  return this.screenStillAt > this.touchedAt && Date.now() - this.screenStillAt <= withinMs;
+}
+
 /** One reading of the settle grid: one capture, one crossing, released. */
 function screenSettleSample(ts: Tsum, points: Point[]): Color[] {
   const img = ts.screenshot();
@@ -94,6 +104,7 @@ Tsum.prototype.settleScreen = function(maxMs, leadMs, spacingMs) {
       }
     }
     if (moved <= ScreenSettle.maxMoved) {
+      this.screenStillAt = Date.now();
       logDebug(Log.Screen.Settled,
         {still: true, ms: Date.now() - startedAt, moved: moved, polls: polls});
       return true;

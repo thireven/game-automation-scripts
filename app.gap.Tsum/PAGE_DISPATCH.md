@@ -92,7 +92,7 @@ going to.
 | 22 | `nav.wait.transient` | navigate | wait the page out | 100 | `TsumLevelUp` | _any_ | every look | — |
 | 23 | `nav.move.tallyToGame` | navigate | `markTallyPlayPressed()` → tap `next` → settle 3000ms | 60 | `ScorePage` | GamePlaying | every look | `record.tallyRow` |
 | 24 | `nav.move.friendToGame` | navigate | tap `next` → settle 3000ms | 60 | `FriendPage` | GamePlaying | every look | — |
-| 25 | `nav.move.startToGame` | navigate | settle 1500ms → `checkGameItem()` → `openRound()` → tap `Button.outStart` → `awaitRoundStart()` | 60 | `StartPage` | GamePlaying | every look | `observe.leftStartup` |
+| 25 | `nav.move.startToGame` | navigate | `settleForItems()` → `checkGameItem()` → `openRound()` → tap `Button.outStart` → `awaitRoundStart()` | 60 | `StartPage` | GamePlaying | every look | `observe.leftStartup` |
 | 26 | `nav.move.toTsums` | navigate | tap `tsums` → settle 3000ms | 60 | `ProfilePage`, `FriendPage`, `StartPage` | TsumsPage | every look | — |
 | 27 | `nav.move.toMail` | navigate | tap `mail` → settle 3000ms | 60 | `FriendPage` | MailBox | every look | — |
 | 28 | `nav.move.toHome` | navigate | tap `home` → settle 3000ms | 60 | `SquarePage`, `FriendPage` | ProfilePage | every look | — |
@@ -230,7 +230,7 @@ inside it, and never on the destination itself.
 | destination | poll | hold budget | rest | startup wait | via |
 |---|---|---|---|---|---|
 | `FriendPage` | 2 sweep(s), 1000ms budget | 3000 ms | 1000 ms | 5000 ms | — |
-| `GamePlaying` | 2 sweep(s), 2000ms budget | 0 ms | 0 ms | — | — |
+| `GamePlaying` | 1 sweep(s), 2000ms budget | 0 ms | 0 ms | — | — |
 | `TsumsPage` | 2 sweep(s), 2000ms budget | 0 ms | 0 ms | — | `FriendPage` |
 | `ProfilePage` | 2 sweep(s), 1000ms budget | 1000 ms | 500 ms | — | — |
 | `MailBox` | 2 sweep(s), 2000ms budget | 1000 ms | 500 ms | — | `FriendPage` |

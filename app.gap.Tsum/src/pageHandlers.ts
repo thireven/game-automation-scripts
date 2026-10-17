@@ -73,6 +73,8 @@ const ScreenChangeSettleMs = 3000;
  * than measured.
  */
 const ShortSettleMs = 1500;
+/** How recently a still screen counts as still, for a step that would settle again. */
+const StillFreshMs = 500;
 
 // ===========================================================================
 // observe -- read-only. Always runs, whatever the rest of the queue decides.
@@ -689,8 +691,14 @@ gPages.subscribe({
   after: ['observe.leftStartup'],
   every: true,
   steps: [
-    // The item check reads pixels, so it waits for the screen holding them.
-    { do: 'settle', ms: ShortSettleMs },
+    // The item check reads pixels, so it waits for the screen holding them --
+    // unless the hop here already watched it go still and nothing has touched
+    // it since, which is the Play tap's settle on nearly every arrival.
+    { do: 'call', name: 'settleForItems', run: function() {
+      if (!this.stillSinceTouch(StillFreshMs)) {
+        this.settleScreen(ShortSettleMs);
+      }
+    } },
     { do: 'call', name: 'checkGameItem', run: function() {
       this.checkGameItem();
     } },

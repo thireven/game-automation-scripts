@@ -40,6 +40,10 @@ class Tsum {
    * already begun is finished, so no finger is left resting on the game.
    */
   gestureOpen: boolean;
+  /** Epoch ms of the last touch a wrapper below sent; 0 for none yet. */
+  touchedAt: number;
+  /** Epoch ms `settleScreen` last saw the screen hold still; 0 for never. */
+  screenStillAt: number;
   /** Trace frame id of the latest play-square capture; 0 when it was not sent. */
   squareFrame: number;
   /**
@@ -358,6 +362,8 @@ class Tsum {
     this.autoLaunch = false;
     this.isRunning = true;
     this.gestureOpen = false;
+    this.touchedAt = 0;
+    this.screenStillAt = 0;
     this.squareFrame = 0;
     this.yieldAsked = false;
     this.isStartupPhase = true;
@@ -812,6 +818,7 @@ Tsum.prototype.tapButton = function(xy, during) {
     during = 50;
   }
   const rxy = this.toRealXYs(xy);
+  this.touchedAt = Date.now();
   tap(rxy.x, rxy.y, during, TapHoldMs);
   // Whatever gesture was open, this tap's release ended it.
   this.gestureOpen = false;
@@ -824,6 +831,7 @@ Tsum.prototype.tapDown = function(xy, during) {
   }
   const rxy = this.toRealXYs(xy);
   this.gestureOpen = true;
+  this.touchedAt = Date.now();
   tapDown(rxy.x, rxy.y, during);
 }
 
@@ -834,6 +842,7 @@ Tsum.prototype.moveTo = function(xy, during, wait) {
     during = 50;
   }
   const rxy = this.toRealXYs(xy);
+  this.touchedAt = Date.now();
   moveTo(rxy.x, rxy.y, during, !!wait);
 }
 
@@ -844,6 +853,7 @@ Tsum.prototype.tapUp = function(xy, during) {
     during = 50;
   }
   const rxy = this.toRealXYs(xy);
+  this.touchedAt = Date.now();
   tapUp(rxy.x, rxy.y, during);
 }
 
