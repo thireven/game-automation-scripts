@@ -432,12 +432,8 @@ class PageRouter {
    * Save the matcher's own frame for each visit under
    * `<device folder>/history`.
    *
-   * **On by default**, which it did not used to be. It follows a *report*
-   * rather than the debug setting now: the screens leading up to a wedge are
-   * the first thing anyone asks for, and a player who has just hit one will not
-   * have had "Debug game" on beforehand -- so a trail that only exists once
-   * somebody thought to collect it is a trail that is never there when it is
-   * wanted. What keeps the cost down is `shotDepth`, not this flag.
+   * Follows "Debug game": off otherwise, so a normal run takes no extra
+   * captures. A report then carries the text trail without frames.
    *
    * Files beyond `shotDepth` are deleted as their visit drops past it, so the
    * directory never grows past that number.
@@ -487,7 +483,7 @@ class PageRouter {
 
   constructor() {
     this.historyDepth = 20;
-    this.keepShots = true;
+    this.keepShots = false;
     this.shotDepth = Config.reportTrailFrames;
     this.fps = PageBaselineFps;
 

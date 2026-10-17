@@ -228,10 +228,15 @@ release note; they fold back in here when she ships.
 *Skills*
 - Disney Villains (Set) skill is out of beta.
 
+**Fixes**
+- Page history no longer saves screenshots unless "Debug game" is on.
+
 ### Changed
 
 - `SkillType.VillainsSet` moved from `ReleaseStatus.Beta` to `Production` in
   `src/skillOptions.ts`.
+- `PageRouter.keepShots` follows `ts.debug` again; it was on for every run so a
+  report could copy trail frames. Reports now carry frames only with debug on.
 
 ## [5.0b10]
 
