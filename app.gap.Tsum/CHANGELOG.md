@@ -66,6 +66,10 @@ release note; they fold back in here when she ships.
 - **Lost focus mid-round** (`gameAway`, `awaitGameBack`): a missed board reads focus (at most once a second) before counting toward game over, and `confirmGameOver` does too, so a focus change the host does not pause for no longer ends the round after 20s and plays on over another app. Brought back after 30s with Auto launch.
 - **`startApp`** skips the boot phase when the game's process is alive (`pidof`): a resume lands on the pause menu, which TAP TO START taps would hit. Restarts start it explicitly.
 
+### Changed
+
+- **Disney Villains (Set)** out of beta, merged up from 5.1 (details under [5.1]).
+
 ## [6.0a10]
 
 ### Summary
@@ -215,6 +219,19 @@ release note; they fold back in here when she ships.
 ### Added
 
 - **Companion chore Now while stopped**, merged up from 5.0b4 (details under [5.0b4]). Needs companion adapter 2.2.0.
+
+## [5.1]
+
+### Summary
+
+**Additions**
+*Skills*
+- Disney Villains (Set) skill is out of beta.
+
+### Changed
+
+- `SkillType.VillainsSet` moved from `ReleaseStatus.Beta` to `Production` in
+  `src/skillOptions.ts`.
 
 ## [5.0b10]
 
