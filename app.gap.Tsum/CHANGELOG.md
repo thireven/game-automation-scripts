@@ -49,6 +49,15 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+*Skills*
+- Disney Villains (Set) skill is out of beta.
+
+### Changed
+
+- `SkillType.VillainsSet` moved from `ReleaseStatus.Beta` to `Production` in
+  `src/skillOptions.ts`.
+
 ## [5.0]
 
 ### Summary
