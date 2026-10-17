@@ -389,6 +389,9 @@ const enum RoundLook {
   Over,
 }
 
+/** How old `useSkill`'s look may be and still answer for `watchRoundEnd`. */
+const RoundLookReuseMs = 250;
+
 /**
  * Liveness check: is the board still up?
  *
@@ -424,7 +427,12 @@ const enum RoundLook {
  * to be seen out, and it watches with exactly this.
  */
 Tsum.prototype.watchRoundEnd = function(hud) {
-  const page = gPages.detect(1, 0, inRoundPages());
+  // The board being up is the usual answer, and `useSkill`'s look a moment ago
+  // gave it already when nothing has touched the screen since -- the same
+  // moment, so no second capture. Any other answer is looked at again here.
+  const page = gPages.freshPage(RoundLookReuseMs) === PageName.GamePlaying
+    ? PageName.GamePlaying
+    : gPages.detect(1, 0, inRoundPages());
   const stillDebouncing = hud.misses < HudMissesBeforeGameOver
       || Date.now() - hud.firstMissAt < HudMissGraceMs;
   if (page === PageName.GamePlaying || page === PageName.GamePause) {

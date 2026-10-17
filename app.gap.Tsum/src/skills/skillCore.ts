@@ -665,7 +665,7 @@ Tsum.prototype.useSkill = function(board, fast) {
   }
 
   // One look, no retry budget. This is a guard, not a wait: the gauge is read
-  // off a fresh capture on the very next line either way, and `detect`'s timeout
+  // straight after it either way, and the look's timeout
   // is only ever spent when *nothing* fingerprints -- which mid-round means an
   // animation is covering the HUD, exactly when firing the skill is unwanted.
   // The 500ms it used to ask for bought nothing and stacked onto the play loop's
@@ -675,50 +675,62 @@ Tsum.prototype.useSkill = function(board, fast) {
   // skill button showing over a screen that has stopped moving, so every read
   // says "ready" and the tap that should spend it never reaches the game. The
   // play loop's `while (this.useSkill(board))` then never ends -- which is what
-  // a paused round used to hang on. The `detect` above is also what presses
+  // a paused round used to hang on. The look is also what presses
   // Continue (`dismiss.resumeGame`), so returning false here hands the loop a
   // board again rather than parking it.
-  if (gPages.detect(1, 0) !== PageName.GamePlaying) {
-    return false;
-  }
-
-  // A skill whose last activation is still running says so, and a full gauge
-  // waits for it: the tap would only restart the animation over the window's
-  // remaining seconds. See `SkillHandler.stillRunning`.
-  if (skillStillRunning(this)) {
-    logDebug(Log.Skill.StillRunning, { skill: this.skillType });
-    return false;
-  }
-
+  //
+  // The look's frame comes back with it when nothing touched the screen after
+  // it, and the first gauge read below is taken off that rather than a capture
+  // of its own: the same moment, one capture fewer an iteration.
+  const look = gPages.detectWithFrame(1, 0);
+  let lookFrame = look.frame;
   const handler = SkillHandlers[this.skillType];
   const usesSecondButton = !!(handler && handler.usesSecondButton);
-
-  // Checked twice, a moment apart: a single read can catch the button mid-flash.
-  // `fast` shrinks the read -- a crop of the button instead of the whole screen
-  // -- because on the overload path this whole block sits between the gauge
-  // filling and the tap that spends it.
-  const cropped = !!fast && !usesSecondButton;
   let skillActive2 = false;
-  for (let i = 0; i < 2; i++) {
-    let skillActive1: boolean;
-    if (cropped) {
-      skillActive1 = this.checkSkillReadinessFast() === SkillReadiness.Active;
-    } else {
-      const img = this.screenshot();
-      try {
-        skillActive1 = this.checkSkillReadiness(img, Button.gameSkill1) === SkillReadiness.Active;
-        skillActive2 = usesSecondButton
-          && this.checkSkillReadiness(img, Button.gameSkill2) === SkillReadiness.Active;
-      } finally {
-        releaseImage(img);
+  try {
+    if (look.page !== PageName.GamePlaying) {
+      return false;
+    }
+
+    // A skill whose last activation is still running says so, and a full gauge
+    // waits for it: the tap would only restart the animation over the window's
+    // remaining seconds. See `SkillHandler.stillRunning`.
+    if (skillStillRunning(this)) {
+      logDebug(Log.Skill.StillRunning, { skill: this.skillType });
+      return false;
+    }
+
+    // Checked twice, a moment apart: a single read can catch the button mid-flash.
+    // `fast` shrinks the read -- a crop of the button instead of the whole screen
+    // -- because on the overload path this whole block sits between the gauge
+    // filling and the tap that spends it.
+    const cropped = !!fast && !usesSecondButton;
+    for (let i = 0; i < 2; i++) {
+      let skillActive1: boolean;
+      if (cropped) {
+        skillActive1 = this.checkSkillReadinessFast() === SkillReadiness.Active;
+      } else {
+        const img = lookFrame !== null ? lookFrame : this.screenshot();
+        lookFrame = null;
+        try {
+          skillActive1 = this.checkSkillReadiness(img, Button.gameSkill1) === SkillReadiness.Active;
+          skillActive2 = usesSecondButton
+            && this.checkSkillReadiness(img, Button.gameSkill2) === SkillReadiness.Active;
+        } finally {
+          releaseImage(img);
+        }
+      }
+      if (skillActive1 || skillActive2) {
+        if (i === 0) {
+          this.sleep(SkillReadDebounceMs);
+        }
+      } else {
+        return false;
       }
     }
-    if (skillActive1 || skillActive2) {
-      if (i === 0) {
-        this.sleep(SkillReadDebounceMs);
-      }
-    } else {
-      return false;
+  } finally {
+    if (lookFrame !== null) {
+      releaseImage(lookFrame);
     }
   }
 

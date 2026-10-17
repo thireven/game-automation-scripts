@@ -161,9 +161,10 @@ gPages.subscribe({
   what: 'Keep the fever state up to date, and broadcast a fever starting or ending. '
       + 'A fever is a mode of the board rather than a screen of its own, so nothing '
       + 'else in this file can report it -- see src/fever.ts.',
-  // In `record` rather than `observe` because reading a fever costs a capture of
-  // its own, and the observe band is the band that promises not to take one.
-  // Nothing here taps, so it still runs before anything can change the screen.
+  // In `record` rather than `observe` because reading a fever can take a capture
+  // of its own -- when the look's frame is not on hand -- and the observe band
+  // promises not to take one. Nothing here taps, so it still runs before
+  // anything can change the screen, and the look's frame still shows it.
   //
   // Every page, deliberately. A fever only starts on the board, but it ends the
   // moment the board is gone, and a subscription scoped to GamePlaying would
@@ -173,7 +174,7 @@ gPages.subscribe({
   every: true,
   steps: [
     { do: 'call', name: 'gFever.update', run: function(event) {
-      gFever.update(this, event.page);
+      gFever.update(this, event.page, gPages.untouchedFrame());
     } }
   ]
 });

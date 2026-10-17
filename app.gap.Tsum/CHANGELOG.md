@@ -49,6 +49,10 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+*Gameplay*
+- Faster play: less waiting between chains, between rounds, and while sending hearts and opening mail.
+
 **Fixes**
 - Page history no longer saves screenshots unless "Debug game" is on.
 
@@ -64,6 +68,8 @@ release note; they fold back in here when she ships.
 - **Heart sweep list ends no longer wait 3s blind**: the recheck runs only when the screenful had a slow or failed send or the network dialog (`heartSendSlowed`), which is when the loading spinner can freeze the list. 91 list ends in 25h had needed none (~8s a sweep).
 - **Heart sweep turn passes through the profile page**: it uses the new `PageRouter.navigateThrough` (a waypoint, no hold or settle), and the flat 1s after the pointer tap is a no-lead settle (~4s a sweep).
 - **Mail opens on the mailbox, not a clock**: `receiveOneOpenMail` waits for the MailBox fingerprint and a no-lead settle, instead of 1s either side of the tap. A half-open mailbox still gets the settle before any tap (~1.5s a run).
+- **One look per play-loop turn**: `useSkill`'s look hands its frame to the first gauge read (`detectWithFrame`), the fever read uses the look's frame instead of its own capture (`untouchedFrame`), and `watchRoundEnd` reuses a fresh `GamePlaying` verdict (`freshPage`). Each applies only while nothing has touched the screen since the look. ~3.5 page captures a turn down to ~1 (~20ms a turn).
+- **Page scoring caches probe coordinates** per entry and geometry (`scoreProbePoints`) instead of converting every probe on every score.
 
 ## [6.0a11]
 

@@ -189,14 +189,15 @@ class FeverWatcher {
    * `record.feverTime` calls. Three answers, not two:
    *
    *   GamePlaying   the board is up, so read it -- at most once per
-   *                 `FeverSampleGapMs`, since each reading is a capture.
+   *                 `FeverSampleGapMs`. Off `frame` when the caller has one
+   *                 (the look's own), else a capture of its own.
    *   Unknown       nothing fingerprinted, which mid-round is an animation
    *                 over the board rather than the board being gone. Not a
    *                 reading at all for `FeverUnknownHoldMs`; see there.
    *   anything else a real screen that is not the board, so whatever was
    *                 running is over. Free -- no capture is taken.
    */
-  update(tsum: Tsum, page: PageName): boolean {
+  update(tsum: Tsum, page: PageName, frame?: NativeImage | null): boolean {
     if (page === PageName.Unknown && Date.now() - this.readableAt < FeverUnknownHoldMs) {
       // Deliberately touches nothing: not `readableAt`, which is what bounds
       // this window, and not `pending`, so a start or an end that was building
@@ -211,7 +212,7 @@ class FeverWatcher {
       return this.active;
     }
     this.capturedAt = now;
-    return this.observe(tsum, tsum.isFeverTime(), page);
+    return this.observe(tsum, tsum.isFeverTime(frame === null ? undefined : frame), page);
   }
 
   /**
@@ -309,9 +310,9 @@ var gFever = new FeverWatcher();
  * Is a fever running on this frame?
  *
  * One look, no memory and no events: every probe in `FeverProbes` has to hold.
- * Pass an image to read the frame you already have -- the page handlers do not,
- * because the router releases its own frame before the queue runs, but anything
- * that took a screenshot for its own reasons should.
+ * Pass an image to read the frame you already have -- the fever handler passes
+ * the look's own (`gPages.untouchedFrame`), and anything that took a screenshot
+ * for its own reasons should too.
  */
 Tsum.prototype.isFeverTime = function(img) {
   const own = img === undefined;

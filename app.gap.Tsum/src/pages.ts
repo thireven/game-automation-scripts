@@ -418,6 +418,32 @@ function pagesWithAnchor(anchor: PageAnchor): PageName[] {
   });
 }
 
+/**
+ * Each table entry's probes in capture space, by the entry's own `colors` array.
+ * The same conversion `Tsum.getColors` makes, done once per geometry rather
+ * than on every score: a full sweep scores 75 entries, several times a second.
+ */
+const ScoreProbeCache = new WeakMap<PageColor[], {
+  owner: Tsum, ratio: number, offsetX: number, offsetY: number, resize: number, pts: Point[]
+}>();
+
+function scoreProbePoints(tsum: Tsum, colors: PageColor[]): Point[] {
+  const hit = ScoreProbeCache.get(colors);
+  if (hit !== undefined && hit.owner === tsum && hit.ratio === tsum.captureGameRatio
+      && hit.offsetX === tsum.gameOffsetX && hit.offsetY === tsum.gameOffsetY
+      && hit.resize === tsum.resizeRatio) {
+    return hit.pts;
+  }
+  const pts: Point[] = [];
+  for (let i = 0; i < colors.length; i++) {
+    const rxy = tsum.toResizeXYs(colors[i]);
+    pts.push({x: Math.max(rxy.x, 0), y: Math.max(rxy.y, 0)});
+  }
+  ScoreProbeCache.set(colors, { owner: tsum, ratio: tsum.captureGameRatio,
+    offsetX: tsum.gameOffsetX, offsetY: tsum.gameOffsetY, resize: tsum.resizeRatio, pts: pts });
+  return pts;
+}
+
 class PageRouter {
   // --- configuration -------------------------------------------------------
 
@@ -480,6 +506,21 @@ class PageRouter {
   private dispatching: boolean;
   private shotSeq: number;
   private shotDirReady: boolean;
+  /**
+   * The frame the look in progress answered from, held through its `react` so
+   * the record band reads the same moment (`untouchedFrame`) instead of taking
+   * its own capture. Released when the look ends, unless `detectWithFrame`
+   * hands it to its caller -- nothing is held between looks.
+   */
+  private frame: NativeImage | null;
+  /** `detectObject` calls in progress; a sweep keeps its frame only inside one. */
+  private holdDepth: number;
+  /** The last sweep: when its final pass captured, what it answered, and whether it was full-table. */
+  private lookAt: number;
+  private lookPage: PageName;
+  private lookFull: boolean;
+  /** An acting handler has run since that capture, so the screen may have changed. */
+  private lookActed: boolean;
 
   constructor() {
     this.historyDepth = 20;
@@ -500,6 +541,12 @@ class PageRouter {
     this.dispatching = false;
     this.shotSeq = 0;
     this.shotDirReady = false;
+    this.frame = null;
+    this.holdDepth = 0;
+    this.lookAt = 0;
+    this.lookPage = PageName.Unknown;
+    this.lookFull = false;
+    this.lookActed = true;
   }
 
   // --- wiring --------------------------------------------------------------
@@ -521,9 +568,13 @@ class PageRouter {
     this.seenAt = 0;
     this.history = [];
     this.shotSeq = 0;
+    this.dropFrame();
+    this.lookAt = 0;
+    this.lookActed = true;
   }
 
   detach(): void {
+    this.dropFrame();
     this.tsum = undefined;
   }
 
@@ -785,7 +836,7 @@ class PageRouter {
     const blocks: Color[][] = colors.length === 0 ? []
         : Config.pageShiftTolerance
             ? tsum.getColorBlocks(img, colors)
-            : tsum.getColors(img, colors).map(function(c) { return [c]; });
+            : getImageColors(img, scoreProbePoints(tsum, colors)).map(function(c) { return [c]; });
     const shifts = blocks.length > 0 ? blocks[0].length : 0;
     let shift = 0;
     for (let k = 0; k < shifts; k++) {
@@ -918,7 +969,16 @@ class PageRouter {
           }
         } finally {
           scoreMs += Date.now() - t1;
-          releaseImage(img);
+          this.lookAt = t0;
+          this.lookPage = PageName.Unknown;
+          this.lookFull = expect === undefined;
+          this.lookActed = false;
+          if (this.holdDepth > 0 && t === times - 1) {
+            this.dropFrame();
+            this.frame = img;
+          } else {
+            releaseImage(img);
+          }
         }
         // No early exit: `times` sweeps always run and the last one is the
         // answer. The sweeps are a debounce, not a vote -- a screen mid-animation
@@ -973,6 +1033,7 @@ class PageRouter {
             scored: scored,
             narrowed: expect !== undefined,
           });
+          this.lookPage = best.page.name;
           return best;
         }
       }
@@ -1017,8 +1078,69 @@ class PageRouter {
    * one of the pages I asked about" rather than "not a page".
    */
   detectObject(times?: number, timeout?: number, expect?: PageName[], goal?: PageName | ''): PageDef | null {
-    this.react(this.observe(times, timeout, expect, goal));
+    this.holdDepth++;
+    try {
+      this.react(this.observe(times, timeout, expect, goal));
+    } finally {
+      this.holdDepth--;
+      if (this.holdDepth === 0) {
+        this.dropFrame();
+      }
+    }
     return this.def;
+  }
+
+  /**
+   * As `detect`, also handing over the frame it answered from when no handler
+   * has touched the screen since -- null otherwise. The caller releases it.
+   */
+  detectWithFrame(times?: number, timeout?: number, expect?: PageName[]): { page: PageName, frame: NativeImage | null } {
+    this.holdDepth++;
+    let frame: NativeImage | null = null;
+    try {
+      this.react(this.observe(times, timeout, expect));
+      frame = this.untouchedFrame();
+      if (frame !== null) {
+        this.frame = null;
+      }
+    } finally {
+      this.holdDepth--;
+      if (this.holdDepth === 0) {
+        this.dropFrame();
+      }
+    }
+    return { page: this.page, frame: frame };
+  }
+
+  /**
+   * The frame the look in progress answered from, while it still shows the
+   * screen: no acting handler has run and no touch wrapper has touched since.
+   * Null outside a look (see `frame`). The router owns it -- never release it.
+   */
+  untouchedFrame(): NativeImage | null {
+    if (this.frame === null || this.lookActed || this.owner().touchedAt >= this.lookAt) {
+      return null;
+    }
+    return this.frame;
+  }
+
+  /**
+   * What the last full-table look saw, when it can stand in for a new look: at
+   * most `maxAgeMs` old, and nothing has touched the screen since. Null otherwise.
+   */
+  freshPage(maxAgeMs: number): PageName | null {
+    if (!this.lookFull || this.lookActed || this.owner().touchedAt >= this.lookAt
+        || Date.now() - this.lookAt > maxAgeMs) {
+      return null;
+    }
+    return this.lookPage;
+  }
+
+  private dropFrame(): void {
+    if (this.frame !== null) {
+      releaseImage(this.frame);
+      this.frame = null;
+    }
   }
 
   /** As `detectObject`, but the page's name -- `PageName.Unknown` when nothing matched. */
@@ -1312,6 +1434,7 @@ class PageRouter {
         }
         if (acted) {
           stopped = true;
+          this.lookActed = true;
           event.stoppedBy = sub.id;
           logDebug(Log.Page.DispatchStopped, { page: event.page, stoppedBy: sub.id });
         }
