@@ -117,12 +117,15 @@ const HeartListEndRechecksAfterFailure = 3;
  */
 Tsum.prototype.friendPageGoToSelf = function() {
   logDebug(Log.Hearts.GoToSelfStart);
-  gPages.navigate(PageName.ProfilePage);
+  // A waypoint: the profile is only passed through, and the friend page's own
+  // arrival is what gets held, settled and confirmed.
+  gPages.navigateThrough(PageName.ProfilePage);
   gPages.navigate(PageName.FriendPage);
   // Upstream's, and still wanted: on an emulator the pointer parks where it
-  // last tapped, and the score row below is read by colour.
+  // last tapped, and the score row below is read by colour. A settle rather
+  // than upstream's flat second after it: the friend page has already settled.
   tap(0, 0, 20, TapHoldMs);
-  this.sleep(1000);
+  this.settleScreen(HeartStepSettleMs, 0, HeartPollMs);
   logDebug(Log.Hearts.GoToSelfDone);
 }
 
@@ -261,6 +264,7 @@ function isNetworkErrorPage(page: PageName): boolean {
 /** Press Retry on the network error dialog; never its other button, which goes to the title screen. */
 Tsum.prototype.retryNetworkError = function(page, waitingFor) {
   logInfo(Log.Hearts.NetworkRetry, 'Connection error; pressing Retry', {page: page, waitingFor: waitingFor});
+  heartSendSlowed = true;
   this.settleScreen(HeartStepSettleMs, 0, HeartPollMs);
   this.tap(page === PageName.NetworkTimeout ? Page.NetworkTimeout.back : Page.NetworkDisable.back);
   this.settleScreen(HeartStepSettleMs);
@@ -286,6 +290,13 @@ Tsum.prototype.waitOutHeartNetwork = function(ms) {
  * `sendHeartsOnPage` gives it time to before leaving the screenful.
  */
 let heartToastMayBeLate = false;
+
+/**
+ * Set when this screenful gave the loading spinner reason to be up: a send
+ * still in flight after OK, or the network error dialog. The spinner blocks
+ * drags too, so only then is a list that did not move worth a recheck.
+ */
+let heartSendSlowed = false;
 
 /**
  * Set when Retry on the network error dialog has stopped helping. The sweep
@@ -321,6 +332,7 @@ Tsum.prototype.sendOneHeart = function(heart) {
     // OK landed but the row is still pink: the game is still sending, behind
     // its loading spinner. Giving up here loses a heart that lands moments later.
     logDebug(Log.Hearts.SendStep, {step: 'slowNetwork', y: heart.y});
+    heartSendSlowed = true;
     page = this.waitForHeartPage(PageName.HeartSent, HeartSlowNetworkMs, undefined, heart);
   }
   if (page === PageName.FriendPage && this.heartRowSent(heart)) {
@@ -448,7 +460,8 @@ Tsum.prototype.scrollFriendList = function(down) {
 /**
  * Give a drag that went nowhere another go before calling it the end of the
  * list. The loading spinner blocks input, so a list it froze does not move
- * either; one recheck costs a few seconds per half at the real end.
+ * either. Asked only when the screenful gave the spinner a reason to be up
+ * (`heartSendSlowed`, a failed send): at the real end it cost ~4s per half.
  */
 Tsum.prototype.friendListMovesAfterAll = function(down, sendFailed) {
   const tries = sendFailed ? HeartListEndRechecksAfterFailure : HeartListEndRechecks;
@@ -486,6 +499,7 @@ Tsum.prototype.sweepHearts = function(down, startTime) {
 
     // The zero-score stop is for the downward half only: everything above us in
     // the ranking outscores us by definition.
+    heartSendSlowed = false;
     const page = this.sendHeartsOnPage(down && !this.sentToZero);
     screenfuls++;
     if (page.sent !== 0) {
@@ -513,7 +527,9 @@ Tsum.prototype.sweepHearts = function(down, startTime) {
     if (this.outOfHeartTime(startTime)) {
       return false;
     }
-    if (!this.scrollFriendList(down) && !this.friendListMovesAfterAll(down, page.failed !== 0)) {
+    const mayBeFrozen = heartSendSlowed || page.failed !== 0;
+    if (!this.scrollFriendList(down)
+        && !(mayBeFrozen && this.friendListMovesAfterAll(down, page.failed !== 0))) {
       logInfo(Log.Hearts.ListEnd, {down: down, screenfuls: screenfuls});
       return true;
     }

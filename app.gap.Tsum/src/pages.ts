@@ -1439,6 +1439,14 @@ class PageRouter {
   }
 
   /**
+   * `navigate` to a screen the caller taps straight off again: a waypoint, so
+   * none of an arrival's hold, settle or rest -- see `drive`.
+   */
+  navigateThrough(goal: PageName, abort?: () => boolean): boolean {
+    return this.drive(goal, true, abort);
+  }
+
+  /**
    * `navigate`, told whether this screen is the destination or only on the way.
    *
    * A waypoint is one the caller taps straight off again, so the ceremony that

@@ -61,6 +61,9 @@ release note; they fold back in here when she ships.
 - **Tally numbers read together**: `readSettledStatsNumbers` reads every field in turn with one 350ms gap between passes, instead of a gap per field. Each field still needs two agreeing reads (~0.7s a round with a medals row).
 - **No second settle before the bonus-item check** when the Play hop's settle saw the screen still under 500ms ago and nothing has touched it since (`stillSinceTouch`; the touch wrappers stamp `touchedAt`). Otherwise it settles as before (~0.4s a round).
 - **Large-tsum read every 4th scan while it has found nothing** (`LargeTsum.idleEvery`), and every scan while a hit is pending or confirmed. It is ~5ms a scan, most reads find nothing, and a large tsum waits to be linked (~2ms a scan saved; confirmation starts up to 3 scans later).
+- **Heart sweep list ends no longer wait 3s blind**: the recheck runs only when the screenful had a slow or failed send or the network dialog (`heartSendSlowed`), which is when the loading spinner can freeze the list. 91 list ends in 25h had needed none (~8s a sweep).
+- **Heart sweep turn passes through the profile page**: it uses the new `PageRouter.navigateThrough` (a waypoint, no hold or settle), and the flat 1s after the pointer tap is a no-lead settle (~4s a sweep).
+- **Mail opens on the mailbox, not a clock**: `receiveOneOpenMail` waits for the MailBox fingerprint and a no-lead settle, instead of 1s either side of the tap. A half-open mailbox still gets the settle before any tap (~1.5s a run).
 
 ## [6.0a11]
 

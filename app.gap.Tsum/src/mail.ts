@@ -190,6 +190,28 @@ const ReceiveOneMaxRelaunches = 3;
 const ReceiveOneMemCheckGifts = 10;
 const ReceiveOneMinFreeMb = 600;
 
+/** Budget for the mailbox to arrive after its button, before the loop looks anyway. */
+const ReceiveOneMailOpenMs = 2000;
+
+/**
+ * Tap the mailbox open from the friend page and wait for it to be up and still.
+ * Upstream slept a flat second either side; the friend page's own arrival has
+ * already settled, and the mailbox fingerprint is the arrival here. It matches
+ * mid-slide, so a settle follows -- a look at a half-open mailbox would take
+ * the loop's blind close tap.
+ */
+function receiveOneOpenMail(ts: Tsum): void {
+  ts.tap(Button.outReceive);
+  const deadline = Date.now() + ReceiveOneMailOpenMs;
+  while (ts.isRunning && Date.now() < deadline) {
+    if (gPages.matches(PageName.MailBox)) {
+      ts.settleScreen(ReceiveOneOpenSettleMs, 0);
+      return;
+    }
+    ts.sleep(100);
+  }
+}
+
 /** The device's available memory in MB, or null when it cannot be read. */
 function memAvailableMb(): number | null {
   const m = /^MemAvailable:\s+(\d+) kB/m.exec(readFile('/proc/meminfo'));
@@ -202,10 +224,8 @@ Tsum.prototype.taskReceiveOneItem = function() {
   }
   logInfo(Log.Page.Friends);
   gPages.navigate(PageName.FriendPage);
-  this.sleep(1000)
-  this.tap(Button.outReceive);
   logInfo(Log.Gifts.ReceiveOneByOne);
-  this.sleep(1000);
+  receiveOneOpenMail(this);
 
   let receivedCount = 0;
   let receiveCheckLimit = 1;
@@ -224,9 +244,7 @@ Tsum.prototype.taskReceiveOneItem = function() {
   let giftsSinceMemCheck = 0;
   // From the friend page back into the mail, with the loop's state reset.
   const reopenMail = () => {
-    this.sleep(1000);
-    this.tap(Button.outReceive);
-    this.sleep(1000);
+    receiveOneOpenMail(this);
     pickedUp = false;
     mailScrolls = 0;
     timeoutCounter = 0;
