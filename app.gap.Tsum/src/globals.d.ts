@@ -1351,6 +1351,14 @@ interface Tsum {
   awaitAppOff(): boolean;
   forceRestartApp(): boolean;
   taskTsumAppRestart(): void;
+  /** Start the boot phase (a launch, or a startup screen seen); a phase already running keeps its clock. */
+  beginBoot(): void;
+  /** The game is between launch and the hub, inside the budget. */
+  inBoot(): boolean;
+  /** End the boot phase on `page` (`bootEndPages`), and log how long it took. */
+  endBoot(page: PageName): void;
+  /** One tap through a startup screen nothing fingerprinted: a native dialog first, else TAP TO START. */
+  tapThroughBoot(): void;
 
   // --- board.ts --------------------------------------------------------
   linkTsums(path: Point[]): void;

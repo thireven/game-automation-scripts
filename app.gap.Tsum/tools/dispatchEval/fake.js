@@ -23,6 +23,8 @@ function createFake(ctx, host, trace, clock) {
   fake.collectUnknownScreens = false;
   fake.autoLaunch = false;
   fake.isStartupPhase = false;
+  fake.bootStartedAt = 0;
+  fake.bootUntil = 0;
   fake.yieldAsked = false;
   fake.trackRoundStats = false;
   fake.storagePath = host.storagePath;

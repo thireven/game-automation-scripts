@@ -665,12 +665,16 @@ check('direct: after a timeout the next unknown screen does not ask',
 directRun.isRunning = false;
 check('direct: a stopped run is stopped at once', ctx.requestUserDirection() === 'stopped');
 // The stall guard starts over after a request.
-const guardTsum = { stallResets: 0, dismissSystemDialog: () => false };
+const guardTsum = { stallResets: 0, dismissSystemDialog: () => false, inBoot: () => false };
 const guard = ctx.Tsum.prototype.newStallGuard.call(guardTsum, 'test');
 for (let i = 0; i < 10; i++) ctx.Tsum.prototype.checkStall.call(guardTsum, guard, 'Unknown');
 guardTsum.stallResets++;
 ctx.Tsum.prototype.checkStall.call(guardTsum, guard, 'Unknown');
 check('direct: the stall guard starts over after a request', guard.repeats === 0 && guard.rounds === 1, guard);
+// While booting, an unknown screen is a startup one and is not counted.
+guardTsum.inBoot = () => true;
+for (let i = 0; i < 10; i++) ctx.Tsum.prototype.checkStall.call(guardTsum, guard, 'unknown');
+check('boot: the stall guard leaves startup screens alone', guard.repeats === 0 && guard.rounds === 0, guard);
 run('ts = undefined; gTaskController = realController2');
 
 // --- review fixes -------------------------------------------------------------------

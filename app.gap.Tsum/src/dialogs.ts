@@ -509,6 +509,14 @@ Tsum.prototype.checkStall = function(guard, page) {
     guard.rounds = 0;
     guard.dialogTried = false;
   }
+  // The startup screens are meant to sit there while the game loads -- on a slow
+  // network for a minute. The boot budget is the backstop instead (appLifecycle.ts).
+  if (this.inBoot() && (page === PageName.Unknown || pagesWithRole(PageRole.Boot).indexOf(page) !== -1)) {
+    guard.page = '';
+    guard.repeats = 0;
+    guard.rounds = 0;
+    return;
+  }
   guard.rounds++;
   if (page !== guard.page) {
     guard.page = page;

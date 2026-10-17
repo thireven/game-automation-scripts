@@ -17,18 +17,18 @@ order. `settle` is a ceiling and not a cost -- it ends when the screen stops
 moving -- where `sleep` is spent in full, and is only used where there is no
 still frame to wait for.
 
-`32` subscriptions, `46` pages, `6` navigation destinations.
+`36` subscriptions, `48` pages, `6` navigation destinations.
 
 ## The pipeline
 
 ```mermaid
 flowchart TD
   detect["gPages.detect()<br/>score every Page entry, best wins"]
-  c0["<b>observe</b> &middot; priority 100<br/>2 subscriptions"]
+  c0["<b>observe</b> &middot; priority 100<br/>3 subscriptions"]
   c1["<b>record</b> &middot; priority 80<br/>6 subscriptions"]
   c2["<b>guard</b> &middot; priority 60<br/>1 subscription"]
   c3["<b>dismiss</b> &middot; priority 40<br/>10 subscriptions"]
-  c4["<b>navigate</b> &middot; priority 20<br/>11 subscriptions"]
+  c4["<b>navigate</b> &middot; priority 20<br/>14 subscriptions"]
   c5["<b>notify</b> &middot; priority 10<br/>2 subscriptions"]
   done(["caller gets the page name"])
   detect --> c0
@@ -52,11 +52,11 @@ there.
 
 | band | priority | subscriptions | purpose |
 |---|---|---|---|
-| **observe** | 100 | 2 | Read-only state updates derived from the page itself. No taps and no expensive captures -- these describe the frame the recorders are about to measure, and they are the only band guaranteed to run whatever else the queue decides. |
+| **observe** | 100 | 3 | Read-only state updates derived from the page itself. No taps and no expensive captures -- these describe the frame the recorders are about to measure, and they are the only band guaranteed to run whatever else the queue decides. |
 | **record** | 80 | 6 | Measurements and captures that are only valid while the screen is untouched: round statistics, corpus frames, debug shots. Everything below this line may tap. |
 | **guard** | 60 | 1 | Anything that is not a game screen at all (native dialogs, the root warning) is handled here, before the rest of the queue is allowed to act on what it sees. |
 | **dismiss** | 40 | 10 | Close the interruptions that stand between the script and where it is going -- offers, popups, error panels. |
-| **navigate** | 20 | 11 | Move the app toward the goal the look was made with. Silent when the caller gave none -- every look outside navigate() -- and never on the goal page itself, so nothing can tap the script off its destination. |
+| **navigate** | 20 | 14 | Move the app toward the goal the look was made with. Silent when the caller gave none -- every look outside navigate() -- and never on the goal page itself, so nothing can tap the script off its destination. |
 | **notify** | 10 | 2 | Logging and progress bookkeeping. Nothing here changes what is on screen or what anything else decides -- which is why this band runs even when something above it has acted: it is recording what was seen, not acting on it. |
 
 Within a band the order is `order` descending, then registration order, then a
@@ -68,42 +68,47 @@ going to.
 
 | # | id | band | steps | order | pages | goals | fires | after |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `observe.startupPhase` | observe | `enterStartupPhase()` | 0 | `RootDetection` | — | every look | — |
-| 2 | `observe.leftStartup` | observe | `leaveStartupPhase()` | 0 | `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage` | — | every look | — |
-| 3 | `record.feverTime` | record | `gFever.update()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ExtraUpdate`, `unknown` | — | every look | — |
-| 4 | `record.corpusUnknown` | record | `saveCorpusFrame()` | 0 | `unknown` | — | on arrival | — |
-| 5 | `record.baseCoins` | record | `sampleBaseCoins()` | 0 | `TsumLevelUp` | — | every look | — |
-| 6 | `record.myTsumLevelCap` | record | `noteLevelUpMyTsumCap()` | 0 | `TsumLevelUp` | — | every look | — |
-| 7 | `record.myTsum` | record | `identifyMyTsum()` | 0 | `StartPage` | — | on arrival | — |
-| 8 | `record.tallyRow` | record | `readTallyRow()` | 0 | `ScorePage` | — | every look | — |
-| 9 | `guard.rootDetection` | guard | `dismissSystemDialog()` | 0 | `RootDetection` | — | every look | — |
-| 10 | `dismiss.magicalTime` | dismiss | log `play.magicalTimeCancelled` → tap `back` → sleep 500ms | 0 | `MagicalTime` | — | every look | — |
-| 11 | `dismiss.highScore` | dismiss | log `page.highScore.closing` → tap `back` → settle 2000ms | 0 | `HighScore` | — | every look | — |
-| 12 | `dismiss.accountLevelUp` | dismiss | log `page.accountLevelUp.closing` → tap `back` → settle 2000ms | 0 | `AccountLevelUp` | — | every look | — |
-| 13 | `dismiss.rankUp` | dismiss | log `page.rankUp.closing` → tap `back` → settle 2000ms | 0 | `RankUp` | — | every look | — |
-| 14 | `dismiss.eventMain` | dismiss | log `page.eventMain.closing` → tap `back` → settle 2000ms | 0 | `EventMain` | — | every look | — |
-| 15 | `dismiss.eventCardReveal` | dismiss | log `page.eventCardReveal.closing` → tap `back` → settle 2000ms | 0 | `EventCardReveal` | — | every look | — |
-| 16 | `dismiss.eventGift` | dismiss | log `page.eventGift.closing` → tap `back` → settle 2000ms | 0 | `EventGift` | — | every look | — |
-| 17 | `dismiss.tallyCountUp` | dismiss | `markTallySkipTap()` → log `page.scorePage.skipping` → tap (540, 1000) → settle 1500ms | 0 | `ScorePage` | — | every look | `record.tallyRow` |
-| 18 | `dismiss.notEnoughCoins` | dismiss | log `box.noCoins` → tap `back` → settle 2000ms | 0 | `NotEnoughCoins` | — | every look | — |
-| 19 | `dismiss.resumeGame` | dismiss | log `page.gamePause.resuming` → tap `next` → sleep 500ms | 0 | `GamePause` | — | every look | — |
-| 20 | `nav.wait.transient` | navigate | wait the page out | 100 | `TsumLevelUp` | _any_ | every look | — |
-| 21 | `nav.move.tallyToGame` | navigate | `markTallyPlayPressed()` → tap `next` → settle 3000ms | 60 | `ScorePage` | GamePlaying | every look | `record.tallyRow` |
-| 22 | `nav.move.friendToGame` | navigate | tap `next` → settle 3000ms | 60 | `FriendPage` | GamePlaying | every look | — |
-| 23 | `nav.move.startToGame` | navigate | settle 1500ms → `checkGameItem()` → `openRound()` → tap `Button.outStart` → `awaitRoundStart()` | 60 | `StartPage` | GamePlaying | every look | `observe.leftStartup` |
-| 24 | `nav.move.toTsums` | navigate | tap `tsums` → settle 3000ms | 60 | `ProfilePage`, `FriendPage`, `StartPage` | TsumsPage | every look | — |
-| 25 | `nav.move.toMail` | navigate | tap `mail` → settle 3000ms | 60 | `FriendPage` | MailBox | every look | — |
-| 26 | `nav.move.toHome` | navigate | tap `home` → settle 3000ms | 60 | `SquarePage`, `FriendPage` | ProfilePage | every look | — |
-| 27 | `nav.move.toStore` | navigate | tap `store` → settle 3000ms | 60 | `TsumsPage` | TsumTsumStorePage | every look | — |
-| 28 | `nav.move.closePage` | navigate | tap `back` → tap (310, 1448) → settle 1500ms | 40 | `ClosePage` | _any_ | every look | — |
-| 29 | `nav.move.unknown` | navigate | `exitUnknownPage()` | 30 | `unknown` | _any_ | every look | `record.corpusUnknown` |
-| 30 | `nav.move.exit` | navigate | tap `back` → settle 1500ms | 0 | `StartPage`, `GamePlaying`, `MagicalTime`, `HighScore`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `TsumLevelUp`, `ScorePage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `BoxTenTimeRefused`, `TsumsPage`, `ProfilePage`, `SquarePage`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `FriendInfo`, `TodayMission`, `TodayMissions`, `TapOpenPage`, `TapOpenPageDeprecated`, `OutOfMedals`, `RubyResetDifficulty`, `ExtraUpdate`, `NetworkDisable`, `NetworkTimeout` | _any_ | every look | — |
-| 31 | `notify.trail` | notify | `gPages.trail()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ExtraUpdate`, `unknown` | — | on arrival | — |
-| 32 | `notify.forecast` | notify | `forecastEmit()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ExtraUpdate`, `unknown` | — | every look | — |
+| 1 | `observe.startupPhase` | observe | `enterStartupPhase()` | 0 | `RootDetection`, `TitleStart`, `TitleWait` | — | every look | — |
+| 2 | `observe.leftBoot` | observe | `endBoot()` | 0 | `FriendPage`, `SquarePage`, `ProfilePage`, `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage` | — | every look | — |
+| 3 | `observe.leftStartup` | observe | `leaveStartupPhase()` | 0 | `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage` | — | every look | — |
+| 4 | `record.feverTime` | record | `gFever.update()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ExtraUpdate`, `unknown` | — | every look | — |
+| 5 | `record.corpusUnknown` | record | `saveCorpusFrame()` | 0 | `unknown` | — | on arrival | — |
+| 6 | `record.baseCoins` | record | `sampleBaseCoins()` | 0 | `TsumLevelUp` | — | every look | — |
+| 7 | `record.myTsumLevelCap` | record | `noteLevelUpMyTsumCap()` | 0 | `TsumLevelUp` | — | every look | — |
+| 8 | `record.myTsum` | record | `identifyMyTsum()` | 0 | `StartPage` | — | on arrival | — |
+| 9 | `record.tallyRow` | record | `readTallyRow()` | 0 | `ScorePage` | — | every look | — |
+| 10 | `guard.rootDetection` | guard | `dismissSystemDialog()` | 0 | `RootDetection` | — | every look | — |
+| 11 | `dismiss.magicalTime` | dismiss | log `play.magicalTimeCancelled` → tap `back` → sleep 500ms | 0 | `MagicalTime` | — | every look | — |
+| 12 | `dismiss.highScore` | dismiss | log `page.highScore.closing` → tap `back` → settle 2000ms | 0 | `HighScore` | — | every look | — |
+| 13 | `dismiss.accountLevelUp` | dismiss | log `page.accountLevelUp.closing` → tap `back` → settle 2000ms | 0 | `AccountLevelUp` | — | every look | — |
+| 14 | `dismiss.rankUp` | dismiss | log `page.rankUp.closing` → tap `back` → settle 2000ms | 0 | `RankUp` | — | every look | — |
+| 15 | `dismiss.eventMain` | dismiss | log `page.eventMain.closing` → tap `back` → settle 2000ms | 0 | `EventMain` | — | every look | — |
+| 16 | `dismiss.eventCardReveal` | dismiss | log `page.eventCardReveal.closing` → tap `back` → settle 2000ms | 0 | `EventCardReveal` | — | every look | — |
+| 17 | `dismiss.eventGift` | dismiss | log `page.eventGift.closing` → tap `back` → settle 2000ms | 0 | `EventGift` | — | every look | — |
+| 18 | `dismiss.tallyCountUp` | dismiss | `markTallySkipTap()` → log `page.scorePage.skipping` → tap (540, 1000) → settle 1500ms | 0 | `ScorePage` | — | every look | `record.tallyRow` |
+| 19 | `dismiss.notEnoughCoins` | dismiss | log `box.noCoins` → tap `back` → settle 2000ms | 0 | `NotEnoughCoins` | — | every look | — |
+| 20 | `dismiss.resumeGame` | dismiss | log `page.gamePause.resuming` → tap `next` → sleep 500ms | 0 | `GamePause` | — | every look | — |
+| 21 | `nav.wait.transient` | navigate | wait the page out | 100 | `TsumLevelUp` | _any_ | every look | — |
+| 22 | `nav.move.tallyToGame` | navigate | `markTallyPlayPressed()` → tap `next` → settle 3000ms | 60 | `ScorePage` | GamePlaying | every look | `record.tallyRow` |
+| 23 | `nav.move.friendToGame` | navigate | tap `next` → settle 3000ms | 60 | `FriendPage` | GamePlaying | every look | — |
+| 24 | `nav.move.startToGame` | navigate | settle 1500ms → `checkGameItem()` → `openRound()` → tap `Button.outStart` → `awaitRoundStart()` | 60 | `StartPage` | GamePlaying | every look | `observe.leftStartup` |
+| 25 | `nav.move.toTsums` | navigate | tap `tsums` → settle 3000ms | 60 | `ProfilePage`, `FriendPage`, `StartPage` | TsumsPage | every look | — |
+| 26 | `nav.move.toMail` | navigate | tap `mail` → settle 3000ms | 60 | `FriendPage` | MailBox | every look | — |
+| 27 | `nav.move.toHome` | navigate | tap `home` → settle 3000ms | 60 | `SquarePage`, `FriendPage` | ProfilePage | every look | — |
+| 28 | `nav.move.toStore` | navigate | tap `store` → settle 3000ms | 60 | `TsumsPage` | TsumTsumStorePage | every look | — |
+| 29 | `nav.move.closePage` | navigate | tap `back` → tap (310, 1448) → settle 1500ms | 40 | `ClosePage` | _any_ | every look | — |
+| 30 | `nav.move.titleStart` | navigate | log `app.tapToStart` → tap `next` → settle 1500ms | 40 | `TitleStart` | _any_ | every look | — |
+| 31 | `nav.move.bootWait` | navigate | sleep 500ms | 40 | `TitleWait` | _any_ | every look | — |
+| 32 | `nav.move.bootUnknown` | navigate | `tapThroughBoot()` → sleep 500ms | 31 | `unknown` | _any_ | every look | `record.corpusUnknown` |
+| 33 | `nav.move.unknown` | navigate | `exitUnknownPage()` | 30 | `unknown` | _any_ | every look | `record.corpusUnknown` |
+| 34 | `nav.move.exit` | navigate | tap `back` → settle 1500ms | 0 | `StartPage`, `GamePlaying`, `MagicalTime`, `HighScore`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `TsumLevelUp`, `ScorePage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `BoxTenTimeRefused`, `TsumsPage`, `ProfilePage`, `SquarePage`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `FriendInfo`, `TodayMission`, `TodayMissions`, `TapOpenPage`, `TapOpenPageDeprecated`, `OutOfMedals`, `RubyResetDifficulty`, `ExtraUpdate`, `NetworkDisable`, `NetworkTimeout` | _any_ | every look | — |
+| 35 | `notify.trail` | notify | `gPages.trail()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ExtraUpdate`, `unknown` | — | on arrival | — |
+| 36 | `notify.forecast` | notify | `forecastEmit()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ExtraUpdate`, `unknown` | — | every look | — |
 
 ### What each one is for
 
-- **`observe.startupPhase`** — The root warning means the game is coming up (or has just been restarted), so the navigation loops go back to their slower startup timings.
+- **`observe.startupPhase`** — The root warning and the title screens mean the game is coming up (or has just been restarted), so the navigation loops go back to their slower startup timings, and the boot phase starts if no launch started it.
+- **`observe.leftBoot`** — The hub, or a screen only reachable from it, ends the boot phase and logs how long the game took to come up.
 - **`observe.leftStartup`** — Any of the screens that only exist once the game is fully up ends the startup phase, which is what stops the navigation loops from waiting five seconds a round for event windows that are no longer arriving.
 - **`record.feverTime`** — Keep the fever state up to date, and broadcast a fever starting or ending. A fever is a mode of the board rather than a screen of its own, so nothing else in this file can report it -- see src/fever.ts.
 - **`record.corpusUnknown`** — Keep an unrecognised screen before anything taps it. By definition nothing in the table matched, so this is the single best source of corpus frames -- and the escape below is about to change what is on display.
@@ -131,6 +136,9 @@ going to.
 - **`nav.move.toHome`** — The left rail is on every tab of the hub, so the Home tab is one tap from any of them. The heart sweep goes through here between its two halves: reopening the ranking is what puts our own row back in view.
 - **`nav.move.toStore`** — The collection carries the Tsum Tsum Store button, so take it rather than backing out towards it. The Box Buying sweep is what asks for the store, and `NavPlans.TsumTsumStorePage` is what routes it via the collection.
 - **`nav.move.closePage`** — The standard close button at centre bottom, plus the second tap that clears the panel some of these screens leave behind.
+- **`nav.move.titleStart`** — Press TAP TO START on the title screen. Recognised by its white frame and the pill, never by the art, which changes every month and differs between builds.
+- **`nav.move.bootWait`** — Wait on a startup screen with nothing to press -- the loading title, the logos. A tap here buys nothing, and the loading text is waiting on the network.
+- **`nav.move.bootUnknown`** — While the game boots, an unrecognised screen is a startup one -- the splash, the opening video -- so tap TAP TO START's spot, which skips the video, instead of escaping blind or asking the user. A native dialog is handled first. Past the boot budget this declines and nav.move.unknown takes over.
 - **`nav.move.unknown`** — Escape from a screen nothing fingerprinted. With a director add-on, ask the user to direct the device first (`directUnknownPage`); Continue or a stop ends it there. Otherwise, blind: look for a native dialog first, then work through the cancel and close buttons the game reuses.
 - **`nav.move.exit`** — Leave a page by the way it was entered -- its `back` -- where the page declares that as its way out (`PageRoutes`). Last in the band, so anything that knows better has already had its turn. A page with no declared exit is not tapped: `navigate` reports it and the stall guard takes it from there.
 - **`notify.trail`** — Log the last few screens with how long each was up, and who claimed this one. Debug only -- this is the history stack in one line, and it is what a report of "it got stuck" is usually missing.
@@ -143,6 +151,7 @@ flowchart LR
   record_tallyRow["record.tallyRow"] --> dismiss_tallyCountUp["dismiss.tallyCountUp"]
   record_tallyRow["record.tallyRow"] --> nav_move_tallyToGame["nav.move.tallyToGame"]
   observe_leftStartup["observe.leftStartup"] --> nav_move_startToGame["nav.move.startToGame"]
+  record_corpusUnknown["record.corpusUnknown"] --> nav_move_bootUnknown["nav.move.bootUnknown"]
   record_corpusUnknown["record.corpusUnknown"] --> nav_move_unknown["nav.move.unknown"]
 ```
 
@@ -203,6 +212,8 @@ roles put it in and in no other.
 | `HeartSent` | permanent | `heartSweep` | — | — | — | The "Heart sent!" toast. It carries no button, but it does not clear itself either -- it waits for a tap anywhere, so it is permanent by the definition that matters here: left alone it is still there, and the only way past it is a tap. |
 | `TodayMission` | permanent | — | — | — | — |  |
 | `TodayMissions` | permanent | — | — | — | — |  |
+| `TitleStart` | permanent | `boot` | — | — | — | The title screen with TAP TO START; waits for the tap. |
+| `TitleWait` | permanent | `boot` | — | — | — | The loading title and the logo screens. They do clear themselves, but not on a window anything can wait out -- the loading text waits on the network -- so nav.move.bootWait paces the looks instead. |
 | `RootDetection` | permanent | `interrupt` | — | — | — | An Android AlertDialog rather than a game screen, and it never goes away by itself -- see dialogs.ts for why it is dismissed structurally instead of by the recorded coordinates. |
 | `NetworkDisable` | permanent | `interrupt` | — | — | — | OK button. |
 | `NetworkTimeout` | permanent | `interrupt` | — | — | — | OK button. |
@@ -230,7 +241,7 @@ harvested off a device and accumulated in `docs/transitions.json`. Two
 sources feed it: a recorded walkthrough, which carries the taps, and the
 page-change frames `PageRouter.saveHistoryShot` leaves behind, which do not.
 
-`4` distinct transition(s) over `4` of `45` pages, from `1` harvest(s), last 2026-08-25.
+`4` distinct transition(s) over `4` of `47` pages, from `1` harvest(s), last 2026-08-25.
 
 ```mermaid
 flowchart LR
@@ -270,7 +281,7 @@ own context passes in.
 ### Not yet observed
 
 Pages the table can recognise that no harvest has caught at either end of a
-transition. Absence of evidence: `GamePause`, `ScorePage`, `HighScore`, `AccountLevelUp`, `RankUp`, `MagicalTime`, `EventMain`, `EventCardReveal`, `EventGift`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ExtraUpdate`.
+transition. Absence of evidence: `GamePause`, `ScorePage`, `HighScore`, `AccountLevelUp`, `RankUp`, `MagicalTime`, `EventMain`, `EventCardReveal`, `EventGift`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ExtraUpdate`.
 
 ## The queue, page by page
 
@@ -282,25 +293,27 @@ Read a row as "this runs, unless something above it acted first".
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `observe.leftStartup` | observe | every look |
-| 2 | `record.feverTime` | record | every look |
-| 3 | `nav.move.exit` | navigate | every look, any goal |
-| 4 | `notify.trail` | notify | on arrival |
-| 5 | `notify.forecast` | notify | every look |
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `observe.leftStartup` | observe | every look |
+| 3 | `record.feverTime` | record | every look |
+| 4 | `nav.move.exit` | navigate | every look, any goal |
+| 5 | `notify.trail` | notify | on arrival |
+| 6 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 4 of these 5 run: the rest fire only when the page changes.
+On a repeat look at the same page, 5 of these 6 run: the rest fire only when the page changes.
 
 #### `GamePause` <sub>permanent</sub>
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `observe.leftStartup` | observe | every look |
-| 2 | `record.feverTime` | record | every look |
-| 3 | `dismiss.resumeGame` | dismiss | every look |
-| 4 | `notify.trail` | notify | on arrival |
-| 5 | `notify.forecast` | notify | every look |
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `observe.leftStartup` | observe | every look |
+| 3 | `record.feverTime` | record | every look |
+| 4 | `dismiss.resumeGame` | dismiss | every look |
+| 5 | `notify.trail` | notify | on arrival |
+| 6 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 4 of these 5 run: the rest fire only when the page changes.
+On a repeat look at the same page, 5 of these 6 run: the rest fire only when the page changes.
 
 #### `ScorePage` <sub>permanent</sub>
 
@@ -420,30 +433,32 @@ On a repeat look at the same page, 4 of these 5 run: the rest fire only when the
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `observe.leftStartup` | observe | every look |
-| 2 | `record.feverTime` | record | every look |
-| 3 | `record.myTsum` | record | on arrival |
-| 4 | `nav.move.startToGame` | navigate | every look, goal GamePlaying |
-| 5 | `nav.move.toTsums` | navigate | every look, goal TsumsPage |
-| 6 | `nav.move.exit` | navigate | every look, any goal |
-| 7 | `notify.trail` | notify | on arrival |
-| 8 | `notify.forecast` | notify | every look |
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `observe.leftStartup` | observe | every look |
+| 3 | `record.feverTime` | record | every look |
+| 4 | `record.myTsum` | record | on arrival |
+| 5 | `nav.move.startToGame` | navigate | every look, goal GamePlaying |
+| 6 | `nav.move.toTsums` | navigate | every look, goal TsumsPage |
+| 7 | `nav.move.exit` | navigate | every look, any goal |
+| 8 | `notify.trail` | notify | on arrival |
+| 9 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 6 of these 8 run: the rest fire only when the page changes.
+On a repeat look at the same page, 7 of these 9 run: the rest fire only when the page changes.
 
 #### `FriendPage` <sub>permanent</sub>
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `record.feverTime` | record | every look |
-| 2 | `nav.move.friendToGame` | navigate | every look, goal GamePlaying |
-| 3 | `nav.move.toTsums` | navigate | every look, goal TsumsPage |
-| 4 | `nav.move.toMail` | navigate | every look, goal MailBox |
-| 5 | `nav.move.toHome` | navigate | every look, goal ProfilePage |
-| 6 | `notify.trail` | notify | on arrival |
-| 7 | `notify.forecast` | notify | every look |
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `record.feverTime` | record | every look |
+| 3 | `nav.move.friendToGame` | navigate | every look, goal GamePlaying |
+| 4 | `nav.move.toTsums` | navigate | every look, goal TsumsPage |
+| 5 | `nav.move.toMail` | navigate | every look, goal MailBox |
+| 6 | `nav.move.toHome` | navigate | every look, goal ProfilePage |
+| 7 | `notify.trail` | notify | on arrival |
+| 8 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 6 of these 7 run: the rest fire only when the page changes.
+On a repeat look at the same page, 7 of these 8 run: the rest fire only when the page changes.
 
 #### `FriendInfo` <sub>permanent</sub>
 
@@ -460,25 +475,27 @@ On a repeat look at the same page, 3 of these 4 run: the rest fire only when the
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `record.feverTime` | record | every look |
-| 2 | `nav.move.toTsums` | navigate | every look, goal TsumsPage |
-| 3 | `nav.move.exit` | navigate | every look, any goal |
-| 4 | `notify.trail` | notify | on arrival |
-| 5 | `notify.forecast` | notify | every look |
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `record.feverTime` | record | every look |
+| 3 | `nav.move.toTsums` | navigate | every look, goal TsumsPage |
+| 4 | `nav.move.exit` | navigate | every look, any goal |
+| 5 | `notify.trail` | notify | on arrival |
+| 6 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 4 of these 5 run: the rest fire only when the page changes.
+On a repeat look at the same page, 5 of these 6 run: the rest fire only when the page changes.
 
 #### `SquarePage` <sub>permanent</sub>
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `record.feverTime` | record | every look |
-| 2 | `nav.move.toHome` | navigate | every look, goal ProfilePage |
-| 3 | `nav.move.exit` | navigate | every look, any goal |
-| 4 | `notify.trail` | notify | on arrival |
-| 5 | `notify.forecast` | notify | every look |
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `record.feverTime` | record | every look |
+| 3 | `nav.move.toHome` | navigate | every look, goal ProfilePage |
+| 4 | `nav.move.exit` | navigate | every look, any goal |
+| 5 | `notify.trail` | notify | on arrival |
+| 6 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 4 of these 5 run: the rest fire only when the page changes.
+On a repeat look at the same page, 5 of these 6 run: the rest fire only when the page changes.
 
 #### `ClosePage` <sub>permanent</sub>
 
@@ -519,14 +536,15 @@ On a repeat look at the same page, 3 of these 4 run: the rest fire only when the
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `observe.leftStartup` | observe | every look |
-| 2 | `record.feverTime` | record | every look |
-| 3 | `nav.move.toStore` | navigate | every look, goal TsumTsumStorePage |
-| 4 | `nav.move.exit` | navigate | every look, any goal |
-| 5 | `notify.trail` | notify | on arrival |
-| 6 | `notify.forecast` | notify | every look |
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `observe.leftStartup` | observe | every look |
+| 3 | `record.feverTime` | record | every look |
+| 4 | `nav.move.toStore` | navigate | every look, goal TsumTsumStorePage |
+| 5 | `nav.move.exit` | navigate | every look, any goal |
+| 6 | `notify.trail` | notify | on arrival |
+| 7 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 5 of these 6 run: the rest fire only when the page changes.
+On a repeat look at the same page, 6 of these 7 run: the rest fire only when the page changes.
 
 #### `TsumSortOrder` <sub>permanent</sub>
 
@@ -565,13 +583,14 @@ On a repeat look at the same page, 3 of these 4 run: the rest fire only when the
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `observe.leftStartup` | observe | every look |
-| 2 | `record.feverTime` | record | every look |
-| 3 | `nav.move.exit` | navigate | every look, any goal |
-| 4 | `notify.trail` | notify | on arrival |
-| 5 | `notify.forecast` | notify | every look |
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `observe.leftStartup` | observe | every look |
+| 3 | `record.feverTime` | record | every look |
+| 4 | `nav.move.exit` | navigate | every look, any goal |
+| 5 | `notify.trail` | notify | on arrival |
+| 6 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 4 of these 5 run: the rest fire only when the page changes.
+On a repeat look at the same page, 5 of these 6 run: the rest fire only when the page changes.
 
 #### `ConfirmPurchasePage` <sub>permanent</sub>
 
@@ -763,6 +782,30 @@ On a repeat look at the same page, 3 of these 4 run: the rest fire only when the
 
 On a repeat look at the same page, 3 of these 4 run: the rest fire only when the page changes.
 
+#### `TitleStart` <sub>permanent</sub>
+
+| # | subscription | band | when |
+|---|---|---|---|
+| 1 | `observe.startupPhase` | observe | every look |
+| 2 | `record.feverTime` | record | every look |
+| 3 | `nav.move.titleStart` | navigate | every look, any goal |
+| 4 | `notify.trail` | notify | on arrival |
+| 5 | `notify.forecast` | notify | every look |
+
+On a repeat look at the same page, 4 of these 5 run: the rest fire only when the page changes.
+
+#### `TitleWait` <sub>permanent</sub>
+
+| # | subscription | band | when |
+|---|---|---|---|
+| 1 | `observe.startupPhase` | observe | every look |
+| 2 | `record.feverTime` | record | every look |
+| 3 | `nav.move.bootWait` | navigate | every look, any goal |
+| 4 | `notify.trail` | notify | on arrival |
+| 5 | `notify.forecast` | notify | every look |
+
+On a repeat look at the same page, 4 of these 5 run: the rest fire only when the page changes.
+
 ### Interruptions
 
 #### `RootDetection` <sub>permanent</sub>
@@ -816,11 +859,12 @@ On a repeat look at the same page, 3 of these 4 run: the rest fire only when the
 |---|---|---|---|
 | 1 | `record.feverTime` | record | every look |
 | 2 | `record.corpusUnknown` | record | on arrival |
-| 3 | `nav.move.unknown` | navigate | every look, any goal |
-| 4 | `notify.trail` | notify | on arrival |
-| 5 | `notify.forecast` | notify | every look |
+| 3 | `nav.move.bootUnknown` | navigate | every look, any goal |
+| 4 | `nav.move.unknown` | navigate | every look, any goal |
+| 5 | `notify.trail` | notify | on arrival |
+| 6 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 3 of these 5 run: the rest fire only when the page changes.
+On a repeat look at the same page, 4 of these 6 run: the rest fire only when the page changes.
 
 ## Findings
 

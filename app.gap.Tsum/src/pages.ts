@@ -77,6 +77,8 @@ const enum PageRole {
   PreTally = 'preTally',
   /** Only exists once the game is fully up, so seeing it ends the startup phase. */
   GameUp = 'gameUp',
+  /** Only shown while the game is starting -- the title and logo screens (`Tsum#inBoot`). */
+  Boot = 'boot',
   /** A screen the heart sweep branches on. */
   HeartSweep = 'heartSweep',
   /**
@@ -285,6 +287,20 @@ function pagesWithRole(role: PageRole): PageName[] {
       const roles = PageProfiles[page].roles;
       return roles !== undefined && roles.indexOf(role) !== -1;
     });
+  });
+}
+
+/**
+ * The screens a boot ends on: the hub's tabs, and the `GameUp` pages that are
+ * only reachable from it. A short list rather than "anything in game", because
+ * the startup screens pass entries they have nothing to do with: the splash
+ * and the video's letterbox are black, which `EventCardReveal` accepts, and the
+ * video's grass passes `ClosePage` and, now and then, `TsumsPage`.
+ */
+function bootEndPages(): PageName[] {
+  return pageSet('bootEnd', function() {
+    return [PageName.FriendPage, PageName.SquarePage, PageName.ProfilePage]
+      .concat(pagesWithRole(PageRole.GameUp));
   });
 }
 
@@ -1453,12 +1469,14 @@ class PageRouter {
       if (!tsum.isAppOn()) {
         tsum.startApp();
       }
-      if (tsum.isStartupPhase && plan.startupWaitMs > 0) {
+      if (tsum.isStartupPhase && plan.startupWaitMs > 0 && !tsum.inBoot()) {
         // A budget, not a rest: a new event window still loading is moving,
         // and reading it mid-fade as whatever half-drawn thing it looks like is
         // what this guards against. Once it holds still the look below can be
         // trusted, however long that took -- the flat five seconds used to sit
         // on top of `startApp`'s own wait, every pass.
+        // Not while booting: those windows land on the hub, after the title,
+        // and the opening video never holds still, so it paid the full budget.
         tsum.settleScreen(plan.startupWaitMs);
       }
       // The one kind of look made with a goal: this is what offers the navigate

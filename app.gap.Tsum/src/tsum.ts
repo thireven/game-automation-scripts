@@ -50,6 +50,14 @@ class Tsum {
    */
   yieldAsked: boolean;
   isStartupPhase: boolean;
+  /**
+   * The boot phase: from a launch to the hub (appLifecycle.ts).
+   * Narrower than `isStartupPhase`, which lasts until the friend page. 0 when
+   * not booting.
+   */
+  bootStartedAt: number;
+  /** When the boot phase gives up and unknown screens are handled as usual again. */
+  bootUntil: number;
   runTimes: number;
   /**
    * The short name of the tsum currently selected in game, or '' when nothing
@@ -344,6 +352,8 @@ class Tsum {
     this.squareFrame = 0;
     this.yieldAsked = false;
     this.isStartupPhase = true;
+    this.bootStartedAt = 0;
+    this.bootUntil = 0;
     this.runTimes = 0;
     this.myTsum = '';
     this.myTsumName = '';

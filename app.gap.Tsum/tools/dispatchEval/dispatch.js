@@ -31,6 +31,9 @@ function listRows(ctx) {
     entries.push({ key, name: def.name, def });
   }
   entries.push({ key: '', name: unknownName(ctx), def: null });
+  // The same unknown screen while the game boots (`Tsum#inBoot`), which
+  // `nav.move.bootUnknown` takes instead of the blind escape.
+  entries.push({ key: '', name: unknownName(ctx), def: null, boot: true });
 
   const rows = [];
   for (const entry of entries) {
@@ -41,7 +44,8 @@ function listRows(ctx) {
     for (const goal of goals) {
       for (const changed of [true, false]) {
         for (const age of ages) {
-          rows.push({ key: entry.key, name: entry.name, def: entry.def, goal, changed, age });
+          rows.push({ key: entry.key, name: entry.name, def: entry.def, goal, changed, age,
+            boot: !!entry.boot });
         }
       }
     }
@@ -50,7 +54,8 @@ function listRows(ctx) {
 }
 
 function rowId(row) {
-  return [row.key || 'unknown', row.goal || '-', row.changed ? 'changed' : 'repeat', row.age].join('|');
+  return [(row.key || 'unknown') + (row.boot ? '@boot' : ''), row.goal || '-',
+    row.changed ? 'changed' : 'repeat', row.age].join('|');
 }
 
 /** One runtime, reused across rows; the router is reset between them. */
@@ -76,6 +81,8 @@ function runRow(env, row) {
   ctx.gFever.reset();
   ctx.gForecastLast = '';
   fake.isStartupPhase = false;
+  fake.bootStartedAt = row.boot ? clock.now : 0;
+  fake.bootUntil = row.boot ? clock.now + 60 * 60 * 1000 : 0;
 
   gPages.page = row.name;
   gPages.key = row.key;

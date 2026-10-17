@@ -205,6 +205,7 @@ const WorkflowTsumNodes: GapWorkflowNodeDef[] = [
       run.awaitAppOff();
       run.invalidateAppOn();
       run.isStartupPhase = true;
+      run.beginBoot();
       startTsumTsumApp(build);
       if (!run.awaitAppUp()) {
         return { fail: 'app-not-up' };

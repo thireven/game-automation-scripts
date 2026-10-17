@@ -31,7 +31,8 @@ One row per **`Page` entry** (keys, not names: variants differ in where `back`
 is) times **navigate goal** (`-` for none, then each `NavPlans` destination)
 times **look** (`changed`: the page just turned over; `repeat`: another look at
 the same page) times **age** (transient pages only: inside the window, and just
-after it). The `Unknown` page is one more entry with no `Page` def.
+after it). The `Unknown` page is one more entry with no `Page` def, and
+`unknown@boot` is the same screen seen while the game boots (`Tsum#inBoot`).
 
 Each row sets that state on the real router, builds the event the router would
 build, and runs the real queue over a `Tsum` whose leaves are replaced

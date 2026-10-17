@@ -45,6 +45,7 @@ namespace Log {
 
   /** The game app process. */
   export const enum App {
+    BootDone         = 'app.bootDone',
     Build            = 'app.build',
     ChosenBuildMissing = 'app.chosenBuildMissing',
     Off              = 'app.off',
@@ -55,6 +56,7 @@ namespace Log {
     RestartSkipped   = 'app.restartSkipped',
     Start            = 'app.start',
     Started          = 'app.started',
+    TapToStart       = 'app.tapToStart',
     Up               = 'app.up',
     UpTimeout        = 'app.upTimeout',
   }

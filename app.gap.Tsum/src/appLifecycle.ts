@@ -231,6 +231,7 @@ Tsum.prototype.startApp = function() {
   }
   logInfo(Log.App.Start);
   this.invalidateAppOn();
+  this.beginBoot();
   startTsumTsumApp(this.gameBuild());
   this.awaitAppUp();
   logInfo(Log.App.Started, 'TsumTsum app starting');
@@ -244,8 +245,8 @@ Tsum.prototype.startApp = function() {
  * against and paid in full on every faster one. Focus is asked first because a
  * splash fingerprints as nothing, and `isAppOn`'s negative answer is never
  * cached; then a look, because focus arrives well before the first screen does.
- * The screen it finds is whatever the game opens on -- the tap-to-open page, an
- * event window, the root warning -- and leaving it is the navigation loop's job.
+ * The screen it finds is whatever the game opens on -- the root warning, a logo
+ * or the title screen -- and leaving it is the navigation loop's job.
  *
  * False means the budget ran out, or the run stopped; the caller carries on
  * exactly as it did after the flat rest.
@@ -314,6 +315,54 @@ Tsum.prototype.forceRestartApp = function() {
   this.isStartupPhase = true;
   this.startApp();
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// The boot phase
+//
+// From a launch to the hub the game shows a fixed run of
+// screens: splash, root warning, logos, the opening video, the title and its
+// loading text. Each wants one of three things -- wait, TAP TO START, or
+// PERMIT -- and the title art changes every month, so they are recognised by
+// layout where they can be (`TitleStart`, `TitleWait`) and by this phase where
+// they cannot: an unknown screen while booting gets one TAP TO START tap
+// (`nav.move.bootUnknown`) instead of the blind escape, the stall guard leaves
+// it alone, and the startup settle is skipped. Past the budget all of that
+// lapses and unknown screens are handled as usual.
+// ---------------------------------------------------------------------------
+
+/** Launch to the hub is ~25s; this covers a slow network on "Retrieving data". */
+const BootBudgetMs = 90000;
+
+Tsum.prototype.beginBoot = function() {
+  this.bootStartedAt = Date.now();
+  this.bootUntil = this.bootStartedAt + BootBudgetMs;
+}
+
+Tsum.prototype.inBoot = function() {
+  return Date.now() < this.bootUntil;
+}
+
+Tsum.prototype.endBoot = function(page) {
+  if (this.bootStartedAt === 0) {
+    return;
+  }
+  logInfo(Log.App.BootDone, 'The game is up', {
+    ms: Date.now() - this.bootStartedAt,
+    page: page,
+    overBudget: !this.inBoot(),
+  });
+  this.bootStartedAt = 0;
+  this.bootUntil = 0;
+}
+
+Tsum.prototype.tapThroughBoot = function() {
+  // A root-warning variant the table misses is still a native dialog, and a
+  // tap on its dimmed backdrop can cancel it -- which is REFUSE, and quits.
+  if (this.dismissSystemDialog()) {
+    return;
+  }
+  this.tap(Button.titleStart);
 }
 
 Tsum.prototype.taskTsumAppRestart = function () {

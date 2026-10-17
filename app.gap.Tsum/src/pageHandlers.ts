@@ -81,13 +81,37 @@ const ShortSettleMs = 1500;
 gPages.subscribe({
   id: 'observe.startupPhase',
   category: PageCategory.Observe,
-  what: 'The root warning means the game is coming up (or has just been restarted), '
-      + 'so the navigation loops go back to their slower startup timings.',
-  pages: [PageName.RootDetection],
+  what: 'The root warning and the title screens mean the game is coming up (or has '
+      + 'just been restarted), so the navigation loops go back to their slower startup '
+      + 'timings, and the boot phase starts if no launch started it.',
+  pages: [PageName.RootDetection].concat(pagesWithRole(PageRole.Boot)),
   every: true,
   steps: [
     { do: 'call', name: 'enterStartupPhase', run: function() {
       this.isStartupPhase = true;
+      // Only when no phase is running or ran out: one that ran out stays out,
+      // so a title screen that never moves on is left to the stall guard.
+      if (this.bootStartedAt === 0) {
+        this.beginBoot();
+      }
+    } }
+  ]
+});
+
+gPages.subscribe({
+  id: 'observe.leftBoot',
+  category: PageCategory.Observe,
+  what: 'The hub, or a screen only reachable from it, ends the boot phase and logs how '
+      + 'long the game took to come up.',
+  pages: bootEndPages(),
+  every: true,
+  steps: [
+    { do: 'call', name: 'endBoot', run: function(event) {
+      // On the second look in a row: a single moving video frame can pass
+      // `TsumsPage`, but not twice.
+      if (!event.changed) {
+        this.endBoot(event.page);
+      }
     } }
   ]
 });
@@ -749,6 +773,56 @@ gPages.subscribe({
     { do: 'tap', anchor: PageAnchor.Back },
     { do: 'tapAt', at: {x: 310, y: 1588 - 140} },
     { do: 'settle', ms: ShortSettleMs }
+  ]
+});
+
+gPages.subscribe({
+  id: 'nav.move.titleStart',
+  category: PageCategory.Navigate,
+  order: 40,
+  what: 'Press TAP TO START on the title screen. Recognised by its white frame and the '
+      + 'pill, never by the art, which changes every month and differs between builds.',
+  pages: [PageName.TitleStart],
+  every: true,
+  steps: [
+    { do: 'log', event: Log.App.TapToStart, message: 'Title screen, tapping TAP TO START' },
+    { do: 'tap', anchor: PageAnchor.Next },
+    { do: 'settle', ms: ShortSettleMs }
+  ]
+});
+
+gPages.subscribe({
+  id: 'nav.move.bootWait',
+  category: PageCategory.Navigate,
+  order: 40,
+  what: 'Wait on a startup screen with nothing to press -- the loading title, the logos. '
+      + 'A tap here buys nothing, and the loading text is waiting on the network.',
+  pages: [PageName.TitleWait],
+  every: true,
+  // Blind: the loading text animates its dots, so there is no still frame to
+  // wait for. Only paces the looks; the next one catches TAP TO START.
+  steps: [{ do: 'sleep', ms: 500 }]
+});
+
+gPages.subscribe({
+  id: 'nav.move.bootUnknown',
+  category: PageCategory.Navigate,
+  order: 31,
+  what: 'While the game boots, an unrecognised screen is a startup one -- the splash, '
+      + 'the opening video -- so tap TAP TO START\'s spot, which skips the video, '
+      + 'instead of escaping blind or asking the user. A native dialog is handled first. '
+      + 'Past the boot budget this declines and nav.move.unknown takes over.',
+  pages: [PageName.Unknown],
+  after: ['record.corpusUnknown'],
+  every: true,
+  acts: function(event) {
+    return event.ts.inBoot();
+  },
+  steps: [
+    { do: 'call', name: 'tapThroughBoot', run: function() {
+      this.tapThroughBoot();
+    } },
+    { do: 'sleep', ms: 500 }
   ]
 });
 

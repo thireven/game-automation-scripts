@@ -53,9 +53,15 @@ release note; they fold back in here when she ships.
 *Settings*
 - Game Region setting: choose whether the International or Japanese Tsum Tsum is launched when both are installed.
 
+**Fixes**
+- Game startup taps straight through the opening video and TAP TO START to the home screen, whatever the month's title art.
+
 ### Added
 
 - **Game Region**, merged up from 5.0b10 (details under [5.0b10]).
+- **Startup screens** (`TitleStart`, `TitleWait`, `PageRole.Boot`): fingerprinted off the white frame and the TAP TO START pill's bands, never the seasonal art; one entry each covers INTL and JP. Before this, only the root warning was recognised, and TAP TO START was hit only by the blind escape or the one-probe `ClosePage`.
+- **Boot phase** (`Tsum#inBoot`, `src/appLifecycle.ts`): from a launch, or a startup screen seen, to the hub, 90s at most. During it an unknown screen gets a native-dialog check and then one tap on TAP TO START's spot (`nav.move.bootUnknown`), which skips the video, instead of the blind escape or a direction request. The 5s startup settle is skipped, and the stall guard leaves startup screens alone. `app.bootDone` logs launch-to-hub time.
+- Dispatch eval: `unknown@boot` rows pin the boot path; the fake resets the boot fields per row.
 
 ## [6.0a9]
 

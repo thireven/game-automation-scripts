@@ -436,7 +436,13 @@ var Button = {
   skillCptLy2: {x: 310, y: 1050},
   skillCptLy3: {x: 540, y: 419},
   /** The collection's right-hand sort dropdown; it opens `TsumSortOrder`. */
-  outTsumSortOrder: {x: 906, y: 907}
+  outTsumSortOrder: {x: 906, y: 907},
+  /**
+   * TAP TO START on the title screen. Also the blind tap while the game boots:
+   * it skips the opening video, and sits below the art, clear of Help and the
+   * language button at the top.
+   */
+  titleStart: {x: 540, y: 1590}
 };
 
 // ---------------------------------------------------------------------------
@@ -586,6 +592,10 @@ const enum PageName {
   // Missions
   TodayMission = 'TodayMission',
   TodayMissions = 'TodayMissions',
+  // Startup: the title screen with TAP TO START, and the white screens with
+  // nothing to press (the loading title, the LINE GAME and PlayArt logos).
+  TitleStart = 'TitleStart',
+  TitleWait = 'TitleWait',
   // Interruptions
   RootDetection = 'RootDetection',
   NetworkDisable = 'NetworkDisable',
@@ -1617,6 +1627,43 @@ var Page = {
     back: {x: 986, y: 273},
     next: {x: 986, y: 273}
   },
+  // The startup screens: the title screen and the white logo screens before it.
+  // The title art changes every month and differs between builds, so these probe
+  // only what stays put: the white frame and the TAP TO START pill's bands above
+  // and below its lettering. The loading text ("Retrieving game data...") sits
+  // in the pill's row (y 1570-1620), so nothing probes there. Measured on the
+  // October 2026 INTL and JP startup recordings.
+  TitleStart: {
+    name: PageName.TitleStart,
+    colors: [
+      {x:   80, y:  300, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, top left
+      {x: 1000, y:  300, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, top right
+      {x:   80, y: 1850, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom left
+      {x: 1000, y: 1850, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom right
+      {x:  440, y: 1540, r: 245, g: 184, b:   8, match: true, threshold: 60}, // pill, above the lettering
+      {x:  660, y: 1540, r: 245, g: 184, b:   8, match: true, threshold: 60}, // pill, above the lettering
+      {x:  560, y: 1630, r: 234, g: 152, b:   3, match: true, threshold: 60}  // pill, below the lettering
+    ],
+    back: Button.titleStart,
+    next: Button.titleStart
+  },
+  // The same frame with no pill: the loading title, and the LINE GAME / NHN
+  // PlayArt logo screens, which are white at every one of these points too.
+  TitleWait: {
+    name: PageName.TitleWait,
+    colors: [
+      {x:   80, y:  300, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, top left
+      {x: 1000, y:  300, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, top right
+      {x:   80, y: 1850, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom left
+      {x: 1000, y: 1850, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom right
+      {x:  440, y: 1540, r: 254, g: 251, b: 253, match: true, threshold: 30}, // where the pill would be
+      {x:  660, y: 1540, r: 254, g: 251, b: 253, match: true, threshold: 30}, // where the pill would be
+      {x:  560, y: 1630, r: 254, g: 251, b: 253, match: true, threshold: 30}  // where the pill would be
+    ],
+    // Nothing to press and nothing taps it; the boot tap's harmless spot.
+    back: Button.titleStart,
+    next: Button.titleStart
+  },
   // Root-detection warning (a native Android AlertDialog) as it looks on a
   // handful of emulators. All variants share the page name so the navigation
   // loops handle them the same way: hand the screen to dismissSystemDialog(),
@@ -2480,6 +2527,20 @@ var PageProfiles: PageProfileMap = {
   TodayMission: {kind: PageKind.Permanent},
   TodayMissions: {kind: PageKind.Permanent},
 
+  // --- Startup ---
+  TitleStart: {
+    kind: PageKind.Permanent,
+    roles: [PageRole.Boot],
+    note: 'The title screen with TAP TO START; waits for the tap.'
+  },
+  TitleWait: {
+    kind: PageKind.Permanent,
+    roles: [PageRole.Boot],
+    note: 'The loading title and the logo screens. They do clear themselves, but not '
+        + 'on a window anything can wait out -- the loading text waits on the '
+        + 'network -- so nav.move.bootWait paces the looks instead.'
+  },
+
   // --- Interruptions ---
   RootDetection: {
     kind: PageKind.Permanent,
@@ -3306,6 +3367,10 @@ var AnchorRoutes: { [anchor: string]: PageRoute } = {
  * indistinguishable from a measured one at exactly the moment it mattered.
  */
 var PageRoutes: PageRouteMap = {
+  // nav.move.titleStart: TAP TO START, onto the loading title.
+  TitleStart: [
+    { via: PageAnchor.Next, to: PageName.TitleWait, source: RouteSource.Handler }
+  ],
   // nav.move.friendToGame: Play, from the hub.
   FriendPage: [
     { via: PageAnchor.Next, to: PageName.StartPage, source: RouteSource.Handler }
