@@ -45,6 +45,18 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.2]
+
+### Summary
+
+**Fixes**
+- Page history no longer saves screenshots unless "Debug game" is on.
+
+### Changed
+
+- `PageRouter.keepShots` follows `ts.debug` again; it was on for every run so a
+  report could copy trail frames. Reports now carry frames only with debug on.
+
 ## [5.1]
 
 ### Summary
