@@ -478,6 +478,7 @@ function workflowSay(event: string, data: { [key: string]: unknown }): void {
       } else {
         logWarn(Log.Workflow.End, 'Workflow ended early', data);
         banner(data.reason === 'tsum-list-missing' ? 'Run Export Tsum List first'
+          : data.reason === 'tsum-list-stale' ? 'Run Export Tsum List again'
           : 'Workflow stopped: ' + data.reason, 6000);
       }
       break;

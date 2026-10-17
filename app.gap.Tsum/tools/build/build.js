@@ -232,6 +232,12 @@ function signDist(log) {
   const manifest = signScript({ dir: local('dist'), script: id[1], version: pkgVersion,
     keyPem: fs.readFileSync(keyFile, 'utf8') });
   log(`[build] dist/${SIGNATURE_FILE}: ${id[1]} ${pkgVersion}, ${Object.keys(manifest.files).length} files\n`);
+  // The dev key is only trusted by a GAP started with --cloud-script-key (the Devkit
+  // does); an app on its built-in key logs "signature does not verify".
+  if (!process.env.GAP_SCRIPT_KEY) {
+    log('[build] signed with the DEV script key: only a GAP started with --cloud-script-key trusts it.'
+      + ' Set GAP_SCRIPT_KEY to the release key to test with the built-in key.\n');
+  }
 }
 
 /**

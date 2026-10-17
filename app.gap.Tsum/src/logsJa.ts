@@ -138,7 +138,10 @@ var LogsJa: LogCataloguePartial = {
   [Log.Box.Retrying]: '購入に失敗。ショップ画面を開き直し',
   [Log.Box.RevealsStuck]: 'BOXの開封演出が止まった',
   [Log.Box.PurchaseLimit]: '購入上限に到達',
-  [Log.Box.End]: 'BOX購入完了'
+  [Log.Box.End]: 'BOX購入完了',
+  [Log.Box.OpenCapsuleNowQueued]: '次のループで表示中のガチャを売り切れまで購入',
+  [Log.Box.OpenCapsuleStart]: '表示中のガチャを売り切れまで購入',
+  [Log.Box.OpenCapsuleWrongBox]: '表示中のBOXがガチャではないため停止'
 }
 
 logRegisterStrings(Locale.Japanese, LogsJa);

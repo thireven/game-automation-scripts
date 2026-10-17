@@ -11,7 +11,7 @@
 // what it buys is one definition to jump to, find references on and rename.
 //
 // The host defines none of these names and reads none of the payloads -- see
-// `../game-automation-app/docs/EVENTS.md`. What each one carries is EVENTS.md,
+// `../general-automation-app/docs/EVENTS.md`. What each one carries is EVENTS.md,
 // which is generated from the call sites by `npm run events:docs`, so adding an
 // event here and emitting it is the whole of the work.
 namespace Emit {

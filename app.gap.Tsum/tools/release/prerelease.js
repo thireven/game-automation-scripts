@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Build a channel and publish it to the testers' folder on R2 rather than the
-// catalogue. See docs/PRERELEASE.md in game-automation-app.
+// catalogue. See docs/PRERELEASE.md in general-automation-app.
 //
 //   npm run prerelease:alpha
 //   node tools/release/prerelease.js --channel Alpha [--dry-run] [--stage DIR] [--no-build] [--yes] [--keep-old]

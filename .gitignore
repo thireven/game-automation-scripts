@@ -12,8 +12,13 @@ starter/adb/
 starter/server/
 starter/collected/
 starter/last-device.txt
+starter/starter-log*.txt
+starter/watch.json
 starter/channel.txt
 
 # Starter bundle builds and the platform-tools cache.
 /build/
 starter/apk/
+
+# macOS Finder metadata.
+.DS_Store

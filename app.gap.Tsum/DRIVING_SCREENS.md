@@ -244,7 +244,7 @@ soon as almost nothing moved between the two. It is watching the very animation
 the next tap has to wait for, so it needs no frame rate to be configured and no
 constant to be re-measured per device.
 
-Four things to know before using it.
+Five things to know before using it.
 
 - **`maxMs` is a ceiling, not a cost.** The call returns the moment the screen
   holds still, so a generous budget is free on a fast device and is exactly what
@@ -265,6 +265,11 @@ Four things to know before using it.
   banner never stops, so "still" is *at most `ScreenSettle.maxMoved` of the
   sixty points moved* rather than none. A settled collection moves up to 16; a real
   transition moves 36 to 55.
+- **The lead is for a wait that starts at a tap.** `ScreenSettle.leadMs` keeps
+  the first sample off the pre-tap screen. A caller that has already seen the
+  new screen fingerprint -- a dialog fading in -- passes `leadMs` 0 and a short
+  `spacingMs`, as the heart sender does; otherwise every settle costs ~0.4s of
+  watching a screen that has stopped.
 - **Still is not the same as ready.** A screen whose contents are still being
   fetched is motionless behind its own fingerprint, so the gate passes at once
   and the reading that follows describes an empty frame. Nothing watching for

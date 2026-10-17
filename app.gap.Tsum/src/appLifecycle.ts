@@ -6,11 +6,11 @@
 // `await*` waits either side of a restart watch focus and the first fingerprint
 // rather than a clock.
 //
-// The game is two packages, one per build (`GameBuild`), and nothing on the
-// settings page says which the device has. `gameBuild` works it out: the one
-// in front, else the one last seen in front, else the one installed. That is
-// what `startApp` launches, the restarts stop, and `selectedTsum` names a tsum
-// by.
+// The game is two packages, one per build (`GameBuild`). The Game Region
+// setting can pick one (`chosenBuild`); on Automatic `gameBuild` works it out:
+// the one in front, else the one last seen in front, else the one installed.
+// That is what `startApp` launches, the restarts stop, and `selectedTsum` names
+// a tsum by.
 //
 // `taskTsumAppRestart` is the scheduled bounce and navigates to a known screen
 // at both ends. `forceRestartApp` deliberately does not -- it is the recovery
@@ -56,10 +56,19 @@ Tsum.prototype.isAppOn = function() {
   if (build !== null) {
     this._gameBuild = build;
   }
-  const isOn = packageName.indexOf('LGTMTM') !== -1;
+  // With a build chosen, the other one in front counts as off, so it is
+  // replaced by the chosen one.
+  const isOn = this.chosenBuild !== null
+    ? packageName === GamePackages[this.chosenBuild]
+    : packageName.indexOf('LGTMTM') !== -1;
   this._appOnCheckedAt = isOn ? Date.now() : 0;
   return isOn;
 };
+
+/** An Android package name; the misread below (`mCurrentFocus=null`) is not one. */
+const PackageNamePattern = /^[A-Za-z]\w*(\.\w+)+$/;
+/** The `pkg/Activity` inside a `Window{...}` or `ActivityRecord{...}`. */
+const FocusComponentPattern = /\s([\w.]+)\/[\w.$]+/;
 
 /**
  * The package of the focused window, or null when the host cannot say.
@@ -67,7 +76,36 @@ Tsum.prototype.isAppOn = function() {
  */
 function focusedPackage(): string | null {
   const app = foregroundApp();
-  return app === null ? null : app.package;
+  if (app !== null && PackageNamePattern.test(app.package)) {
+    return app.package;
+  }
+  // GAP hosts before 3.3 (alpha: 4.0) read only the first `mCurrentFocus` line, and a dump
+  // has one per display: MuMu on Android 15 puts a `null` one first, which
+  // came back as the package `mCurrentFocus=null`. Read them all here instead.
+  return focusedPackageInDump(execute('dumpsys window'));
+}
+
+/**
+ * The focused package in a `dumpsys window` dump: the first `mCurrentFocus`
+ * that names an app, else the first `mFocusedApp` (a system window such as the
+ * notification shade can hold focus over the game).
+ */
+function focusedPackageInDump(dump: string): string | null {
+  const lines = dump.split('\n');
+  const keys = ['mCurrentFocus=', 'mFocusedApp='];
+  for (const key of keys) {
+    for (const line of lines) {
+      const at = line.indexOf(key);
+      if (at === -1) {
+        continue;
+      }
+      const match = FocusComponentPattern.exec(line.substring(at + key.length));
+      if (match !== null) {
+        return match[1];
+      }
+    }
+  }
+  return null;
 }
 
 /** Which build of the game is in front, or null when neither is. */
@@ -118,16 +156,38 @@ function installedGameBuilds(): GameBuild[] {
 }
 
 /**
+ * The build the Game Region setting picks, or null for Automatic. A chosen
+ * build that is not installed is ignored with a warning, since launching it
+ * could never succeed. Read once per run, by `buildRun`.
+ */
+function chosenGameBuild(region: GameRegion | undefined): GameBuild | null {
+  if (region !== GameRegion.Global && region !== GameRegion.Japan) {
+    return null;
+  }
+  const build = region as string as GameBuild;
+  if (!isInstalled(GamePackages[build])) {
+    logWarn(Log.App.ChosenBuildMissing,
+      'The game region chosen is not installed; picking one automatically', { build: build });
+    return null;
+  }
+  return build;
+}
+
+/**
  * Which build of the game this device plays.
  *
- * The one in front settles it. With neither in front -- before the first
- * launch, or after a force-stop -- the build last seen in front stands, and
- * failing that the one installed. Both installed (a region switcher) or, more
+ * The Game Region setting settles it when it names one. Otherwise the one in
+ * front does. With neither in front -- before the first launch, or after a
+ * force-stop -- the build last seen in front stands, and failing that the one
+ * installed. Both installed (a region switcher) or, more
  * oddly, neither answers global, which is what the script always assumed
  * before it looked. The answer is remembered, so the installed-package read
  * happens at most once a run.
  */
 Tsum.prototype.gameBuild = function() {
+  if (this.chosenBuild !== null) {
+    return this.chosenBuild;
+  }
   const focused = focusedGameBuild();
   if (focused !== null) {
     this._gameBuild = focused;

@@ -25,7 +25,7 @@ DEVICE_STORAGE="${GAP_STORAGE_ROOT:-/sdcard/Download/GeneralAutomationPlatform}"
 # stable -- tools/package-release.sh uploads gap-<abi>.apk beside the stamped
 # ones for exactly this. No api.github.com, so no JSON to parse in sh and no
 # 60-per-hour unauthenticated rate limit.
-DEFAULT_RELEASE_BASE="https://github.com/game-automation-platform/game-automation-catalogue/releases/latest/download"
+DEFAULT_RELEASE_BASE="https://github.com/general-automation-platform/general-automation-catalogue/releases/latest/download"
 MANIFEST_NAME="gap-latest.txt"
 
 # A pre-release channel: one line in channel.txt, the folder URL that holds a

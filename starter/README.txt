@@ -24,7 +24,8 @@ whether the ending is shown is a setting on your computer, and either way the
 name in front of the dot is the one to look for.) The same page installs the app, exports the
 script log and your round stats as one zip, clears them off the phone, and
 links to Tsum Tsum Stats, which runs alongside it. Keep the terminal window it
-was started from open while you use it; closing it stops the page. Nothing gets
+was started from open while you use it. To stop the tool, press Stop at the
+top of the page; closing the window works too. Nothing gets
 installed on your computer.
 
 The page is served by Tsum Tsum Stats' program, tsum-stats @STATS_VERSION@.
@@ -82,7 +83,7 @@ Double-click            Start-Windows
 
 A console window opens, then the page in your browser; keep the console open
 while you use the page. If Windows SmartScreen asks, choose
-"More info" then "Run anyway" -- Start-Windows.cmd is a two-line text file and
+"More info" then "Run anyway" -- Start-Windows.cmd is a short text file and
 you are welcome to open it in Notepad first.
 
 If your workplace locks PowerShell down and Start-Windows.cmd will not run, see
@@ -269,6 +270,11 @@ the CSVs off the device; Tsum lists are left alone.
 
 When something goes wrong
 -------------------------
+The window closes straight away (Windows)
+    Each run is logged to starter-log.txt next to this README, and the run
+    before it to starter-log.prev.txt. Send that file along when asking for
+    help.
+
 "No device found"
     The emulator is not running, or the phone is not in USB debugging mode.
     Unusual emulator port? Set GAP_EXTRA_PORTS="12345" before starting.
@@ -413,6 +419,8 @@ What is in here
   collected/                             appears when you copy the log off a device
   last-device.txt                        appears once you pick a device: which one
   channel.txt                            appears once you pin a pre-release channel
+  starter-log.txt                        appears on Windows: the last run's log
+                                         (starter-log.prev.txt: the one before)
 
 No program is in this bundle as downloaded. Two binaries land here on the
 first run, each checked against a checksum recorded when this tool was built:

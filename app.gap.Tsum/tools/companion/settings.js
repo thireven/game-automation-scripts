@@ -110,7 +110,7 @@ function walk(ctx) {
         const remote = (row.buttons || []).filter((b) => b.remote !== undefined);
         for (const b of remote) {
           if (!buttons.some((x) => x.name === b.remote)) {
-            buttons.push({ name: b.remote, label: b.text(), confirm: t(b.confirm), whenRunning: true });
+            buttons.push({ name: b.remote, label: b.text(), confirm: t(b.confirm), whenRunning: b.whenStopped !== true });
           }
         }
         const button = remote.length > 0 ? remote[0].remote : undefined;

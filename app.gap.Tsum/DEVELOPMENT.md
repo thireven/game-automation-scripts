@@ -1142,12 +1142,12 @@ checks the served zip hashes to `Hash`, uploads the catalogue last and checks it
 too. The checks read through the gate with your own token (`GAP_TESTER_TOKEN`, or
 `~/.gap/tester-token`). Needs `rclone` with the `r2:` remote. Beta stays a public
 opt-in: `release:beta`. The app side of the folder (APKs, starter) is in
-`game-automation-app/docs/PRERELEASE.md`.
+`general-automation-app/docs/PRERELEASE.md`.
 
 Each one builds its channel and writes three files into the catalogue repository:
 
 ```
-../game-automation-catalogue/Official/LineTsumTsum/<Alpha|Beta|Production>/
+../general-automation-catalogue/Official/LineTsumTsum/<Alpha|Beta|Production>/
 ├── TsumTsum-Alpha-0.2.zip     the build, named from config.json + package.json
 ├── TsumTsum-Alpha-0.1.zip     and the ones before it, up to HistoryLimit
 ├── metadata.json              the entry that describes the newest, and lists the rest

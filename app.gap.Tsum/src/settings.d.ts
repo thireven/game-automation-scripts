@@ -188,6 +188,8 @@ declare const enum RowKey {
   DetectMyTsum = 'detectMyTsum',
   /** The Tsum List export's Now button. */
   ExportTsumList = 'exportTsumList',
+  /** Buy Open Capsule's Now button. */
+  BuyOpenCapsule = 'buyOpenCapsule',
 }
 
 /** One row of the settings schema (a `rows` entry of a `GroupSpec`). */
@@ -199,7 +201,7 @@ interface SettingSpec {
    * value, which is why the skill, bubble, box, round-cap and board-model
    * vocabularies are in the union too.
    */
-  key?: SettingKey | RowKey | SkillType | BubbleStrategy | BoxType | BoxPurchaseSize | MaxRoundAction | StopAfterAction;
+  key?: SettingKey | RowKey | SkillType | BubbleStrategy | BoxType | BoxPurchaseSize | MaxRoundAction | StopAfterAction | GameRegion;
   /** A `UiText` key, resolved at render time -- see `src/strings.d.ts`. */
   title?: UiText;
   /**
@@ -323,6 +325,11 @@ interface SettingButton {
   remote?: string;
   /** GAP Companion only: a question the phone asks before running `remote`. */
   confirm?: UiText;
+  /**
+   * GAP Companion only: `remote` also works with the script stopped, starting a
+   * run for it alone (`ChoreNowFlags`, src/index.ts). Otherwise it needs a run.
+   */
+  whenStopped?: boolean;
 }
 
 /** One card inside a tab panel: a heading, an optional note, and its rows. */

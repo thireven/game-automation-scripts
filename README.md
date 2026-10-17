@@ -25,7 +25,7 @@ In the tree:
   own repository, `tsum-tsum-website`.
 
 Releases are published to the
-[game-automation-catalogue](https://github.com/game-automation-platform/game-automation-catalogue),
+[general-automation-catalogue](https://github.com/general-automation-platform/general-automation-catalogue),
 which the app downloads from.
 
 Licensed under [Apache-2.0](LICENSE); see [`NOTICE`](NOTICE) for what was

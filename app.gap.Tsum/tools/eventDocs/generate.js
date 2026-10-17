@@ -281,7 +281,7 @@ function render(calls, declared, found) {
   out.push('whichever consumers are attached, adding only a sequence number, a UTC');
   out.push('timestamp and the script id. The transport, the two sockets and the wire');
   out.push('format are the host\'s document --');
-  out.push('`../game-automation-app/docs/EVENTS.md`.');
+  out.push('`../general-automation-app/docs/EVENTS.md`.');
   out.push('');
   out.push('Names are declared once, in `' + vocabularyFile + '`, and reached through');
   out.push('`ts.emit()`, which is silent on a host too old to have `emitEvent`.');

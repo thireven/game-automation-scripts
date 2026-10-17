@@ -4,14 +4,14 @@ given name is defined, and what the invariants are. One read of it replaces most
 of a scan, and it is checked against the tree by `npm run map:check`, so it is
 current. Anything it does not cover is worth adding to it once found.
 
-These scripts target **General Automation Platform** (source at `../game-automation-app`),
+These scripts target **General Automation Platform** (source at `../general-automation-app`),
 and only that. Feel free to perform updates in that folder as needed.
 
 GAP used to stand for *Game* Automation Platform. The app id is now
 `com.generalautomation.platform` and the device folder `GeneralAutomationPlatform`
-(the app moves the old `GameAutomationPlatform` folder once). The `game-automation-*`
-repos and the `game-automation-platform` GitHub org keep the old spelling on
-purpose (the host's `GENERAL-AUTOMATION-PLAN.md`).
+(the app moves the old `GameAutomationPlatform` folder once). The GitHub org is
+`general-automation-platform` and its repos are `general-automation-*` (renamed
+2026-10-11; GitHub redirects the old URLs).
 
 **The development toolkit is a private sibling checkout, not part of this
 tree.** Comments and docs here cite its commands by name — `pages:eval`,
@@ -85,6 +85,14 @@ not renormalize a file whose committed blob already has CRLF — that is git's
 anti-churn guard, and clearing it needs the working tree converted by hand.
 
 Automatically commit changed files with a succinct message.
+**Version branches merge forward.** Release branches are named for their version
+(`4.0`, `5.0`, `6.0`, ...). A commit to one also belongs in every higher one: merge
+it up a step at a time (`5.0` into `6.0`, then `6.0` into the next), fixing any
+conflict on the higher branch, and push them together. Never merge a higher
+branch down. A lower version's changelog entry stays in its own section.
+Only code moves up: a version bump (the `package.json` version and the changelog
+section it opens) stays on its own branch. Mark it merged on the higher branch
+with `git merge -s ours` so the next code merge does not drag it along.
 Update the CODEMAP.md whenever it makes sense to. Such as when architectural updates are made, or new features, etc.
 Don't run the build process if it's not necessary.
 Comments by Claude should not be so verbose. It should be concise with enough information that a junior developer should be able to understand.
@@ -100,3 +108,4 @@ machinery all go in the sections below it. Lay the Summary out as `**Additions**
 (bullets under an italic `*Area*` line each) then `**Fixes**` (flat bullets):
 the release note and the Discord post render it as written.
 For new skills and settings, a running list of things added should be kept and marked as used or not so that a cleanup step at the end can remove all things that were added that are no longer needed in the final product.
+**Deployments** (local, testers, production, any repo): read `../tools/DEPLOYMENTS.md` first.

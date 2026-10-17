@@ -171,6 +171,31 @@ Tsum.prototype.scrollMailList = function() {
   return moved >= MailList.sample.minMoved;
 }
 
+/**
+ * Budgets for the gift dialog to open after Check, and for Received! and the
+ * list's shuffle up to finish after OK. The game crashes in its own asset
+ * loading on MuMu (ARM translation) when taps land mid-animation, so each gift
+ * is let settle instead of being tapped through at the 200ms poll.
+ */
+const ReceiveOneOpenSettleMs = 1500;
+const ReceiveOneDoneSettleMs = 2000;
+/** Times one run relaunches a game that died mid-mail before giving up. */
+const ReceiveOneMaxRelaunches = 3;
+/**
+ * The game's memory grows with every gift, and on a small emulator the crash
+ * follows the low-memory warning (2 min at 4 GB, 3 at 6 GB). So free memory is
+ * read every few gifts and the game restarted before it runs that low.
+ * Provisional: tune from the `gifts.receiveOne.freeMemory` lines in users' logs.
+ */
+const ReceiveOneMemCheckGifts = 10;
+const ReceiveOneMinFreeMb = 600;
+
+/** The device's available memory in MB, or null when it cannot be read. */
+function memAvailableMb(): number | null {
+  const m = /^MemAvailable:\s+(\d+) kB/m.exec(readFile('/proc/meminfo'));
+  return m ? Math.round(Number(m[1]) / 1024) : null;
+}
+
 Tsum.prototype.taskReceiveOneItem = function() {
   if (roundInProgress()) {
     return;
@@ -195,6 +220,18 @@ Tsum.prototype.taskReceiveOneItem = function() {
   // `mailScrolls` is the budget for looking past a run of skipped mail, and it
   // is refilled by every gift that does get taken.
   let mailScrolls = 0;
+  let relaunches = 0;
+  let giftsSinceMemCheck = 0;
+  // From the friend page back into the mail, with the loop's state reset.
+  const reopenMail = () => {
+    this.sleep(1000);
+    this.tap(Button.outReceive);
+    this.sleep(1000);
+    pickedUp = false;
+    mailScrolls = 0;
+    timeoutCounter = 0;
+    receiveTime = Date.now();
+  };
   while (this.isRunning && timeoutCounter < maxTimeoutCount) {
     if (this.yieldAsked) {
       // A level-cap sweep asked for from the settings page goes first. Close
@@ -203,6 +240,22 @@ Tsum.prototype.taskReceiveOneItem = function() {
       logInfo(Log.Unlock.NowYielded, { task: 'receiveOneItem' });
       this.tap(Button.outClose);
       break;
+    }
+    if (!this.isAppOn()) {
+      // The game crashed under the loop. Left alone, the home screen reads as
+      // "not idle" and the loop taps blindly until its counter runs out.
+      if (relaunches >= ReceiveOneMaxRelaunches) {
+        logWarn(Log.Gifts.ReceiveOneRelaunchLimit, 'The game keeps closing; leaving the mail for now',
+          { relaunches: relaunches, receivedCount: receivedCount });
+        break;
+      }
+      relaunches++;
+      logWarn(Log.Gifts.ReceiveOneRelaunch, 'The game closed while receiving mail; relaunching',
+        { relaunches: relaunches, max: ReceiveOneMaxRelaunches });
+      // `navigate` relaunches the game and gets past its start-up screens.
+      gPages.navigate(PageName.FriendPage);
+      reopenMail();
+      continue;
     }
     let img = this.screenshot();
     // Declared outside the try so the if-chain below can read them after the
@@ -228,8 +281,8 @@ Tsum.prototype.taskReceiveOneItem = function() {
       isOk = isSameColor(Button.outReceiveOk.color, p[1], 35);
       isOk2 = isSameColor(Button.outReceiveItemSetOk.color, p[2], 35);
       isTimeout = isSameColor(Button.outReceiveTimeout.color, p[3], 35);
-      // Both page checks read `img`: a capture each on top of it, every 200ms,
-      // is the suspected cause of the game crashing after ~2 min on 4 GB emulators.
+      // Both page checks read `img` rather than capturing again, so every
+      // reading in a pass describes the same frame.
       isHeartWithoutCoins = gPages.matches(PageName.ReceiveHeartWithoutCoins, img);
       // The scan may only run with the mail list in front of it: a gift dialog
       // has gold buttons of its own, and a row found on one would aim the tap
@@ -296,7 +349,7 @@ Tsum.prototype.taskReceiveOneItem = function() {
         // The ad or a ruby being kept never gets here: `mailRowToOpen` stepped past it.
         pickedUp = true;
         this.tap({x: Button.outReceiveOne.x, y: Button.outReceiveOne.y + rowOffset});
-        this.sleep(200);
+        this.settleScreen(ReceiveOneOpenSettleMs);
         timeoutCounter = 0;
       }
     } else if (isTimeout) {
@@ -314,6 +367,7 @@ Tsum.prototype.taskReceiveOneItem = function() {
         logDebug(Log.Gifts.ReceiveOneOk, { button: 'outReceiveItemSetOk' })
         this.tap(Button.outReceiveItemSetOk);
       }
+      this.settleScreen(ReceiveOneDoneSettleMs);
       if (pickedUp) {
         this.record[RecordKey.HeartsCount]!.receivedCount++;
         receivedCount++;
@@ -326,6 +380,20 @@ Tsum.prototype.taskReceiveOneItem = function() {
       timeoutCounter = 0;
       if (this.claimAllWithoutCoins &&  isHeartWithoutCoins)
         receivedHeartWithoutCoins++;
+      // A restart stops and relaunches the game, so it needs Auto launch.
+      if (this.autoLaunch && ++giftsSinceMemCheck >= ReceiveOneMemCheckGifts) {
+        giftsSinceMemCheck = 0;
+        const freeMb = memAvailableMb();
+        logInfo(Log.Gifts.ReceiveOneFreeMemory, 'Free memory check', { freeMb: freeMb, minMb: ReceiveOneMinFreeMb });
+        if (freeMb !== null && freeMb < ReceiveOneMinFreeMb) {
+          logInfo(Log.Gifts.ReceiveOneLowMemory, 'Memory is low; restarting the game before it crashes',
+            { freeMb: freeMb, minMb: ReceiveOneMinFreeMb });
+          // Navigates to the friend page at both ends.
+          this.taskTsumAppRestart();
+          reopenMail();
+          continue;
+        }
+      }
     } else {
       logDebug(Log.Gifts.ReceiveOneFetchedAllSoFar);
       this.tap(Button.outReceiveClose); // usual close button

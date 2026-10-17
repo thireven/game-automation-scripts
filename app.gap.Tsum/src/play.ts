@@ -42,7 +42,11 @@ Tsum.prototype.checkGameItem = function() {
     isItemsOn[6] = true;
   }
   for(let t = 0; t < 3; t++) {
-    const img = this.screenshot();
+    // A dimmed frame reads every toggle as "on", so never read under a popup.
+    const img = this.awaitBonusItems();
+    if (img === null) {
+      break;
+    }
     let isChange = false;
     try {
       for (let i = 0; i < Button.outGameItems.length; i++) {
@@ -54,7 +58,12 @@ Tsum.prototype.checkGameItem = function() {
             this.sleep(500);
           }
         } else { // on
-          if (!isItemsOn[i]) {
+          if (!isItemsOn[i] && this.isBonusItemLocked(img, i)) {
+            // Forced on by an event: tapping it only raises a popup.
+            if (t === 0) {
+              logDebug(Log.Play.BonusItemLocked, { item: i });
+            }
+          } else if (!isItemsOn[i]) {
             this.tap(Button.outGameItems[i]);
             isChange = true;
             this.sleep(500);
@@ -71,6 +80,42 @@ Tsum.prototype.checkGameItem = function() {
     this.sleep(500);
   }
   logDebug(Log.Play.CheckBonusItems, { itemsOn: isItemsOn });
+}
+
+/** The toggle's cost pill has become the pink free-item badge. */
+Tsum.prototype.isBonusItemLocked = function(img, index) {
+  const c = this.getColor(img, Button.outGameItemBadges[index]);
+  return c.r > 170 && c.g < 110;
+}
+
+/** How long the free-item popup gets to clear before it is tapped away. */
+const BonusPopupWaitMs = 1500;
+
+/**
+ * A frame of the pre-round screen with nothing over it, or null if it does not
+ * come back. The free-item popup dims the whole screen for about a second; it
+ * is waited out, then tapped away once on the caption box.
+ */
+Tsum.prototype.awaitBonusItems = function() {
+  const pages = Page as PageMap;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const deadline = Date.now() + BonusPopupWaitMs;
+    do {
+      const img = this.screenshot();
+      for (const key in pages) {
+        if (pages[key].name === PageName.StartPage && gPages.score(this, img, key, pages[key]).pass) {
+          return img;
+        }
+      }
+      releaseImage(img);
+      this.sleep(250);
+    } while (this.isRunning && Date.now() < deadline);
+    if (attempt === 0) {
+      logDebug(Log.Play.BonusItemsHidden, {});
+      this.tap(Button.outGameItemsCaption);
+    }
+  }
+  return null;
 }
 
 /** Budget for the pre-round screen to leave and the board to arrive, after Start. */

@@ -136,14 +136,16 @@ function Start-Site {
   } else {
     Write-Log ""
     Write-Log "Opening the starter in your browser: http://127.0.0.1:8090/starter/"
-    Write-Log "Keep this window open while you use it. Ctrl+C here (or closing the window) stops it."
+    Write-Log "Keep this window open while you use it. To stop, press Stop on the page (or Ctrl+C here)."
     Write-Log ""
   }
   $env:TSUM_STATS_RESTART_CODE = "$global:SiteRestartCode"
   $env:GAP_STARTER_RELOAD_CODE = "$global:SiteReloadCode"
   while ($true) {
     # Out-Host: its output to the console, not into this function's return value.
-    & $bin serve --starter $Bundle @open | Out-Host
+    # Its stderr too (Go's log writes there), as text, so the log records it.
+    & { $ErrorActionPreference = 'Continue'; & $bin serve --starter $Bundle @open 2>&1 } |
+      ForEach-Object { "$_" } | Out-Host
     $rc = $LASTEXITCODE
     $open = @()
     if ($rc -eq $global:SiteReloadCode) {

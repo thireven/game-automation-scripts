@@ -197,6 +197,17 @@ declare const enum StopAfterAction {
 }
 
 /**
+ * Which build of the game to launch and play, for a device with both. The two
+ * named values match `GameBuild`'s, so one casts to the other.
+ */
+declare const enum GameRegion {
+  /** The one in front, else the one last seen, else the one installed. */
+  Auto = 'auto',
+  Global = 'global',
+  Japan = 'jp',
+}
+
+/**
  * The boxes the Tsum Tsum Store sells, as the Box Buying chore names them.
  *
  * The store draws its boxes as a row of tabs, and the row is three or four wide
@@ -310,6 +321,7 @@ declare const enum SettingKey {
   PageHistoryDepth = 'pageHistoryDepth',
   Locale = 'locale',
   AutoLaunchApp = 'autoLaunchApp',
+  GameRegion = 'gameRegion',
   AutoPlayGame = 'autoPlayGame',
   TrackRoundStats = 'trackRoundStats',
   ShareRoundStats = 'shareRoundStats',
@@ -351,6 +363,7 @@ declare const enum SettingKey {
   BuyBoxMaxPurchases = 'buyBoxMaxPurchases',
   BuyBoxesFirst = 'buyBoxesFirst',
   TsumListOnly = 'tsumListOnly',
+  BuyOpenCapsuleOnly = 'buyOpenCapsuleOnly',
   ReceiveAllHearts = 'receiveAllHearts',
   ReceiveAllHeartsMinWait = 'receiveAllHeartsMinWait',
   ReceiveHeartsOneByOne = 'receiveHeartsOneByOne',
@@ -407,6 +420,8 @@ interface Settings {
    */
   [SettingKey.Locale]?: Locale;
   [SettingKey.AutoLaunchApp]: boolean;
+  /** Absent in a form from before the row existed; read as Auto. */
+  [SettingKey.GameRegion]: GameRegion;
   [SettingKey.AutoPlayGame]: boolean;
   [SettingKey.TrackRoundStats]: boolean;
   /** Send new round stats rows to the ROUND_STATS_URL env var; needs TrackRoundStats. */
@@ -519,6 +534,11 @@ interface Settings {
    * schema entry; `exportTsumListNow()` sets it.
    */
   [SettingKey.TsumListOnly]?: boolean;
+  /**
+   * A run started by Buy Open Capsule's Now button: it buys the open capsule
+   * until sold out and stops. Not a schema entry; `buyOpenCapsuleNow()` sets it.
+   */
+  [SettingKey.BuyOpenCapsuleOnly]?: boolean;
   [SettingKey.ReceiveAllHearts]: boolean;
   [SettingKey.ReceiveAllHeartsMinWait]: number;
   [SettingKey.ReceiveHeartsOneByOne]: boolean;

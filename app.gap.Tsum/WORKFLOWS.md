@@ -3,7 +3,7 @@
 A GAP Companion **workflow** is an ordered list of nodes (restart the game,
 collect hearts, pick a skill, play N rounds, loop...) built on the phone and
 assigned to a device. The binding contract, for every layer, is the host's
-`../game-automation-app/docs/WORKFLOWS.md` (on its `companion-app` branch).
+`../general-automation-app/docs/WORKFLOWS.md` (on its `companion-app` branch).
 This document is what Tsum does with it.
 
 ## Who does what

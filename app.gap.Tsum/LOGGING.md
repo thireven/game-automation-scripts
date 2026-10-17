@@ -278,9 +278,9 @@ them out unless asked.
 
 ```
 adb forward tcp:21026 tcp:21026
-node ../../game-automation-app/tools/gap-events.js --trace                  # readable
-node ../../game-automation-app/tools/gap-events.js --trace --kind board.scan
-node ../../game-automation-app/tools/gap-events.js --trace --raw --out run.jsonl | logdy
+node ../../general-automation-app/tools/gap-events.js --trace                  # readable
+node ../../general-automation-app/tools/gap-events.js --trace --kind board.scan
+node ../../general-automation-app/tools/gap-events.js --trace --raw --out run.jsonl | logdy
 ```
 
 The host caps it at 500 traces a second and 256K characters each, and a
@@ -296,7 +296,7 @@ Logdy auto-detects JSON lines, so there is no parser to configure. Two routes:
 **Over the CLI** — includes the buffered history, then follows:
 
 ```sh
-node ../../game-automation-app/tools/gap-cli.js logs --raw | logdy
+node ../../general-automation-app/tools/gap-cli.js logs --raw | logdy
 ```
 
 **Off the file** — survives a service restart, and reaches back further than the
@@ -334,7 +334,7 @@ tools/gap-cli.js logs --raw` talks to the engine on `127.0.0.1:21024`, and
 nothing listens there unless the service was started with `--listen-tcp` — which
 is also what puts the `adb forward` in place. `error: connect ECONNREFUSED
 127.0.0.1:21024` is that and only that; the fix is
-`tools/start-service.sh --tcp 21024` in `../../game-automation-app`. Tailing the
+`tools/start-service.sh --tcp 21024` in `../../general-automation-app`. Tailing the
 file needs none of it.
 
 By default Logdy follows from the end, so a file that still holds pre-JSONL

@@ -57,8 +57,12 @@ function screenSettleSample(ts: Tsum, points: Point[]): Color[] {
  * False means the budget ran out with the screen still moving, or the run
  * stopped. Neither is fatal -- the caller was going to sleep blind anyway -- so
  * only a caller with something better to do than carry on need look.
+ *
+ * `leadMs` and `spacingMs` default to `ScreenSettle`'s. A caller that has
+ * already seen the new screen arrive needs no lead, and one waiting out a fade
+ * of a frame or two can sample closer together.
  */
-Tsum.prototype.settleScreen = function(maxMs) {
+Tsum.prototype.settleScreen = function(maxMs, leadMs, spacingMs) {
   if (!this.isRunning) {
     return false;
   }
@@ -73,13 +77,14 @@ Tsum.prototype.settleScreen = function(maxMs) {
   // The animation this is waiting on has not necessarily started: a sample taken
   // the instant after the tap reads the old screen, and the one after it reads
   // the old screen again, which is "still" and is the wrong answer.
-  this.sleep(ScreenSettle.leadMs);
+  this.sleep(leadMs === undefined ? ScreenSettle.leadMs : leadMs);
+  const spacing = spacingMs === undefined ? ScreenSettle.spacingMs : spacingMs;
   const startedAt = Date.now();
   let before = screenSettleSample(this, points);
   let moved = points.length;
   let polls = 0;
   while (this.isRunning && Date.now() - startedAt < budget) {
-    this.sleep(ScreenSettle.spacingMs);
+    this.sleep(spacing);
     const after = screenSettleSample(this, points);
     polls++;
     moved = 0;

@@ -9,7 +9,7 @@ carries. The host defines none of it: `emitEvent(name, data)` hands a line to
 whichever consumers are attached, adding only a sequence number, a UTC
 timestamp and the script id. The transport, the two sockets and the wire
 format are the host's document --
-`../game-automation-app/docs/EVENTS.md`.
+`../general-automation-app/docs/EVENTS.md`.
 
 Names are declared once, in `src/scriptEvents.ts`, and reached through
 `ts.emit()`, which is silent on a host too old to have `emitEvent`.
@@ -19,16 +19,16 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | event | emitted from | payload |
 |---|---|---|
 | `task.start` | `src/taskController.ts:93` | `task` |
-| `round.over` | `src/play.ts:367` | `id`, `round`, `seconds` |
-| `round.start` | `src/play.ts:547` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
-| `round.end` | `src/play.ts:919` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
+| `round.over` | `src/play.ts:412` | `id`, `round`, `seconds` |
+| `round.start` | `src/play.ts:592` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
+| `round.end` | `src/play.ts:964` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
 | `workflow.end` | `src/gapWorkflow.ts:589` | `id`, `rev`, `status`, `reason`, `loop`, `index` |
 | `workflow.start` | `src/gapWorkflow.ts:644` | `id`, `rev`, `name`, `total` |
 | `workflow.node` | `src/gapWorkflow.ts:686` | `id`, `loop`, `index`, `nodeId`, `node` |
 | `workflow.loop` | `src/gapWorkflow.ts:700` | `id`, `loop` |
 | `workflow.nodeFailed` | `src/gapWorkflow.ts:745` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
 | `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:756` | `rounds` |
+| `run.stopped` | `src/index.ts:805` | `rounds` |
 | `gap.notify` | `src/companion.ts:60` | _none_ |
 
 ## The events
@@ -57,7 +57,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:367` — `this.emit(Emit.Round.Over, …)`
+- `src/play.ts:412` — `this.emit(Emit.Round.Over, …)`
 
 ### `round.start`
 
@@ -75,7 +75,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:547` — `this.emit(Emit.Round.Start, …)`
+- `src/play.ts:592` — `this.emit(Emit.Round.Start, …)`
 
 ### `round.end`
 
@@ -98,7 +98,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:919` — `this.emit(Emit.Round.End, …)`
+- `src/play.ts:964` — `this.emit(Emit.Round.End, …)`
 
 ### `workflow.end`
 
@@ -203,7 +203,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:756` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:805` — `emitScriptEvent(Emit.Run.Stopped, …)`
 
 ### `gap.notify`
 

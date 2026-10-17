@@ -24,7 +24,7 @@ $global:DeviceStorage = if ($env:GAP_STORAGE_ROOT) { $env:GAP_STORAGE_ROOT }
 # plain redirect to the newest non-draft release, so the asset names have to be
 # stable -- tools/package-release.sh uploads gap-<abi>.apk beside the stamped
 # ones for exactly this. No api.github.com, so no rate limit to hit.
-$global:DefaultReleaseBase = 'https://github.com/game-automation-platform/game-automation-catalogue/releases/latest/download'
+$global:DefaultReleaseBase = 'https://github.com/general-automation-platform/general-automation-catalogue/releases/latest/download'
 $global:ManifestName = 'gap-latest.txt'
 
 # A pre-release channel: one line in channel.txt, the folder URL that holds a

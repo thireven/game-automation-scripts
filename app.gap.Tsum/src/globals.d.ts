@@ -136,11 +136,15 @@ interface WalkSession {
 interface HeartPageResult {
   /** Hearts the game confirmed with its "Heart sent!" toast. */
   sent: number;
+  /** Sends that never confirmed; a list end right after one is rechecked harder. */
+  failed: number;
   /**
    * A row scoring zero was reached. The ranking is ordered by score, so every
    * row below it scores zero too and the downward half has nothing left to do.
    */
   zeroScore: boolean;
+  /** Retry on the network error dialog stopped helping; the sweep stops unfinished. */
+  networkDown: boolean;
 }
 
 /**
@@ -1311,9 +1315,11 @@ interface Tsum {
   sleepUntil(deadline: number): void;
   /**
    * Wait for the screen to stop moving, up to `maxMs` (`ScreenSettle.maxMs` when
-   * omitted). False means it never did, or the run stopped.
+   * omitted). False means it never did, or the run stopped. `leadMs` and
+   * `spacingMs` override `ScreenSettle`'s for a caller that has already seen
+   * the new screen arrive.
    */
-  settleScreen(maxMs?: number): boolean;
+  settleScreen(maxMs?: number, leadMs?: number, spacingMs?: number): boolean;
   /**
    * Wait for the tsums to stop moving, up to `maxMs` (`BoardSettle.maxMs` when
    * omitted) and not before `minMs` (`BoardSettle.minMs`): `settleScreen`'s
@@ -1405,6 +1411,8 @@ interface Tsum {
 
   // --- play.ts ---------------------------------------------------------
   checkGameItem(): void;
+  isBonusItemLocked(img: NativeImage, index: number): boolean;
+  awaitBonusItems(): NativeImage | null;
   /** After the Start tap: wait for the pre-round screen to leave and the board to arrive. */
   awaitRoundStart(): boolean;
   /**
@@ -1481,15 +1489,23 @@ interface Tsum {
   readHeartColumn(img: NativeImage): Point[];
   /** Whether the row this heart belongs to shows no score at all. */
   friendRowScoreIsZero(img: NativeImage, heart: Point): boolean;
-  /**
-   * Poll the narrowed page set until `want` shows up, answering with the page
-   * it stopped on. `abortOn` ends the wait early once that page has held for
-   * `HeartOkLostPolls`.
-   */
   heartRowSent(heart: Point): boolean;
-  waitForHeartPage(want: PageName, polls: number, abortOn?: PageName, sentRow?: Point): PageName;
+  /**
+   * Poll the narrowed page set for up to `maxMs` until `want` shows up,
+   * answering with the page it stopped on. `abortOn` ends the wait early once
+   * `HeartOkLostMs` has passed.
+   */
+  waitForHeartPage(want: PageName, maxMs: number, abortOn?: PageName, sentRow?: Point): PageName;
+  /** Press Retry on the game's network error dialog. */
+  retryNetworkError(page: PageName, waitingFor: PageName): void;
+  /** Wait `ms` for a frozen list to come back, pressing Retry on any network error. */
+  waitOutHeartNetwork(ms: number): void;
+  /** Recheck a drag that did not move; true when the list moved after all. */
+  friendListMovesAfterAll(down: boolean, sendFailed: boolean): boolean;
   /** Tap one heart and see it through the gift dialog and the toast. */
   sendOneHeart(heart: Point): boolean;
+  /** Tap the "Heart sent!" toast away, again if the first tap was lost. */
+  dismissHeartToast(): void;
   /** Send every heart on the screenful in front of us. */
   sendHeartsOnPage(stopAtZeroScore: boolean): HeartPageResult;
   /** Drag the list one screenful; false when it did not move, so the list ended. */
@@ -1624,6 +1640,10 @@ interface Tsum {
   buyBoxes(box: BoxType, size: BoxPurchaseSize, maxPurchases: number): LogFields | null;
   /** True once the sweep has run; false when it stood aside for a round in progress. */
   taskBuyBoxes(): boolean;
+  /** Buy Open Capsule's loop. The fields for `Log.Box.End`, or null when the run stopped. */
+  buyOpenCapsule(): LogFields | null;
+  /** True once it has run; false when it stood aside for a round in progress. */
+  taskBuyOpenCapsule(): boolean;
 
   // --- fever.ts --------------------------------------------------------
   /**
@@ -1744,7 +1764,7 @@ interface Tsum {
   taskClickAssist(): void;
 
   // --- skills/cinderella.ts, skills/cptLy.ts ---------------------------
-  useCinderellaSkill(): void;
+  useCinderellaSkill(activatedAt?: number): void;
   /** `timing` defaults to the 60fps table; see CptLyTiming in skills/cptLy.ts. */
   useCptLySkill(activatedAt?: number, timing?: CptLyTiming): void;
 

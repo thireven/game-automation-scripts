@@ -1,5 +1,5 @@
 // A Node stand-in for the General Automation Platform host API, faithful to
-// the semantics in `../../../../game-automation-app/app/src/main/cpp`.
+// the semantics in `../../../../general-automation-app/app/src/main/cpp`.
 //
 // The point of shimming the *host* rather than reimplementing the matcher is
 // that `load.js` then runs the real, built `PageRouter.sweep` against saved

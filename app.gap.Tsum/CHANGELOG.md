@@ -45,6 +45,149 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.0]
+
+### Summary
+
+**Additions**
+*Skills*
+- Large tsums are recognised and chained.
+- Nightmare Before Christmas (Set) improved: Oogie Boogie's dice are rerolled only under 7, and shrinking tsums are tracked better.
+*Bubbles*
+- Bottom-row bubbles are popped faster, and Mid Chain strategies no longer let them pile up.
+- New Save One and Save One Mid Chain strategies.
+*Run control*
+- Game Region setting: choose whether the International or Japanese Tsum Tsum is launched when both are installed.
+- Quick Bar "Last round" button, and an Auto Play toggle replacing Report.
+- Auto Play Game moved to the Round tab; app restart frequency is in minutes, under Device (a saved value in hours is converted).
+*Quick Bar and settings*
+- New Accessible style, now the default: larger text and buttons, high contrast and a light Quick Bar. The felt look from the website is the other style, with cream and midnight themes.
+- The Aa button opens Appearance: style, theme (Dark, Light or Device) and size (XS to L).
+- A Code button copies the settings code, and Copy with settings list is now on by default.
+- Pasting a preset export into the Code box saves its presets (a single line also applies it).
+- Tap the Quick Bar readout to copy the run's figures.
+- Copy debug info button: copies your device details and every setting, to paste when asking for help.
+*Starter tool*
+- The starter tool is now a page in your browser: start the service, install the app, restart adb, and export logs and stats as one zip, with Tsum Tsum Stats built in.
+- It asks GAP to add the Tsum Tsum library to its Sources, keeps itself and Tsum Tsum Stats up to date, and has a Stop button.
+- On Windows it logs each run to starter-log.txt and stays open on an error.
+*Platform and data*
+- Requires General Automation Platform 3.3 or newer.
+- Each device keeps its own folder, so emulators sharing storage stop overwriting each other's files.
+- Receiving hearts one by one always skips the ad mail; Skip first person is gone.
+- Unlock Level jumps straight to the collection's first page.
+
+**Fixes**
+- Chains no longer break in a round's last seconds.
+- Cinderella's skill now works with GAP.
+- Resuming after a pause presses Continue instead of sometimes Try Again.
+- Auto Unlock MyTsum Level raises a capped single-tsum party.
+- Sending hearts is about 15% faster, no longer stalls after every heart on the Japanese game, and waits out a slow connection instead of skipping the rest of the ranking.
+- Receiving hearts one by one no longer spins on the ad row, and no longer crashes the game on low-memory emulators such as MuMu Player.
+- Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
+- Box Buying no longer stalls on the JP build when a maxed-out Pick-Up Capsule pays out a Premium Ticket.
+- Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
+- Quick Bar dropdown labels (Preset, Bubble, Then) are no longer cut off at the top.
+- The starter finds GAP again after its rename to General Automation Platform, and on Windows choosing a device no longer fails with "Write-NextStep is not recognized".
+
+## [5.0b10]
+
+### Summary
+
+**Additions**
+*Settings*
+- Game Region setting: choose whether the International or Japanese Tsum Tsum is launched when both are installed.
+
+**Fixes**
+- Auto launch no longer waits 30 seconds for a game that is already open on MuMu (Android 15).
+
+### Added
+
+- **Game Region** (`SettingKey.GameRegion`, General › Run): Automatic, International or Japan. A chosen build wins over the one in front (`chosenGameBuild`, `src/appLifecycle.ts`), and the other build in front counts as off, so it gets replaced. A chosen build that is not installed falls back to Automatic with `app.chosenBuildMissing`. Needs a restart to apply; not shared.
+
+### Changed
+
+- **`MinHost` raised to 3.3** (`config.json`): the first production host with the multi-display focus fix.
+
+### Fixed
+
+- **Focus read on multi-display dumps** (`src/appLifecycle.ts`, `focusedPackage`): GAP hosts before 3.3 (alpha: 4.0) parse only the first `mCurrentFocus` line, which MuMu on Android 15 prints as `null` for another display, so `isAppOn` never saw the game and every `startApp` waited out `AppUpWaitMs` (`app.upTimeout`, `looks:0`). A host answer that is not a package name now falls back to reading every `mCurrentFocus`, then `mFocusedApp`, line of `dumpsys window`. The host has the same fix from 3.3 (production) and 4.0 (alpha).
+
+## [5.0b9]
+
+### Summary
+
+**Additions**
+
+*Boxes*
+- Buy open capsule box until sold out: open a capsule in the store yourself (such as the JP one on the store's second page), press Now, and it is bought one at a time until it is gone.
+
+### Added
+
+- **Buy Open Capsule** (`src/boxes.ts`, `buyOpenCapsuleNow`): a Now-only chore that taps no tab and never navigates, so it reaches capsules the tab table does not know. Reuses `buyOneBox` 1-Time and the reveal loop; stops on sold out, no Coins, three misses, or a box drawing the 1-Time/10-Time pair (not a capsule), then stops the run.
+
+## [5.0b8]
+
+### Summary
+
+**Fixes**
+- Sending hearts on a slow connection waits out the game's loading and timeout error instead of skipping the rest of the ranking.
+
+### Fixed
+
+- **Heart sweep lost its place on a slow connection**: the send's 5 s toast budget ran out under the "Loading" spinner, the spinner then blocked the next drag, and the unmoved list read as `Hearts.ListEnd` — so the downward half ended early and the heart, sent on the later Retry, went uncounted. Now a still-pink row after OK gets `HeartSlowNetworkMs` (15 s) more, `waitForHeartPage` presses Retry on `NetworkTimeout`/`NetworkDisable` and restarts its clock (`HeartNetworkRetries`, then `Hearts.NetworkDown` ends the run unfinished), and a drag that does not move is retried after 3 s (three times after a failed send) before it counts as the end.
+
+## [5.0b7]
+
+### Summary
+
+**Additions**
+
+*Starter tool*
+- On Windows the starter logs each run to starter-log.txt and stays open on an error, so a window that closed straight away can be diagnosed.
+- The starter page has a Stop button, so the tool no longer has to be closed with Ctrl+C or by closing its window.
+
+**Fixes**
+- Sending hearts on the Japanese game no longer stalls about 5 seconds after every heart.
+- On Windows, choosing a device in the starter no longer fails with "Write-NextStep is not recognized".
+
+### Changed
+
+- **Windows starter log** (starter 1.4): `gap.ps1` transcribes each run to `starter-log.txt` (previous run kept as `.prev.txt`), tsum-stats' stderr included, with a trap for the stack trace and the exit code at the end. `Start-Windows.cmd` now pauses on any non-zero exit (negative ones used to close the window) and writes the log itself when PowerShell never reached `gap.ps1`; only new bundles get it, since updates never replace that file.
+- **Starter Stop button**: the page's Stop (tsum-stats `POST /api/starter/quit`) shuts the server down for exit 0, so the launcher ends and its window closes. Needs the tsum-stats that adds it; the console hint now points to it.
+- **Release-channel gate covers tsum-stats** (`build-starter.sh`): also checks tsum-stats' `defaultReleaseBase`, which kept the old `game-automation-platform` org after the rename, so the page's Update APK got a 404 ("Could not reach the release page").
+
+### Fixed
+
+- **Windows starter device page crashed**: `gap-menu.ps1` called `Write-NextStep`, which was never written. Ported from `menu_next_step` in `gap-menu.sh`, same wording.
+- **JP heart toast never matched**: `HeartSent`'s panel probe sat at (540, 890), under the JP wording ("ハートをプレゼントしました!", near full width), so every send waited out `HeartToastMs` (5 s), logged `Hearts.NoToast` and went uncounted. Moved to (540, 820), above the text; within 14 per channel on every toast frame of a JP and an EN recording.
+
+## [5.0b6]
+
+### Summary
+
+**Fixes**
+- Sending hearts through the ranking is about 15% faster.
+
+### Changed
+
+- **Build warns on a dev-signed `dist/`**: with `GAP_SCRIPT_KEY` unset, `dist/` is signed with the dev key, which only a GAP started with `--cloud-script-key` trusts; the build now says so.
+- **Heart send waits** (`sendOneHeart`): a debug run beside a screen recording put each heart at 2.5 s, ~0.6 s of it three `settleScreen` calls watching a screen already still. Each step now polls its next page every 60 ms (`HeartPollMs`, one capture a look) with time budgets in place of poll counts; the dialog and the toast get a lead-free 60 ms settle for their fade-in; the toast's dismissal waits for `FriendPage` and taps again only while the toast still shows (`dismissHeartToast`). OK still waits until the dialog has been up 230 ms (`HeartDialogReadyMs`; earlier presses are ignored), and `Received` (the mailbox panel) is out of `heartSweepPages()`: the toast's first frame fingerprinted as it and was tapped away, ~0.6 s on 38% of sends. `FriendInfo` is tapped away only when two looks agree. The end-of-screenful toast check is one look unless a no-toast send may still raise one. `settleScreen` takes optional `leadMs` and `spacingMs`.
+
+## [5.0b5]
+
+### Summary
+
+**Fixes**
+- Bonus items no longer get scrambled when an event (JP) gives a free item that cannot be turned off.
+- Cinderella's skill clears far more: its strokes are drawn slowly enough for the game to follow, stay on the board, and fill her skill time at every level.
+
+### Fixed
+
+- **Event-forced bonus item** (JP "流れ星に願いをかけよう!"): `checkGameItem` tapped it to turn it off, the popup that raised dimmed the screen, and the next pass read every toggle as on and tapped the lot. A toggle whose cost pill is the pink "1回無料" badge (`Button.outGameItemBadges`) is now left on, and each pass reads only a frame that fingerprints as `StartPage` (`awaitBonusItems`, which taps a popup away after 1.5s).
+- **Cinderella's right stroke** mirrored about `screenResize` rather than the square's centre (`screenResize - tsumWidth`), so it sat a tsum width right and its first column landed off the board.
+- **Cinderella's strokes** went through `linkTsums` at 10ms a point, under one frame, so the game skipped points and the chain broke mid-stroke. Now `cinderellaDraw` holds each point 18ms, strokes alternate until the level's window (`CinderellaConfig.windowMs`, 3–4s, player-observed) would close, instead of a fixed 10, and `beforeActivate` pops the hoarded bubbles so a stroke does not cross one.
+
 ## [5.0b4]
 
 ### Summary
@@ -54,18 +197,23 @@ release note; they fold back in here when she ships.
 *Debug*
 - Copy debug info button: copies your device details and every setting, to paste when asking for help.
 
+*GAP Companion*
+- Chore Now buttons work with the script stopped: it starts, does that chore, then stops again.
+
 **Fixes**
-- Receiving mail one by one no longer crashes the game after a couple of minutes on low-memory emulators.
+- Receiving mail one by one no longer crashes the game after a few minutes on low-memory emulators such as MuMu Player: it restarts the game when memory runs low, and relaunches it if it crashes anyway.
 
 ### Added
 
+- **Companion chore Now while stopped**: `unlockLevelsNow`, `buyBoxesNow` and `exportTsumListNow` from the phone with no run arm the chore (`gChoreNowArmed`, 60 s) and answer `start: true`; the phone sends `start`, `gapRemoteStartPrepare` sets the chore's one-shot flag and `choreOnly`, and the sweep calls `requestStop()` once done. Refused (`walkthrough`) when the last settings record a walkthrough. The buttons export `whenRunning: false` (`whenStopped` on `SettingButton`). Needs companion adapter 2.2.0.
 - **Copy debug info** (Debug tab, top row): `copyDebugInfo` copies version, device (engine global `debugDeviceInfo`) and every setting by tab, in English, `*` on changed ones. DPI and rooted need the host's newer `deviceInfo()` (`density`, `rooted`); an older host shows "unknown".
 - **Emulators on another computer**: `GAP_REMOTE_HOSTS="192.168.1.50"` makes the starter (all three hosts) and `build.js --adb` probe those hosts' emulator ports too, cutting off hung connects and dropping the offline rows a forwarded port with no emulator leaves; the remote PC forwards them with `netsh portproxy` (starter README). `--adb` now merges one emulator seen on two ports by `boot_id`, keeping its 5xxx port (the starter too) and disconnecting a remote emulator's other ports.
 - **Private alpha to testers**: `npm run prerelease:alpha` (`tools/release/prerelease.js`) builds Alpha and publishes it to the R2 folder in `config.json`'s `Prerelease`, served only through the tester gate, instead of the public catalogue. It keeps the folder's `Versions` history, uploads the zip before the catalogue and checks both served copies hash right. `release.js` now exports its note and build helpers for it.
 
 ### Fixed
 
-- **Mail one by one**: each poll took three full captures (its own plus one per `gPages.matches`), suspected of exhausting 4 GB MuMu instances. `matches(page, frame?)` now reads a frame the caller holds; the mail loop passes its own.
+- **Mail one by one**: MuMu crashes the game (SIGSEGV in cocos2d `ZipFile` → `inflate`, called from `nativeGetLocalizedMessage` on the UI thread, under ARM translation). The loop now relaunches a game that left the foreground (up to 3 times, `ReceiveOneMaxRelaunches`) instead of tapping the home screen, and settles after Check and OK rather than polling through the animations. Each poll also reads one frame instead of three: `matches(page, frame?)` takes the caller's.
+- **Mail one by one, low memory**: the crash follows memory growth (2 min at 4 GB, 3 at 6 GB). Every 10 gifts the loop reads `MemAvailable` from `/proc/meminfo` and logs it (`gifts.receiveOne.freeMemory`); under 600 MB (provisional) it runs `taskTsumAppRestart` and reopens the mail. Needs Auto launch.
 
 ## [5.0b3]
 

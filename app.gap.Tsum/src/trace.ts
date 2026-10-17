@@ -3,7 +3,7 @@
 // The host carries `emitTrace(kind, data)` to whoever is connected to its trace
 // port (21026, `gap-events.js --trace`). Nothing here is built unless someone is,
 // so an unwatched run pays one host call a second. `LOGGING.md` § The trace
-// stream; the host side is `../game-automation-app/docs/EVENTS.md`.
+// stream; the host side is `../general-automation-app/docs/EVENTS.md`.
 
 namespace Trace {
   /** Every `kind` this script traces. A consumer filters on these. */

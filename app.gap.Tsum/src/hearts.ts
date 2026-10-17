@@ -19,24 +19,43 @@
 // end is now the point where the list will not move, and the rows are wherever
 // the pink is.
 //
+// A slow connection puts a "Loading" spinner over the list, which blocks input
+// and can end in a timeout dialog. So a send whose row is still pink is waited
+// on, the dialog gets Retry, and a drag that did not move is tried again before
+// it counts as the end of the list.
+//
 // The running total lives at the bottom of this file: `readRecord` /
 // `saveRecord` are `hearts.json`, which counts hearts sent from here
 // and hearts received in mail.ts.
 // ---------------------------------------------------------------------------
 
-/** How long `sendOneHeart` waits for the gift dialog the heart tap opens. */
-const HeartDialogPolls = 8;
-/** How long it then waits for the toast that confirms the send. */
-const HeartToastPolls = 12;
+// Measured on a debug run with a screen recording beside it: the game takes
+// ~0.4s to open the gift dialog after the heart tap, ~0.45s to close it after
+// OK and ~0.8s more before the toast, which goes the frame after its tap. The
+// waits below poll for each of those rather than settling after every tap --
+// three settles were ~0.6s a heart of watching a screen that had already
+// stopped.
+
+/** Between looks while a step waits for its next screen. A capture is 2-15ms. */
+const HeartPollMs = 60;
+/** Budget for the gift dialog the heart tap opens. */
+const HeartDialogMs = 4000;
+/** Budget, from OK, for the toast that confirms the send. */
+const HeartToastMs = 5000;
+/** Budget for the toast to go once tapped, before tapping it again. */
+const HeartToastGoneMs = 800;
+/** Toast taps one dismissal may make. */
+const HeartToastPresses = 2;
+/** Budget for a toast to turn up late after a send that showed none. */
+const HeartLateToastMs = 1000;
 /** Column runs this close together are the same row read twice. */
 const HeartRowTolerance = 60;
 /** Hearts one screenful can yield before something is wrong. Four rows fit. */
 const HeartPageMaxSends = 8;
 /**
- * Budget for one step of the send to finish animating: the gift dialog opening,
- * the toast arriving, the toast going. A `settleScreen` budget rather than a
- * rest, so it ends when the animation does rather than when a stopwatch held
- * against one device says it should have -- these were 600/600/400ms.
+ * Budget for a dialog or toast that has just fingerprinted to finish fading in.
+ * Both fingerprint mid-fade, and a tap then is swallowed. A `settleScreen`
+ * budget with no lead, so it usually costs one or two polls.
  */
 const HeartStepSettleMs = 1500;
 /**
@@ -50,25 +69,45 @@ const HeartStepSettleMs = 1500;
  */
 const HeartOkPresses = 3;
 /**
- * Polls the gift dialog is given to close before the press counts as lost.
- *
- * A press that landed has closed it well before the first of these -- the
- * `settleScreen` above already waited out the closing animation -- so this is
- * slack for a slow device, not for the dialog's own frames.
+ * Least time from the gift dialog fingerprinting to pressing OK. The dialog
+ * reads still ~70ms after it appears but ignores OK for a while longer: at
+ * ~80ms 8 of 21 presses were lost, at ~650ms from the heart tap none of 103.
  */
-const HeartOkLostPolls = 3;
+const HeartDialogReadyMs = 230;
 /**
- * Polls before a blue row with no toast counts as sent. The row turns blue
- * ~0.5s before the toast arrives, so trusting it sooner leaves a late toast
- * over the list.
+ * Time from OK the gift dialog is given to close before the press counts as
+ * lost. A press that landed closes it in ~0.3s, so the rest is slack for a
+ * slow device.
  */
-const HeartNoToastPolls = 6;
+const HeartOkLostMs = 800;
+/**
+ * Time from OK before a blue row with no toast counts as sent. The row turns
+ * blue just before the toast arrives (~1.3s after OK), so trusting it sooner
+ * leaves a late toast over the list.
+ */
+const HeartNoToastMs = 2000;
 /**
  * Screenfuls one direction may travel. A backstop, not a limit: a ranking runs
  * to a few hundred friends and a screenful is four of them, so this only fires
  * if something keeps reading as movement when the list is not moving.
  */
 const HeartSweepMaxScreenfuls = 300;
+/**
+ * Extra wait for a send the game is still working on: OK landed, the list is
+ * back and the row is still pink. On a slow connection a "Loading" spinner sits
+ * over the list here for 10s or more, ending in the toast or the timeout dialog.
+ */
+const HeartSlowNetworkMs = 15000;
+/** Retry presses one wait may make on the game's network error dialog. */
+const HeartNetworkRetries = 3;
+/**
+ * Pause before a drag that went nowhere is tried again. The loading spinner
+ * blocks input, so a list it froze reads exactly like the end of the list.
+ */
+const HeartListEndRecheckMs = 3000;
+/** Rechecks a list end gets; more when that screenful had a send fail. */
+const HeartListEndRechecks = 1;
+const HeartListEndRechecksAfterFailure = 3;
 
 /**
  * Reopen the ranking, which puts our own row back in view.
@@ -157,57 +196,118 @@ Tsum.prototype.heartRowSent = function(heart) {
 /**
  * Poll the narrowed page set until `want` shows up, and say where it stopped.
  *
+ * One capture a look, `HeartPollMs` apart, for up to `maxMs`; `0` looks once.
  * `abortOn` ends the wait early on a screen whose presence makes waiting
  * pointless -- the gift dialog still up after OK -- but only from
- * `HeartOkLostPolls` on. So does `sentRow`, from `HeartNoToastPolls` on: the
- * list back with that row no longer pink means the heart went out with no
- * toast to wait for. The page it
- * ends on is the answer, so a caller can tell "the screen never moved" from "it
- * moved and the one I wanted never came".
+ * `HeartOkLostMs` on. So does `sentRow`, from `HeartNoToastMs` on: the list
+ * back with that row no longer pink means the heart went out with no toast to
+ * wait for. The page it ends on is the answer, so a caller can tell "the screen
+ * never moved" from "it moved and the one I wanted never came".
+ *
+ * The game's network error dialog is answered with Retry, and the wait starts
+ * over: the game is sending again. After `HeartNetworkRetries` it gives up and
+ * sets `heartNetworkDown`.
  */
-Tsum.prototype.waitForHeartPage = function(want, polls, abortOn, sentRow) {
+Tsum.prototype.waitForHeartPage = function(want, maxMs, abortOn, sentRow) {
+  let startedAt = Date.now();
   let page = PageName.Unknown;
-  for (let i = 0; i < polls && this.isRunning; i++) {
-    page = gPages.detect(1, 300, heartSweepPages());
+  let previous = PageName.Unknown;
+  let retries = 0;
+  while (this.isRunning) {
+    previous = page;
+    page = gPages.detect(1, 0, heartSweepPages());
+    const elapsed = Date.now() - startedAt;
     if (page === want) {
       return page;
     }
-    if (abortOn !== undefined && page === abortOn && i >= HeartOkLostPolls) {
+    if (isNetworkErrorPage(page) && previous === page) {
+      if (retries >= HeartNetworkRetries) {
+        heartNetworkDown = true;
+        return page;
+      }
+      retries++;
+      this.retryNetworkError(page, want);
+      startedAt = Date.now();
+      page = PageName.Unknown;
+      continue;
+    }
+    if (abortOn !== undefined && page === abortOn && elapsed >= HeartOkLostMs) {
       return page;
     }
-    if (sentRow !== undefined && page === PageName.FriendPage && i >= HeartNoToastPolls
+    if (sentRow !== undefined && page === PageName.FriendPage && elapsed >= HeartNoToastMs
         && this.heartRowSent(sentRow)) {
       return page;
     }
-    if (page === PageName.FriendInfo) {
-      // The tap opened the friend's card instead of the gift dialog.
-      this.tap(Page.FriendInfo.back);
-    } else if (page === PageName.Received) {
-      this.tap(Page.Received.back);
+    if (elapsed >= maxMs) {
+      return page;
     }
-    this.sleep(250);
+    // The tap opened the friend's card instead of the gift dialog. Acted on
+    // only when two looks agree, since a fading toast or dialog can read as
+    // another page for a frame; settled, so the next look does not tap the
+    // closing card again.
+    if (page === PageName.FriendInfo && previous === PageName.FriendInfo) {
+      this.tap(Page.FriendInfo.back);
+      this.settleScreen(HeartStepSettleMs);
+    }
+    this.sleep(HeartPollMs);
   }
   return page;
 }
 
+function isNetworkErrorPage(page: PageName): boolean {
+  return page === PageName.NetworkTimeout || page === PageName.NetworkDisable;
+}
+
+/** Press Retry on the network error dialog; never its other button, which goes to the title screen. */
+Tsum.prototype.retryNetworkError = function(page, waitingFor) {
+  logInfo(Log.Hearts.NetworkRetry, 'Connection error; pressing Retry', {page: page, waitingFor: waitingFor});
+  this.settleScreen(HeartStepSettleMs, 0, HeartPollMs);
+  this.tap(page === PageName.NetworkTimeout ? Page.NetworkTimeout.back : Page.NetworkDisable.back);
+  this.settleScreen(HeartStepSettleMs);
+}
+
+/**
+ * Wait `ms` for whatever froze the list to end, answering a network error
+ * dialog if one comes up meanwhile.
+ */
+Tsum.prototype.waitOutHeartNetwork = function(ms) {
+  const until = Date.now() + ms;
+  while (this.isRunning && Date.now() < until) {
+    const page = gPages.detect(1, 0, heartSweepPages());
+    if (isNetworkErrorPage(page)) {
+      this.retryNetworkError(page, PageName.FriendPage);
+    }
+    this.sleep(250);
+  }
+}
+
+/**
+ * Set by a send counted off its blue row: its toast may still turn up, and
+ * `sendHeartsOnPage` gives it time to before leaving the screenful.
+ */
+let heartToastMayBeLate = false;
+
+/**
+ * Set when Retry on the network error dialog has stopped helping. The sweep
+ * stops there rather than fail every heart left and call the frozen list its end.
+ */
+let heartNetworkDown = false;
+
 Tsum.prototype.sendOneHeart = function(heart) {
   this.tap(heart);
-  // Each of the three waits here is a dialog arriving or leaving, and each was a
-  // fixed rest measured at one frame rate. Waiting for the animation itself is
-  // what keeps the tap that follows from landing inside it.
-  this.settleScreen(HeartStepSettleMs);
-
-  if (this.waitForHeartPage(PageName.GiftHeart, HeartDialogPolls) !== PageName.GiftHeart) {
+  if (this.waitForHeartPage(PageName.GiftHeart, HeartDialogMs) !== PageName.GiftHeart) {
     logDebug(Log.Hearts.SendStep, {step: 'noGiftDialog', y: heart.y});
     return false;
   }
+  const shownAt = Date.now();
+  this.settleScreen(HeartStepSettleMs, 0, HeartPollMs);
+  this.sleepUntil(shownAt + HeartDialogReadyMs);
 
   let page = PageName.Unknown;
   for (let press = 1; press <= HeartOkPresses; press++) {
     this.tap(Page.GiftHeart.next);  // OK
-    this.settleScreen(HeartStepSettleMs);
     page = this.waitForHeartPage(
-      PageName.HeartSent, HeartToastPolls, PageName.GiftHeart, heart);
+      PageName.HeartSent, HeartToastMs, PageName.GiftHeart, heart);
     // Only the dialog still being up is worth another press. A wait that ran
     // out anywhere else means the press landed and it is the toast that went
     // missing -- and OK's coordinate on the friend list below is a friend's row.
@@ -217,11 +317,18 @@ Tsum.prototype.sendOneHeart = function(heart) {
     logDebug(Log.Hearts.SendStep, {step: 'okLost', y: heart.y, press: press});
   }
 
+  if (page === PageName.FriendPage && !this.heartRowSent(heart)) {
+    // OK landed but the row is still pink: the game is still sending, behind
+    // its loading spinner. Giving up here loses a heart that lands moments later.
+    logDebug(Log.Hearts.SendStep, {step: 'slowNetwork', y: heart.y});
+    page = this.waitForHeartPage(PageName.HeartSent, HeartSlowNetworkMs, undefined, heart);
+  }
   if (page === PageName.FriendPage && this.heartRowSent(heart)) {
     // No toast, but the row has turned blue, which is the game's own record of
     // the send. ~6% of sends on BlueStacks, each of which used to wait out the
     // whole toast budget and go uncounted.
     logDebug(Log.Hearts.SendStep, {step: 'sentNoToast', y: heart.y});
+    heartToastMayBeLate = true;
     return true;
   }
   if (page !== PageName.HeartSent) {
@@ -231,9 +338,23 @@ Tsum.prototype.sendOneHeart = function(heart) {
       {y: heart.y, stoppedOn: page});
     return false;
   }
-  this.tap(Page.HeartSent.back);
-  this.settleScreen(HeartStepSettleMs);
+  this.dismissHeartToast();
   return true;
+}
+
+Tsum.prototype.dismissHeartToast = function() {
+  this.settleScreen(HeartStepSettleMs, 0, HeartPollMs);
+  for (let press = 1; press <= HeartToastPresses; press++) {
+    this.tap(Page.HeartSent.back);
+    // The toast goes in a frame and the list under it is already still, so
+    // the list fingerprinting again is the whole wait.
+    if (this.waitForHeartPage(PageName.FriendPage, HeartToastGoneMs) !== PageName.HeartSent) {
+      return;
+    }
+    // Only a toast still showing earns a second tap: its spot on the bare
+    // list is a friend's row.
+    logDebug(Log.Hearts.SendStep, {step: 'toastLost', press: press});
+  }
 }
 
 /** Whether this run is one the sender has already tried and failed to send. */
@@ -247,7 +368,7 @@ function heartRefused(refused: number[], heart: Point): boolean {
 }
 
 Tsum.prototype.sendHeartsOnPage = function(stopAtZeroScore) {
-  const result: HeartPageResult = {sent: 0, zeroScore: false};
+  const result: HeartPageResult = {sent: 0, failed: 0, zeroScore: false, networkDown: false};
   // Rows that would not send. Without them a stuck button is found by every
   // rescan and the loop never ends.
   const refused: number[] = [];
@@ -280,15 +401,17 @@ Tsum.prototype.sendHeartsOnPage = function(stopAtZeroScore) {
       }
     }
     if (next === null) {
-      // A toast that turned up after a no-toast send dims the list, so the scan
-      // reads empty. Clear it and rescan rather than scroll past pink rows.
+      // A toast over the list dims it, so the scan reads empty: one that turned
+      // up after a no-toast send, or one a lost tap left. Clear it and rescan
+      // rather than scroll past pink rows. Only a no-toast send is worth
+      // waiting on; otherwise one look says whether a toast is up.
       if (result.sent !== 0 && !toastChecked) {
         toastChecked = true;
-        this.settleScreen(HeartStepSettleMs);
-        if (gPages.detect(1, 300, heartSweepPages()) === PageName.HeartSent) {
+        const wait = heartToastMayBeLate ? HeartLateToastMs : 0;
+        heartToastMayBeLate = false;
+        if (this.waitForHeartPage(PageName.HeartSent, wait) === PageName.HeartSent) {
           logDebug(Log.Hearts.SendStep, {step: 'lateToast'});
-          this.tap(Page.HeartSent.back);
-          this.settleScreen(HeartStepSettleMs);
+          this.dismissHeartToast();
           continue;
         }
       }
@@ -300,6 +423,11 @@ Tsum.prototype.sendHeartsOnPage = function(stopAtZeroScore) {
       result.sent++;
       this.record[RecordKey.HeartsCount]!.sentCount++;
     } else {
+      result.failed++;
+      if (heartNetworkDown) {
+        result.networkDown = true;
+        return result;
+      }
       refused.push(next.y);
       // Whatever the failed send left up, the next scan has to read the list.
       gPages.navigate(PageName.FriendPage);
@@ -315,6 +443,23 @@ Tsum.prototype.scrollFriendList = function(down) {
   logDebug(Log.Hearts.Scrolled,
     {down: down, moved: moved, needed: FriendListSample.minMoved});
   return moved >= FriendListSample.minMoved;
+}
+
+/**
+ * Give a drag that went nowhere another go before calling it the end of the
+ * list. The loading spinner blocks input, so a list it froze does not move
+ * either; one recheck costs a few seconds per half at the real end.
+ */
+Tsum.prototype.friendListMovesAfterAll = function(down, sendFailed) {
+  const tries = sendFailed ? HeartListEndRechecksAfterFailure : HeartListEndRechecks;
+  for (let attempt = 1; attempt <= tries && this.isRunning; attempt++) {
+    this.waitOutHeartNetwork(HeartListEndRecheckMs);
+    if (this.scrollFriendList(down)) {
+      logInfo(Log.Hearts.ListEndRecheck, 'The list moved on a second try', {down: down, attempt: attempt});
+      return true;
+    }
+  }
+  return false;
 }
 
 Tsum.prototype.outOfHeartTime = function(startTime) {
@@ -353,6 +498,12 @@ Tsum.prototype.sweepHearts = function(down, startTime) {
       logInfo(Log.Hearts.ZeroScore, {screenfuls: screenfuls});
       return true;
     }
+    if (page.networkDown) {
+      // Unfinished: the list is frozen, not ended, so the next run tries again.
+      logWarn(Log.Hearts.NetworkDown, 'Retry keeps failing; stopping the heart sweep for now',
+        {down: down, screenfuls: screenfuls});
+      return false;
+    }
     if (this.yieldAsked) {
       // Unfinished, like running out of time: the next run carries on from
       // here, since `sendHeartsDownwards` survives between runs.
@@ -362,7 +513,7 @@ Tsum.prototype.sweepHearts = function(down, startTime) {
     if (this.outOfHeartTime(startTime)) {
       return false;
     }
-    if (!this.scrollFriendList(down)) {
+    if (!this.scrollFriendList(down) && !this.friendListMovesAfterAll(down, page.failed !== 0)) {
       logInfo(Log.Hearts.ListEnd, {down: down, screenfuls: screenfuls});
       return true;
     }
@@ -384,6 +535,7 @@ Tsum.prototype.taskSendHearts = function() {
   logInfo(Log.Hearts.SendStart);
 
   const startTime = Date.now();
+  heartNetworkDown = false;
   // With no budget every run is a whole sweep, so it starts from our own row
   // rather than wherever the last one left the list -- which is what the
   // setting's "0 starts from the first place every time" means. With a budget
