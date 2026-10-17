@@ -42,6 +42,11 @@ let gRoundShareInFlight: {
   id: number; at: number; devicePath: string; source: string; lastId: string; rows: number;
 } | null = null;
 let gRoundShareListening = false;
+/**
+ * Past days' files found fully sent. Rows only ever land in today's file, so
+ * these are not read again; without it every pass re-read the whole history.
+ */
+let gRoundShareSentFiles: { [source: string]: true } = {};
 
 /** The server's address, if the user set one and the host can send to it. */
 function roundShareEnabled(): boolean {
@@ -86,6 +91,7 @@ function roundShareClear(devicePath: string): void {
   gRoundShareFailures = 0;
   gRoundShareRetryAt = 0;
   gRoundShareInFlight = null;
+  gRoundShareSentFiles = {};
 }
 
 function roundShareCursorPath(devicePath: string): string {
@@ -99,10 +105,17 @@ function roundShareOnce(devicePath: string): void {
   const names = listDir(dir).filter((name) => /^stats_\d+\.csv$/.test(name));
   const cursorPath = roundShareCursorPath(devicePath);
   const cursor = roundShareReadCursor(cursorPath);
+  const newest = names[names.length - 1];
   for (const name of names) {
     const source = Config.statsDir + '/' + name;
+    if (gRoundShareSentFiles[source]) {
+      continue;
+    }
     const batch = roundShareRows(readFile(dir + '/' + name), cursor[source] || '');
     if (batch.records.length === 0) {
+      if (name !== newest) {
+        gRoundShareSentFiles[source] = true;
+      }
       continue;
     }
     const body = JSON.stringify({
@@ -202,17 +215,25 @@ function roundShareAccepted(reply: string): boolean {
 function roundShareRows(text: string, after: string): { records: { [column: string]: string }[]; lastId: string } {
   const records: { [column: string]: string }[] = [];
   let lastId = after;
-  const lines = (text || '').split('\n');
-  if (!text.endsWith('\n')) {
-    lines.pop();
-  }
-  if (lines.length < 2) {
+  text = text || '';
+  const headerEnd = text.indexOf('\n');
+  if (headerEnd < 0) {
     return { records: records, lastId: lastId };
   }
-  const header = statsParseCsvLine(lines[0].replace(/\r$/, ''));
+  const header = statsParseCsvLine(text.substring(0, headerEnd).replace(/\r$/, ''));
   const idColumn = header.indexOf('id');
   if (idColumn < 0) {
     return { records: records, lastId: lastId };
+  }
+  // Rows are appended in id order, so a file whose last row is already sent has
+  // nothing newer: answer off that one line instead of parsing the whole file.
+  const lastRow = roundShareLastRowId(text, idColumn);
+  if (after !== '' && lastRow !== '' && lastRow <= after) {
+    return { records: records, lastId: lastId };
+  }
+  const lines = text.split('\n');
+  if (!text.endsWith('\n')) {
+    lines.pop();
   }
   for (let i = 1; i < lines.length && records.length < RoundShareMaxRows; i++) {
     const line = lines[i].replace(/\r$/, '');
@@ -235,4 +256,21 @@ function roundShareRows(text: string, after: string): { records: { [column: stri
     lastId = id;
   }
   return { records: records, lastId: lastId };
+}
+
+/** The id on the last complete row, or '' when there is no row after the header. */
+function roundShareLastRowId(text: string, idColumn: number): string {
+  let end = text.lastIndexOf('\n');
+  while (end > 0) {
+    const start = text.lastIndexOf('\n', end - 1) + 1;
+    if (start === 0) {
+      return '';
+    }
+    const line = text.substring(start, end).replace(/\r$/, '');
+    if (line !== '') {
+      return statsParseCsvLine(line)[idColumn] || '';
+    }
+    end = start - 1;
+  }
+  return '';
 }
