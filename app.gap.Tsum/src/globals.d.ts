@@ -1759,8 +1759,8 @@ interface Tsum {
    * Never an empty array -- an empty region reads as null.
    */
   readStatsNumbers(region: StatsRegion): number[] | null;
-  /** As readStatsNumber, but re-reads until the same value comes back twice. */
-  readSettledStatsNumber(region: StatsRegion): number | null;
+  /** As readStatsNumber for several fields, re-reading each until the same value comes back twice. */
+  readSettledStatsNumbers(regions: StatsRegion[]): (number | null)[];
   beginRoundStats(): void;
   /** Read the coin counter off the level-up screen; see `record.baseCoins`. */
   sampleBaseCoins(): void;

@@ -64,7 +64,7 @@ const StatsGlyphH = 14;
  * which is what makes one batched `getImageColors` possible here. Reading them
  * one pixel at a time cost 140 engine crossings per glyph, so around a thousand
  * for a seven-digit score, and every field is read at least twice
- * (`readSettledStatsNumber`).
+ * (`readSettledStatsNumbers`).
  */
 const StatsGlyphPoints: Point[] = (function() {
   const pts: Point[] = [];
@@ -1095,12 +1095,16 @@ const StatsScorePlay: PageDef = {
 };
 
 /**
- * Read a number until the same value comes back twice.
+ * Read numbers until each has come back the same twice.
  *
  * A second line of defence rather than the count-up handler it started as --
  * `waitForScorePage` no longer reports the page until its buttons say the
  * count-up is over. What is left for this to catch is a one-off misread, and on
  * a settled number it costs one extra read and one sleep.
+ *
+ * The fields are read in turn with one sleep between passes, so a tally of
+ * three numbers pays the gap once rather than once per field. Each field still
+ * needs two agreeing reads at least that far apart.
  *
  * The two agreeing reads do not have to be consecutive, and a failed read
  * discards nothing. The tally glitters for as long as it is up, and a sparkle
@@ -1112,46 +1116,64 @@ const StatsScorePlay: PageDef = {
  * gate has already said the count-up is over by the time this runs, so a value
  * seen twice around an obscured frame is the same evidence as twice in a row.
  *
- * Giving up takes `StatsSettleMissLimit` looks when nothing has ever read and
- * the full window otherwise -- the first means the rectangle is wrong and more
- * looking will not fix it, the second that a real value is still one clean
- * frame from confirmation.
+ * A field is given up on after `StatsSettleMissLimit` looks when nothing has
+ * ever read and at the end of the window otherwise -- the first means the
+ * rectangle is wrong and more looking will not fix it, the second that a real
+ * value is still one clean frame from confirmation.
  */
-Tsum.prototype.readSettledStatsNumber = function(region) {
+Tsum.prototype.readSettledStatsNumbers = function(regions) {
   const deadline = Date.now() + StatsSettleMs;
-  // How often each distinct value has come back. Kept per value rather than as
-  // "the previous read" so that neither a failed read nor a one-off misread
-  // takes away the sighting the real number already has.
-  const seen: {[value: number]: number} = {};
-  let reads = 0;
-  let misses = 0;
-  while (this.isRunning) {
-    const value = this.readStatsNumber(region);
-    if (value !== null) {
-      reads++;
-      seen[value] = (seen[value] || 0) + 1;
-      if (seen[value] >= 2) {
-        return value;
+  const values: (number | null)[] = regions.map(() => null);
+  // How often each distinct value has come back, per field. Kept per value
+  // rather than as "the previous read" so that neither a failed read nor a
+  // one-off misread takes away the sighting the real number already has.
+  const seen: {[value: number]: number}[] = regions.map(() => ({}));
+  const reads = regions.map(() => 0);
+  const misses = regions.map(() => 0);
+  const open = regions.map(() => true);
+  let left = regions.length;
+  while (this.isRunning && left > 0) {
+    for (let i = 0; i < regions.length; i++) {
+      if (!open[i]) {
+        continue;
       }
-    } else {
-      misses++;
-      if (reads === 0 && misses >= StatsSettleMissLimit) {
-        logWarn(Log.Stats.NeverRead, 'A stats number would not read at all; leaving it blank',
-          { region: region.name, looks: misses });
-        return null;
+      const value = this.readStatsNumber(regions[i]);
+      if (value !== null) {
+        reads[i]++;
+        seen[i][value] = (seen[i][value] || 0) + 1;
+        if (seen[i][value] >= 2) {
+          values[i] = value;
+          open[i] = false;
+          left--;
+        }
+      } else {
+        misses[i]++;
+        if (reads[i] === 0 && misses[i] >= StatsSettleMissLimit) {
+          logWarn(Log.Stats.NeverRead, 'A stats number would not read at all; leaving it blank',
+            { region: regions[i].name, looks: misses[i] });
+          open[i] = false;
+          left--;
+        }
       }
     }
+    if (left === 0) {
+      break;
+    }
     if (Date.now() > deadline) {
-      // `values` says which failure this was: empty means every read missed,
-      // one entry means the number read but never twice, two or more means the
-      // reads disagreed -- and those want three different fixes.
-      logWarn(Log.Stats.NeverSettled, 'A stats number never settled; leaving it blank',
-        { region: region.name, reads: reads, misses: misses, values: seen });
-      return null;
+      for (let i = 0; i < regions.length; i++) {
+        if (open[i]) {
+          // `values` says which failure this was: empty means every read
+          // missed, one entry means the number read but never twice, two or
+          // more means the reads disagreed -- and those want three different fixes.
+          logWarn(Log.Stats.NeverSettled, 'A stats number never settled; leaving it blank',
+            { region: regions[i].name, reads: reads[i], misses: misses[i], values: seen[i] });
+        }
+      }
+      break;
     }
     this.sleep(350);
   }
-  return null;
+  return values;
 };
 
 // ---------------------------------------------------------------------------
@@ -2064,17 +2086,17 @@ Tsum.prototype.finishRoundStats = function() {
     // coin counter was sampled in rather than the whole of this function.
     const windowMs = Date.now() - endedAt;
     if (sawScorePage) {
-      score = this.readSettledStatsNumber(StatsRegions.score);
       // `tallyRow` is the look `waitForScorePage` ended on: the finished tally.
       if (this.tallyRow.medals) {
-        medals = this.readSettledStatsNumber(StatsRegions.finalMedals);
-        finalCoins = this.readSettledStatsNumber(StatsRegions.finalCoinsMedals);
+        [score, medals, finalCoins] = this.readSettledStatsNumbers(
+          [StatsRegions.score, StatsRegions.finalMedals, StatsRegions.finalCoinsMedals]);
       } else {
         // No medals row is the game saying none were earned, which is a zero
         // rather than a gap -- unlike the fields below it, this one is not
         // missing, it is absent.
         medals = 0;
-        finalCoins = this.readSettledStatsNumber(StatsRegions.finalCoins);
+        [score, finalCoins] = this.readSettledStatsNumbers(
+          [StatsRegions.score, StatsRegions.finalCoins]);
       }
     }
     // No `else` log: waitForScorePage has already said what it saw and why it

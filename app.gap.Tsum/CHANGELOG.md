@@ -58,6 +58,7 @@ release note; they fold back in here when she ships.
 - **Buy Open Capsule and Export Tsum List out of beta, Share Round Stats alpha-only**, merged up from 5.3 (details under [5.3]).
 - **One pass on the way to the board**: the `GamePlaying` nav plan looks once, not twice. The second pass only re-looked 100ms later, and `drive` confirms the arrival anyway (~0.3s a round).
 - **Share round stats no longer re-reads history**: a file whose last row is already sent is skipped off that one line, and past days' sent files are not read again. Every pass used to parse every day's CSV (~1s a round at 90 days on the emulator).
+- **Tally numbers read together**: `readSettledStatsNumbers` reads every field in turn with one 350ms gap between passes, instead of a gap per field. Each field still needs two agreeing reads (~0.7s a round with a medals row).
 
 ## [6.0a11]
 
