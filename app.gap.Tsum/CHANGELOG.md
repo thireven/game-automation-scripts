@@ -45,6 +45,21 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.3]
+
+### Summary
+
+**Additions**
+*Settings*
+- Buy Open Capsule and Export Tsum List are out of beta.
+
+### Changed
+
+- `RowKey.BuyOpenCapsule` and `RowKey.ExportTsumList` drop `ReleaseStatus.Beta`
+  (`src/settings.ts`), so Production offers them.
+- `SettingKey.ShareRoundStats` moved from Beta to Alpha: stats are contributed
+  through the local stats site, so Beta and Production hide it.
+
 ## [5.2]
 
 ### Summary
