@@ -218,8 +218,19 @@ function skillStillRunning(ts: Tsum): boolean {
     return true;
   }
   const handler = SkillHandlers[ts.skillType];
+  if (handler && handler.bareTapActivates && !handler.afterActivate
+      && ts.skillActivatedAt > 0 && Date.now() - ts.skillActivatedAt < SkillTapHoldMs) {
+    return true;
+  }
   return !!(handler && handler.stillRunning && handler.stillRunning(ts));
 }
+
+/**
+ * How long a bare-tap skill with no `afterActivate` counts as running after
+ * `useSkill`'s tap. Its gauge still reads full that soon, and with no tail
+ * after the tap Burst re-fired 56-70ms later on 8% of activations.
+ */
+const SkillTapHoldMs = 300;
 
 // Whether the play loop reads the chain counter after each of its drags. See
 // `SkillHandler.readsChainCounter`; every other skill's drags go unmeasured.
