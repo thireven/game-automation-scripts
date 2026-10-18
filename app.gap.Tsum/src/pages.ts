@@ -1596,6 +1596,7 @@ class PageRouter {
 
     const guard = tsum.newStallGuard('navigate:' + goal);
     while (tsum.isRunning) {
+      const passAt = Date.now();
       if (!tsum.isAppOn()) {
         tsum.startApp();
       }
@@ -1656,7 +1657,11 @@ class PageRouter {
           { page: page, goal: goal });
       }
       tsum.checkStall(guard, this.page);
-      if (!waypoint && plan.restMs > 0) {
+      // The rest paces a pass that moved nothing. A mover that tapped this pass
+      // and then saw the screen hold still has waited already: in an hour on two
+      // emulators, all 14 friend-page rests came after one.
+      const settledMove = tsum.touchedAt >= passAt && tsum.stillSinceTouch(StillFreshMs);
+      if (!waypoint && plan.restMs > 0 && !settledMove) {
         tsum.sleep(plan.restMs);
       }
     }

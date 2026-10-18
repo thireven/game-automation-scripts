@@ -76,6 +76,7 @@ release note; they fold back in here when she ships.
 - **Villains Set holds 1.8s after an activation** (`stillRunning`): its gauge pixel reads full through its own cut-in, so the loop re-fired it every ~250ms. The game is frozen ~5s from the tap, so the hold costs nothing.
 - **The skill check's page look scores the in-round pages**, and the whole table once a second (`SkillFullLookEveryMs`): half the scoring (~0.5ms a turn), and fewer false `ClosePage`/`RootDetection` matches on in-round frames skipping a turn's skill check. `freshPage` now takes the caller's page set, so `watchRoundEnd` still reuses the narrowed look.
 - **Large-tsum quiet window after bare-tap firings too** (`skillFiredAt`): the play loop's bare tap now goes out only on a gauge read full, so it opens the 1.5s window `useSkill` does. The audit's false large-tsum hits on Burst sat ~0.8s after such firings.
+- **No navigation rest after a move that settled**: a pass that did not arrive skips its plan's `restMs` (friend page 1s, profile and mailbox 0.5s) when its mover tapped and then saw the screen hold still. A pass that moved nothing keeps its rest (~7s an hour with chores on).
 - **Stall check reads again when too soon**: a read under 25ms after a chain's release that still shows the chain is taken again at 25ms, and that read is judged and planned on (`DeadScanReadAfterMs`). The faster loop put most reads within a frame of the release, where 3-5% still show the chain, and those false dead scans set off extra stall rescues (Villains Set 18 to 33 an hour).
 
 ## [6.0a11]
