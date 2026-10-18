@@ -45,7 +45,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0a12]
+## [6.0a13]
 
 ### Summary
 
@@ -53,12 +53,11 @@ release note; they fold back in here when she ships.
 *Gameplay*
 - Faster play: less waiting between chains, between rounds, and while sending hearts and opening mail.
 
-**Fixes**
-- Page history no longer saves screenshots unless "Debug game" is on.
+*Settings*
+- Buy Open Capsule and Export Tsum List are out of beta.
 
 ### Changed
 
-- **Page history frames only with Debug game**, merged up from 5.2 (details under [5.2]).
 - **Buy Open Capsule and Export Tsum List out of beta, Share Round Stats alpha-only**, merged up from 5.3 (details under [5.3]).
 - **One pass on the way to the board**: the `GamePlaying` nav plan looks once, not twice. The second pass only re-looked 100ms later, and `drive` confirms the arrival anyway (~0.3s a round).
 - **Share round stats no longer re-reads history**: a file whose last row is already sent is skipped off that one line, and past days' sent files are not read again. Every pass used to parse every day's CSV (~1s a round at 90 days on the emulator).
@@ -79,6 +78,17 @@ release note; they fold back in here when she ships.
 - **No navigation rest after a move that settled**: a pass that did not arrive skips its plan's `restMs` (friend page 1s, profile and mailbox 0.5s) when its mover tapped and then saw the screen hold still. A pass that moved nothing keeps its rest (~7s an hour with chores on).
 - **Heart list drags settle with no lead** (`HeartScrollPath.settleLeadMs`): the finger rests on the last point before the release, so the list is not flinging, and every drag of a sweep read still on the first poll. The mail list keeps its lead (~0.25s a drag, ~10s a sweep).
 - **Stall check reads again when too soon**: a read under 25ms after a chain's release that still shows the chain is taken again at 25ms, and that read is judged and planned on (`DeadScanReadAfterMs`). The faster loop put most reads within a frame of the release, where 3-5% still show the chain, and those false dead scans set off extra stall rescues (Villains Set 18 to 33 an hour).
+
+## [6.0a12]
+
+### Summary
+
+**Fixes**
+- Page history no longer saves screenshots unless "Debug game" is on.
+
+### Changed
+
+- **Page history frames only with Debug game**, merged up from 5.2 (details under [5.2]).
 
 ## [6.0a11]
 
