@@ -515,10 +515,10 @@ class PageRouter {
   private frame: NativeImage | null;
   /** `detectObject` calls in progress; a sweep keeps its frame only inside one. */
   private holdDepth: number;
-  /** The last sweep: when its final pass captured, what it answered, and whether it was full-table. */
+  /** The last sweep: when its final pass captured, what it answered, and the set it scored (undefined: the whole table). */
   private lookAt: number;
   private lookPage: PageName;
-  private lookFull: boolean;
+  private lookExpect: PageName[] | undefined;
   /** An acting handler has run since that capture, so the screen may have changed. */
   private lookActed: boolean;
 
@@ -545,7 +545,7 @@ class PageRouter {
     this.holdDepth = 0;
     this.lookAt = 0;
     this.lookPage = PageName.Unknown;
-    this.lookFull = false;
+    this.lookExpect = undefined;
     this.lookActed = true;
   }
 
@@ -971,7 +971,7 @@ class PageRouter {
           scoreMs += Date.now() - t1;
           this.lookAt = t0;
           this.lookPage = PageName.Unknown;
-          this.lookFull = expect === undefined;
+          this.lookExpect = expect;
           this.lookActed = false;
           if (this.holdDepth > 0 && t === times - 1) {
             this.dropFrame();
@@ -1125,11 +1125,13 @@ class PageRouter {
   }
 
   /**
-   * What the last full-table look saw, when it can stand in for a new look: at
-   * most `maxAgeMs` old, and nothing has touched the screen since. Null otherwise.
+   * What the last look saw, when it can stand in for a new look over `expect`
+   * (undefined: the whole table): it scored the whole table or that same set, is
+   * at most `maxAgeMs` old, and nothing has touched the screen since. Null otherwise.
    */
-  freshPage(maxAgeMs: number): PageName | null {
-    if (!this.lookFull || this.lookActed || this.owner().touchedAt >= this.lookAt
+  freshPage(maxAgeMs: number, expect?: PageName[]): PageName | null {
+    if ((this.lookExpect !== undefined && this.lookExpect !== expect)
+        || this.lookActed || this.owner().touchedAt >= this.lookAt
         || Date.now() - this.lookAt > maxAgeMs) {
       return null;
     }

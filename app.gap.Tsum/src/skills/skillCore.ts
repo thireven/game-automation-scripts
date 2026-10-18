@@ -665,6 +665,17 @@ function skillWaitOutEndingFever(ts: Tsum) {
 // needs.
 const SkillReadDebounceMs = 30;
 
+/**
+ * How often `useSkill`'s look scores the whole page table; in between it scores
+ * `inRoundPages()`, at half the cost (~0.5ms a turn). The full look keeps the
+ * guards for screens outside that set live mid-round (root warning, network
+ * dialogs). Over 30 minutes on two emulators, the mid-round full looks found
+ * no such screen and 7 false ones.
+ */
+const SkillFullLookEveryMs = 1000;
+/** When `useSkill` last scored the whole table. */
+var gSkillFullLookAt = 0;
+
 Tsum.prototype.useSkill = function(board, fast) {
   if (this.skillType === SkillType.NoSkill) {
     return false;
@@ -688,7 +699,11 @@ Tsum.prototype.useSkill = function(board, fast) {
   // The look's frame comes back with it when nothing touched the screen after
   // it, and the first gauge read below is taken off that rather than a capture
   // of its own: the same moment, one capture fewer an iteration.
-  const look = gPages.detectWithFrame(1, 0);
+  const full = Date.now() - gSkillFullLookAt >= SkillFullLookEveryMs;
+  if (full) {
+    gSkillFullLookAt = Date.now();
+  }
+  const look = gPages.detectWithFrame(1, 0, full ? undefined : inRoundPages());
   let lookFrame = look.frame;
   const handler = SkillHandlers[this.skillType];
   const usesSecondButton = !!(handler && handler.usesSecondButton);

@@ -430,7 +430,7 @@ Tsum.prototype.watchRoundEnd = function(hud) {
   // The board being up is the usual answer, and `useSkill`'s look a moment ago
   // gave it already when nothing has touched the screen since -- the same
   // moment, so no second capture. Any other answer is looked at again here.
-  const page = gPages.freshPage(RoundLookReuseMs) === PageName.GamePlaying
+  const page = gPages.freshPage(RoundLookReuseMs, inRoundPages()) === PageName.GamePlaying
     ? PageName.GamePlaying
     : gPages.detect(1, 0, inRoundPages());
   const stillDebouncing = hud.misses < HudMissesBeforeGameOver
