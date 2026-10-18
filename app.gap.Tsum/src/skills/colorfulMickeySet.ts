@@ -141,8 +141,5 @@ registerSkill({
   linkReach: function() {
     return colorfulMickeyOpen()
       ? ColorfulMickeyBar.reachOfBoard * Config.screenResize / tsumSpan() : 0;
-  },
-  afterActivate: function(ts) {
-    skillRandomizeAndWait(ts);
   }
 });

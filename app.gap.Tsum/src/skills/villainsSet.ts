@@ -11,12 +11,23 @@
 // of the sample. Offline, over a 3-minute recording: tsums in a linkable group
 // per board 6.4 -> 10.9 on the neon boards and 7.0 -> 10.8 on normal ones.
 
+/**
+ * How long after `useSkill`'s tap the skill counts as still running.
+ *
+ * The gauge pixel sits on the button art and reads full through most of the
+ * skill's own cut-in, so without this the loop re-fired it every ~250ms (142
+ * of 230 firings in an hour were followed by re-fires). The game freezes for
+ * 4.8-5.4s from the tap, so holding 1.8s loses nothing; a tap that did not
+ * fire waits at most that long.
+ */
+const VillainsSetRunningMs = 1800;
+
 registerSkill({
   types: [SkillType.VillainsSet],
   bareTapActivates: true,
   colorBlur: 15,
   chromaCap: 80,
-  afterActivate: function(ts) {
-    skillRandomizeAndWait(ts);
+  stillRunning: function(ts) {
+    return ts.skillActivatedAt > 0 && Date.now() - ts.skillActivatedAt < VillainsSetRunningMs;
   }
 });

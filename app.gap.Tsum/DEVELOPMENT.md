@@ -888,7 +888,9 @@ Tsum's two halves), `bareTapActivates` (burst skills, where a tap is the whole
 activation — this is what lets the play loop fire them blind between chains) and
 `sweepsBubbles` (the choreography ends on `clearAllBubbles`, as Moana's above
 does). Returning `false` from `afterActivate` reports "did not fire" to the
-caller.
+caller. A bare-tap skill with no `afterActivate` gets a 10ms tap and only the
+"Skill Waiting time" settle after it; leave it out unless the skill has
+something to do after the tap.
 
 `sweepsBubbles` is the one declaration that overrides a *setting*. The play loop
 hoards bubbles for chains — a bubble popped while a chain is clearing takes a

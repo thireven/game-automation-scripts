@@ -339,8 +339,5 @@ registerSkill({
     } finally {
       releaseImage(img);
     }
-  },
-  afterActivate: function(ts) {
-    skillRandomizeAndWait(ts);
   }
 });

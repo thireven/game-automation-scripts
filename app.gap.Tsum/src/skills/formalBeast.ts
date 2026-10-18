@@ -623,8 +623,5 @@ registerSkill({
   chainLimits: function() {
     return gFormalBeast.active ? {maxChain: FormalBeastPlay.modeMaxChain} : {};
   },
-  orderPaths: formalBeastOrderPaths,
-  afterActivate: function(ts) {
-    skillRandomizeAndWait(ts);
-  }
+  orderPaths: formalBeastOrderPaths
 });

@@ -5,10 +5,7 @@
 
 registerSkill({
   types: [SkillType.Burst],
-  bareTapActivates: true,
-  afterActivate: function(ts) {
-    skillRandomizeAndWait(ts);
-  }
+  bareTapActivates: true
 });
 
 // Same skill, on a board that leaves bubbles behind: sweep them after the clear.
