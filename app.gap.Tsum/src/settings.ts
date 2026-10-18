@@ -839,6 +839,16 @@ var tabs: TabSpec[] = [
                         ]
                     },
                     {
+                        // Pauses for user direction from GAP Companion -- see
+                        // `askDirectNow`.
+                        key: RowKey.DirectNow,
+                        title: UiText.SettingDirectNow,
+                        help: UiText.SettingDirectNowHelp,
+                        buttons: [
+                            {text: i18nThunk(UiText.ButtonNow), onClick: function () { askDirectNow(); }}
+                        ]
+                    },
+                    {
                         key: SettingKey.DebugLogs,
                         title: UiText.SettingDebugLogs,
                         help: UiText.SettingDebugLogsHelp,
@@ -2300,6 +2310,25 @@ function askExportTsumListNow(): void {
     iface.runScript('typeof exportTsumListNow === "function" && exportTsumListNow('
         + JSON.stringify(startSettings(settings)) + ');');
     logInfo(Log.Settings.ExportTsumListAsked, 'Asked the run to export the Tsum list');
+}
+
+/**
+ * The Debug tab's Direct button. As `askBuyBoxesNow`: the panel closes so the
+ * phone sees the game, and a stopped script starts a run for the request alone
+ * (`directNow`).
+ */
+// noinspection JSUnusedGlobalSymbols
+function askDirectNow(): void {
+    var iface = bridge();
+    if (iface === undefined) {
+        return;
+    }
+    flushSettings();
+    iface.hideMenu();
+    iface.showMenu();
+    iface.runScript('typeof directNow === "function" && directNow('
+        + JSON.stringify(startSettings(settings)) + ');');
+    logInfo(Log.Settings.DirectNowAsked, 'Asked the run for user direction');
 }
 
 /**

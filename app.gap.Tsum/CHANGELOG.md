@@ -49,6 +49,15 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*Debug*
+- Debug tab's "Direct from phone" closes the settings and pauses the script so you can direct the device from GAP Companion.
+
+### Added
+
+- **Debug tab's Direct button** (`askDirectNow` → `directNow`): queues one `requestUserDirection` at the loop's next free turn (`JobPriority.DirectNow`); on a stopped script it starts a run for that request alone, which stops when it ends. Refused without a director add-on.
+
 ## [6.0a14]
 
 ### Summary

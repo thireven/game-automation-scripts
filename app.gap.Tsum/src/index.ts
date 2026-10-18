@@ -529,6 +529,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // A phone Now on a stopped script: stop once the chore is done.
   const choreOnly = gChoreOnlyRun && !gWorkflowRun;
   gChoreOnlyRun = false;
+  // The Debug tab's Direct on a stopped script: that request and no other job.
+  const directOnly = gDirectOnlyRun && !gWorkflowRun;
+  gDirectOnlyRun = false;
   ts = new Tsum(settings.specialScreenRatio, logs);
   // From here on there is a world to dismantle, whether or not the rest of this
   // function gets to finish -- `start()` tears it down in its `finally`.
@@ -722,11 +725,13 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   if (gWorkflowRun && !workflowBegin(workflowRef!)) {
     return;
   }
-  const jobs = gWorkflowRun ? workflowTaskTable() : runTaskTable(settings);
+  const jobs = gWorkflowRun ? workflowTaskTable() : directOnly ? [] : runTaskTable(settings);
   for (let i = 0; i < jobs.length; i++) {
     gTaskController.register(jobs[i], taskBody(ts, jobs[i].name));
   }
-  if (!gWalkthroughRun) {
+  if (directOnly) {
+    queueDirectNow(ts, gTaskController, true);
+  } else if (!gWalkthroughRun) {
     if (unlockFirst) {
       queueUnlockSweep(ts, gTaskController, choreOnly);
     }
@@ -784,6 +789,7 @@ function endRun(): void {
   gUnlockNowQueued = false;
   gBuyBoxNowQueued = false;
   gTsumListNowQueued = false;
+  gDirectNowQueued = false;
   gapAddonsRunEnd();
   // Before `ts` goes, so the workflow's closing banner still has somewhere to go.
   workflowRunEnded();
@@ -1257,6 +1263,74 @@ function exportTsumListNow(settings?: Settings): string {
     return 'already queued';
   }
   queueTsumListExport(ts, gTaskController, false);
+  return 'queued';
+}
+
+/** Name of the one-shot task `directNow` queues. */
+const DirectNowTask = 'directNow';
+
+/** Set while a direction request asked for from the Debug tab waits for its turn. */
+let gDirectNowQueued = false;
+
+/** Set by `directNow` on a stopped script: the run it starts asks for direction and nothing else. */
+let gDirectOnlyRun = false;
+
+/**
+ * Registers a user direction request (`requestUserDirection`) on `controller`,
+ * to run at the loop's first free turn -- after a round in progress, as the
+ * other Now sweeps. `stopAfter`: a run started only for it.
+ */
+function queueDirectNow(run: Tsum, controller: TsumTaskController, stopAfter: boolean): void {
+  gDirectNowQueued = true;
+  run.yieldAsked = true;
+  controller.newTask(DirectNowTask, function() {
+    run.yieldAsked = false;
+    gDirectNowQueued = false;
+    controller.removeTask(DirectNowTask);
+    const outcome = requestUserDirection({ body: 'Asked for from the Debug tab.' });
+    if (outcome === 'unavailable') {
+      logWarn(Log.Direct.NowRefused, 'Not asking for direction now', { reason: 'no director' });
+      run.banner('No add-on takes direction', 4000);
+    }
+    if (stopAfter) {
+      requestStop();
+    }
+  }, UnlockNowRetryMs, 0, false, JobPriority.DirectNow);
+  logInfo(Log.Direct.NowQueued, 'Asking for direction next loop turn');
+  run.banner('Asking for direction next', 4000);
+}
+
+/**
+ * Pauses the run and asks the user to direct the device from GAP Companion.
+ * The Debug tab's Direct button reaches it by name, like `buyBoxesNow`: queued
+ * on a live run, which carries on afterwards; with nothing running it starts a
+ * run for the request alone, which stops when the request ends.
+ *
+ * Returns what it decided, which the host writes to the log.
+ */
+// noinspection JSUnusedGlobalSymbols
+function directNow(settings?: Settings): string {
+  if (gAddonDirector === null) {
+    logWarn(Log.Direct.NowRefused, 'Not asking for direction now', { reason: 'no director' });
+    showBanner('No add-on takes direction', 4000);
+    return 'no director';
+  }
+  if (!gRunActive || ts === undefined || gTaskController === undefined) {
+    if (settings === undefined) {
+      return 'no run';
+    }
+    gDirectOnlyRun = true;
+    start(settings);
+    return 'started';
+  }
+  if (gWalkthroughRun) {
+    logWarn(Log.Direct.NowRefused, 'Not asking for direction now', { reason: 'walkthrough' });
+    return 'walkthrough recording';
+  }
+  if (gDirectNowQueued) {
+    return 'already queued';
+  }
+  queueDirectNow(ts, gTaskController, false);
   return 'queued';
 }
 

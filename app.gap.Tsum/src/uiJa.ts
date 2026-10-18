@@ -189,6 +189,8 @@ i18nRegister(Locale.Japanese, '日本語', {
     [UiText.ReportFailed]: '何も保存されませんでした。先にスクリプトを開始してから、もう一度お試しください。',
     [UiText.SettingDetectMyTsum]: 'マイツムを判定',
     [UiText.SettingDetectMyTsumHelp]: 'プレイ開始前の画面から選択中のツムを読み取ります。その画面を開き、スクリプトを止めて「判定」を押してください。',
+    [UiText.SettingDirectNow]: 'スマホから操作',
+    [UiText.SettingDirectNowHelp]: 'このページを閉じてスクリプトを一時停止し、GAP Companion からタップやドラッグで操作できるようにします。操作用アドオンが必要です。',
     [UiText.DetectMyTsumFound]: '{name}（{tsum}）— スコア {score}、差 {margin}。',
     [UiText.DetectMyTsumNearest]: '確かな一致なし。最も近いもの: {name}（{tsum}）— スコア {score}、差 {margin}。',
     [UiText.DetectMyTsumRunUp]: 'スクリプトの実行中は、毎ラウンド前に自動でツムを判定します。ここで試すには停止してください。',

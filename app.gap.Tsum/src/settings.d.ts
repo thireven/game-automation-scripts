@@ -186,6 +186,8 @@ declare const enum RowKey {
   ReportIssue = 'reportIssue',
   /** The Detect button; the engine's answer is written under this row. */
   DetectMyTsum = 'detectMyTsum',
+  /** The Direct button: pauses for user direction from GAP Companion. */
+  DirectNow = 'directNow',
   /** The Tsum List export's Now button. */
   ExportTsumList = 'exportTsumList',
   /** Buy Open Capsule's Now button. */

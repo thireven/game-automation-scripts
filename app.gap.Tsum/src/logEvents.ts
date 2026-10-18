@@ -527,6 +527,7 @@ namespace Log {
     ClipboardSetFailed         = 'settings.clipboardSetFailed',
     ClipboardWriteFailed       = 'settings.clipboardWriteFailed',
     DetectMyTsumAsked          = 'settings.detectMyTsumAsked',
+    DirectNowAsked             = 'settings.directNowAsked',
     Enabled                    = 'settings.enabled',
     EnableUnknown              = 'settings.enableUnknown',
     LiveApplied                = 'settings.liveApplied',
@@ -604,5 +605,9 @@ namespace Log {
     Asked = 'direct.asked',
     /** It ended: `outcome` continue, timeout or stopped; `ms` how long it took. */
     Ended = 'direct.ended',
+    /** The Debug tab's Direct queued a request on the run (`directNow`). */
+    NowQueued = 'direct.nowQueued',
+    /** `directNow` refused: `reason` no director or walkthrough. */
+    NowRefused = 'direct.nowRefused',
   }
 }

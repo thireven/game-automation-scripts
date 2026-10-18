@@ -203,6 +203,8 @@ i18nRegister(Locale.English, 'English', {
     [UiText.DetectMyTsumNoLibrary]: 'This build carries no tsum library.',
     [UiText.DetectMyTsumUnreadable]: 'The tsum icon could not be read. Is the game on the pre-round screen?',
     [UiText.DetectMyTsumFailed]: 'Nothing was read. Load the script first, then try again.',
+    [UiText.SettingDirectNow]: 'Direct from phone',
+    [UiText.SettingDirectNowHelp]: 'Closes this page and pauses the script so you can tap and drag from GAP Companion. Needs a direction add-on.',
 
     [UiText.BubbleOneMidChain]: 'One Bubble Mid Chain',
     [UiText.BubbleAllMidChain]: 'All Bubbles Mid Chain',

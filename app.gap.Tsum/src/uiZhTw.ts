@@ -194,6 +194,8 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.ReportFailed]: '沒有存下任何東西。請先啟動腳本再試一次。',
     [UiText.SettingDetectMyTsum]: '辨識 MyTsum',
     [UiText.SettingDetectMyTsumHelp]: '從開局畫面讀取選用的 Tsum。開到該畫面、停止腳本，再按辨識。',
+    [UiText.SettingDirectNow]: '從手機操作',
+    [UiText.SettingDirectNowHelp]: '關閉此頁並暫停腳本，讓你從 GAP Companion 點擊與拖曳。需要操作用的附加元件。',
     [UiText.DetectMyTsumFound]: '{name}（{tsum}）— 分數 {score}，差距 {margin}。',
     [UiText.DetectMyTsumNearest]: '沒有可信的結果。最接近：{name}（{tsum}）— 分數 {score}，差距 {margin}。',
     [UiText.DetectMyTsumRunUp]: '腳本執行中，每局開始前會自己辨識 Tsum。請先停止腳本再測試。',

@@ -47,6 +47,8 @@ const enum JobPriority {
   /** One add-on's one-shot task (src/addons.ts). */
   AddonNow = 13,
   BuyOpenCapsuleNow = 14,
+  /** The Debug tab's Direct (`directNow`, src/index.ts). */
+  DirectNow = 15,
   AppRestart = 20,
   UnlockLevel = 30,
   BuyBoxes = 31,

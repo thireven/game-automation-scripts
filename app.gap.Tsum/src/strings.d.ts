@@ -227,6 +227,8 @@ declare const enum UiText {
   DetectMyTsumNoLibrary = 'detectMyTsum.noLibrary',
   DetectMyTsumUnreadable = 'detectMyTsum.unreadable',
   DetectMyTsumFailed = 'detectMyTsum.failed',
+  SettingDirectNow = 'setting.directNow',
+  SettingDirectNowHelp = 'setting.directNow.help',
 
   // --- dropdown entries ---------------------------------------------------
   BubbleOneMidChain = 'bubble.oneMidChain',
