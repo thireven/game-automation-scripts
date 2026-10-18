@@ -49,6 +49,14 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Fixes**
+- Villains Set uses its skill as soon as the gauge is full, instead of waiting up to a couple of seconds or letting a full gauge go unused.
+
+### Changed
+
+- **Villains Set reads its own gauge** (`SkillHandler.gauge`, `villainsGaugeClassify`): 16 patches round the button's pie, full on the yellow glow or a closed pie. The stock pixel sits on the villains art and read full on 73% of frames; the new read says full on 5.8% of live reads, and every in-round full button was tapped (median 0.16s).
+- **Villains Set's 1.8s hold is gone**: false-full taps kept re-arming it, so a gauge that filled inside one waited it out. It now has the 300ms hold of the other bare-tap skills (`SkillTapHoldMs`).
+
 ## [6.0a13]
 
 ### Summary

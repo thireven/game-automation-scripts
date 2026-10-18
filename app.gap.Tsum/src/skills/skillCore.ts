@@ -10,6 +10,16 @@
 // individual skill files: their registerSkill calls run at load time.
 // ---------------------------------------------------------------------------
 
+/**
+ * A skill's own gauge read. See `SkillHandler.gauge`. Each point (logical px)
+ * is read as the mean of a 3x3 patch `SkillGaugePatchPx` apart, so a textured
+ * button face reads as its colour, and `classify` gets the means in order.
+ */
+interface SkillGaugeRead {
+  points: Coord[];
+  classify: (colors: Color[]) => SkillReadiness;
+}
+
 /** The play loop's chain limits for one skill. See `SkillHandler.chainLimits`. */
 interface SkillChainLimits {
   maxChain?: number;
@@ -141,6 +151,12 @@ interface SkillHandler {
   // On a board of dark, vivid tsums the saturation swings more than the hue,
   // so capping it lets hue decide the clusters.
   chromaCap?: number;
+  // The skill's button draws its gauge so that the stock one-pixel read
+  // (`classifySkillGauge`) misreads it. Replaces that read for gameSkill1
+  // everywhere: `checkSkillReadiness`, `checkSkillReadinessFast` and so every
+  // caller of either. The smoke guard is skipped too: this read sees the
+  // button itself, not what is around it.
+  gauge?: SkillGaugeRead;
   // How far apart two same-colour tsums may be and still be planned as one
   // chain, in tsum widths, for this scan -- or 0 to keep the "Link reach"
   // setting. For a skill that lets the game link farther than usual for a
@@ -450,7 +466,8 @@ function classifySkillGauge(c: Color): SkillReadiness {
 // the whole screen in smoke while its skill runs -- bright green, later purple
 // -- which reads Active at the button, so the play loop re-fired it every
 // ~300ms and drew no chains for the whole window. Normal chrome is cyan
-// (0,202,232) and fever chrome dark teal (0,44,54).
+// (0,202,232) and fever chrome dark teal (0,44,54). Villains Set now reads its
+// own gauge (`SkillHandler.gauge`), which skips this guard.
 //
 // The Quick Bar's translucent grey strip covers the bottom pair (its top is
 // ~y 1734), so the side margins beside the skill and fan buttons back them up.
@@ -472,7 +489,47 @@ function isSkillSmokeLoose(c: Color): boolean {
   return green || purple;
 }
 
+// The skill's own gauge read, if it declares one. See `SkillHandler.gauge`.
+function skillGaugeRead(ts: Tsum): SkillGaugeRead | undefined {
+  const handler = SkillHandlers[ts.skillType];
+  return handler ? handler.gauge : undefined;
+}
+
+// How far apart a gauge read's patch samples are, in logical px: one capture
+// pixel of the 360-wide screenshot.
+const SkillGaugePatchPx = 3;
+
+// Every sample of a gauge read, in logical px, nine per point.
+function skillGaugeSamples(gauge: SkillGaugeRead): Coord[] {
+  const out: Coord[] = [];
+  for (const p of gauge.points) {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        out.push({x: p.x + dx * SkillGaugePatchPx, y: p.y + dy * SkillGaugePatchPx});
+      }
+    }
+  }
+  return out;
+}
+
+// Classifies the samples' patch means.
+function skillGaugeClassify(gauge: SkillGaugeRead, samples: Color[]): SkillReadiness {
+  const means: Color[] = [];
+  for (let i = 0; i + 9 <= samples.length; i += 9) {
+    let r = 0, g = 0, b = 0;
+    for (let k = i; k < i + 9; k++) {
+      r += samples[k].r; g += samples[k].g; b += samples[k].b;
+    }
+    means.push({r: r / 9, g: g / 9, b: b / 9});
+  }
+  return gauge.classify(means);
+}
+
 Tsum.prototype.checkSkillReadiness = function(img, skillButton) {
+  const gauge = skillButton === Button.gameSkill1 ? skillGaugeRead(this) : undefined;
+  if (gauge) {
+    return skillGaugeClassify(gauge, this.getColors(img, skillGaugeSamples(gauge)));
+  }
   const smoke = this.getColors(img, SkillSmokeProbes);
   if ((isSkillSmoke(smoke[0]) && isSkillSmoke(smoke[1]))
       || (isSkillSmokeLoose(smoke[2]) && isSkillSmokeLoose(smoke[3]))) {
@@ -499,6 +556,10 @@ const SkillGaugeCropRadius = 24;
 // No resize is requested, so the probe coordinate stays crop-local and cannot
 // drift with resizeRatio the way getColor's toResizeXYs mapping would.
 Tsum.prototype.checkSkillReadinessFast = function() {
+  const gauge = skillGaugeRead(this);
+  if (gauge) {
+    return skillGaugeReadCrop(this, gauge);
+  }
   const center = this.toRealXY(Button.gameSkill1.x, Button.gameSkill1.y);
   const r = Math.max(4, Math.floor(SkillGaugeCropRadius * this.captureGameRatio));
   const x = Math.max(0, center.x - r);
@@ -510,6 +571,26 @@ Tsum.prototype.checkSkillReadinessFast = function() {
     releaseImage(img);
   }
 };
+
+// A skill's own gauge read off one crop spanning its samples, at native
+// resolution like the stock crop above.
+function skillGaugeReadCrop(ts: Tsum, gauge: SkillGaugeRead): SkillReadiness {
+  const real = skillGaugeSamples(gauge).map(p => ts.toRealXY(p.x, p.y));
+  let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+  for (const p of real) {
+    minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+  }
+  minX = Math.max(0, minX);
+  minY = Math.max(0, minY);
+  const img = getScreenshotModify(minX, minY, maxX - minX + 1, maxY - minY + 1, 0, 0, 100);
+  try {
+    return skillGaugeClassify(gauge, getImageColors(img,
+      real.map(p => ({x: Math.max(0, p.x - minX), y: Math.max(0, p.y - minY)}))));
+  } finally {
+    releaseImage(img);
+  }
+}
 
 // Whether firing the fan now would be a waste: the tsums it shuffles are about
 // to be cleared by a skill that is ready or nearly so. It also leaves the board
