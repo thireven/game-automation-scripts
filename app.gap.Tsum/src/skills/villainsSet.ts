@@ -15,7 +15,7 @@
 // villains art and read full on 73% of frames, so a full gauge waited behind
 // re-fires and holds. Here the gauge is a pie behind the art, filling
 // clockwise from 12 o'clock: navy where empty, a cyan wash where filled. Full,
-// the button glows yellow, or the pie closes before it does. During the
+// the button pulses yellow and near-white, or the pie closes before it does. During the
 // skill's own effect the art goes dark and the pie refills over it, which
 // this reads as not full.
 
@@ -47,15 +47,18 @@ const VillainsGaugeRing: Coord[] = [
   {x: 138, y: 1557}   // 342: the last of the pie to fill
 ];
 
-/** Ring patches that must glow yellow for a full gauge, of the 16. */
-const VillainsGaugeYellowMin = 8;
+/** Ring patches that must glow (yellow or near-white) for a full gauge, of the 16. */
+const VillainsGaugeGlowMin = 8;
 
-type VillainsGaugeTone = 'cyan' | 'navy' | 'yellow' | 'other';
+type VillainsGaugeTone = 'cyan' | 'navy' | 'glow' | 'other';
 
 function villainsGaugeTone(c: Color): VillainsGaugeTone {
   if (c.g >= 160 && c.b >= 190 && c.r <= 140) { return 'cyan'; }   // ~(32,200,237)
   if (c.g <= 140 && c.b >= 110 && c.b - c.g >= 35 && c.r <= 120) { return 'navy'; }  // ~(62,95,152)
-  if (c.r >= 190 && c.g >= 140 && c.b <= 130) { return 'yellow'; }
+  // The full button's pulse: yellow, peaking near-white (~255,255,230) for
+  // 0.4-0.7s. Live, 27 of 32 taps in the white phase fired.
+  if (c.r >= 190 && c.g >= 140 && c.b <= 130) { return 'glow'; }
+  if (c.r >= 230 && c.g >= 230) { return 'glow'; }
   return 'other';
 }
 
@@ -63,12 +66,12 @@ function villainsGaugeTone(c: Color): VillainsGaugeTone {
 // frames), every frame read full was one, the score screen aside.
 function villainsGaugeClassify(colors: Color[]): SkillReadiness {
   const tones = colors.map(villainsGaugeTone);
-  let yellow = 0, navy = 0;
+  let glow = 0, navy = 0;
   for (const t of tones) {
-    if (t === 'yellow') { yellow++; }
+    if (t === 'glow') { glow++; }
     if (t === 'navy') { navy++; }
   }
-  if (yellow >= VillainsGaugeYellowMin) { return SkillReadiness.Active; }
+  if (glow >= VillainsGaugeGlowMin) { return SkillReadiness.Active; }
   // The pie closed: cyan either side of 12 o'clock, and nowhere navy but for
   // one patch a flying tsum may have darkened.
   if (tones[0] === 'cyan' && tones[14] === 'cyan' && tones[15] === 'cyan' && navy <= 1) {

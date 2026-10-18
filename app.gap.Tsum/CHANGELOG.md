@@ -54,7 +54,7 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
-- **Villains Set reads its own gauge** (`SkillHandler.gauge`, `villainsGaugeClassify`): 16 patches round the button's pie, full on the yellow glow or a closed pie. The stock pixel sits on the villains art and read full on 73% of frames; the new read says full on 5.8% of live reads, and every in-round full button was tapped (median 0.16s).
+- **Villains Set reads its own gauge** (`SkillHandler.gauge`, `villainsGaugeClassify`): 16 patches round the button's pie, full on the yellow glow, its near-white peak or a closed pie. The stock pixel sits on the villains art and read full on 73% of frames; the new read says full on 5.8% of live reads, and a full gauge is tapped 34ms after the first read that sees it (90% within 0.23s). The near-white peak lasts 0.4-0.7s and came first on a third of activations; 27 of 32 taps in it fired.
 - **Villains Set's 1.8s hold is gone**: false-full taps kept re-arming it, so a gauge that filled inside one waited it out. It now has the 300ms hold of the other bare-tap skills (`SkillTapHoldMs`).
 
 ## [6.0a13]
