@@ -130,6 +130,8 @@ class Tsum {
   skillReactivationMs: number;
   /** When `useSkill` last tapped the skill button; 0 before the first. */
   skillActivatedAt: number;
+  /** When a tap last fired the skill: `useSkill`'s, or a bare tap on a gauge read full; 0 for none. */
+  skillFiredAt: number;
   skillLevel: number;
   /** `SkillType.Unset` until start() reads the setting. */
   skillType: SkillType;
@@ -420,6 +422,7 @@ class Tsum {
     this.skillSettleMs = 0;
     this.skillReactivationMs = 0;
     this.skillActivatedAt = 0;
+    this.skillFiredAt = 0;
     this.skillLevel = 3;
     this.skillType = SkillType.Unset;
     // Bubble positions from the last board scan, tapped after a long chain.

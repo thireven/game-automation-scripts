@@ -637,9 +637,10 @@ Tsum.prototype.scanBoardQuick = function() {
     // are big and drift slowly, so a position a second old still lands. Each
     // carries how many of this scan's tsums its pop would take (`near`).
     // Not while a skill's animation is on: it dims the board and, for Sulley,
-    // draws a giant one, and both read as large tsums.
-    const animating = this.bubbleHoldUntil - GameBubbleConfig.holdAfterSkillMs
-      + LargeTsum.skillQuietMs > Date.now();
+    // draws a giant one, and both read as large tsums. Timed from any tap known
+    // to fire the skill (`skillFiredAt`), the play loop's bare taps included.
+    const animating = Math.max(this.skillFiredAt,
+      this.bubbleHoldUntil - GameBubbleConfig.holdAfterSkillMs) + LargeTsum.skillQuietMs > Date.now();
     let large: LargeCircle[] = [];
     if (animating) {
       gLargePrev = [];

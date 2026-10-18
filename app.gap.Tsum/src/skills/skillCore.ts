@@ -563,6 +563,7 @@ Tsum.prototype.maybeAutoTapSkill = function(board) {
     if (this.checkSkillReadinessFast() !== SkillReadiness.Active) {
       return false;
     }
+    this.skillFiredAt = Date.now();
     this.tap(Button.gameSkill1, 10);
     // Full before the tap, so the tap fired it, and the Bubble Strategy's next
     // pop would land in the hole the burst is about to leave (the animation
@@ -803,6 +804,7 @@ Tsum.prototype.useSkill = function(board, fast) {
   // tap's own hold and the settle below, comes out of its own budget.
   const activatedAt = Date.now();
   this.skillActivatedAt = activatedAt;
+  this.skillFiredAt = activatedAt;
   // No Bubble Strategy pop for a while from here: the burst is about to empty
   // the board round every bubble on it. See `holdBubblesAfterSkill`.
   this.holdBubblesAfterSkill(activatedAt);
