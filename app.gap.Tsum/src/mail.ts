@@ -212,6 +212,18 @@ function receiveOneOpenMail(ts: Tsum): void {
   }
 }
 
+/**
+ * A tsum box from the mail ends on the store's reveal card ("GET!", the tsum,
+ * Close). Its fingerprint minus the foot probe, which the Quick Bar covers.
+ * Not `ClosePage`: that one-pixel catch-all passes on the mailbox itself.
+ */
+const MailTsumCardProbes = Page.BoxPurchasedPage.colors.filter(c => c.y < 1800);
+
+function isMailTsumCard(ts: Tsum, img: NativeImage): boolean {
+  const read = ts.getColors(img, MailTsumCardProbes);
+  return MailTsumCardProbes.every((c, i) => isSameColor(c, read[i], 35));
+}
+
 /** The device's available memory in MB, or null when it cannot be read. */
 function memAvailableMb(): number | null {
   const m = /^MemAvailable:\s+(\d+) kB/m.exec(readFile('/proc/meminfo'));
@@ -279,7 +291,8 @@ Tsum.prototype.taskReceiveOneItem = function() {
     // Declared outside the try so the if-chain below can read them after the
     // screenshot is released.
     let isItem: boolean, isNonItem: boolean,
-        isOk: boolean, isOk2: boolean, isTimeout: boolean, isHeartWithoutCoins: boolean;
+        isOk: boolean, isOk2: boolean, isTimeout: boolean, isHeartWithoutCoins: boolean,
+        isTsumCard = false;
     // How far from the first mail row this turn works, in screen pixels. Only
     // a skipped row (the ad, a medal, a ruby) ever moves it, and `MailNoRow` / `MailAllSkipped` are
     // the two answers that are not an offset at all.
@@ -317,8 +330,12 @@ Tsum.prototype.taskReceiveOneItem = function() {
           isNonItem = false;
         }
       }
+      // Only read when nothing else did: it is the rare screen.
+      if (!isItem && !isOk && !isOk2 && !isTimeout) {
+        isTsumCard = isMailTsumCard(this, img);
+      }
       logDebug(Log.Gifts.ReceiveOneProbe, {
-        isItem: isItem, isNonItem: isNonItem, isOk: isOk,
+        isItem: isItem, isNonItem: isNonItem, isOk: isOk, isTsumCard: isTsumCard,
         isTimeout: isTimeout, rowOffset: rowOffset, timeoutCounter: timeoutCounter,
       });
     } finally {
@@ -412,6 +429,12 @@ Tsum.prototype.taskReceiveOneItem = function() {
           continue;
         }
       }
+    } else if (isTsumCard) {
+      // The gift dialog's Close spot below lands mid-card and does nothing.
+      logDebug(Log.Gifts.ReceiveOneTsumCard);
+      this.tap(Page.BoxPurchasedPage.back);
+      this.settleScreen(ReceiveOneDoneSettleMs);
+      timeoutCounter = 0;
     } else {
       logDebug(Log.Gifts.ReceiveOneFetchedAllSoFar);
       this.tap(Button.outReceiveClose); // usual close button

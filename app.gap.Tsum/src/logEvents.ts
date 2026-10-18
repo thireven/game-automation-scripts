@@ -318,7 +318,8 @@ namespace Log {
     ReceiveOneStuck           = 'gifts.receiveOne.stuck',
     ReceiveOneStuckRetry      = 'gifts.receiveOne.stuckRetry',
     ReceiveOneTimeout         = 'gifts.receiveOne.timeout',
-    ReceiveOneWaiting         = 'gifts.receiveOne.waiting',
+    ReceiveOneTsumCard        = 'gifts.receiveOne.tsumCard',
+    ReceiveOneWaiting        = 'gifts.receiveOne.waiting',
   }
 
   /** Raising tsum level caps -- the collection sweep. */

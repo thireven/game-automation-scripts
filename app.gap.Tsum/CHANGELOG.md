@@ -54,6 +54,13 @@ release note; they fold back in here when she ships.
 *Debug*
 - Debug tab's "Direct from phone" closes the settings and pauses the script so you can direct the device from GAP Companion.
 
+**Fixes**
+- Receiving mail one by one no longer gets stuck on the new-tsum card after opening a tsum box.
+
+### Fixed
+
+- **Mail tsum box** (`isMailTsumCard`): the one-by-one loop read the reveal card as nothing and tapped the gift dialog's Close spot, mid-card, until it gave up. It now matches `BoxPurchasedPage` minus its foot probe (under the Quick Bar) and taps that card's Close.
+
 ### Added
 
 - **Debug tab's Direct button** (`askDirectNow` → `directNow`): queues one `requestUserDirection` at the loop's next free turn (`JobPriority.DirectNow`); on a stopped script it starts a run for that request alone, which stops when it ends. Refused without a director add-on.
