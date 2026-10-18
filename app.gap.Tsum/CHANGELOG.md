@@ -72,6 +72,7 @@ release note; they fold back in here when she ships.
 - **Page scoring caches probe coordinates** per entry and geometry (`scoreProbePoints`) instead of converting every probe on every score.
 - **A chain's first tsum is the press alone**: `linkTsums` no longer moves to the point it just pressed. An A/B on two emulators drew 11-17% more chains a second without it, with no more chains registered one short. Skills' own drags are unchanged.
 - **Skill auto-tap reads the gauge first**: a bare-tap skill's tap goes out only when a crop read of the button says full. 95% of the old blind taps (~21ms each) landed on a gauge not yet full, and the read costs ~3-8ms. A gauge filling between reads fires on the next one, or at the end of the turn.
+- **Stall check reads again when too soon**: a read under 25ms after a chain's release that still shows the chain is taken again at 25ms, and that read is judged and planned on (`DeadScanReadAfterMs`). The faster loop put most reads within a frame of the release, where 3-5% still show the chain, and those false dead scans set off extra stall rescues (Villains Set 18 to 33 an hour).
 
 ## [6.0a11]
 

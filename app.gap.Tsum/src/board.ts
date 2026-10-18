@@ -61,6 +61,8 @@ Tsum.prototype.linkTsums = function(path) {
           counter: chainCountDetail(count),
         });
       }
+      // Before the call, as the host stamps its `input.up` trace.
+      this.dragReleasedAt = Date.now();
       tapUp(x, y, releaseDuring);
     }
   }

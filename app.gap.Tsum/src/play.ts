@@ -531,6 +531,16 @@ const DeadScanStillFraction = 0.8;
 const DeadScansBeforeFan = 4;
 /** Budget for the fanned board to land again before it is scanned. */
 const DeadScanFanSettleMs = 1200;
+/**
+ * How long after a chain's release a read showing it still standing counts.
+ *
+ * A read sooner than this can hold a frame from before the game took the
+ * chain. On the emulators (60 fps), 2.7-5.4% of reads under 25ms after the
+ * release found the chain standing, against 0.2-1.3% after, and those false
+ * dead scans set off extra stall rescues. So such a read is taken again once
+ * this has passed, and the second read is judged and planned on.
+ */
+const DeadScanReadAfterMs = 25;
 
 // --- The Max Round Duration cap ---------------------------------------------
 //
@@ -837,6 +847,7 @@ Tsum.prototype.taskPlayGameQuick = function() {
       }
       continue;
     }
+    const readAt = Date.now();
     let board = this.scanBoardQuick();
     if (board == null) {
       break;
@@ -844,7 +855,17 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // Did the last drag do anything? The chain is gone from a board that took
     // it, and standing on a board that refused it.
     if (drawnChain !== null) {
-      const held = boardStillHolds(board, drawnChain, DeadScanTolerancePx);
+      let held = boardStillHolds(board, drawnChain, DeadScanTolerancePx);
+      // Standing on a read too soon to tell: read again (`DeadScanReadAfterMs`).
+      const sureAt = this.dragReleasedAt + DeadScanReadAfterMs;
+      if (held >= drawnChain.length * DeadScanStillFraction && readAt < sureAt) {
+        this.sleepUntil(sureAt);
+        board = this.scanBoardQuick();
+        if (board == null) {
+          break;
+        }
+        held = boardStillHolds(board, drawnChain, DeadScanTolerancePx);
+      }
       if (held >= drawnChain.length * DeadScanStillFraction) {
         deadScans++;
         logDebug(Log.Board.DeadScan,

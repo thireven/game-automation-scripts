@@ -42,6 +42,8 @@ class Tsum {
   gestureOpen: boolean;
   /** Epoch ms of the last touch a wrapper below sent; 0 for none yet. */
   touchedAt: number;
+  /** Epoch ms `linkTsums` last released a chain; 0 for none yet. */
+  dragReleasedAt: number;
   /** Epoch ms `settleScreen` last saw the screen hold still; 0 for never. */
   screenStillAt: number;
   /** Trace frame id of the latest play-square capture; 0 when it was not sent. */
@@ -363,6 +365,7 @@ class Tsum {
     this.isRunning = true;
     this.gestureOpen = false;
     this.touchedAt = 0;
+    this.dragReleasedAt = 0;
     this.screenStillAt = 0;
     this.squareFrame = 0;
     this.yieldAsked = false;
