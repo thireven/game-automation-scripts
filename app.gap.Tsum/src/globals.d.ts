@@ -1288,7 +1288,7 @@ interface Tsum {
    * drag changed. Shared by the friend list and the mailbox: both need "did it
    * actually move?", which is also both lists' end-of-list test.
    */
-  dragList(x: number, path: number[], settleMs: number, sample: ListSample): number;
+  dragList(x: number, path: number[], settleMs: number, sample: ListSample, leadMs?: number): number;
   /**
    * Blind escape from a screen nothing fingerprinted: cancel buttons, close
    * buttons, dpad + enter. Detection and the reaction to it live in

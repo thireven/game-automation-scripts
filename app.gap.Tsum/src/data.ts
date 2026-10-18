@@ -2658,7 +2658,13 @@ var HeartScrollPath = {
   down: [1304, 1102, 895, 698, 502],
   up: [698, 895, 1102, 1304, 1500],
   /** Budget for the overscroll bounce to settle before the list is re-read. */
-  settleMs: 900
+  settleMs: 900,
+  /**
+   * No settle lead: the finger rests 500ms on the last point before the release,
+   * so the list is not flinging, and a bounce at an end reads as moving. All 38
+   * drags of an hour's sweep read still on the first poll after the 250ms lead.
+   */
+  settleLeadMs: 0
 };
 
 // ---------------------------------------------------------------------------

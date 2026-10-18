@@ -869,7 +869,7 @@ Tsum.prototype.tapUp = function(xy, during) {
 // the end, so the answer is a count of changed sample points rather than a
 // boolean: the caller compares it against its own `ListSample.minMoved`.
 
-Tsum.prototype.dragList = function(x, path, settleMs, sample) {
+Tsum.prototype.dragList = function(x, path, settleMs, sample, leadMs) {
   const points: Point[] = [];
   for (let y = sample.fromY; y <= sample.toY; y += sample.step) {
     for (let i = 0; i < sample.xs.length; i++) {
@@ -894,8 +894,10 @@ Tsum.prototype.dragList = function(x, path, settleMs, sample) {
   }
   this.tapUp({x: x, y: path[last]}, 100);
   // A budget, not a rest: ends when the list stops. Less the settle's lead, so a
-  // screen that never reads still costs what the old fixed rest did.
-  this.settleScreen(settleMs - ScreenSettle.leadMs);
+  // screen that never reads still costs what the old fixed rest did. The lead
+  // defaults to the settle's own; see `HeartScrollPath.settleLeadMs`.
+  const lead = leadMs === undefined ? ScreenSettle.leadMs : leadMs;
+  this.settleScreen(settleMs - lead, lead);
 
   let moved = 0;
   const second = this.screenshot();

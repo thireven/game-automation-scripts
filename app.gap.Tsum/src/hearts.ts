@@ -451,7 +451,7 @@ Tsum.prototype.sendHeartsOnPage = function(stopAtZeroScore) {
 Tsum.prototype.scrollFriendList = function(down) {
   const moved = this.dragList(HeartScrollPath.x,
     down ? HeartScrollPath.down : HeartScrollPath.up,
-    HeartScrollPath.settleMs, FriendListSample);
+    HeartScrollPath.settleMs, FriendListSample, HeartScrollPath.settleLeadMs);
   logDebug(Log.Hearts.Scrolled,
     {down: down, moved: moved, needed: FriendListSample.minMoved});
   return moved >= FriendListSample.minMoved;
