@@ -2117,26 +2117,32 @@ var Page = {
     back: {x: 540, y: 1000},
     next: {x: 540, y: 1000}
   },
-  // The coloring event's mission tip: a cream notebook card with a yellow
-  // lightbulb, over the dimmed event page, with only Close lit below. The game
-  // opens it by itself when a new mission unlocks (its "Last time" reads "-").
-  // Probed on the bulb, the card's blank margins and Close; the title, art
-  // and text change per mission.
+  // The coloring event's mission tip: a cream notebook card over the dimmed
+  // event page, with only Close lit below. The game opens it by itself when a
+  // new mission unlocks (its "Last time" reads "-"). Probed on the card's
+  // blank margins, the black either side of it and Close, all flat enough to
+  // pass with every probe shifted 4px. The title, art and text change per
+  // mission, and the lightbulb glows, so none of those is probed.
   //
   // Without an entry it read `ClosePage`, which nothing taps during the score
   // wait, so the tally stayed behind it until the wait gave up.
   EventTip: {
     name: PageName.EventTip,
     colors: [
-      {x: 150, y:  773, r: 255, g: 198, b:  49, match: true, threshold: 60},  // lightbulb, left
-      {x: 230, y:  745, r: 255, g: 198, b:  49, match: true, threshold: 60},  // lightbulb, upper right
-      {x: 120, y:  700, r: 244, g: 240, b: 217, match: true, threshold: 40},  // card, left margin
-      {x: 120, y: 1050, r: 243, g: 240, b: 217, match: true, threshold: 40},  // card, left margin low
-      {x: 960, y:  700, r: 255, g: 245, b: 222, match: true, threshold: 40},  // card, right margin
-      {x: 960, y: 1000, r: 255, g: 245, b: 222, match: true, threshold: 40},  // card, right margin low
-      {x: 540, y: 1170, r: 243, g: 236, b: 217, match: true, threshold: 40},  // card, bottom
-      {x: 540, y: 1651, r: 238, g: 174, b:   6, match: true, threshold: 60},  // Close
-      {x: 440, y: 1600, r: 247, g: 182, b:   8, match: true, threshold: 60}   // Close, upper left
+      {x:  120, y:  700, r: 244, g: 240, b: 217, match: true, threshold: 40},  // card, left margin
+      {x:  120, y:  880, r: 244, g: 240, b: 217, match: true, threshold: 40},  // card, left margin
+      {x:  120, y: 1050, r: 243, g: 240, b: 217, match: true, threshold: 40},  // card, left margin
+      {x:  960, y:  700, r: 255, g: 245, b: 222, match: true, threshold: 40},  // card, right margin
+      {x:  960, y:  860, r: 255, g: 245, b: 222, match: true, threshold: 40},  // card, right margin
+      {x:  960, y: 1000, r: 255, g: 245, b: 222, match: true, threshold: 40},  // card, right margin
+      {x:  300, y: 1160, r: 245, g: 238, b: 217, match: true, threshold: 40},  // card, bottom
+      {x:  540, y: 1170, r: 243, g: 236, b: 217, match: true, threshold: 40},  // card, bottom
+      {x:  800, y: 1160, r: 247, g: 239, b: 215, match: true, threshold: 40},  // card, bottom
+      {x:  540, y: 1590, r: 247, g: 182, b:   8, match: true, threshold: 60},  // Close, above the text
+      {x:  400, y: 1700, r: 239, g: 170, b:   8, match: true, threshold: 60},  // Close, lower left
+      {x:  680, y: 1700, r: 239, g: 170, b:   8, match: true, threshold: 60},  // Close, lower right
+      {x:   60, y:  750, r:   0, g:   4, b:   8, match: true, threshold: 30},  // black left of the card; event page reads 49 off
+      {x: 1040, y:  750, r:   0, g:   4, b:   8, match: true, threshold: 30}   // black right of the card
     ],
     back: {x: 540, y: 1655},
     next: {x: 540, y: 1655}
