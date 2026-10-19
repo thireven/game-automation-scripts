@@ -144,7 +144,7 @@ function Show-DevicePage {
       # guard would then reject it here.
       if (Test-ChannelActive) { Write-Host '  8) Download and install the latest pre-release APK   (channel.txt)' }
       else { Write-Host '  8) Download and install the latest APK' }
-      Write-Host '  9) Copy the script log  (script*.log)'
+      Write-Host '  9) Copy the logs  (script*.log, companion*.log)'
       Write-Host ' 10) Delete the script log from the device'
       Write-Host ' 11) Add the Tsum Tsum library to GAP   (tap Add on the device)'
     } else {

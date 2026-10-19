@@ -138,11 +138,13 @@ On the page
   Download & install      fetch the newest published APK and install it
   Install APK             only when an "apk" folder is in the bundle
   Reconnect               offered for a device that has gone offline
-  Export logs & stats     zip up the script log, service log, round stats and
-                          Tsum lists, and ask where to save the zip
+  Export logs & stats     zip up the script log, GAP Companion log, service
+                          log, round stats and Tsum lists, and ask where to
+                          save the zip
   Import round stats      copy stats_*.csv and Tsum lists into "collected" and
                           into Tsum Tsum Stats
   Copy script log         copy the script log into a "collected" folder here
+  Copy companion log      the same for the GAP Companion log
   Delete script log /     delete them from the device, after showing the files
   Delete round stats      and asking (the script log delete stops the service
                           over the delete and starts it again if it was running)
@@ -231,7 +233,7 @@ folder to have the newer one fetched.
 Getting logs and stats off the device, and clearing them
 --------------------------------------------------------
 The quickest way: "Export logs & stats" on the page. It zips up the script
-log, the service log, the round stats and the Tsum lists of the device (or of
+log, the GAP Companion log, the service log, the round stats and the Tsum lists of the device (or of
 every device) and asks where to save the zip -- the one file to send when you
 ask for help. Chrome and Edge show their own save dialog; other browsers get
 your computer's.
@@ -239,7 +241,9 @@ your computer's.
 A script keeps its log on the device, under
 /sdcard/Download/GeneralAutomationPlatform:
 
-    script-<id>.log what the script logged, plus its rotated copies
+    script-<id>.log     what the script logged, plus its rotated copies
+    companion-<id>.log  GAP's link to GAP Companion: connects, drops,
+                        commands
 
 "Copy script log to folder" copies it to your computer, into a "collected" folder next to this
 README -- one folder per device, and the layout the device had:

@@ -136,7 +136,7 @@ menu_device() {  # menu_device <row>
       else
         printf '  8) Download and install the latest APK\n'
       fi
-      printf '  9) Copy the script log  (script*.log)\n'
+      printf '  9) Copy the logs  (script*.log, companion*.log)\n'
       printf ' 10) Delete the script log from the device\n'
       printf ' 11) Add the Tsum Tsum library to GAP   (tap Add on the device)\n'
     else

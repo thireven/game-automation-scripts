@@ -493,6 +493,10 @@ An APK is in this bundle - use the Install APK option."
       pat="script*.log"; what="script log"  # script.1.log.. are rotations
       log_line "looking for $pat under $DEVICE_STORAGE ..."
       files="$(device_files "$serial" "$pat")"
+      # A copy also takes GAP's companion link log (companion-<id>.log).
+      case "$action" in
+        copy-*) files="$(printf '%s\n%s\n' "$files" "$(device_files "$serial" 'companion*.log')" | grep .)" ;;
+      esac
       if [ -z "$files" ]; then
         ACTION_MSG="No $what on this device.
 Nothing matched $pat under $DEVICE_STORAGE.

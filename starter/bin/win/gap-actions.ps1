@@ -427,6 +427,8 @@ function Invoke-Action {
 
       Write-Log "looking for $pat under $root ..."
       $files = @(Get-DeviceFiles -Serial $Serial -Pattern $pat)
+      # A copy also takes GAP's companion link log (companion-<id>.log).
+      if ($Action -like 'copy-*') { $files += @(Get-DeviceFiles -Serial $Serial -Pattern 'companion*.log') }
       if ($files.Count -eq 0) {
         $msg = "No $what on this device.`nNothing matched $pat under $root.`n" +
                'A service started with --root= needs GAP_STORAGE_ROOT set to the same folder.'
