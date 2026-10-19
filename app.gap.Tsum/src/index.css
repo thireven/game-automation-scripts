@@ -284,6 +284,15 @@ p {
     gap: var(--space-3);
 }
 
+.auto-skill-title {
+    margin: 0 0 var(--space-2);
+    font-weight: 700;
+}
+
+.auto-skill-panel .share-status {
+    margin-bottom: var(--space-4);
+}
+
 /* Close is the escape, so it sits apart from the actions. */
 .preset-quiet {
     margin-inline-start: auto;

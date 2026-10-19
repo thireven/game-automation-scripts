@@ -176,6 +176,21 @@
       </div>
     </div>
 
+    <!--
+      Asked when Play is pressed with Auto Set Skill Level on and the Tsum List
+      missing, from before levels were kept, or a week old. Text and buttons are
+      filled by settings.ts (`localiseChrome`, `askAutoSkillLevel`).
+    -->
+    <div id="autoSkillPanel" class="preset-panel auto-skill-panel" role="alertdialog" hidden>
+      <p id="autoSkillTitle" class="auto-skill-title"></p>
+      <p id="autoSkillBody" class="share-status"></p>
+      <div class="preset-actions">
+        <button id="autoSkillExport" class="row-button preset-primary" type="button"></button>
+        <button id="autoSkillAnyway" class="row-button" type="button"></button>
+        <button id="autoSkillCancel" class="row-button preset-quiet" type="button"></button>
+      </div>
+    </div>
+
     <main id="tabPanels" class="container"></main>
 
     <footer class="page-foot container">

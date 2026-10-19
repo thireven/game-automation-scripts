@@ -710,7 +710,7 @@ function tsumListCellRect(slot: number): MyTsumRect {
 interface TsumListFile {
   at: string;
   build: GameBuild;
-  tsums: { order: number; tsum: string; name: string; favorite: boolean }[];
+  tsums: { order: number; tsum: string; name: string; favorite: boolean; skill: number | null }[];
 }
 
 /** Where this device's list file is; '' on a host without the natives. */
@@ -729,7 +729,8 @@ function tsumListSaveFile(rows: TsumListRow[], build: GameBuild): void {
   }
   const file: TsumListFile = { at: new Date().toISOString(), build: build, tsums: [] };
   for (let i = 0; i < rows.length; i++) {
-    file.tsums.push({ order: rows[i].order, tsum: rows[i].tsum, name: rows[i].name, favorite: rows[i].favorite === true });
+    file.tsums.push({ order: rows[i].order, tsum: rows[i].tsum, name: rows[i].name, favorite: rows[i].favorite === true,
+      skill: rows[i].skill });
   }
   try {
     writeFile(path, JSON.stringify(file));
@@ -758,11 +759,91 @@ function tsumListLoadFile(): TsumListFile | null {
       if (row !== null && typeof row === 'object' && typeof row.order === 'number'
           && typeof row.tsum === 'string') {
         tsums.push({ order: row.order, tsum: row.tsum, name: typeof row.name === 'string' ? row.name : '',
-          favorite: row.favorite === true });
+          favorite: row.favorite === true, skill: typeof row.skill === 'number' ? row.skill : null });
       }
     }
     return { at: String(parsed.at || ''), build: parsed.build, tsums: tsums };
   } catch (e) {
     return null;
   }
+}
+
+// --- Auto Set Skill Level --------------------------------------------------
+//
+// The skill level of the MyTsum the pre-round screen shows selected, read from
+// the list file instead of typed. Only a whole export writes the file, and a
+// file from before it held levels has none -- `tsumListStatus` calls that
+// `Old`, and asks for an export just as a missing file does.
+
+/** A list older than this gets a suggestion to export again. */
+const TsumListStaleMs = 7 * 24 * 60 * 60 * 1000;
+
+/** What `tsumListStatus` says about the list file. `Old` = exported before levels were kept. */
+const enum TsumListState {
+  Missing = 'missing',
+  Old = 'old',
+  Stale = 'stale',
+  Fresh = 'fresh'
+}
+
+/** The list file's state and age in whole days (0 when missing). */
+function tsumListHealth(): { state: TsumListState; days: number } {
+  const file = tsumListLoadFile();
+  if (file === null) {
+    return { state: TsumListState.Missing, days: 0 };
+  }
+  let hasLevels = false;
+  for (let i = 0; i < file.tsums.length && !hasLevels; i++) {
+    hasLevels = file.tsums[i].skill !== null;
+  }
+  const at = Date.parse(file.at);
+  const days = isNaN(at) ? 0 : Math.floor((Date.now() - at) / 86400000);
+  if (!hasLevels) {
+    return { state: TsumListState.Old, days: days };
+  }
+  return { state: !isNaN(at) && Date.now() - at > TsumListStaleMs ? TsumListState.Stale : TsumListState.Fresh, days: days };
+}
+
+/**
+ * A global the settings page asks (through `runScriptCallback`) before it
+ * starts a run with Auto Set Skill Level on. Returns JSON `{state, days}`.
+ */
+// noinspection JSUnusedGlobalSymbols
+function tsumListStatus(): string {
+  return JSON.stringify(tsumListHealth());
+}
+
+/** The list's skill level for tsum `short`, or null when it is not listed or its level was unread. */
+function tsumListSkillOf(short: string): number | null {
+  const file = tsumListLoadFile();
+  let best: number | null = null;
+  for (let i = 0; file !== null && i < file.tsums.length; i++) {
+    const row = file.tsums[i];
+    if (row.tsum === short && row.skill !== null && (best === null || row.skill > best)) {
+      best = row.skill;
+    }
+  }
+  return best;
+}
+
+/**
+ * Sets the skill level from the list for the tsum `short` that was just
+ * identified. The run's settings object takes it too, because the round's stats
+ * are copied from that and the level recorded there matters. A tsum the list
+ * lacks keeps the level already in force.
+ */
+Tsum.prototype.applyAutoSkillLevel = function(short) {
+  if (!this.autoSkillLevel) {
+    return;
+  }
+  const level = tsumListSkillOf(short);
+  if (level === null) {
+    logWarn(Log.TsumList.SkillMissing, 'The Tsum List has no skill level for this tsum', {tsum: short, keptLevel: this.skillLevel});
+    return;
+  }
+  this.skillLevel = Math.max(1, Math.min(6, level));
+  if (this.settings !== undefined) {
+    quickBarRecord(this.settings, SettingKey.SkillLevel, this.skillLevel);
+  }
+  logInfo(Log.TsumList.SkillApplied, {tsum: short, skillLevel: this.skillLevel});
 }

@@ -115,6 +115,7 @@ function quickBarState(): string {
     // The `Now` settings: the world is the answer, because the world already
     // has them.
     state[SettingKey.SkillLevel] = ts.skillLevel;
+    state[SettingKey.AutoSkillLevel] = ts.autoSkillLevel;
     state[SettingKey.MaxChainsPerScan] = ts.maxChainsPerScan;
     state[SettingKey.MaxChain] = Config.maxChain;
     state[SettingKey.SkillWaitingTime] = Math.round(ts.skillInterval / 1000);
@@ -362,6 +363,11 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
     case SettingKey.SkillLevel:
       applied = quickBarClamp(value, 1, 6);
       tsum.skillLevel = applied as number;
+      break;
+    // Read by `identifyMyTsum` at each pre-round screen, so it lands there.
+    case SettingKey.AutoSkillLevel:
+      applied = !!value;
+      tsum.autoSkillLevel = applied;
       break;
     case SettingKey.MaxChainsPerScan:
       applied = quickBarClamp(value, 1, 12);
@@ -655,6 +661,8 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   [SettingKey.SkillAutoTap]: LiveWhen.Now,
   [SettingKey.NoSkillLastFeverSec]: LiveWhen.Now,
   [SettingKey.SkillLevel]: LiveWhen.Now,
+  // Read at the next pre-round screen, which is where the level is set.
+  [SettingKey.AutoSkillLevel]: LiveWhen.Now,
   // The gap *between* rounds, so there is no round to be halfway through -- and
   // for that same reason not a row a preset carries. Now rather than at the
   // whistle because `quickBarSetRoundDelay` re-bases a rest that is already

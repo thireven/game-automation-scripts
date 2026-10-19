@@ -84,6 +84,14 @@ var tabs: TabSpec[] = [
                         min: 1
                     },
                     {
+                        // Reads the level off the Tsum List for the selected
+                        // MyTsum each round; the box above is the fallback.
+                        key: SettingKey.AutoSkillLevel,
+                        title: UiText.SettingAutoSkillLevel,
+                        help: UiText.SettingAutoSkillLevelHelp,
+                        default: SettingDefaults[SettingKey.AutoSkillLevel]
+                    },
+                    {
                         // Not part of the skill above it: every Lorcana tsum
                         // transforms the same way whatever its own skill is, so
                         // this is its own switch rather than something a
@@ -1695,6 +1703,7 @@ var SHARE_SLOTS: (SettingKey | '')[] = [
     SettingKey.HoldBubblesLastFeverSec,
     SettingKey.SkillSettleMs,
     SettingKey.SkillReactivationTenths,
+    SettingKey.AutoSkillLevel,
 ];
 
 /**
@@ -3753,6 +3762,9 @@ function localiseAppearance(): void {
     label('sizeL', UiText.ChromeSizeL);
     text('sizeFeltNote', UiText.ChromeSizeFeltNote);
     text('appearanceClose', UiText.ChromeAppearanceClose);
+    text('autoSkillExport', UiText.AutoSkillExport);
+    text('autoSkillAnyway', UiText.AutoSkillStartAnyway);
+    text('autoSkillCancel', UiText.AutoSkillCancel);
 }
 
 /** Wires the Aa button and the panel's radios. Called once from `bootstrap`. */
@@ -4780,6 +4792,106 @@ function rememberedTab(): string {
     return tabs[0].id;
 }
 
+/** Closes the panel and starts the run from the form. */
+function startRun(): void {
+    // close settings by hiding and showing menu
+    JavaScriptInterface.hideMenu();
+    JavaScriptInterface.showMenu();
+    JavaScriptInterface.runScript(genStartCommand(settings));
+}
+
+// --- Auto Set Skill Level: the Tsum List prompt ------------------------------
+//
+// Play asks the engine (`tsumListStatus`, src/tsumList.ts) whether the list can
+// supply skill levels. Fresh starts at once; otherwise the answer opens
+// `autoSkillPanel`. A stale list is only asked about once a day, so a restart
+// loop is not nagged; a missing one is asked every time. An engine that does not
+// answer is treated as fresh -- the prompt must never be what stops a run.
+
+var AUTO_SKILL_ASK_EVERY_MS = 24 * 60 * 60 * 1000;
+
+/** The state the last answer gave, for the prompt's wording. */
+var autoSkillState = '';
+
+/** True when the start waits on the answer (or the user); false to start now. */
+function askAutoSkillLevel(): boolean {
+    var iface = bridge();
+    if (iface === undefined || typeof iface.runScriptCallback !== 'function') {
+        return false;
+    }
+    iface.runScriptCallback('typeof tsumListStatus === "function" ? tsumListStatus() : ""',
+        'onAutoSkillStatus');
+    return true;
+}
+
+// noinspection JSUnusedGlobalSymbols
+function onAutoSkillStatus(answer: string): void {
+    var status: { state?: string; days?: number } | null = null;
+    try {
+        status = JSON.parse(String(answer));
+    } catch (e) {
+        status = null;
+    }
+    var state = status !== null && typeof status.state === 'string' ? status.state : 'fresh';
+    if (state === 'fresh') {
+        startRun();
+        return;
+    }
+    if (state === 'stale') {
+        var asked = +(pageStoreGet(StorageKey.AutoSkillAsked) || 0);
+        if (Date.now() - asked < AUTO_SKILL_ASK_EVERY_MS) {
+            startRun();
+            return;
+        }
+        pageStoreSet(StorageKey.AutoSkillAsked, String(Date.now()));
+    }
+    var stale = state === 'stale';
+    autoSkillState = state;
+    var title = document.getElementById('autoSkillTitle');
+    var body = document.getElementById('autoSkillBody');
+    var panel = document.getElementById('autoSkillPanel');
+    if (title === null || body === null || panel === null) {
+        startRun();
+        return;
+    }
+    title.textContent = stale
+        ? i18nFormat(UiText.AutoSkillTitleStale, {days: status !== null && status.days ? status.days : 7})
+        : i18nText(UiText.AutoSkillTitleMissing);
+    body.textContent = i18nText(stale ? UiText.AutoSkillBodyStale : UiText.AutoSkillBodyMissing);
+    closePresetPanel();
+    closeAppearancePanel();
+    panel.hidden = false;
+    logInfo(Log.Settings.AutoSkillPrompted, 'Asked about the Tsum List before starting', {state: state});
+}
+
+function closeAutoSkillPanel(): void {
+    var panel = document.getElementById('autoSkillPanel');
+    if (panel !== null) {
+        panel.hidden = true;
+    }
+}
+
+/** Wires the prompt's three buttons. Called once from `bootstrap`. */
+function bindAutoSkillPanel(): void {
+    var on = function (id: string, handler: () => void) {
+        var button = document.getElementById(id);
+        if (button !== null) {
+            button.addEventListener('click', handler);
+        }
+    };
+    // Export first, and the run it starts is for the export alone; the player
+    // presses Play again once it is done, with a list to read.
+    on('autoSkillExport', function () {
+        closeAutoSkillPanel();
+        askExportTsumListNow();
+    });
+    on('autoSkillAnyway', function () {
+        closeAutoSkillPanel();
+        startRun();
+    });
+    on('autoSkillCancel', closeAutoSkillPanel);
+}
+
 // entry function called by the host's settings WebView
 // noinspection JSUnusedGlobalSymbols
 function onEvent(eventType: string): void {
@@ -4788,11 +4900,12 @@ function onEvent(eventType: string): void {
         // down first. The command below reads the controls, not the store, so
         // this is about what the page comes back to rather than what starts.
         flushSettings();
-        // close settings by hiding and showing menu
-        JavaScriptInterface.hideMenu();
-        JavaScriptInterface.showMenu();
-        var startCommand = genStartCommand(settings);
-        JavaScriptInterface.runScript(startCommand);
+        // Auto Set Skill Level needs a current Tsum List; ask the engine
+        // before the panel closes, so a prompt has somewhere to show.
+        if (startSettings(settings).autoSkillLevel === true && askAutoSkillLevel()) {
+            return;
+        }
+        startRun();
     } else if (eventType === 'OnPauseClick') {
         JavaScriptInterface.runScript('stop();');
     } else if (eventType === 'OnSettingClick') {
@@ -4984,6 +5097,7 @@ function bootstrap(): void {
         });
     }
     bindAppearance();
+    bindAutoSkillPanel();
     // Re-run now that the buttons exist, so they get their labels and the panel its state.
     setTheme(currentTheme(), false);
     setStyle(pageStyle(), false);

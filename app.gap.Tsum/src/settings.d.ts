@@ -141,6 +141,8 @@ declare const enum StorageKey {
   Style = 'tsumtsumstyle',
   /** A `PageSize`; absent is Small. */
   Size = 'tsumtsumsize',
+  /** When the stale-Tsum-List prompt last showed (ms); it asks once a day. */
+  AutoSkillAsked = 'tsumtsumautoskillasked',
 }
 
 /** Anything one settings row can hold. */

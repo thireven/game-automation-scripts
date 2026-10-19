@@ -1790,6 +1790,7 @@ interface Tsum {
   selectedTsum(): MyTsumSelection | null;
   /** Read the pre-round button icon and set `myTsum`; see `record.myTsum`. */
   identifyMyTsum(): void;
+  applyAutoSkillLevel(short: string): void;
 
   // --- clickAssist.ts --------------------------------------------------
   findTouchDevice(): TouchDevice | null;

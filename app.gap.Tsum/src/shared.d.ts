@@ -355,6 +355,7 @@ declare const enum SettingKey {
   SkillSettleMs = 'skillSettleMs',
   SkillReactivationTenths = 'skillReactivationTenths',
   SkillLevel = 'skillLevel',
+  AutoSkillLevel = 'autoSkillLevel',
   SkillType = 'skillType',
   SkillAutoTap = 'skillAutoTap',
   LorcanaCard = 'lorcanaCard',
@@ -488,6 +489,12 @@ interface Settings {
    */
   [SettingKey.SkillReactivationTenths]?: number;
   [SettingKey.SkillLevel]: number;
+  /**
+   * Take the skill level from the Tsum List, for whichever MyTsum the pre-round
+   * screen shows selected, instead of from `skillLevel`. That one stays as the
+   * fallback for a tsum the list does not hold.
+   */
+  [SettingKey.AutoSkillLevel]: boolean;
   [SettingKey.SkillType]: SkillType;
   [SettingKey.SkillAutoTap]: boolean;
   /**

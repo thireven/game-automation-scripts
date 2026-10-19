@@ -252,6 +252,7 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.SkillSettleMs]: RemoteKind.Int,
   [SettingKey.SkillReactivationTenths]: RemoteKind.Int,
   [SettingKey.SkillLevel]: RemoteKind.Int,
+  [SettingKey.AutoSkillLevel]: RemoteKind.Bool,
   [SettingKey.SkillType]: RemoteKind.Enum,
   [SettingKey.SkillAutoTap]: RemoteKind.Bool,
   [SettingKey.LorcanaCard]: RemoteKind.Bool,
@@ -568,6 +569,8 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   ts.skillReactivationMs = typeof settings.skillReactivationTenths === 'number'
     && settings.skillReactivationTenths > 0 ? settings.skillReactivationTenths * 100 : 0;
   ts.skillLevel = settings.skillLevel;
+  // `!== false` for a hand-written start() command and a stored form from before the row existed: on is the default.
+  ts.autoSkillLevel = settings.autoSkillLevel !== false;
   ts.skillType = settings.skillType;
   ts.trackRoundStats = settings.trackRoundStats;
   // `=== true` for a stored form from before the row existed. Off forgets
@@ -724,6 +727,18 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // and the run ends before any node runs.
   if (gWorkflowRun && !workflowBegin(workflowRef!)) {
     return;
+  }
+  // The settings page asks about a missing or old list before it starts; this
+  // is for every start that has no page to ask (Companion, workflow, restart).
+  if (ts.autoSkillLevel && !tsumListOnly && !directOnly) {
+    const health = tsumListHealth();
+    if (health.state !== TsumListState.Fresh) {
+      logWarn(Log.TsumList.AutoSkillNoList, 'Auto Set Skill Level has no current Tsum list',
+        {state: health.state, days: health.days});
+      ts.banner(health.state === TsumListState.Stale
+        ? 'Tsum List is ' + health.days + ' days old. Run Export Tsum List to refresh skill levels.'
+        : 'No Tsum List. Run Export Tsum List so Auto Set Skill Level can work.', 8000, 3);
+    }
   }
   const jobs = gWorkflowRun ? workflowTaskTable() : directOnly ? [] : runTaskTable(settings);
   for (let i = 0; i < jobs.length; i++) {

@@ -186,7 +186,7 @@ const WorkflowPresetKeys: string[] = [
   SettingKey.BonusExp, SettingKey.BonusTime, SettingKey.BonusBubble,
   SettingKey.Bonus5to4, SettingKey.BonusCombo, SettingKey.SkillWaitingTime,
   SettingKey.SkillLevel, SettingKey.SkillType, SettingKey.NoSkillLastFeverSec,
-  SettingKey.SkillAutoTap, SettingKey.LinkReachPercent, SettingKey.LorcanaCard,
+  SettingKey.SkillAutoTap, SettingKey.AutoSkillLevel, SettingKey.LinkReachPercent, SettingKey.LorcanaCard,
   SettingKey.BubbleStrategy, SettingKey.HoldBubblesLastFeverSec,
   SettingKey.SkillSettleMs, SettingKey.SkillReactivationTenths,
 ];

@@ -152,6 +152,9 @@ var LogsEn = {
   [Log.TsumList.Start]: 'Exporting the Tsum list',
   [Log.TsumList.PageRead]: 'Collection page read',
   [Log.TsumList.Unnamed]: 'Could not name a Tsum; saved its portrait',
+  [Log.TsumList.SkillApplied]: 'Skill level set from the Tsum list',
+  [Log.TsumList.SkillMissing]: 'No skill level in the Tsum list for this tsum',
+  [Log.TsumList.AutoSkillNoList]: 'Auto Set Skill Level has no current Tsum list',
   [Log.TsumList.End]: 'Tsum list exported'
 }
 

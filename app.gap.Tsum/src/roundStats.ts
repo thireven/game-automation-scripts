@@ -1726,6 +1726,7 @@ Tsum.prototype.identifyMyTsum = function() {
     // one showing, and the next pre-round screen replaces it. The catalogue
     // sentence is reused so the strip is in the run's language, like the log.
     this.banner('Tsum: ' + selected.full);
+    this.applyAutoSkillLevel(selected.short);
   } else {
     logWarn(Log.Tsums.Unidentified,
       'No tsum in the library matched the pre-round icon well enough; leaving the column empty', {

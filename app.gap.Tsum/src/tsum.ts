@@ -133,6 +133,8 @@ class Tsum {
   /** When a tap last fired the skill: `useSkill`'s, or a bare tap on a gauge read full; 0 for none. */
   skillFiredAt: number;
   skillLevel: number;
+  /** Set `skillLevel` from the Tsum List for the selected MyTsum each round (`applyAutoSkillLevel`). */
+  autoSkillLevel: boolean;
   /** `SkillType.Unset` until start() reads the setting. */
   skillType: SkillType;
   gameBubbles: GameBubble[];
@@ -424,6 +426,7 @@ class Tsum {
     this.skillActivatedAt = 0;
     this.skillFiredAt = 0;
     this.skillLevel = 3;
+    this.autoSkillLevel = false;
     this.skillType = SkillType.Unset;
     // Bubble positions from the last board scan, tapped after a long chain.
     this.gameBubbles = [];

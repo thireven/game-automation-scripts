@@ -114,7 +114,7 @@ restartIfSlow, loop, stop`), offered only when the engine has `gapRestartDevice`
 
 A node param on the `tsums` list needs this device's list, where each tsum's
 `order` is its card's position in the collection: `<device folder>/tsum_list_state.json` (`getDevicePath()`, which is per device),
-`{at, build, tsums: [{order, tsum, name, favorite}]}`.
+`{at, build, tsums: [{order, tsum, name, favorite, skill}]}`. `skill` is the tsum's skill level (null when unread), which Auto Set Skill Level reads; a file from before it has none.
 
 - The Export Tsum List chore writes it, overwriting, only when an export ends
   with reason `end of list`. A partial export (stopped, page limit, page turn

@@ -8,6 +8,7 @@
 var SettingDefaults: Readonly<Settings> = {
   [SettingKey.SkillType]: SkillType.Burst,
   [SettingKey.SkillLevel]: 6,
+  [SettingKey.AutoSkillLevel]: true,
   [SettingKey.LorcanaCard]: false,
   [SettingKey.SkillAutoTap]: true,
   [SettingKey.SkillSettleMs]: 0,

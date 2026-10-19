@@ -412,6 +412,12 @@ namespace Log {
     WriteFailed     = 'tsumList.writeFailed',
     /** `tsum_list_<device id>.json`, the workflow's `tsums` list, was written. */
     FileWritten     = 'tsumList.fileWritten',
+    /** Auto Set Skill Level took the level from the list. */
+    SkillApplied    = 'tsumList.skillApplied',
+    /** Auto Set Skill Level found no level for the selected tsum and kept the typed one. */
+    SkillMissing    = 'tsumList.skillMissing',
+    /** A run started with Auto Set Skill Level on and no usable (or an old) list. */
+    AutoSkillNoList = 'tsumList.autoSkillNoList',
   }
 
   /** A GAP Companion workflow run (src/workflow.ts). */
@@ -547,6 +553,7 @@ namespace Log {
     UnlockLevelsNowAsked       = 'settings.unlockLevelsNowAsked',
     BuyBoxesNowAsked           = 'settings.buyBoxesNowAsked',
     ExportTsumListAsked        = 'settings.exportTsumListAsked',
+    AutoSkillPrompted          = 'settings.autoSkillPrompted',
     BuyOpenCapsuleNowAsked     = 'settings.buyOpenCapsuleNowAsked',
     Saved                      = 'settings.saved',
     ShareCodeUndecodable       = 'settings.shareCodeUndecodable',

@@ -45,6 +45,20 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a17]
+
+### Summary
+
+**Additions**
+*Skills*
+- Auto Set Skill Level added: takes the skill level from your Tsum List for the selected MyTsum, and asks you to export the list if it is missing or a week old.
+
+### Added
+
+- **Auto Set Skill Level** (`SettingKey.AutoSkillLevel`, on by default, a share slot): `identifyMyTsum` calls `applyAutoSkillLevel` on the pre-round screen, which sets `skillLevel` (and the run's settings object, so the stats row records it) from `tsum_list_state.json`. A tsum the list lacks keeps the typed level.
+- **List file keeps skill levels** (`tsumListSaveFile`): each row now carries `skill`. A file from before this has none and counts as missing.
+- **Start prompt** (`autoSkillPanel`, `tsumListStatus`): Play asks the engine about the list first. Missing or old opens a panel (export now / start anyway / cancel); stale (over 7 days) asks once a day. A start with no page (Companion, workflow, restart) gets a banner and a `tsumList.autoSkillNoList` warning instead.
+
 ## [6.0a16]
 
 ### Summary
