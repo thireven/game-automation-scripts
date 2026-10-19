@@ -45,14 +45,9 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0a15]
+## [6.0a16]
 
 ### Summary
-
-**Additions**
-
-*Debug*
-- Debug tab's "Direct from phone" closes the settings and pauses the script so you can direct the device from GAP Companion.
 
 **Fixes**
 - Receiving mail one by one no longer gets stuck on the new-tsum card after opening a tsum box.
@@ -62,6 +57,15 @@ release note; they fold back in here when she ships.
 
 - **Coloring event mission tip** (`EventTip`, `dismiss.eventTip`): the tip card the game opens when a new mission unlocks read as `ClosePage`, which the score wait never taps, so the round sat there until the wait gave up. It now has its own fingerprint and its Close is pressed.
 - **Mail tsum box** (`isMailTsumCard`): the one-by-one loop read the reveal card as nothing and tapped the gift dialog's Close spot, mid-card, until it gave up. It now matches `BoxPurchasedPage` minus its foot probe (under the Quick Bar) and taps that card's Close.
+
+## [6.0a15]
+
+### Summary
+
+**Additions**
+
+*Debug*
+- Debug tab's "Direct from phone" closes the settings and pauses the script so you can direct the device from GAP Companion.
 
 ### Added
 
