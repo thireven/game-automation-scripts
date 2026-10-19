@@ -420,6 +420,23 @@ gPages.subscribe({
 });
 
 gPages.subscribe({
+  id: 'dismiss.eventTip',
+  category: PageCategory.Dismiss,
+  what: 'Press Close on the coloring event\'s mission tip. The game opens it over '
+      + 'the event page when a new mission unlocks, and it waits for input -- so '
+      + 'left alone it holds the tally behind it until the score wait gives up.',
+  pages: [PageName.EventTip],
+  // A permanent page, so it has to be tapped and tapping it again is harmless if
+  // the first one missed.
+  every: true,
+  steps: [
+    { do: 'log', event: Log.Page.EventTipClosing, message: 'Event mission tip, pressing Close' },
+    { do: 'tap', anchor: PageAnchor.Back },
+    { do: 'settle', ms: PanelGoneSettleMs }
+  ]
+});
+
+gPages.subscribe({
   id: 'dismiss.eventGift',
   category: PageCategory.Dismiss,
   what: 'Press Close on the GET! gift dialog. The game\'s generic reward dialog, '

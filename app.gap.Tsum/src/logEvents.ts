@@ -83,6 +83,7 @@ namespace Log {
     EventCardRevealClosing = 'page.eventCardReveal.closing',
     EventGiftClosing      = 'page.eventGift.closing',
     EventMainClosing      = 'page.eventMain.closing',
+    EventTipClosing       = 'page.eventTip.closing',
     Friends               = 'page.friends',
     GameResuming          = 'page.gamePause.resuming',
     HeldOff               = 'page.heldOff',

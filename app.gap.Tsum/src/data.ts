@@ -544,6 +544,9 @@ const enum PageName {
   // game's generic reward dialog, dismissed the same way wherever it shows.
   EventCardReveal = 'EventCardReveal',
   EventGift = 'EventGift',
+  // The tip card ("Making Magical Bubbles", "Pink-Eared Tsum Tsum") the
+  // coloring event opens over its page when a new mission unlocks.
+  EventTip = 'EventTip',
   // Home / navigation
   StartPage = 'StartPage',
   FriendPage = 'FriendPage',
@@ -2114,6 +2117,30 @@ var Page = {
     back: {x: 540, y: 1000},
     next: {x: 540, y: 1000}
   },
+  // The coloring event's mission tip: a cream notebook card with a yellow
+  // lightbulb, over the dimmed event page, with only Close lit below. The game
+  // opens it by itself when a new mission unlocks (its "Last time" reads "-").
+  // Probed on the bulb, the card's blank margins and Close; the title, art
+  // and text change per mission.
+  //
+  // Without an entry it read `ClosePage`, which nothing taps during the score
+  // wait, so the tally stayed behind it until the wait gave up.
+  EventTip: {
+    name: PageName.EventTip,
+    colors: [
+      {x: 150, y:  773, r: 255, g: 198, b:  49, match: true, threshold: 60},  // lightbulb, left
+      {x: 230, y:  745, r: 255, g: 198, b:  49, match: true, threshold: 60},  // lightbulb, upper right
+      {x: 120, y:  700, r: 244, g: 240, b: 217, match: true, threshold: 40},  // card, left margin
+      {x: 120, y: 1050, r: 243, g: 240, b: 217, match: true, threshold: 40},  // card, left margin low
+      {x: 960, y:  700, r: 255, g: 245, b: 222, match: true, threshold: 40},  // card, right margin
+      {x: 960, y: 1000, r: 255, g: 245, b: 222, match: true, threshold: 40},  // card, right margin low
+      {x: 540, y: 1170, r: 243, g: 236, b: 217, match: true, threshold: 40},  // card, bottom
+      {x: 540, y: 1651, r: 238, g: 174, b:   6, match: true, threshold: 60},  // Close
+      {x: 440, y: 1600, r: 247, g: 182, b:   8, match: true, threshold: 60}   // Close, upper left
+    ],
+    back: {x: 540, y: 1655},
+    next: {x: 540, y: 1655}
+  },
   // The GET! gift dialog -- cyan header, dark body, "Claim your gift from your
   // mailbox", a Close button -- which the event raises after a card reveal,
   // and the Pick-Up Capsule when its prize is an item rather than a tsum.
@@ -2412,6 +2439,12 @@ var PageProfiles: PageProfileMap = {
         + 'Also "Last Prize!" (the `lastPrize` configuration), the same dialog '
         + 'over the store once the last capsule is bought, and the JP build\'s '
         + 'とじる button (the `jp` configuration).'
+  },
+  EventTip: {
+    kind: PageKind.Permanent,
+    roles: [PageRole.PreTally],
+    note: 'The coloring event\'s mission tip card, opened over the event page '
+        + 'when a new mission unlocks. Close puts the event page back.'
   },
   MagicalTime: {
     kind: PageKind.Permanent,
@@ -3437,6 +3470,10 @@ var PageRoutes: PageRouteMap = {
   EventGift: [
     { via: PageAnchor.Back, to: PageName.EventMain, source: RouteSource.Handler },
     { via: PageAnchor.Back, to: PageName.TsumTsumStorePage, source: RouteSource.Declared }
+  ],
+  // The tip card is drawn over the event page; Close leaves that behind.
+  EventTip: [
+    { via: PageAnchor.Back, to: PageName.EventMain, source: RouteSource.Handler }
   ],
   // Declared, not implemented: `nav.move.back` is what closes it, and the tally
   // is what `record.baseCoins` and `finishRoundStats` expect behind it.
