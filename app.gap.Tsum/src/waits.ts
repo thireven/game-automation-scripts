@@ -30,10 +30,13 @@ Tsum.prototype.sleepUntil = function(deadline) {
 }
 
 /**
- * Whether `settleScreen` saw the screen hold still within `withinMs` and no
- * touch wrapper has sent anything since. Raw native taps are not counted, so
- * this is only for screens no raw tap reaches that quickly (the system dialog
- * handlers wait 1.2s after theirs).
+ * Whether `settleScreen` saw the screen move and then hold still within
+ * `withinMs`, and no touch wrapper has sent anything since. A settle that never
+ * saw movement does not count: the game may simply not have reacted to the tap
+ * yet (a server call holds the old screen still), and trusting that let the
+ * next pass tap again. Raw native taps are not counted, so this is only for
+ * screens no raw tap reaches that quickly (the system dialog handlers wait 1.2s
+ * after theirs).
  */
 Tsum.prototype.stillSinceTouch = function(withinMs) {
   return this.screenStillAt > this.touchedAt && Date.now() - this.screenStillAt <= withinMs;
@@ -93,6 +96,7 @@ Tsum.prototype.settleScreen = function(maxMs, leadMs, spacingMs) {
   let before = screenSettleSample(this, points);
   let moved = points.length;
   let polls = 0;
+  let sawMove = false;
   while (this.isRunning && Date.now() - startedAt < budget) {
     this.sleep(spacing);
     const after = screenSettleSample(this, points);
@@ -104,11 +108,14 @@ Tsum.prototype.settleScreen = function(maxMs, leadMs, spacingMs) {
       }
     }
     if (moved <= ScreenSettle.maxMoved) {
-      this.screenStillAt = Date.now();
+      if (sawMove) {
+        this.screenStillAt = Date.now();
+      }
       logDebug(Log.Screen.Settled,
-        {still: true, ms: Date.now() - startedAt, moved: moved, polls: polls});
+        {still: true, ms: Date.now() - startedAt, moved: moved, polls: polls, sawMove: sawMove});
       return true;
     }
+    sawMove = true;
     before = after;
   }
   logDebug(Log.Screen.Settled,

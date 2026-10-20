@@ -1330,7 +1330,7 @@ interface Tsum {
    * the new screen arrive.
    */
   settleScreen(maxMs?: number, leadMs?: number, spacingMs?: number): boolean;
-  /** `settleScreen` saw the screen still within `withinMs`, and no touch wrapper has touched it since. */
+  /** `settleScreen` saw the screen move and then stop within `withinMs`, and no touch wrapper has touched it since. */
   stillSinceTouch(withinMs: number): boolean;
   /**
    * Wait for the tsums to stop moving, up to `maxMs` (`BoardSettle.maxMs` when

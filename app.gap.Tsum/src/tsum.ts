@@ -44,7 +44,7 @@ class Tsum {
   touchedAt: number;
   /** Epoch ms `linkTsums` last released a chain; 0 for none yet. */
   dragReleasedAt: number;
-  /** Epoch ms `settleScreen` last saw the screen hold still; 0 for never. */
+  /** Epoch ms `settleScreen` last watched the screen move and then hold still; 0 for never. */
   screenStillAt: number;
   /** Trace frame id of the latest play-square capture; 0 when it was not sent. */
   squareFrame: number;
