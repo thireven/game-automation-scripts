@@ -4833,7 +4833,7 @@ function onAutoSkillStatus(answer: string): void {
         status = null;
     }
     var state = status !== null && typeof status.state === 'string' ? status.state : 'fresh';
-    if (state === 'fresh') {
+    if (state === 'fresh' || document.hidden) {
         startRun();
         return;
     }
@@ -4901,8 +4901,10 @@ function onEvent(eventType: string): void {
         // this is about what the page comes back to rather than what starts.
         flushSettings();
         // Auto Set Skill Level needs a current Tsum List; ask the engine
-        // before the panel closes, so a prompt has somewhere to show.
-        if (startSettings(settings).autoSkillLevel === true && askAutoSkillLevel()) {
+        // before the panel closes, so a prompt has somewhere to show. With the
+        // page closed (Play from the floating bar) there is nowhere to show
+        // it: start, and the run's own banner says the list is missing.
+        if (!document.hidden && startSettings(settings).autoSkillLevel === true && askAutoSkillLevel()) {
             return;
         }
         startRun();

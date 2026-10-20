@@ -45,6 +45,17 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a18]
+
+### Summary
+
+**Fixes**
+- Play with the settings page closed starts the run again, and warns on screen if Auto Set Skill Level has no current Tsum List.
+
+### Fixed
+
+- **Play with the page closed** (`onEvent`, `onAutoSkillStatus`): the Tsum List prompt opened inside the hidden page, so nothing started and nothing showed. A hidden page now starts at once and leaves the warning to the run's banner.
+
 ## [6.0a17]
 
 ### Summary
