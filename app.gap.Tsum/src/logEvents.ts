@@ -162,6 +162,8 @@ namespace Log {
     BonusItemLocked       = 'play.bonusItemLocked',
     BonusItemsHidden      = 'play.bonusItemsHidden',
     BonusItemsToggled     = 'play.bonusItemsToggled',
+    /** The toggles never became readable; the last frame is read as before. */
+    BonusItemsUndrawn     = 'play.bonusItemsUndrawn',
     CheckBonusItems       = 'play.checkBonusItems',
     ConfirmingGameOver    = 'play.confirmingGameOver',
     /** Mid-round the game lost focus; the board is held until it is back. */

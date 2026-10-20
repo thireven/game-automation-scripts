@@ -55,6 +55,7 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Play with the settings page closed no longer does nothing when Auto Set Skill Level has no current Tsum List.
+- Bonus items no longer all flip on and off before a round.
 
 ### Changed
 
@@ -64,6 +65,7 @@ release note; they fold back in here when she ships.
 ### Fixed
 
 - **Play with the page closed** (`onEvent`, `onAutoSkillStatus`): the prompt opened inside the hidden page, so nothing started and nothing showed.
+- **Bonus items read before they are drawn** (`awaitBonusItems`, `bonusToggleState`): the slots show grey "Coming Soon" placeholders for ~350ms after StartPage already fingerprints, and `b > 128` read most of them as the wrong state, so ~1 round in 5 toggled every item twice (~7s). Exposed when the pre-item settle was skipped (6.0a12). The check now waits for each toggle to be gold (on) or blue (off).
 
 ## [6.0a17]
 

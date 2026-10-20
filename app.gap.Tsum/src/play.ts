@@ -51,7 +51,8 @@ Tsum.prototype.checkGameItem = function() {
     try {
       for (let i = 0; i < Button.outGameItems.length; i++) {
         const c = this.getColor(img, Button.outGameItems[i]);
-        if (c.b > 128) { // off
+        const state = bonusToggleState(c);
+        if (state === null ? c.b > 128 : !state) { // off
           if (isItemsOn[i]) {
             this.tap(Button.outGameItems[i]);
             isChange = true;
@@ -88,28 +89,67 @@ Tsum.prototype.isBonusItemLocked = function(img, index) {
   return c.r > 170 && c.g < 110;
 }
 
+/**
+ * A toggle's state off its colour: gold is on, blue is off. Null for anything
+ * else -- the grey "Coming Soon" placeholder the slots show for ~350ms while the
+ * item list loads (the page fingerprint already passes then), or the "Loading"
+ * bubble drifting over them.
+ */
+function bonusToggleState(c: Color): boolean | null {
+  if (c.r > 200 && c.b < 110) {
+    return true;
+  }
+  if (c.r < 120 && c.b > 165) {
+    return false;
+  }
+  return null;
+}
+
 /** How long the free-item popup gets to clear before it is tapped away. */
 const BonusPopupWaitMs = 1500;
 
 /**
- * A frame of the pre-round screen with nothing over it, or null if it does not
- * come back. The free-item popup dims the whole screen for about a second; it
- * is waited out, then tapped away once on the caption box.
+ * A frame of the pre-round screen with nothing over it and every toggle drawn,
+ * or null if it does not come back. The free-item popup dims the whole screen
+ * for about a second; it is waited out, then tapped away once on the caption
+ * box. A screen that stays up with a toggle unreadable for the whole wait
+ * returns its last frame, read as before.
  */
 Tsum.prototype.awaitBonusItems = function() {
   const pages = Page as PageMap;
   for (let attempt = 0; attempt < 2; attempt++) {
     const deadline = Date.now() + BonusPopupWaitMs;
+    let undrawn: NativeImage | null = null;
     do {
       const img = this.screenshot();
+      let isStart = false;
       for (const key in pages) {
         if (pages[key].name === PageName.StartPage && gPages.score(this, img, key, pages[key]).pass) {
-          return img;
+          isStart = true;
+          break;
         }
       }
-      releaseImage(img);
-      this.sleep(250);
+      if (isStart && this.getColors(img, Button.outGameItems).every(c => bonusToggleState(c) !== null)) {
+        if (undrawn !== null) {
+          releaseImage(undrawn);
+        }
+        return img;
+      }
+      if (undrawn !== null) {
+        releaseImage(undrawn);
+        undrawn = null;
+      }
+      if (isStart) {
+        undrawn = img;
+      } else {
+        releaseImage(img);
+      }
+      this.sleep(150);
     } while (this.isRunning && Date.now() < deadline);
+    if (undrawn !== null) {
+      logDebug(Log.Play.BonusItemsUndrawn, {});
+      return undrawn;
+    }
     if (attempt === 0) {
       logDebug(Log.Play.BonusItemsHidden, {});
       this.tap(Button.outGameItemsCaption);
