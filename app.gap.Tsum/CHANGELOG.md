@@ -45,6 +45,26 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.4]
+
+### Summary
+
+**Additions**
+*Stats*
+- Share round stats is available to everyone: it adds your rounds to the global Tsum Tsum Stats site without the starter.
+
+### Changed
+
+- Share round stats (`src/roundShare.ts`) leaves Alpha and posts to the global
+  site by default (`ROUND_STATS_URL` in `gap-env.json`). The first upload goes
+  without a key; the site joins the device and returns one, kept in
+  `round_share_key.json` with its URL and sent as a Bearer key after that. A
+  401 drops it.
+- Sends at most every 15 minutes, not every minute, so each request carries
+  several rounds. The site's daily limits (`quota`, `join-limit`, `budget`)
+  wait until 00:00 UTC, and rows the site names in `retry` are sent again.
+  When GAP has env vars or network access off, the log says so once a run.
+
 ## [5.3]
 
 ### Summary

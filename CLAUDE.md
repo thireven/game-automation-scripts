@@ -60,8 +60,15 @@ One thing that looks like a Robotmon leftover but is not, so leave it alone:
 
 Performance note, so it does not get re-litigated: `async`/`await` buys nothing
 here. The host has no timers, no workers, and every native call is synchronous
-and blocking — there is nothing to await. Script-side JavaScript is around 1% of
-a detection sweep; the cost is in captures and native image work.
+and blocking — there is nothing to await.
+
+Where the time goes, measured live on two emulators (6.0a12, October 2026):
+touch injection is 55–65% of wall-clock (each event ~10.6 ms, the minimum the
+game accepts), captures 10–16%, sleeps and native image work most of the rest.
+Script-side JavaScript is 3–10%: about 10% of in-round play on Burst, nearly
+half of that in `findLargeTsums`, and about 30% of a single-pass page sweep's
+own time. A JIT engine runs this code ~10× faster but would save only a few
+percent, so a hot kernel moves to a host native rather than the engine changing.
 
 **This is a Windows checkout, so do file work with the Read/Edit/Write/Grep
 tools, not with `cat`, `sed`, heredocs or `grep` through Bash.** Those tools
