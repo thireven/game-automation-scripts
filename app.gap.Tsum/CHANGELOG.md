@@ -57,6 +57,7 @@ release note; they fold back in here when she ships.
 - Play with the settings page closed no longer does nothing when Auto Set Skill Level has no current Tsum List.
 - Bonus items no longer all flip on and off before a round.
 - Sending hearts no longer stops partway down the friend list.
+- GAP Companion no longer asks for directions on the game's startup screens after the game restarts on its own.
 
 ### Changed
 
@@ -69,6 +70,7 @@ release note; they fold back in here when she ships.
 - **Bonus items read before they are drawn** (`awaitBonusItems`, `bonusToggleState`): the slots show grey "Coming Soon" placeholders for ~350ms after StartPage already fingerprints, and `b > 128` read most of them as the wrong state, so ~1 round in 5 toggled every item twice (~7s). Exposed when the pre-item settle was skipped (6.0a12). The check now waits for each toggle to be gold (on) or blue (off).
 - **Stillness after a tap only counts if the screen moved** (`settleScreen`, `stillSinceTouch`): a game slow to react (a server call) holds the old screen still, and the nav rest skip then let the mover tap twice. A settle that saw no movement now leaves the rest and the pre-item settle in place.
 - **Heart list ends always get their recheck** (`friendListMovesAfterAll`): gating it on a visibly slow send (6.0a12) let the spinner after an ordinary send end the downward half at 21 of 36 screens (4 of 45 sweeps). `hearts.listEnd` now logs `lastSent`.
+- **Boot phase for restarts the script did not make** (`catchUpBoot`, `nav.move.bootUnknown`): a game restarted by a crash, the user or the OS showed its splash and video before any title screen began the phase, so each one went to the director as an unknown screen. An unknown screen on a game process younger than the boot budget now starts the phase from the process start. Logs `app.bootCaughtUp`.
 
 ## [6.0a17]
 

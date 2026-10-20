@@ -1366,6 +1366,8 @@ interface Tsum {
   beginBoot(): void;
   /** The game is between launch and the hub, inside the budget. */
   inBoot(): boolean;
+  /** In the boot phase, starting it if the game's process is younger than the budget (a restart this script did not make). */
+  catchUpBoot(): boolean;
   /** End the boot phase on `page` (`bootEndPages`), and log how long it took. */
   endBoot(page: PageName): void;
   /** One tap through a startup screen nothing fingerprinted: a native dialog first, else TAP TO START. */

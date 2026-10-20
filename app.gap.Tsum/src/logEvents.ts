@@ -45,6 +45,8 @@ namespace Log {
 
   /** The game app process. */
   export const enum App {
+    /** An unknown screen on a freshly started game process began the boot phase. */
+    BootCaughtUp     = 'app.bootCaughtUp',
     BootDone         = 'app.bootDone',
     Build            = 'app.build',
     ChosenBuildMissing = 'app.chosenBuildMissing',

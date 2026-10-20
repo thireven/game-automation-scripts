@@ -854,13 +854,16 @@ gPages.subscribe({
   order: 31,
   what: 'While the game boots, an unrecognised screen is a startup one -- the splash, '
       + 'the opening video -- so tap TAP TO START\'s spot, which skips the video, '
-      + 'instead of escaping blind or asking the user. A native dialog is handled first. '
+      + 'instead of escaping blind or asking the user. A freshly started game process counts '
+      + 'as booting, whoever restarted it. A native dialog is handled first. '
       + 'Past the boot budget this declines and nav.move.unknown takes over.',
   pages: [PageName.Unknown],
   after: ['record.corpusUnknown'],
   every: true,
   acts: function(event) {
-    return event.ts.inBoot();
+    // Not only a boot this script started: a game that restarted on its own
+    // would otherwise ask the user about every splash screen.
+    return event.ts.catchUpBoot();
   },
   steps: [
     { do: 'call', name: 'tapThroughBoot', run: function() {

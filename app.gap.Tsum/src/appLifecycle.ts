@@ -131,6 +131,23 @@ function gameRunning(build: GameBuild): boolean {
   }
 }
 
+/**
+ * When the game's process started, in ms (whole seconds), or 0 when it is not
+ * running or the shell cannot say. `/proc/<pid>` is created with the process.
+ */
+function gameStartedAt(build: GameBuild): number {
+  try {
+    const pid = execute('pidof ' + GamePackages[build]).trim().split(/\s+/)[0];
+    if (!/^\d+$/.test(pid)) {
+      return 0;
+    }
+    const secs = parseInt(execute('stat -c %Y /proc/' + pid).trim(), 10);
+    return isNaN(secs) ? 0 : secs * 1000;
+  } catch (e) {
+    return 0;
+  }
+}
+
 /** Which build of the game is in front, or null when neither is. */
 function focusedGameBuild(): GameBuild | null {
   const packageName = focusedPackage();
@@ -375,6 +392,28 @@ Tsum.prototype.beginBoot = function() {
 
 Tsum.prototype.inBoot = function() {
   return Date.now() < this.bootUntil;
+}
+
+// A game restarted by something other than this script (a crash, the user,
+// the OS) shows its splash and video before any title screen starts the phase.
+// Its process age says it is booting, so the clock runs from the process start.
+// A phase that already ran for this process stays out.
+Tsum.prototype.catchUpBoot = function() {
+  if (this.inBoot()) {
+    return true;
+  }
+  const startedAt = gameStartedAt(this.gameBuild());
+  // The second's slack: the process time is truncated to whole seconds.
+  if (startedAt === 0 || Date.now() - startedAt >= BootBudgetMs
+      || (this.bootStartedAt !== 0 && startedAt - 1000 <= this.bootStartedAt)) {
+    return false;
+  }
+  this.bootStartedAt = startedAt;
+  this.bootUntil = startedAt + BootBudgetMs;
+  logInfo(Log.App.BootCaughtUp, 'The game restarted; treating its screens as startup', {
+    ageMs: Date.now() - startedAt,
+  });
+  return true;
 }
 
 Tsum.prototype.endBoot = function(page) {
