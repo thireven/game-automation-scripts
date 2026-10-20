@@ -96,7 +96,7 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.SettingTrackRoundStats]: '記錄每局數據',
     [UiText.SettingTrackRoundStatsHelp]: '每天 (UTC) 一個 CSV，存於 stats/：stats_YYYYMMDD.csv。',
     [UiText.SettingShareRoundStats]: '分享每局數據',
-    [UiText.SettingShareRoundStatsHelp]: '約每分鐘將新的資料列傳送到統計伺服器。需要開啟「記錄每局數據」，並在 GAP 中設定統計伺服器且允許網路存取（資料庫 > 此腳本 > 設定）。',
+    [UiText.SettingShareRoundStatsHelp]: '每15分鐘將每局數據加入 Tsum Tsum Stats 全球統計網站。需要開啟「記錄每局數據」，並在 GAP（資料庫 > 此腳本 > 設定）開啟使用環境變數與允許網路請求。若已透過啟動器上傳數據則不需要。',
     [UiText.SettingBubbleStrategy]: '泡泡策略',
     [UiText.SettingBubbleStrategyHelp]: '連線中戳破的泡泡消得更多，預設會留給連線。',
     [UiText.SettingHoldBubblesLastFever]: 'Fever尾段保留泡泡秒數',

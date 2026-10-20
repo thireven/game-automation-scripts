@@ -92,7 +92,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingTrackRoundStats]: 'Record round stats',
     [UiText.SettingTrackRoundStatsHelp]: 'One CSV a day (UTC) under stats/: stats_YYYYMMDD.csv.',
     [UiText.SettingShareRoundStats]: 'Share round stats',
-    [UiText.SettingShareRoundStatsHelp]: 'Sends new rows to the stats server about once a minute. Needs Record round stats, and a stats server set with network access allowed in GAP (Library > this script > settings).',
+    [UiText.SettingShareRoundStatsHelp]: 'Adds your rounds to the global Tsum Tsum Stats site, every 15 minutes. Needs Record round stats, and in GAP (Library > this script > settings) Use environment variables and Allow network requests turned on. Not needed if the starter already uploads your stats.',
     [UiText.SettingBubbleStrategy]: 'Bubble Strategy',
     [UiText.SettingBubbleStrategyHelp]: 'A bubble popped mid-chain clears more; the default saves them for that.',
     [UiText.SettingHoldBubblesLastFever]: 'Hold bubbles last fever seconds',
