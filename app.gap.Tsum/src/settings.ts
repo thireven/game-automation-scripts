@@ -4804,14 +4804,13 @@ function startRun(): void {
 //
 // Play asks the engine (`tsumListStatus`, src/tsumList.ts) whether the list can
 // supply skill levels. Fresh starts at once; otherwise the answer opens
-// `autoSkillPanel`. A stale list is only asked about once a day, so a restart
-// loop is not nagged; a missing one is asked every time. An engine that does not
-// answer is treated as fresh -- the prompt must never be what stops a run.
+// `autoSkillPanel`, opening the page first when Play came from the floating bar
+// (`showSettings`, GAP 4.8+; an older host just starts, and the run's banner
+// warns). Nothing starts until the user picks Ignore and start. A stale list is
+// only asked about once a day, so a restart loop is not nagged; a missing one is
+// asked every time. An engine that does not answer is treated as fresh.
 
 var AUTO_SKILL_ASK_EVERY_MS = 24 * 60 * 60 * 1000;
-
-/** The state the last answer gave, for the prompt's wording. */
-var autoSkillState = '';
 
 /** True when the start waits on the answer (or the user); false to start now. */
 function askAutoSkillLevel(): boolean {
@@ -4833,7 +4832,9 @@ function onAutoSkillStatus(answer: string): void {
         status = null;
     }
     var state = status !== null && typeof status.state === 'string' ? status.state : 'fresh';
-    if (state === 'fresh' || document.hidden) {
+    var iface = bridge();
+    var canOpen = iface !== undefined && typeof iface.showSettings === 'function';
+    if (state === 'fresh' || (document.hidden && !canOpen)) {
         startRun();
         return;
     }
@@ -4846,7 +4847,6 @@ function onAutoSkillStatus(answer: string): void {
         pageStoreSet(StorageKey.AutoSkillAsked, String(Date.now()));
     }
     var stale = state === 'stale';
-    autoSkillState = state;
     var title = document.getElementById('autoSkillTitle');
     var body = document.getElementById('autoSkillBody');
     var panel = document.getElementById('autoSkillPanel');
@@ -4861,6 +4861,10 @@ function onAutoSkillStatus(answer: string): void {
     closePresetPanel();
     closeAppearancePanel();
     panel.hidden = false;
+    if (document.hidden && iface !== undefined && iface.showSettings !== undefined) {
+        iface.showSettings();
+    }
+    window.scrollTo(0, 0);
     logInfo(Log.Settings.AutoSkillPrompted, 'Asked about the Tsum List before starting', {state: state});
 }
 
@@ -4901,10 +4905,8 @@ function onEvent(eventType: string): void {
         // this is about what the page comes back to rather than what starts.
         flushSettings();
         // Auto Set Skill Level needs a current Tsum List; ask the engine
-        // before the panel closes, so a prompt has somewhere to show. With the
-        // page closed (Play from the floating bar) there is nowhere to show
-        // it: start, and the run's own banner says the list is missing.
-        if (!document.hidden && startSettings(settings).autoSkillLevel === true && askAutoSkillLevel()) {
+        // first. With the page closed, the answer opens it (`onAutoSkillStatus`).
+        if (startSettings(settings).autoSkillLevel === true && askAutoSkillLevel()) {
             return;
         }
         startRun();

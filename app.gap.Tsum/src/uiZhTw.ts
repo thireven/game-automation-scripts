@@ -208,8 +208,8 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.AutoSkillBodyMissing]: '自動設定技能等級需要 Tsum 清單來讀取技能等級。請執行一次「匯出 Tsum 清單」，之後會自動記住。',
     [UiText.AutoSkillBodyStale]: '技能等級可能已經改變。現在開始將使用舊清單。',
     [UiText.AutoSkillExport]: '立即匯出 Tsum 清單',
-    [UiText.AutoSkillStartAnyway]: '仍然開始',
-    [UiText.AutoSkillCancel]: '取消',
+    [UiText.AutoSkillStartAnyway]: '忽略並開始',
+    [UiText.AutoSkillCancel]: '關閉',
     [UiText.DetectMyTsumFailed]: '沒有讀到任何東西。請先載入腳本再試一次。',
 
     [UiText.BubbleOneMidChain]: '連線時戳一顆',

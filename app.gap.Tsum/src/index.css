@@ -284,13 +284,37 @@ p {
     gap: var(--space-3);
 }
 
+/* The Tsum List prompt: a warning, so it must not read as another panel.
+   Two classes, to win over each style's own `.preset-panel`. */
+.preset-panel.auto-skill-panel {
+    background-color: var(--surface, var(--card-bottom));
+    background-image: linear-gradient(var(--warning-band), var(--warning-band));
+    border: 3px solid var(--warning);
+    box-shadow: var(--shadow-float);
+}
+
 .auto-skill-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     margin: 0 0 var(--space-2);
-    font-weight: 700;
+    color: var(--warning);
+    font-weight: 800;
+}
+
+.auto-skill-title::before {
+    content: "";
+    flex: none;
+    width: 20px;
+    height: 20px;
+    background: var(--warning);
+    -webkit-mask: var(--icon-warning) center / contain no-repeat;
+    mask: var(--icon-warning) center / contain no-repeat;
 }
 
 .auto-skill-panel .share-status {
     margin-bottom: var(--space-4);
+    color: var(--ink);
 }
 
 /* Close is the escape, so it sits apart from the actions. */

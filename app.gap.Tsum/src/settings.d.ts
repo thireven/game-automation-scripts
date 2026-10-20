@@ -20,6 +20,8 @@ declare const JavaScriptInterface: {
   runScriptCallback(script: string, callbackName: string): void;
   showMenu(): void;
   hideMenu(): void;
+  /** Open the settings panel, as the bar's Settings button does. GAP 4.8+; feature-detect it. */
+  showSettings?(): void;
   /**
    * Put `text` on the system clipboard.
    *

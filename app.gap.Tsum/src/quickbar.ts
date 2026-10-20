@@ -983,6 +983,26 @@ const ResumeRepressMs = 1500;
 const ResumePollMs = 100;
 
 /**
+ * Paused outside a round, the user may have picked another tsum, on a screen
+ * the router never saw leave, so `record.myTsum` (once per arrival) would not
+ * read it again before the round. Read it here when the pre-round screen is up,
+ * which also re-applies Auto Set Skill Level. True when it read.
+ */
+function resumeRereadMyTsum(t: Tsum): boolean {
+  if (!t.gameInFront()) {
+    return false;
+  }
+  // The settings panel may only just have closed; the host captures it too.
+  t.sleep(DetectMyTsumSettleMs);
+  const def = gPages.peek(1, 0);
+  if (def === null || def.name !== PageName.StartPage) {
+    return false;
+  }
+  t.identifyMyTsum();
+  return true;
+}
+
+/**
  * Called by the host before the pause lifts, and gated in for it.
  *
  * Puts back the round `onPause` paused: waits for the game to redraw, presses
@@ -1002,7 +1022,7 @@ function onResume(): string {
     t.roundStartedAt += pausedMs;
   }
   if (!t.pausedInRound) {
-    return 'not in a round';
+    return resumeRereadMyTsum(t) ? 'not in a round; read the selected tsum again' : 'not in a round';
   }
   const startedAt = Date.now();
   let presses = 0;

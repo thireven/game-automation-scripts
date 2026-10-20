@@ -203,8 +203,8 @@ i18nRegister(Locale.Japanese, '日本語', {
     [UiText.AutoSkillBodyMissing]: 'スキルレベル自動設定にはツムリストが必要です。ツムリストの書き出しを一度実行してください。',
     [UiText.AutoSkillBodyStale]: 'スキルレベルが変わっている可能性があります。今開始すると古いリストを使います。',
     [UiText.AutoSkillExport]: '今すぐツムリストを書き出す',
-    [UiText.AutoSkillStartAnyway]: 'このまま開始',
-    [UiText.AutoSkillCancel]: 'キャンセル',
+    [UiText.AutoSkillStartAnyway]: '無視して開始',
+    [UiText.AutoSkillCancel]: '閉じる',
     [UiText.DetectMyTsumFailed]: '何も読み取れませんでした。先にスクリプトを読み込んでから、もう一度お試しください。',
 
     [UiText.BubbleOneMidChain]: 'チェーン中にボムを1つ',

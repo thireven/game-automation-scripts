@@ -49,12 +49,21 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+*Skills*
+- Auto Set Skill Level improved: pressing Play without a recent Tsum List opens the settings page with a warning that must be dismissed before the run starts, and the skill level updates when you change tsums during a pause.
+
 **Fixes**
-- Play with the settings page closed starts the run again, and warns on screen if Auto Set Skill Level has no current Tsum List.
+- Play with the settings page closed no longer does nothing when Auto Set Skill Level has no current Tsum List.
+
+### Changed
+
+- **Tsum List prompt** (`autoSkillPanel`, `onAutoSkillStatus`): drawn as a warning (border, band and icon in `--warning`). Play from the floating bar now opens the page with it (`JavaScriptInterface.showSettings`, GAP 4.8+; an older host starts and the run's banner warns). Buttons are now Run Export Tsum List now / Ignore and start / Close; nothing starts until Ignore and start.
+- **Resume re-reads the MyTsum** (`resumeRereadMyTsum`, `onResume`): out of a round, a resume on the pre-round screen runs `identifyMyTsum` again, since the router saw no arrival there; that re-applies Auto Set Skill Level.
 
 ### Fixed
 
-- **Play with the page closed** (`onEvent`, `onAutoSkillStatus`): the Tsum List prompt opened inside the hidden page, so nothing started and nothing showed. A hidden page now starts at once and leaves the warning to the run's banner.
+- **Play with the page closed** (`onEvent`, `onAutoSkillStatus`): the prompt opened inside the hidden page, so nothing started and nothing showed.
 
 ## [6.0a17]
 
