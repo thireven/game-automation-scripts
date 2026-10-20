@@ -736,9 +736,8 @@ var tabs: TabSpec[] = [
                         title: UiText.SettingShareRoundStats,
                         help: UiText.SettingShareRoundStatsHelp,
                         default: SettingDefaults[SettingKey.ShareRoundStats],
-                        // Alpha-only: stats are shared through the local stats
-                        // site. Inert until ROUND_STATS_URL is set (gap-env.json).
-                        status: ReleaseStatus.Alpha,
+                        // Sends to the global stats site unless ROUND_STATS_URL
+                        // (gap-env.json) says otherwise; for players without the starter.
                         neverShared: true
                     }
                 ]

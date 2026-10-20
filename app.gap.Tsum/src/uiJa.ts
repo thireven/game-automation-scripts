@@ -91,7 +91,7 @@ i18nRegister(Locale.Japanese, '日本語', {
     [UiText.SettingTrackRoundStats]: 'ラウンド統計を記録',
     [UiText.SettingTrackRoundStatsHelp]: '1日 (UTC) ごとに CSV を1つ stats/ に保存します: stats_YYYYMMDD.csv。',
     [UiText.SettingShareRoundStats]: 'ラウンド統計を共有',
-    [UiText.SettingShareRoundStatsHelp]: '新しい行を約1分ごとに統計サーバーへ送信します。「ラウンド統計を記録」と、GAPでの統計サーバーの設定とネットワークアクセスの許可（ライブラリ > このスクリプト > 設定）が必要です。',
+    [UiText.SettingShareRoundStatsHelp]: '15分ごとに、ラウンドをTsum Tsum Statsのグローバル統計サイトへ送信します。「ラウンド統計を記録」と、GAP（ライブラリ > このスクリプト > 設定）で環境変数の使用とネットワークリクエストの許可をオンにする必要があります。スターターで統計をアップロードしている場合は不要です。',
     [UiText.SettingBubbleStrategy]: 'ボムの使い方',
     [UiText.SettingBubbleStrategyHelp]: 'チェーン途中で割ったボムはより多く消します。デフォルトはそのためにボムを残します。',
     [UiText.SettingHoldBubblesLastFever]: 'フィーバー終盤にボムを残す秒数',

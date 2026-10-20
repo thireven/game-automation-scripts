@@ -5,8 +5,8 @@
       "key": "ROUND_STATS_URL",
       "type": "url",
       "label": "Round stats server",
-      "help": "Where Share round stats sends new rows. Needs network access allowed.",
-      "default": ""
+      "help": "Where Share round stats sends new rows: the global Tsum Tsum Stats site unless changed. Needs network requests allowed.",
+      "default": "https://tsum-stats.gapscripts.app/api/v1/rounds"
     }
   ]
 }
