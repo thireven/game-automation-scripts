@@ -370,7 +370,8 @@ In a file manager that is **Download ▸ GeneralAutomationPlatform**. Inside it:
 | `reports/` | The zips **Save to device** in Run History writes |
 | `hearts.json`, `stats/presets.txt` | The heart tally, and your exported presets |
 | `corpus/`, `walkthrough/` | Unknown screens and walkthrough recordings — only with those [developer options](#developer-options) on |
-| `scripts/…/<script folder>/last-settings-<device id>.json` | The settings the last run on that device started with, as one JSON object (the `start()` settings, without the one-shot Now flags `unlockLevelsFirst`, `buyBoxesFirst` and `tsumListOnly`). Rewritten at every start; `lastRunSettings()` reads it back. Safe to delete |
+| `devices/<name>_<id>/last-settings.json` | The settings the last run on that device started with, as one JSON object (the `start()` settings, without the one-shot Now flags `unlockLevelsFirst`, `buyBoxesFirst`, `tsumListOnly` and `buyOpenCapsuleOnly`), with changes made from GAP Companion on top. A start from GAP Companion runs with it. Rewritten at every start; `lastRunSettings()` reads it back. Safe to delete, but GAP Companion then starts with the defaults |
+| `devices/<name>_<id>/remote-settings.json` | Settings changed from GAP Companion that the settings page has not taken into its store yet. Safe to delete |
 | `tmp/` | Scratch: the *Debug game* frames (`…-boardImg.jpg`, `…-detectedHoughCircles.jpg`, `…-hsvImg.jpg`) and what a dialog check left behind. Safe to empty |
 
 Every file name and timestamp is UTC, so a stats file named for today may still

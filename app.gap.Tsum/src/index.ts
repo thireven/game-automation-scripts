@@ -129,15 +129,55 @@ const LastSettingsOneShot: SettingKey[] = [
   SettingKey.BuyOpenCapsuleOnly,
 ];
 
+/** Cached `getDevicePath()`: GAP lists the devices folder on every call. */
+let gSettingsDir: string | undefined;
+
 /**
- * `<script folder>/last-settings-<device id>.json`, or '' on a host without
- * either native. Per device, because emulator instances can share the folder.
+ * `<device folder>/<name>.json`, or '' on a host without `getDevicePath`.
+ * Not the script folder: an update replaces that folder whole, which used to
+ * wipe these files, so a remote start ran with the defaults.
  */
-function lastSettingsPath(): string {
-  if (typeof getScriptPath !== 'function' || typeof getDeviceId !== 'function') {
-    return '';
+function deviceSettingsPath(name: string): string {
+  if (gSettingsDir === undefined) {
+    gSettingsDir = typeof getDevicePath === 'function' ? getDevicePath() : '';
+    if (gSettingsDir !== '') {
+      moveOldSettingsFiles(gSettingsDir);
+    }
   }
-  return getScriptPath() + '/last-settings-' + getDeviceId() + '.json';
+  return gSettingsDir === '' ? '' : gSettingsDir + '/' + name + '.json';
+}
+
+/**
+ * Moves the old `<script folder>/<name>-<device id>.json` into the
+ * device folder, unless a file is already there. Never throws.
+ */
+function moveOldSettingsFiles(dir: string): void {
+  if (typeof getScriptPath !== 'function' || typeof getDeviceId !== 'function') {
+    return;
+  }
+  for (const name of ['last-settings', 'remote-settings']) {
+    try {
+      const old = getScriptPath() + '/' + name + '-' + getDeviceId() + '.json';
+      const text = readFile(old);
+      if (text === '') {
+        continue;
+      }
+      const to = dir + '/' + name + '.json';
+      if (readFile(to) === '') {
+        writeFile(to, text);
+      }
+      if (typeof removeFile === 'function') {
+        removeFile(old, false);
+      }
+    } catch (e) {
+      // Missing or unreadable: nothing to move.
+    }
+  }
+}
+
+/** `<device folder>/last-settings.json`, or '' without the natives. */
+function lastSettingsPath(): string {
+  return deviceSettingsPath('last-settings');
 }
 
 /**
@@ -198,11 +238,12 @@ function remoteStartSettings(): Settings {
 //
 // The phone can change any setting the settings page has. One that a run can
 // take (`LiveSettings`, src/quickbar.ts) goes onto the world like a Quick Bar
-// change. Every change is also kept for the next start in two files:
-//   last-settings-<device id>.json    patched, so a remote start replays it
-//   remote-settings-<device id>.json  pending, until the settings page takes
-//                                     it (`remoteSettingsTake`) into its store,
-//                                     so a Play from the page does not undo it
+// change. Every change is also kept for the next start in two files, in the
+// device folder (`deviceSettingsPath`):
+//   last-settings.json    patched, so a remote start replays it
+//   remote-settings.json  pending, until the settings page takes it
+//                         (`remoteSettingsTake`) into its store, so a Play
+//                         from the page does not undo it
 
 /** How a setting's value is checked; enum values go through `quickBarEnumValid`. */
 const enum RemoteKind {
@@ -279,10 +320,9 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
 } satisfies Record<Exclude<SettingKey, SettingKey.Locale | SettingKey.UnlockLevelsFirst
   | SettingKey.BuyBoxesFirst | SettingKey.TsumListOnly | SettingKey.BuyOpenCapsuleOnly>, RemoteKind>;
 
-/** `<script folder>/remote-settings-<device id>.json`, or '' without the natives. */
+/** `<device folder>/remote-settings.json`, or '' without the natives. */
 function remoteSettingsPath(): string {
-  const last = lastSettingsPath();
-  return last === '' ? '' : last.replace(/last-settings-([^/]*)$/, 'remote-settings-$1');
+  return deviceSettingsPath('remote-settings');
 }
 
 /** A JSON object file as an object; {} when missing or unreadable. */
