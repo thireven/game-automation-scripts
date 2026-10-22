@@ -171,7 +171,7 @@ interface BoxTabRow {
   selected: number;
   /**
    * Which box the limited-time slot holds -- `Select` or `Capsule`, read off
-   * the tab's icon -- or null on a three-tab row, which has no such slot.
+   * the tab's icon -- or null on a three-tab row whose third box is Happiness.
    */
   limited: BoxType | null;
 }

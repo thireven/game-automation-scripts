@@ -49,6 +49,16 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Fixes**
+- Box Buying now finds the Select Box in the Japanese game, where it can be the last of three boxes shown.
+
+### Fixed
+
+- **JP Select Box** (`readBoxTabs`, `BoxStore.icon3`): JP shows five boxes three
+  at a time, so the third tab can be the Select Box. Its icon is now read there
+  instead of always taking it for Happiness. `openBoxTab` also no longer
+  mutates `BoxStore.order3`.
+
 ## [5.4]
 
 ### Summary

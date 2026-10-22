@@ -2970,7 +2970,8 @@ var BoxStore = {
    * `readBoxTabs` reads the icon at `limitedSlot` and `openBoxTab` puts what
    * it found there, so a capsule is bought only by a player who picked the
    * capsule and a Select Box only by one who picked that. A four-tab row whose
-   * third box is some *other* limited box reads as `Select`.
+   * third box is some *other* limited box reads as `Select`. A three-tab row's
+   * third box is Happiness unless its icon reads as a limited box (`icon3`).
    */
   order3: [BoxType.PremiumPlus, BoxType.Premium, BoxType.Happiness] as BoxType[],
   order4: [BoxType.PremiumPlus, BoxType.Premium, BoxType.Select, BoxType.Happiness] as BoxType[],
@@ -2988,6 +2989,15 @@ var BoxStore = {
   capsuleIcon: [{x: 650, y: 1160}, {x: 700, y: 1160}],
   capsuleIconColor: {r: 212, g: 40, b: 54},
   capsuleIconDiff: 50,
+  /**
+   * JP has five boxes and draws three at a time, so a three-tab row can end on
+   * the Select Box instead of Happiness (`debug/boxes/jp_select.png`). The icon
+   * points above, moved under the three-tab row's third tab (+174). The Select
+   * Box reads its pink ribbon (255/121/198) and blue body (107/178/255) there;
+   * Happiness reads its green ribbon and cream body, far from both.
+   */
+  icon3: [{x: 824, y: 1160}, {x: 874, y: 1160}],
+  selectIconColors: [{r: 255, g: 119, b: 198}, {r: 82, g: 160, b: 247}],
 
   /**
    * The band a tab is read on: below its label, above its bottom edge, and clear
