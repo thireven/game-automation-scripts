@@ -45,6 +45,30 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a20]
+
+### Summary
+
+**Additions**
+*Quick Bar and settings*
+- Copy code on the Quick Bar can now be tapped while the script is running.
+
+**Fixes**
+- Box Buying now finds the Select Box in the Japanese game, where it can be the last of three boxes shown.
+
+### Changed
+
+- **Copy code mid-run** (`qbSetEnabled`, `qbNameHotspot`): the chip is never
+  disabled, and on page two the host hotspot widens over it. The host drops
+  the script's own taps in that rect, so it widens only while page two is up.
+
+### Fixed
+
+- **JP Select Box** (`readBoxTabs`, `BoxStore.icon3`): JP shows five boxes three
+  at a time, so the third tab can be the Select Box. Its icon is now read there
+  instead of always taking it for Happiness. `openBoxTab` also no longer
+  mutates `BoxStore.order3`.
+
 ## [6.0a19]
 
 ### Summary
