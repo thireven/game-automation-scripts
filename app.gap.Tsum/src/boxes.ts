@@ -118,8 +118,10 @@ const enum BoxReveals {
  *
  * A four-tab row also says which limited box its third slot holds: the
  * Pick-Up Capsule when its icon's red base reads at both `capsuleIcon` points,
- * the Select Box otherwise. The icon is drawn the same whether the tab is
- * open or not, so this reads off the same capture as the rest.
+ * the Select Box otherwise. A three-tab row's third slot is Happiness unless
+ * its icon reads as one of those two: JP scrolls five boxes three at a time.
+ * The icon is drawn the same whether the tab is open or not, so this reads off
+ * the same capture as the rest.
  */
 Tsum.prototype.readBoxTabs = function() {
   const img = this.screenshot();
@@ -148,15 +150,22 @@ Tsum.prototype.readBoxTabs = function() {
         selected = i;
       }
     }
-    if (tabs === BoxStore.order4.length) {
-      const icon = this.getColors(img, BoxStore.capsuleIcon);
-      let red = 0;
-      for (let i = 0; i < icon.length; i++) {
-        if (isSameColor(BoxStore.capsuleIconColor, icon[i], BoxStore.capsuleIconDiff)) {
-          red++;
-        }
+    const four = tabs === BoxStore.order4.length;
+    const icon = this.getColors(img, four ? BoxStore.capsuleIcon : BoxStore.icon3);
+    let red = 0;
+    let select = 0;
+    for (let i = 0; i < icon.length; i++) {
+      if (isSameColor(BoxStore.capsuleIconColor, icon[i], BoxStore.capsuleIconDiff)) {
+        red++;
       }
-      limited = red === icon.length ? BoxType.Capsule : BoxType.Select;
+      if (isSameColor(BoxStore.selectIconColors[i], icon[i], BoxStore.capsuleIconDiff)) {
+        select++;
+      }
+    }
+    if (red === icon.length) {
+      limited = BoxType.Capsule;
+    } else if (four || select === icon.length) {
+      limited = BoxType.Select;
     }
   } finally {
     releaseImage(img);
@@ -211,9 +220,9 @@ Tsum.prototype.openBoxTab = function(box) {
     return null;
   }
   const tabs = row.tabs;
-  // The four-tab order names the limited slot `Select`; the row read off the
-  // icon which box is really there.
-  const order = tabs === 3 ? BoxStore.order3 : BoxStore.order4.slice();
+  // The limited slot is `Select` (four tabs) or `Happiness` (three); the row
+  // read off the icon which box is really there.
+  const order = (tabs === 3 ? BoxStore.order3 : BoxStore.order4).slice();
   if (row.limited !== null) {
     order[BoxStore.limitedSlot] = row.limited;
   }

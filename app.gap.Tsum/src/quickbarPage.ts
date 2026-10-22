@@ -387,6 +387,10 @@ function qbSetEnabled(enabled: boolean): void {
         if (button.classList.contains('qb-page-toggle')) {
             continue;
         }
+        // Copy code only reads the store, so it is always live (`qbNameHotspot`).
+        if (button.classList.contains('qb-copy-share')) {
+            continue;
+        }
         // Unlock and Stop after this round act on a run, so they also need one.
         button.disabled = !enabled
             || ((button.classList.contains('qb-unlock-now')
@@ -400,7 +404,9 @@ var qbHotspotSent = '';
 /**
  * Tells the host where the side column is, so the page toggle stays pressable
  * mid-run -- and the readout chip beside it, in the same rect: its dots flip the
- * table, and the table itself copies the figures.
+ * table, and the table itself copies the figures. On page two the rect also
+ * reaches left over Copy code. The host takes one rect and drops the script's
+ * own taps inside it, so the wider one is only named while that page is up.
  *
  * The strip's window is untouchable while the script runs -- a touchable
  * overlay would eat the taps the script injects. The host covers just this
@@ -429,8 +435,17 @@ function qbNameHotspot(): void {
         right = Math.max(right, rbox.right);
         bottom = Math.max(bottom, rbox.bottom);
     }
-    var left = Math.floor(box.left);
-    var top = Math.floor(box.top);
+    var leftEdge = box.left;
+    var topEdge = box.top;
+    var copy = document.querySelector('.qb-copy-share');
+    if (copy !== null && document.body.getAttribute('data-page') === '2') {
+        var cbox = copy.getBoundingClientRect();
+        leftEdge = Math.min(leftEdge, cbox.left);
+        topEdge = Math.min(topEdge, cbox.top);
+        bottom = Math.max(bottom, cbox.bottom);
+    }
+    var left = Math.floor(leftEdge);
+    var top = Math.floor(topEdge);
     var width = Math.ceil(right) - left;
     var height = Math.ceil(bottom) - top;
     var key = left + ',' + top + ',' + width + ',' + height;
@@ -1321,6 +1336,7 @@ function qbBind(): void {
         pageToggle.addEventListener('click', function () {
             var body = document.body;
             body.setAttribute('data-page', body.getAttribute('data-page') === '2' ? '1' : '2');
+            qbNameHotspot();
         });
     }
 
