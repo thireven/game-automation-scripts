@@ -146,9 +146,12 @@ const SearchStepBudget = 3000;
 // `lowFirst`, when given, is the group's own points, and it orders the starts
 // by board position as well as degree — see `calculatePaths`' parameter of the
 // same name. `startIdx` is the tsum the winning chain grew from, its `path[0]`.
+//
+// `prefer`, when given, marks nodes to step onto first (1) ahead of degree:
+// Rapunzel+ routes through her own tsums, which charge her next gauge.
 function findLongestTsumPath(
     neighbors: number[][], comp: number[], budget: number, maxLen?: number,
-    lowFirst?: Point[]): { path: number[], startIdx: number } {
+    lowFirst?: Point[], prefer?: Uint8Array): { path: number[], startIdx: number } {
   // Bound to a const because `dfs` closes over it; a narrowing on the parameter
   // itself would not survive into the closure.
   const cap: number = (maxLen === undefined || !(maxLen > 0)) ? Infinity : maxLen;
@@ -166,7 +169,10 @@ function findLongestTsumPath(
   const sortedNbrs: number[][] = new Array(n);
   for (let i = 0; i < n; i++) {
     const arr = neighbors[i].slice();
-    arr.sort(function(a, b) { return neighbors[a].length - neighbors[b].length; });
+    arr.sort(function(a, b) {
+      if (prefer && prefer[a] !== prefer[b]) { return prefer[b] - prefer[a]; }
+      return neighbors[a].length - neighbors[b].length;
+    });
     sortedNbrs[i] = arr;
   }
 

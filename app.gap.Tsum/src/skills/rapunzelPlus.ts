@@ -316,24 +316,42 @@ function rapunzelWaitForBoard(ts: Tsum, from: number):
  * search. `lowFirst` orders the starts bottom-up -- see `bottomFirst`.
  */
 function rapunzelSearch(board: BoardPoint[], hops: number[][], maxLen: number,
-    heads?: number[]): BoardPoint[] {
+    heads?: number[], myTsumIdx?: number): BoardPoint[] {
   const cfg = RapunzelPlusConfig;
   if (board.length < 3 || maxLen < 3) { return []; }
+  // Her own tsums, stepped onto first in a second search (see `rapunzelMine`).
+  let prefer: Uint8Array | undefined;
+  if (myTsumIdx !== undefined && myTsumIdx >= 0) {
+    prefer = new Uint8Array(board.length);
+    for (let i = 0; i < board.length; i++) { prefer[i] = +board[i].tsumIdx === myTsumIdx ? 1 : 0; }
+  }
+  const mine = function(p: number[]): number {
+    let n = 0;
+    if (prefer) { for (let i = 0; i < p.length; i++) { n += prefer[p[i]]; } }
+    return n;
+  };
   let best: number[] = [];
+  // Longer wins; at equal length, more of her own tsums.
+  const offer = function(found: number[]): void {
+    if (found.length > best.length || (found.length === best.length && mine(found) > mine(best))) { best = found; }
+  };
+  const tries = prefer ? [undefined, prefer] : [undefined];
   if (heads) {
-    for (let h = 0; h < heads.length && best.length < maxLen; h++) {
-      const found = findLongestTsumPath(hops, [heads[h]], cfg.searchBudget, maxLen).path;
-      if (found.length > best.length) { best = found; }
+    for (let h = 0; h < heads.length; h++) {
+      for (let t = 0; t < tries.length; t++) {
+        offer(findLongestTsumPath(hops, [heads[h]], cfg.searchBudget, maxLen, undefined, tries[t]).path);
+      }
     }
   } else {
     const components = findTsumComponents(hops);
-    for (let c = 0; c < components.length && best.length < maxLen; c++) {
+    for (let c = 0; c < components.length; c++) {
       const comp = components[c];
       // Nothing here can beat what is already held.
-      if (comp.length < 3 || comp.length <= best.length) { continue; }
-      const found = findLongestTsumPath(hops, comp, cfg.searchBudget, maxLen,
-        cfg.bottomFirst ? board : undefined).path;
-      if (found.length > best.length) { best = found; }
+      if (comp.length < 3 || comp.length < best.length) { continue; }
+      for (let t = 0; t < tries.length; t++) {
+        offer(findLongestTsumPath(hops, comp, cfg.searchBudget, maxLen,
+          cfg.bottomFirst ? board : undefined, tries[t]).path);
+      }
     }
   }
   const out: BoardPoint[] = [];
@@ -386,18 +404,18 @@ function rapunzelSettledHops(board: BoardPoint[], hops: number[][], band: number
  * planned over the settled part of the board wherever that fills it alone.
  */
 function rapunzelChain(board: BoardPoint[], bubbles: GameBubble[], maxLen: number,
-    lanterns: BoardPoint[]): { path: TsumPath, fromLantern: boolean } | null {
+    lanterns: BoardPoint[], myTsumIdx?: number): { path: TsumPath, fromLantern: boolean } | null {
   const cfg = RapunzelPlusConfig;
   if (board.length < 3 || maxLen < 3) { return null; }
   const hops = buildClearHops(board, bubbles, cfg.hopReach, cfg.crossAvoid);
   // The settled part first. If it can fill the chain on its own the top never
   // comes into the plan at all.
   let best = cfg.bottomFirst
-    ? rapunzelSearch(board, rapunzelSettledHops(board, hops, cfg.fallingBand), maxLen) : [];
+    ? rapunzelSearch(board, rapunzelSettledHops(board, hops, cfg.fallingBand), maxLen, undefined, myTsumIdx) : [];
   if (best.length < maxLen) {
     // It could not, so the whole board goes back in: a chain that has to reach
     // up beats a chain that is short.
-    const all = rapunzelSearch(board, hops, maxLen);
+    const all = rapunzelSearch(board, hops, maxLen, undefined, myTsumIdx);
     if (all.length > best.length) { best = all; }
   }
   if (lanterns.length > 0) {
@@ -406,7 +424,7 @@ function rapunzelChain(board: BoardPoint[], bubbles: GameBubble[], maxLen: numbe
       const at = board.indexOf(lanterns[i]);
       if (at >= 0) { heads.push(at); }
     }
-    const lit = rapunzelSearch(board, hops, maxLen, heads);
+    const lit = rapunzelSearch(board, hops, maxLen, heads, myTsumIdx);
     if (lit.length >= 3 && lit.length >= cfg.lanternKeep * best.length) {
       return { path: lit as TsumPath, fromLantern: true };
     }
@@ -623,7 +641,9 @@ function rapunzelPlanned(ts: Tsum, cap: number): RapunzelLook {
     const read = board.length;
     // May add lanterns the circle pass missed to `board`.
     const lanterns = rapunzelLanterns(ts, board);
-    const plan = rapunzelChain(board, bubbles, cap, lanterns);
+    // Her own tsums first where it costs no length: each one in her chain
+    // took ~0.19s off the next gauge's refill over 157 activations.
+    const plan = rapunzelChain(board, bubbles, cap, lanterns, ts.myTsumIdx);
     const len = plan ? plan.path.length : 0;
     const clearing = ts.boardClearing.length;
     if (best === null || len > (best.plan ? best.plan.path.length : 0)) {

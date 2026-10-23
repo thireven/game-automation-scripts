@@ -84,6 +84,9 @@ release note; they fold back in here when she ships.
   flash clear and lantern columns go into the ledger).
 - **Cinderella picks each stroke** off the ledger (`cinderellaPickStroke`): the
   half and direction with the longest free run, cut at the first clearing tsum.
+- **Rapunzel+ prefers her own tsums** at equal length (`prefer` in
+  `findLongestTsumPath`): each one in her chain took ~0.19s off the next
+  gauge refill over 157 activations; synthetic boards go 4.7 to 6.6 per chain.
 - **Rapunzel+ starts on a lantern** (`rapunzelLanterns`): found by its lemon-yellow
   sun (18 of 20 hits real on a 40s recording), chosen when its chain is at least
   75% of the best (`lanternKeep`).
