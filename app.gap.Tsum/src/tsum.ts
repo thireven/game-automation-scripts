@@ -952,10 +952,43 @@ Tsum.prototype.exitUnknownPage = function() {
 // was handled; a timeout or no director runs the escape. After a timeout
 // nobody is watching, so the next unknown screens skip asking for a while.
 const UnknownDirectQuietMs = 30 * 60 * 1000;
+/**
+ * How long a screen stays unknown before the user is asked. Most clear
+ * themselves: a connecting overlay, a data download, the game restarting
+ * itself for an update. Asked on the first look, the phone got a screenshot
+ * of whatever came next.
+ */
+const UnknownDirectAfterMs = 10000;
+/** Between the looks while that runs; nothing is tapped meanwhile. */
+const UnknownDirectPollMs = 1000;
+/** Budget for the screen to hold still before asking. */
+const UnknownDirectSettleMs = 2000;
+/** A screen still moving this long is no loading screen; the escape takes it. */
+const UnknownDirectMovingMaxMs = 30000;
 
 Tsum.prototype.directUnknownPage = function() {
-  if (Date.now() < this.directQuietUntil) {
+  if (Date.now() < this.directQuietUntil || !userDirectionAvailable()) {
     return false;
+  }
+  // The game coming up: its screens move on by themselves or by the old taps.
+  if (this.isStartupPhase || this.inBoot()) {
+    logDebug(Log.Direct.Skipped, { reason: 'startup', boot: this.inBoot() });
+    return false;
+  }
+  // True skips the escape: look again rather than tap.
+  const unknownMs = Date.now() - gPages.since;
+  if (unknownMs < UnknownDirectAfterMs) {
+    this.sleep(UnknownDirectPollMs);
+    return true;
+  }
+  // Still moving is the game at work (a restart, a download), not a question.
+  if (!this.settleScreen(UnknownDirectSettleMs, 0)) {
+    logDebug(Log.Direct.Skipped, { reason: 'moving', unknownMs: unknownMs });
+    return unknownMs < UnknownDirectMovingMaxMs;
+  }
+  // A native dialog (the root warning) is the script's to answer, not the user's.
+  if (this.dismissSystemDialog()) {
+    return true;
   }
   const task = gTaskController !== undefined ? gTaskController.runningTask : '';
   const label = task === '' ? '' : (gAddonTaskLabels[task] || CompanionTasks[task] || '');

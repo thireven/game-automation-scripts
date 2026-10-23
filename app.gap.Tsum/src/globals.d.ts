@@ -1297,8 +1297,10 @@ interface Tsum {
    */
   exitUnknownPage(): void;
   /**
-   * Asks the user to direct the device off an unknown screen. True when that
-   * handled it (Continue, or the run stopped); false runs `exitUnknownPage`.
+   * Asks the user to direct the device off an unknown screen: not while the
+   * game starts up, and only once the screen has stayed unknown 10s and holds
+   * still. True when the screen is handled or given more time (Continue, the
+   * run stopped, a wait, a native dialog dismissed); false runs `exitUnknownPage`.
    */
   directUnknownPage(): boolean;
   isOnScreenshot(img: NativeImage, pageObject: Coord, colorDiff?: number): boolean;

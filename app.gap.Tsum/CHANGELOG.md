@@ -45,6 +45,24 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0a21]
+
+### Summary
+
+**Fixes**
+- GAP Companion no longer asks for directions on loading screens, or when the game restarts itself for an update.
+
+### Changed
+
+- **Unknown screens wait before asking** (`directUnknownPage`, `direct.skipped`):
+  no request while the game starts up (`isStartupPhase`, boot), none until the
+  screen has stayed unknown 10s (looked at again, untapped), none while it still
+  moves (the escape after 30s), and a native dialog is dismissed first. Asked
+  on the first look, the phone got a screenshot of whatever came next.
+- **The data download prompt starts the boot phase** (`observe.startupPhase` on
+  `ExtraUpdate`): an update restarts the game in its own process, so neither a
+  launch nor `catchUpBoot`'s process age saw it booting.
+
 ## [6.0a20]
 
 ### Summary

@@ -68,7 +68,7 @@ going to.
 
 | # | id | band | steps | order | pages | goals | fires | after |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `observe.startupPhase` | observe | `enterStartupPhase()` | 0 | `RootDetection`, `TitleStart`, `TitleWait` | — | every look | — |
+| 1 | `observe.startupPhase` | observe | `enterStartupPhase()` | 0 | `RootDetection`, `ExtraUpdate`, `TitleStart`, `TitleWait` | — | every look | — |
 | 2 | `observe.leftBoot` | observe | `endBoot()` | 0 | `FriendPage`, `SquarePage`, `ProfilePage`, `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage` | — | every look | — |
 | 3 | `observe.leftStartup` | observe | `leaveStartupPhase()` | 0 | `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage` | — | every look | — |
 | 4 | `observe.boardBack` | observe | `releaseBoard()` | 0 | `GamePlaying` | — | every look | — |
@@ -109,7 +109,7 @@ going to.
 
 ### What each one is for
 
-- **`observe.startupPhase`** — The root warning and the title screens mean the game is coming up (or has just been restarted), so the navigation loops go back to their slower startup timings, and the boot phase starts if no launch started it.
+- **`observe.startupPhase`** — The root warning, the title screens and the data download prompt mean the game is coming up (or has just been restarted, by anyone or by itself for an update), so the navigation loops go back to their slower startup timings, and the boot phase starts if no launch started it.
 - **`observe.leftBoot`** — The hub, or a screen only reachable from it, ends the boot phase and logs how long the game took to come up.
 - **`observe.leftStartup`** — Any of the screens that only exist once the game is fully up ends the startup phase, which is what stops the navigation loops from waiting five seconds a round for event windows that are no longer arriving.
 - **`observe.boardBack`** — The board seen again lifts the hold a pause or a lost focus put on board touches (`Tsum#boardHeld`): what the play loop draws from here is planned off a board that is really there.
@@ -143,7 +143,7 @@ going to.
 - **`nav.move.titleStart`** — Press TAP TO START on the title screen. Recognised by its white frame and the pill, never by the art, which changes every month and differs between builds.
 - **`nav.move.bootWait`** — Wait on a startup screen with nothing to press -- the loading title, the logos. A tap here buys nothing, and the loading text is waiting on the network.
 - **`nav.move.bootUnknown`** — While the game boots, an unrecognised screen is a startup one -- the splash, the opening video -- so tap TAP TO START's spot, which skips the video, instead of escaping blind or asking the user. A freshly started game process counts as booting, whoever restarted it. A native dialog is handled first. Past the boot budget this declines and nav.move.unknown takes over.
-- **`nav.move.unknown`** — Escape from a screen nothing fingerprinted. With a director add-on, ask the user to direct the device first (`directUnknownPage`); Continue or a stop ends it there. Otherwise, blind: look for a native dialog first, then work through the cancel and close buttons the game reuses.
+- **`nav.move.unknown`** — Escape from a screen nothing fingerprinted. With a director add-on, ask the user to direct the device first (`directUnknownPage`); Continue or a stop ends it there. Never while the game starts up, and only once the screen has stayed unknown 10s and holds still: until then it looks again without tapping. Otherwise, blind: look for a native dialog first, then work through the cancel and close buttons the game reuses.
 - **`nav.move.exit`** — Leave a page by the way it was entered -- its `back` -- where the page declares that as its way out (`PageRoutes`). Last in the band, so anything that knows better has already had its turn. A page with no declared exit is not tapped: `navigate` reports it and the stall guard takes it from there.
 - **`notify.trail`** — Log the last few screens with how long each was up, and who claimed this one. Debug only -- this is the history stack in one line, and it is what a report of "it got stuck" is usually missing.
 - **`notify.forecast`** — Write what the script is about to do next: which subscription is expected to act on this frame, which task the scheduler runs after this one, and the ways off this screen with where each leads. Debug only and deduplicated -- see src/forecast.ts. It fires on every look rather than only on a change, so a navigation loop tapping the same screen is visible as the loop it is.
@@ -864,12 +864,13 @@ On a repeat look at the same page, 3 of these 4 run: the rest fire only when the
 
 | # | subscription | band | when |
 |---|---|---|---|
-| 1 | `record.feverTime` | record | every look |
-| 2 | `nav.move.exit` | navigate | every look, any goal |
-| 3 | `notify.trail` | notify | on arrival |
-| 4 | `notify.forecast` | notify | every look |
+| 1 | `observe.startupPhase` | observe | every look |
+| 2 | `record.feverTime` | record | every look |
+| 3 | `nav.move.exit` | navigate | every look, any goal |
+| 4 | `notify.trail` | notify | on arrival |
+| 5 | `notify.forecast` | notify | every look |
 
-On a repeat look at the same page, 3 of these 4 run: the rest fire only when the page changes.
+On a repeat look at the same page, 4 of these 5 run: the rest fire only when the page changes.
 
 #### `unknown` <sub>permanent</sub>
 

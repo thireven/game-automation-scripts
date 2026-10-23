@@ -606,7 +606,9 @@ check('addons: a failed id can register again',
   ctx.gapAddonRegister('test.half', ctx.GAP_ADDON_API, () => {}) === true);
 
 // User direction: gapDirect and requestUserDirection go to the one director.
-const directRun = { isRunning: true, stallResets: 0, directQuietUntil: 0 };
+// Up, still, no native dialog; `gPages.since` is 0, so the screen has been unknown for ages.
+const directRun = { isRunning: true, stallResets: 0, directQuietUntil: 0, isStartupPhase: false,
+  inBoot: () => false, settleScreen: () => true, dismissSystemDialog: () => false, sleep: () => {} };
 run('var realController2 = gTaskController; gTaskController = { runningTask: "sendHearts" }');
 ctx.ts = directRun;
 check('direct: no director answers no-direct',
@@ -652,6 +654,11 @@ check('direct: the outcome passes through, the stall guard is pardoned',
 directAnswer = 'throw';
 check('direct: a throwing request is a timeout', ctx.requestUserDirection() === 'timeout');
 directAnswer = 'continue';
+directRun.isStartupPhase = true;
+const askedAtStartup = directSeen.asked.length;
+check('direct: unknown screen while the game starts up runs the escape, not asked',
+  ctx.Tsum.prototype.directUnknownPage.call(directRun) === false && directSeen.asked.length === askedAtStartup);
+directRun.isStartupPhase = false;
 check('direct: unknown screen, Continue handles it with the task in the body',
   ctx.Tsum.prototype.directUnknownPage.call(directRun) === true
   && directSeen.asked[directSeen.asked.length - 1].body === 'Paused on an unfamiliar screen (Sending hearts).',

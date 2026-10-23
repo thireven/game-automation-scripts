@@ -188,6 +188,11 @@ function gapDirect(op: string, argsJson: string): string {
   }
 }
 
+/** Whether `requestUserDirection` has anyone to ask: a director add-on and a run. */
+function userDirectionAvailable(): boolean {
+  return gAddonDirector !== null && ts !== undefined;
+}
+
 /**
  * Asks the user to direct the device, from the run thread; returns when the
  * request ends. 'unavailable' at once without a director or a run. The stall

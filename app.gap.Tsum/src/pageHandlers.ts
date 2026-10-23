@@ -83,10 +83,13 @@ const StillFreshMs = 500;
 gPages.subscribe({
   id: 'observe.startupPhase',
   category: PageCategory.Observe,
-  what: 'The root warning and the title screens mean the game is coming up (or has '
-      + 'just been restarted), so the navigation loops go back to their slower startup '
-      + 'timings, and the boot phase starts if no launch started it.',
-  pages: [PageName.RootDetection].concat(pagesWithRole(PageRole.Boot)),
+  what: 'The root warning, the title screens and the data download prompt mean the game '
+      + 'is coming up (or has just been restarted, by anyone or by itself for an update), '
+      + 'so the navigation loops go back to their slower startup timings, and the boot '
+      + 'phase starts if no launch started it.',
+  // ExtraUpdate: an update restarts the game in its own process, so no launch
+  // and no process age says it is booting; the download after it is startup too.
+  pages: [PageName.RootDetection, PageName.ExtraUpdate].concat(pagesWithRole(PageRole.Boot)),
   every: true,
   steps: [
     { do: 'call', name: 'enterStartupPhase', run: function() {
@@ -879,7 +882,9 @@ gPages.subscribe({
   order: 30,
   what: 'Escape from a screen nothing fingerprinted. With a director add-on, ask the '
       + 'user to direct the device first (`directUnknownPage`); Continue or a stop ends it '
-      + 'there. Otherwise, blind: look for a native dialog first, then work through the '
+      + 'there. Never while the game starts up, and only once the screen has stayed '
+      + 'unknown 10s and holds still: until then it looks again without tapping. '
+      + 'Otherwise, blind: look for a native dialog first, then work through the '
       + 'cancel and close buttons the game reuses.',
   pages: [PageName.Unknown],
   // The frame is evidence until this touches it. Both are in the Unknown queue,
