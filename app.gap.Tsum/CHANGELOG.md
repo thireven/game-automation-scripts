@@ -69,7 +69,7 @@ release note; they fold back in here when she ships.
   `pathfinding.ts`): no hop passes near a third tsum or through a bubble, which
   in her colour-blind window links it out of order. Over 300 synthetic boards
   the chain is as long, and clipped routes go from 64-85% to 0.
-- **Rapunzel+'s drag is one MOVE per tsum at 20ms** (was three events, ~35ms),
+- **Rapunzel+'s drag is one MOVE per tsum held 30ms** (was three events, ~35ms; 20ms stalled 18% of drags),
   read against the game's chain counter at tsum 6 and every 8 after; a stall
   walks back to the chain's end and replans (`rewinds` in `skill.rapunzel.done`).
 - **Clearing ledger** (`BoardFlux` in `board.ts`): each drag records its tsums

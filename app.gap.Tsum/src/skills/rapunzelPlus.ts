@@ -158,11 +158,10 @@ var RapunzelPlusConfig = {
   // between MOVEs, and `crossAvoid` keeps that line clear, so the old two
   // sweep steps per hop bought nothing and cost two touch events a tsum.
   // `dwellMs` must outlast one display frame (16.7ms) so each centre is some
-  // frame's position; 20 does, and the rewind catches the hops that still
-  // fail. Gaston holds 30 (10 linked far fewer whole). NOT MEASURED here yet:
-  // raise it if the log's `rewinds` fill up.
+  // frame's position. At 20, 18% of 3461 drags stalled whatever the board
+  // was doing, so this is Gaston's 30 (10 linked far fewer whole).
   grabMs: 10,
-  dwellMs: 20,
+  dwellMs: 30,
   releaseMs: 10,
   // The head is held this long before the first move. Over 187 activations
   // 27% stalled, and nearly half of those never got past the first link --
