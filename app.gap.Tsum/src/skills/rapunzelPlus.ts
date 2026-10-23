@@ -158,8 +158,8 @@ var RapunzelPlusConfig = {
   // walks back to the chain's end and the rest is replanned from there, clear
   // of what is linked (and of the failing tsum on a repeat stall), at most
   // `maxRewinds` times. An unread count is trusted, not a stall.
-  checkFrom: 6,
-  checkEvery: 6,
+  checkFrom: 8,
+  checkEvery: 8,
   countSlack: 3,
   maxRewinds: 3,
   // --- lanterns ---
@@ -495,6 +495,8 @@ interface RapunzelDrag {
   rewinds: number[][];
   /** The game's count at the last read, null when unread or never read. */
   count: number | null;
+  /** Time spent reading the counter, in ms: the price of the stall checks. */
+  countMs: number;
 }
 
 /**
@@ -509,7 +511,7 @@ interface RapunzelDrag {
  */
 function rapunzelLinkChain(ts: Tsum, path: TsumPath,
     replan: (from: BoardPoint, used: BoardPoint[], maxLen: number) => TsumPath | null): RapunzelDrag {
-  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], count: null };
+  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], count: null, countMs: 0 };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.mayTouchBoard() || path.length < 2) { return drag; }
   const cfg = RapunzelPlusConfig;
@@ -532,8 +534,10 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
       const end = i === path.length - 1;
       if (drag.rewinds.length < cfg.maxRewinds && i + 1 >= cfg.checkFrom
           && !end && i % cfg.checkEvery === 0) {
-        const count = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1))).value;
+        const read = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1)));
+        const count = read.value;
         drag.count = count;
+        drag.countMs += read.ms;
         if (count !== null && count < i + 1 - cfg.countSlack) {
           // The chain ends at path[back]; walk back to it.
           const back = Math.max(0, Math.min(i, count) - 1);
@@ -590,7 +594,13 @@ function rapunzelPlanned(ts: Tsum, cap: number): RapunzelLook {
   let best: RapunzelLook | null = null;
   for (let look = 0; look <= cfg.settleMaxWaits && ts.isRunning; look++) {
     if (look > 0) { ts.sleep(cfg.settleRetryMs); }
-    const board = ts.scanBoardQuick();
+    ts.fluxFilter = true;
+    let board: BoardPoint[];
+    try {
+      board = ts.scanBoardQuick();
+    } finally {
+      ts.fluxFilter = false;
+    }
     // The scan reads bubbles off its own frame; `beforeActivate` spent the
     // hoard, so this is whatever has appeared since.
     const bubbles = ts.gameBubbles.slice();
@@ -714,6 +724,7 @@ registerSkill({
       drawn: drag ? drag.path.length : 0,
       rewinds: drag ? drag.rewinds : [],
       registered: drag ? drag.count : null,
+      countMs: drag ? drag.countMs : 0,
       // How long the activation animation held the board, and whether it was
       // really seen to lift. Three shapes: `lit: true` is the gate working;
       // `sawDark: false` with `litMs` near `litMinMs` is the veil never seen at

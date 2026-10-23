@@ -78,8 +78,13 @@ Tsum.prototype.linkTsums = function(path) {
 // of ~45 on a recording), and a chain planned through one stops there.
 //
 // So every drag records what it linked here, with when each tsum should be
-// gone, and `scanBoardQuick` leaves those circles out (`fluxDrop`): the next
-// chain is planned around them rather than waited for. Three things move the
+// gone, and a scan taken with `fluxFilter` set leaves those circles out
+// (`fluxDrop`): Rapunzel+'s look after her cut-in, the moment the clears it
+// froze resume. Not the play loop's scans: filtering every scan halved its
+// pace (8.9 to 4.7 drags/s on a 40s trace, 207 of 362 scans finding no chain)
+// while the old build's chains drew no dead scans at all, so the play loop
+// was not drawing into tsums still clearing. Cinderella reads the ledger
+// directly (`fluxFreeRun`). Three things move the
 // times: a Fever clears faster (`feverScale`), a skill's cut-in freezes the
 // board (`fluxPause`), and a bubble popped while a chain clears finishes it at
 // once (`fluxCancel`, the game's "bomb cancel").
@@ -794,9 +799,10 @@ Tsum.prototype.scanBoardQuick = function() {
       logInfo(Log.Board.LargeTsums, { count: large.length,
         at: large.map(function(l) { return [Math.round(l.x), Math.round(l.y)]; }) });
     }
-    // Circles still waiting to clear are not tsums a chain can use (`fluxDrop`).
+    // Circles still waiting to clear are left out only for a look that asks
+    // (`fluxFilter`): see the ledger's header for why not every scan.
     const seen = findTsums(srcImg, grayImg, dropInsideLarge(circles, large), large);
-    const points = fluxDrop(seen);
+    const points = this.fluxFilter ? fluxDrop(seen) : seen;
     // Kept for the dead-scan check, which asks whether a chain just drawn is
     // still standing -- exactly the tsums the ledger leaves out.
     this.boardClearing = [];

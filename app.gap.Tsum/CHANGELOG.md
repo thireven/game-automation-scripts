@@ -55,9 +55,6 @@ release note; they fold back in here when she ships.
 - Rapunzel+ skill improved: her chain no longer runs into dead ends or tsums still clearing, draws faster, and starts from a lantern when one is on the board.
 - Cinderella skill improved: her strokes steer round tsums still clearing from the last one.
 
-*Play*
-- Chains are planned around tsums the game is still clearing, instead of being drawn into them.
-
 **Fixes**
 - GAP Companion no longer asks for directions on loading screens, or when the game restarts itself for an update.
 
@@ -72,13 +69,14 @@ release note; they fold back in here when she ships.
   in her colour-blind window links it out of order. Over 300 synthetic boards
   the chain is as long, and clipped routes go from 64-85% to 0.
 - **Rapunzel+'s drag is one MOVE per tsum at 20ms** (was three events, ~35ms),
-  read against the game's chain counter every 6 tsums and at the end; a stall
+  read against the game's chain counter every 8 tsums; a stall
   walks back to the chain's end and replans (`rewinds` in `skill.rapunzel.done`).
 - **Clearing ledger** (`BoardFlux` in `board.ts`): each drag records its tsums
   and when each is gone (`popStartMs` + k x 90ms, `feverScale` 0.6 in a Fever,
   paused `cutInMs` by an activation, flushed by a bubble pop); scans drop those
-  circles. At full speed a scan read 13-33 of ~45 tsums, the rest still clearing.
-  Timings past Gaston's 90ms are NOT MEASURED.
+  circles only for Rapunzel+'s look after her cut-in (`fluxFilter`): on every
+  scan it halved the play loop's pace (8.9 to 4.7 drags/s) for no fewer dead
+  scans. Timings past Gaston's 90ms are NOT MEASURED.
 - **Rapunzel+ goes for her cap fast**: a look is retaken only when its plan is
   short of the cap; no end-of-drag counter read; no post-chain settle (her
   flash clear and lantern columns go into the ledger).
