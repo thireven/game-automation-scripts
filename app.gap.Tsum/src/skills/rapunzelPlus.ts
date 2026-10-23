@@ -30,18 +30,20 @@
 //     chain there, and this chain crosses the whole board. `beforeActivate`
 //     spends the hoard aimed, off the positions the cycle's scan already holds,
 //     so it costs no capture.
-//   - **the drag has to be drawn, not flicked.** This is the one that made the
-//     skill link three tsums where it had planned twenty-four, and it has two
-//     halves, both of them consequences of the chain being long and colour
-//     blind. Nothing on the board is inert any more, so a tsum merely *passed
-//     over* is linked, out of order, and the plan and the game's chain part
-//     company -- answered by planning at `planReach` rather than at the game's
-//     full link reach, so no third tsum sits on the line between two of ours.
-//     And one `moveTo` per tsum at 10ms is under one display frame, so a long
-//     path can have its middle sampled away -- answered by `rapunzelLinkChain`,
-//     which dwells on each tsum for longer than a frame and sweeps the gaps.
-//     A three-chain that loses a link clears nothing and gets noticed; a
-//     twenty-four chain that loses one just stops there and looks short.
+//   - **the route follows Gaston's rules.** Nothing on the board is inert in
+//     the window, so a tsum the drag line merely clips is linked out of order
+//     and the rest of the plan leads nowhere. Hops come from `buildClearHops`
+//     (no hop passes near a third tsum or through a bubble), and the drag is
+//     one MOVE per tsum held `dwellMs`, longer than a display frame.
+//   - **a stalled drag is walked back.** About one hop in fifty fails anyway.
+//     Every `checkEvery` tsums, and once at the end, the game's chain counter
+//     is read (`chainCounterRead`); a count well behind the finger walks it
+//     back to the chain's real end and replans the rest from there
+//     (`rapunzelLinkChain`), as Gaston's coin check does.
+//   - **a lantern starts the chain.** One of her skill patches drops lanterns
+//     on the board, and a lantern that is linked clears more on its own. The
+//     chain is planned from one (`rapunzelLanterns`, found by the lemon-yellow
+//     sun at its middle) whenever that costs little length (`lanternKeep`).
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -101,14 +103,12 @@ var RapunzelPlusConfig = {
   settledFraction: 0.8,
   settleRetryMs: 150,
   settleMaxWaits: 2,
-  // How far apart two tsums may be and still be chained, as a multiple of
-  // `Config.tsumWidth`. Deliberately below the game's own `Config.linkReach`
-  // (1.9), and it is the drag that pays for the difference, not the search --
-  // see `rapunzelLinkChain`. At 1.35 the chain is exactly as long (24.00 tsums
-  // over 300 synthetic boards, unchanged from 1.9) while the paths whose drag
-  // crosses no unplanned tsum go from 54% to 97%. Below 1.25 length starts to
-  // go: 1.15 reads 23.66.
-  planReach: 1.35,
+  // Gaston's hop rules (`buildClearHops`): longest hop and how close a hop's
+  // line may pass to a third tsum's centre, both in tsum widths. The clearance
+  // test is what keeps the drag from linking a tsum it was not meant to; the
+  // old answer, a short 1.35 reach, still let ~3% of routes clip one.
+  hopReach: 1.6,
+  crossAvoid: 0.7,
   // Work the board bottom-up, as Coronation Day Elsa's window does -- but for a
   // harder reason than hers. For her it was measured free and argued from the
   // shape of a pile (67.1% against 67.0%); she can also spend a bad chain and
@@ -142,21 +142,48 @@ var RapunzelPlusConfig = {
   // cap stops the search in a few dozen steps; this only bounds a board so
   // broken up that no path reaches the cap.
   searchBudget: 3000,
-  // The drag. `linkTsums`' 10/10/10 is left alone -- it is measured against
-  // ordinary chains -- and this one gets its own timings instead, because
-  // it is several times longer than anything else the script draws and both of
-  // the numbers below are about being *sampled*, not about being fast.
-  //
-  // `dwellMs` is the hold on each tsum's centre and is the important one: it
-  // has to outlast one frame (16.7ms at 60fps), so that centre is the position
-  // the game reads for that frame however it coalesces the moves inside it.
-  // `stepMs`/`stepsPerHop` sweep the gap between two tsums instead of
-  // teleporting across it, the way a finger crosses it.
-  grabMs: 30,
-  dwellMs: 18,
-  stepMs: 5,
-  stepsPerHop: 2,
-  releaseMs: 20,
+  // The drag, Gaston's shape: one MOVE per tsum. The game links along the line
+  // between MOVEs, and `crossAvoid` keeps that line clear, so the old two
+  // sweep steps per hop bought nothing and cost two touch events a tsum.
+  // `dwellMs` must outlast one display frame (16.7ms) so each centre is some
+  // frame's position; 20 does, and the rewind catches the hops that still
+  // fail. Gaston holds 30 (10 linked far fewer whole). NOT MEASURED here yet:
+  // raise it if the log's `rewinds` fill up.
+  grabMs: 10,
+  dwellMs: 20,
+  releaseMs: 10,
+  // --- the rewind (Gaston's `rewind`, off the chain counter) ---
+  // From tsum `checkFrom` on, every `checkEvery` tsums and once more at the
+  // end (`countSettleMs` after the last MOVE), the game's count is read. A
+  // count more than `countSlack` behind the finger is a stall: the finger
+  // walks back to the chain's end and the rest is replanned from there, clear
+  // of what is linked (and of the failing tsum on a repeat stall), at most
+  // `maxRewinds` times. An unread count is trusted, not a stall.
+  checkFrom: 6,
+  checkEvery: 6,
+  countSettleMs: 60,
+  countSlack: 3,
+  maxRewinds: 3,
+  // --- lanterns ---
+  // A patch drops lanterns; each is found by the lemon-yellow sun in its
+  // middle. Measured on a 40s recording (81 frames, 540x960): a lantern's sun
+  // reads 14-24 px across in a `lanternScan`-wide capture of the play square,
+  // a coin 12, and the mask passes R>=225, G>=215, B<=90 on the sun only --
+  // Rapunzel's hair keeps blue over 130. 18 of 20 boxes in that size were
+  // lanterns; the two misses were flashes inside a clear effect. A lantern
+  // glowing white at the top of its pulse breaks the sun up and is missed.
+  lanternScan: 270,
+  lanternLo: { b: 0, g: 215, r: 225 },
+  lanternHi: { b: 90, g: 255, r: 255 },
+  lanternMinBox: 14,
+  lanternMaxBox: 24,
+  lanternMinArea: 40,
+  // A scanned circle within this (tsum widths) of a lantern is that lantern;
+  // otherwise the lantern goes into the board at the sun's centre.
+  lanternSnap: 0.6,
+  // A chain from a lantern is drawn when it is at least this share of the
+  // longest chain from anywhere: the lantern's own clear makes up the rest.
+  lanternKeep: 0.75,
   // Kept after the drag, so the clear and its refill are over before the play
   // loop scans again. Scales with the chain, capped: 24 tsums leave a bigger
   // hole than 9.
@@ -271,56 +298,65 @@ function rapunzelWaitForBoard(ts: Tsum, from: number):
 // --- The chain -------------------------------------------------------------
 
 /**
- * The longest chain of up to `maxLen` tsums on this board, colour ignored.
+ * The longest chain of up to `maxLen` tsums over `board`, colour ignored,
+ * along `hops` (`buildClearHops` over the whole board, so every tsum stays an
+ * obstacle even when a search may not use it). Indices are into `board`. With
+ * `heads`, only chains starting on one of those indices are searched.
  *
- * `calculatePaths` groups by colour first and is no use here; what is reused is
- * everything below it -- the same adjacency graph, the same bounded DFS. The
- * whole board goes in as one group, so the indices the search returns are
- * indices into `board` itself.
- *
- * The one thing not reused is the reach. Every other chain in the script is
- * planned at `Config.linkReach`, the widest hop the game will link, because a
- * drag that crosses a tsum of another colour is crossing something inert. In
- * this window nothing is inert: whatever the drag passes over gets linked, in
- * the order it is passed, and one such gatecrasher desynchronises the plan from
- * the chain the game is actually building. So planning stops at `planReach` --
- * hops short enough that the straight line between two of them holds no third
- * tsum -- and that costs no length at all. See the numbers on `planReach`.
- *
- * Components are still walked, because the board can be split by a gap wide
- * enough that no hop crosses it. The cap is a stopping condition, so a board
- * that offers more than `maxLen` costs one short search and not a full one.
- *
- * `lowFirst` is passed for the same reason Coronation Day Elsa passes it, and
- * it matters more here: her window can spend a bad chain and draw another,
- * while this skill has one drag and its *first* link is the one that decides
- * whether any of it lands. See `bottomFirst`.
+ * Components are walked because a gap no hop crosses splits the board. The
+ * cap is a stopping condition, so a board that offers more costs one short
+ * search. `lowFirst` orders the starts bottom-up -- see `bottomFirst`.
  */
-function rapunzelSearch(board: BoardPoint[], maxLen: number): BoardPoint[] {
+function rapunzelSearch(board: BoardPoint[], hops: number[][], maxLen: number,
+    heads?: number[]): BoardPoint[] {
   const cfg = RapunzelPlusConfig;
   if (board.length < 3 || maxLen < 3) { return []; }
-  const threshold = Config.tsumWidth * cfg.planReach;
-  const neighbors = buildTsumNeighbors(board, threshold * threshold);
-  const components = findTsumComponents(neighbors);
   let best: number[] = [];
-  for (let c = 0; c < components.length && best.length < maxLen; c++) {
-    const comp = components[c];
-    // Nothing here can beat what is already held.
-    if (comp.length < 3 || comp.length <= best.length) { continue; }
-    const found = findLongestTsumPath(neighbors, comp, cfg.searchBudget, maxLen,
-      cfg.bottomFirst ? board : undefined).path;
-    if (found.length > best.length) { best = found; }
+  if (heads) {
+    for (let h = 0; h < heads.length && best.length < maxLen; h++) {
+      const found = findLongestTsumPath(hops, [heads[h]], cfg.searchBudget, maxLen).path;
+      if (found.length > best.length) { best = found; }
+    }
+  } else {
+    const components = findTsumComponents(hops);
+    for (let c = 0; c < components.length && best.length < maxLen; c++) {
+      const comp = components[c];
+      // Nothing here can beat what is already held.
+      if (comp.length < 3 || comp.length <= best.length) { continue; }
+      const found = findLongestTsumPath(hops, comp, cfg.searchBudget, maxLen,
+        cfg.bottomFirst ? board : undefined).path;
+      if (found.length > best.length) { best = found; }
+    }
   }
-  // Resolved here rather than handed back as indices: the two searches below
-  // run over different arrays, and indices into the wrong one are a chain drawn
-  // somewhere else entirely.
   const out: BoardPoint[] = [];
   for (let i = 0; i < best.length; i++) { out.push(board[best[i]]); }
   return out;
 }
 
-/** The part of the board below the top slice the refill is still arriving in. */
-function rapunzelSettledPart(board: BoardPoint[], band: number): BoardPoint[] {
+/**
+ * The longest chain on from `from` (the chain's current end) over `board`
+ * less `used`, at most `maxLen` tsums with `from` counted; null under 2. The
+ * replan after a stall walk-back. Linked tsums are left out of the hop test,
+ * as Gaston's replan does: crossing one does not link it again.
+ */
+function rapunzelChainFrom(from: BoardPoint, board: BoardPoint[], used: BoardPoint[],
+    bubbles: GameBubble[], maxLen: number): TsumPath | null {
+  const cfg = RapunzelPlusConfig;
+  const points: BoardPoint[] = [from];
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] !== from && used.indexOf(board[i]) < 0) { points.push(board[i]); }
+  }
+  const hops = buildClearHops(points, bubbles, cfg.hopReach, cfg.crossAvoid);
+  const found = rapunzelSearch(points, hops, maxLen, [0]);
+  return found.length >= 2 ? found as TsumPath : null;
+}
+
+/**
+ * `hops` cut to the part of the board below the top slice the refill is still
+ * arriving in: a tsum above the line keeps no hops, so no chain uses it, but
+ * it still blocked the hops that crossed it.
+ */
+function rapunzelSettledHops(board: BoardPoint[], hops: number[][], band: number): number[][] {
   let minY = Infinity, maxY = -Infinity;
   for (let i = 0; i < board.length; i++) {
     if (board[i].y < minY) { minY = board[i].y; }
@@ -329,89 +365,211 @@ function rapunzelSettledPart(board: BoardPoint[], band: number): BoardPoint[] {
   // A share of the *occupied* height, not of the play square: the board is a
   // pile whose top is wherever it happens to have run out.
   const line = minY + (maxY - minY) * band;
-  const out: BoardPoint[] = [];
+  const out: number[][] = [];
   for (let i = 0; i < board.length; i++) {
-    if (board[i].y > line) { out.push(board[i]); }
+    out.push(board[i].y > line ? hops[i].filter(function(j) { return board[j].y > line; }) : []);
   }
   return out;
 }
 
 /**
- * The chain to draw, in the order to draw it: bottom-first, and planned over
- * the settled part of the board wherever that can fill the chain on its own.
+ * The chain to draw, in the order to draw it. From a lantern when that chain
+ * is at least `lanternKeep` of the best free one; otherwise bottom-first, and
+ * planned over the settled part of the board wherever that fills it alone.
  */
-function rapunzelChain(board: BoardPoint[], maxLen: number): TsumPath | null {
+function rapunzelChain(board: BoardPoint[], bubbles: GameBubble[], maxLen: number,
+    lanterns: BoardPoint[]): { path: TsumPath, fromLantern: boolean } | null {
   const cfg = RapunzelPlusConfig;
   if (board.length < 3 || maxLen < 3) { return null; }
+  const hops = buildClearHops(board, bubbles, cfg.hopReach, cfg.crossAvoid);
   // The settled part first. If it can fill the chain on its own the top never
-  // comes into the plan at all -- which on a full board it can, for nothing:
-  // 24.00 tsums either way over 300 boards.
+  // comes into the plan at all.
   let best = cfg.bottomFirst
-    ? rapunzelSearch(rapunzelSettledPart(board, cfg.fallingBand), maxLen) : [];
+    ? rapunzelSearch(board, rapunzelSettledHops(board, hops, cfg.fallingBand), maxLen) : [];
   if (best.length < maxLen) {
     // It could not, so the whole board goes back in: a chain that has to reach
-    // up beats a chain that is short. The second search costs ~0.2ms.
-    const all = rapunzelSearch(board, maxLen);
+    // up beats a chain that is short.
+    const all = rapunzelSearch(board, hops, maxLen);
     if (all.length > best.length) { best = all; }
+  }
+  if (lanterns.length > 0) {
+    const heads: number[] = [];
+    for (let i = 0; i < lanterns.length; i++) {
+      const at = board.indexOf(lanterns[i]);
+      if (at >= 0) { heads.push(at); }
+    }
+    const lit = rapunzelSearch(board, hops, maxLen, heads);
+    if (lit.length >= 3 && lit.length >= cfg.lanternKeep * best.length) {
+      return { path: lit as TsumPath, fromLantern: true };
+    }
   }
   if (best.length < 3) { return null; }
   const path: TsumPath = best as TsumPath;
-  // Draw from whichever end is lower. A path links the same tsums drawn either
-  // way, so this is free, and it is the single biggest lever on where the drag
-  // *starts*: the search orders its starts by ascending degree, and on a pile
-  // the loose low-degree tsums are the ones at the top, so left alone it begins
-  // exactly where the refill is still landing. Over 300 ragged boards the first
-  // link fell in the top 30% of the pile 80% of the time; with this and
-  // `lowFirst` that is 25.7%, and with `fallingBand` as well, 0.3%.
+  // Draw from whichever end is lower: a path links the same tsums either way,
+  // and the search's low-degree starts are the loose tsums at the top of the
+  // pile, where the refill is still landing. With `lowFirst` and
+  // `fallingBand`, the first link falls in the top 30% of the pile 0.3% of
+  // the time, against 80% left alone.
   if (path.length > 1 && path[path.length - 1].y > path[0].y) { path.reverse(); }
   // `tsumIdx` stays unset: the chain has no one colour, which is the point.
-  return path;
+  return { path: path, fromLantern: false };
+}
+
+// --- Lanterns ----------------------------------------------------------------
+
+/**
+ * The lanterns on the board, as board points: a scanned circle within
+ * `lanternSnap` of one stands for it, otherwise one is added to `board` at the
+ * sun's centre (which is the lantern's middle, so the grab lands on it).
+ *
+ * One capture of the play square at `lanternScan`, masked to the sun's lemon
+ * yellow; each mask shape of a sun's size is a lantern. Two shapes within a
+ * tsum of each other are one lantern whose sun the mask split.
+ */
+function rapunzelLanterns(ts: Tsum, board: BoardPoint[]): BoardPoint[] {
+  const cfg = RapunzelPlusConfig;
+  const w = cfg.lanternScan;
+  const img = getScreenshotModify(ts.playOffsetX, ts.playOffsetY, ts.playWidth, ts.playHeight, w, w, 100);
+  if (!(img as unknown as number)) { return []; }
+  let boxes: ContourBox[] = [];
+  try {
+    const lo = cfg.lanternLo;
+    const hi = cfg.lanternHi;
+    const mask = inRange(img, lo.b, lo.g, lo.r, 0, hi.b, hi.g, hi.r, 255);
+    if (mask as unknown as number) {
+      try {
+        boxes = findContours(mask, cfg.lanternMinArea, 0);
+      } finally {
+        releaseImage(mask);
+      }
+    }
+  } finally {
+    releaseImage(img);
+  }
+  const scale = ts.playResizeWidth / w;
+  const half = Config.tsumWidth / 2;
+  const snapSq = (cfg.lanternSnap * Config.tsumWidth) * (cfg.lanternSnap * Config.tsumWidth);
+  const found: Point[] = [];
+  const out: BoardPoint[] = [];
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    if (b.width < cfg.lanternMinBox || b.width > cfg.lanternMaxBox
+        || b.height < cfg.lanternMinBox || b.height > cfg.lanternMaxBox) { continue; }
+    // Centre in play-square units, as board centres are.
+    const c = { x: (b.x + b.width / 2) * scale, y: (b.y + b.height / 2) * scale };
+    let dup = false;
+    for (let k = 0; k < found.length && !dup; k++) {
+      dup = getDistance(found[k], c) < Config.tsumWidth * Config.tsumWidth;
+    }
+    if (dup) { continue; }
+    found.push(c);
+    let snap: BoardPoint | null = null;
+    let snapD = snapSq;
+    for (let k = 0; k < board.length; k++) {
+      const d = getDistance({ x: board[k].x + half, y: board[k].y + half }, c);
+      if (d < snapD) { snapD = d; snap = board[k]; }
+    }
+    if (snap === null) {
+      snap = { tsumIdx: 'lantern', x: c.x - half, y: c.y - half };
+      board.push(snap);
+    }
+    out.push(snap);
+  }
+  return out;
+}
+
+// --- Drawing it --------------------------------------------------------------
+
+/** A board point (top-left corner) as the screen coordinate the touch natives want. */
+function rapunzelToScreen(ts: Tsum, p: BoardPoint): Point {
+  return {
+    x: Math.floor(ts.playOffsetX + (p.x + Config.tsumWidth / 2) * ts.playWidth / ts.playResizeWidth),
+    y: Math.floor(ts.playOffsetY + (p.y + Config.tsumWidth / 2) * ts.playHeight / ts.playResizeHeight),
+  };
+}
+
+/** What the drag came to. */
+interface RapunzelDrag {
+  /** The route as finally drawn, replans included. */
+  path: TsumPath;
+  moves: number;
+  /** Each walk-back as [route index the finger was on, index it went back to, tsums replanned]. */
+  rewinds: number[][];
+  /** The game's count at the last read, null when unread or never read. */
+  count: number | null;
 }
 
 /**
- * Draw the chain, and say how many touch events it took.
+ * Draw the chain: one MOVE per tsum, each held `dwellMs`, checked against the
+ * game's chain counter as it goes (see `checkEvery`). A stall walks the finger
+ * back to the chain's end -- moving back over linked tsums unlinks them -- and
+ * the rest is replanned from there by `replan`. A repeat stall at the same
+ * place also skips the tsum that failed; one with no route left releases.
  *
- * `linkTsums` sends one `moveTo` per tsum at 10ms, which is under one display
- * frame: the game may read only the last position of the several that arrive
- * inside a frame, so tsums in the middle of a long path can go unsampled. A
- * three-chain that loses one link clears nothing and is noticed; a twenty-four
- * chain that loses one link stops there and looks like a short chain, which is
- * how this reads from the outside. So each tsum's centre is held for `dwellMs`
- * -- longer than a frame, so it is *some* frame's final position whatever the
- * coalescing does -- and the gap to the next is swept in `stepsPerHop` steps
- * rather than jumped.
- *
- * Board points are the tsum's top-left corner in the play square, so the
- * half-width goes back on; `linkTsums`' own conversion, repeated because this
- * drag has to interpolate between the converted points.
+ * Its own drag, not `linkTsums` and not `link`: `link`'s `maybeAutoTapSkill`
+ * would re-enter this choreography the moment the clear refilled the gauge.
  */
-function rapunzelLinkChain(ts: Tsum, path: TsumPath): number {
+function rapunzelLinkChain(ts: Tsum, path: TsumPath,
+    replan: (from: BoardPoint, used: BoardPoint[], maxLen: number) => TsumPath | null): RapunzelDrag {
+  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], count: null };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
-  if (!ts.mayTouchBoard()) { return 0; }
+  if (!ts.mayTouchBoard() || path.length < 2) { return drag; }
   const cfg = RapunzelPlusConfig;
-  const xs: number[] = [];
-  const ys: number[] = [];
-  for (let i = 0; i < path.length; i++) {
-    xs.push(Math.floor(ts.playOffsetX
-      + (path[i].x + Config.tsumWidth / 2) * ts.playWidth / ts.playResizeWidth));
-    ys.push(Math.floor(ts.playOffsetY
-      + (path[i].y + Config.tsumWidth / 2) * ts.playHeight / ts.playResizeHeight));
-  }
-  let moves = 1;
-  tapDown(xs[0], ys[0], cfg.grabMs);
-  moveTo(xs[0], ys[0], cfg.dwellMs);
-  for (let i = 1; i < path.length; i++) {
-    for (let s = 1; s <= cfg.stepsPerHop; s++) {
-      const f = s / (cfg.stepsPerHop + 1);
-      moveTo(Math.floor(xs[i - 1] + (xs[i] - xs[i - 1]) * f),
-        Math.floor(ys[i - 1] + (ys[i] - ys[i - 1]) * f), cfg.stepMs);
-      moves++;
+  const cap = path.length;
+  const pts: Point[] = [];
+  for (let i = 0; i < path.length; i++) { pts.push(rapunzelToScreen(ts, path[i])); }
+  let finger = pts[0];
+  tapDown(finger.x, finger.y, cfg.grabMs);
+  try {
+    const hop = function(k: number): void {
+      moveTo(pts[k].x, pts[k].y, cfg.dwellMs);
+      finger = pts[k];
+      drag.moves++;
+    };
+    hop(0);
+    let lastBack = -1;
+    let i = 1;
+    while (i < path.length) {
+      hop(i);
+      const end = i === path.length - 1;
+      if (drag.rewinds.length < cfg.maxRewinds && i + 1 >= cfg.checkFrom
+          && (end || i % cfg.checkEvery === 0)) {
+        if (end) { ts.sleep(cfg.countSettleMs); }
+        const count = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1))).value;
+        drag.count = count;
+        if (count !== null && count < i + 1 - cfg.countSlack) {
+          // The chain ends at path[back]; walk back to it.
+          const back = Math.max(0, Math.min(i, count) - 1);
+          const again = lastBack >= 0 && back <= lastBack + 1;
+          lastBack = back;
+          for (let k = i - 1; k >= back; k--) { hop(k); }
+          const used = path.slice(0, back + 1);
+          if (again && back + 1 < path.length) { used.push(path[back + 1]); }
+          const next = replan(path[back], used, cap - back);
+          drag.rewinds.push([i, back, next !== null ? next.length - 1 : 0]);
+          if (next === null) {
+            if (again) {
+              drag.path = path.slice(0, back + 1) as TsumPath;
+              break;
+            }
+            // No better route: redraw the old one from the chain's end.
+          } else {
+            path = path.slice(0, back).concat(next) as TsumPath;
+            pts.length = back + 1;
+            for (let k = 1; k < next.length; k++) { pts.push(rapunzelToScreen(ts, next[k])); }
+            drag.path = path;
+          }
+          i = back + 1;
+          continue;
+        }
+      }
+      i++;
     }
-    moveTo(xs[i], ys[i], cfg.dwellMs);
-    moves++;
+  } finally {
+    // The host never lifts the finger itself, so a throw must, or it drags on.
+    tapUp(finger.x, finger.y, cfg.releaseMs);
   }
-  tapUp(xs[path.length - 1], ys[path.length - 1], cfg.releaseMs);
-  return moves;
+  return drag;
 }
 
 /**
@@ -482,8 +640,15 @@ registerSkill({
     // The play loop's board was scanned before its last batch linked, so its
     // length is a full board's population -- the settle gate's seed.
     const fresh = rapunzelSettledBoard(ts, board ? board.length : 0);
-    const path = rapunzelChain(fresh, cap);
-    let moves = 0;
+    // The scan reads bubbles off its own frame; `beforeActivate` spent the
+    // hoard, so this is whatever has appeared since.
+    const bubbles = ts.gameBubbles.slice();
+    const read = fresh.length;
+    // May add lanterns the circle pass missed to `fresh`.
+    const lanterns = rapunzelLanterns(ts, fresh);
+    const plan = rapunzelChain(fresh, bubbles, cap, lanterns);
+    const path = plan ? plan.path : null;
+    let drag: RapunzelDrag | null = null;
     let dragMs = 0;
     // Is the window still open now that the scan has been paid for? In the one
     // clip measured the board stayed lit for the whole drag and went dark on
@@ -493,15 +658,13 @@ registerSkill({
     // it cannot simply move before the tap).
     const litAtDrag = path ? rapunzelLitRatio(ts) : 0;
     if (path) {
-      // Its own drag, not `linkTsums` and emphatically not `link`: the pacing
-      // is the point (see `rapunzelLinkChain`), and `link`'s
-      // `maybeAutoTapSkill` would re-enter this choreography the moment the
-      // clear refilled the gauge.
       const dragAt = Date.now();
-      moves = rapunzelLinkChain(ts, path);
+      drag = rapunzelLinkChain(ts, path, function(from, used, maxLen) {
+        return rapunzelChainFrom(from, fresh, used, bubbles, maxLen);
+      });
       dragMs = Date.now() - dragAt;
       ts.sleep(Math.min(cfg.clearSettleMaxMs,
-        cfg.clearSettleMs + path.length * cfg.clearSettlePerTsumMs));
+        cfg.clearSettleMs + drag.path.length * cfg.clearSettlePerTsumMs));
     }
 
     logInfo(Log.Skill.RapunzelDone, {
@@ -516,9 +679,18 @@ registerSkill({
       // are then the pacing. Well under `levelCap` with a small `read` is the
       // opposite problem, a board scan that put too few tsums in the array.
       chain: path ? path.length : 0,
-      read: fresh.length,
-      moves: moves,
+      read: read,
+      moves: drag ? drag.moves : 0,
       dragMs: dragMs,
+      // Lanterns found, and whether the chain started on one.
+      lanterns: lanterns.length,
+      fromLantern: plan ? plan.fromLantern : false,
+      // The drag's stall checks: what it ended up drawing, each walk-back as
+      // [finger index, back to, replanned], and the game's last count. A
+      // `drawn` under `chain` is a repeat stall that released early.
+      drawn: drag ? drag.path.length : 0,
+      rewinds: drag ? drag.rewinds : [],
+      registered: drag ? drag.count : null,
       // How long the activation animation held the board, and whether it was
       // really seen to lift. Three shapes: `lit: true` is the gate working;
       // `sawDark: false` with `litMs` near `litMinMs` is the veil never seen at

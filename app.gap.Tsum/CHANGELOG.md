@@ -49,10 +49,26 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*Skills*
+- Rapunzel+ skill improved: her chain no longer runs into dead ends, draws faster, and starts from a lantern when one is on the board.
+
 **Fixes**
 - GAP Companion no longer asks for directions on loading screens, or when the game restarts itself for an update.
 
 ### Changed
+
+- **Rapunzel+ routes by Gaston's rules** (`buildClearHops`, now shared in
+  `pathfinding.ts`): no hop passes near a third tsum or through a bubble, which
+  in her colour-blind window links it out of order. Over 300 synthetic boards
+  the chain is as long, and clipped routes go from 64-85% to 0.
+- **Rapunzel+'s drag is one MOVE per tsum at 20ms** (was three events, ~35ms),
+  read against the game's chain counter every 6 tsums and at the end; a stall
+  walks back to the chain's end and replans (`rewinds` in `skill.rapunzel.done`).
+- **Rapunzel+ starts on a lantern** (`rapunzelLanterns`): found by its lemon-yellow
+  sun (18 of 20 hits real on a 40s recording), chosen when its chain is at least
+  75% of the best (`lanternKeep`).
 
 - **Unknown screens wait before asking** (`directUnknownPage`, `direct.skipped`):
   no request while the game starts up (`isStartupPhase`, boot), none until the

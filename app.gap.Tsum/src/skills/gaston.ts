@@ -762,47 +762,9 @@ function gastonWithout(board: BoardPoint[], avoid: Point): BoardPoint[] {
 
 // --- The chain --------------------------------------------------------------
 
-/** Whether the segment `a`-`b` passes within `rSq` (squared) of `p`. */
-function gastonSegmentNear(a: Point, b: Point, p: Point, rSq: number): boolean {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = dx * dx + dy * dy;
-  let t = len > 0 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / len : 0;
-  t = t < 0 ? 0 : (t > 1 ? 1 : t);
-  const ex = a.x + t * dx - p.x;
-  const ey = a.y + t * dy - p.y;
-  return ex * ex + ey * ey < rSq;
-}
-
-/**
- * The hops the drag may draw over `board`: `buildTsumNeighbors`' reach, less
- * hops passing within `crossAvoid` of a third tsum's centre or inside a bubble,
- * since the game links whatever the line crosses.
- */
+/** The hops the drag may draw over `board` (`buildClearHops` at `hopReach` and `crossAvoid`). */
 function gastonNeighbors(board: BoardPoint[], bubbles: GameBubble[]): number[][] {
-  const half = Config.tsumWidth / 2;
-  const reachSq = Config.tsumWidth * GastonConfig.hopReach * Config.tsumWidth * GastonConfig.hopReach;
-  const cross = Config.tsumWidth * GastonConfig.crossAvoid;
-  const crossSq = cross * cross;
-  const centres: Point[] = [];
-  for (let i = 0; i < board.length; i++) { centres.push({ x: board[i].x + half, y: board[i].y + half }); }
-  const neighbors = buildTsumNeighbors(centres, reachSq);
-  for (let i = 0; i < neighbors.length; i++) {
-    const kept: number[] = [];
-    for (let k = 0; k < neighbors[i].length; k++) {
-      const j = neighbors[i][k];
-      let clean = true;
-      for (let o = 0; o < centres.length && clean; o++) {
-        if (o !== i && o !== j && gastonSegmentNear(centres[i], centres[j], centres[o], crossSq)) { clean = false; }
-      }
-      for (let b = 0; b < bubbles.length && clean; b++) {
-        if (gastonSegmentNear(centres[i], centres[j], bubbles[b], bubbles[b].r * bubbles[b].r)) { clean = false; }
-      }
-      if (clean) { kept.push(j); }
-    }
-    neighbors[i] = kept;
-  }
-  return neighbors;
+  return buildClearHops(board, bubbles, GastonConfig.hopReach, GastonConfig.crossAvoid);
 }
 
 /**
@@ -1534,7 +1496,7 @@ function gastonCrossesBubble(path: TsumPath, bubbles: GameBubble[]): boolean {
     const a = { x: path[i - 1].x + half, y: path[i - 1].y + half };
     const b = { x: path[i].x + half, y: path[i].y + half };
     for (let k = 0; k < bubbles.length; k++) {
-      if (gastonSegmentNear(a, b, bubbles[k], bubbles[k].r * bubbles[k].r)) { return true; }
+      if (segmentNearPoint(a, b, bubbles[k], bubbles[k].r * bubbles[k].r)) { return true; }
     }
   }
   return false;

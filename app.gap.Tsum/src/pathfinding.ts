@@ -34,6 +34,51 @@ function buildTsumNeighbors(tsums: Point[], maxDistSq: number): number[][] {
   return neighbors;
 }
 
+/** Whether the segment `a`-`b` passes within `rSq` (squared) of `p`. */
+function segmentNearPoint(a: Point, b: Point, p: Point, rSq: number): boolean {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = dx * dx + dy * dy;
+  let t = len > 0 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / len : 0;
+  t = t < 0 ? 0 : (t > 1 ? 1 : t);
+  const ex = a.x + t * dx - p.x;
+  const ey = a.y + t * dy - p.y;
+  return ex * ex + ey * ey < rSq;
+}
+
+/**
+ * Hops a drag can draw over `board` without touching anything else: pairs
+ * within `reach` tsum widths, less any hop whose line passes within `cross`
+ * tsum widths of a third tsum's centre or inside a bubble. The game links
+ * whatever the line crosses, so a hop that clips a third tsum links it out of
+ * order. Gaston's route rule, shared with Rapunzel+'s colour-blind chain.
+ */
+function buildClearHops(board: BoardPoint[], bubbles: GameBubble[], reach: number, cross: number): number[][] {
+  const half = Config.tsumWidth / 2;
+  const reachPx = Config.tsumWidth * reach;
+  const crossPx = Config.tsumWidth * cross;
+  const crossSq = crossPx * crossPx;
+  const centres: Point[] = [];
+  for (let i = 0; i < board.length; i++) { centres.push({ x: board[i].x + half, y: board[i].y + half }); }
+  const neighbors = buildTsumNeighbors(centres, reachPx * reachPx);
+  for (let i = 0; i < neighbors.length; i++) {
+    const kept: number[] = [];
+    for (let k = 0; k < neighbors[i].length; k++) {
+      const j = neighbors[i][k];
+      let clean = true;
+      for (let o = 0; o < centres.length && clean; o++) {
+        if (o !== i && o !== j && segmentNearPoint(centres[i], centres[j], centres[o], crossSq)) { clean = false; }
+      }
+      for (let b = 0; b < bubbles.length && clean; b++) {
+        if (segmentNearPoint(centres[i], centres[j], bubbles[b], bubbles[b].r * bubbles[b].r)) { clean = false; }
+      }
+      if (clean) { kept.push(j); }
+    }
+    neighbors[i] = kept;
+  }
+  return neighbors;
+}
+
 /** The connected components of the adjacency list, each a list of node indices. */
 function findTsumComponents(neighbors: number[][]): number[][] {
   const n = neighbors.length;
