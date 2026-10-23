@@ -159,6 +159,10 @@ var RapunzelPlusConfig = {
   grabMs: 10,
   dwellMs: 20,
   releaseMs: 10,
+  // The head is held this long before the first move. Over 187 activations
+  // 27% stalled, and nearly half of those never got past the first link --
+  // the press on the head not taken in time (it was held 30ms).
+  headHoldMs: 70,
   // --- the rewind (Gaston's `rewind`, off the chain counter) ---
   // From tsum `checkFrom` on, every `checkEvery` tsums, the game's count is
   // read. Not at the end: a stall there costs a few tsums, a read ~100ms. A
@@ -554,7 +558,8 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
       finger = pts[k];
       drag.moves++;
     };
-    hop(0);
+    moveTo(pts[0].x, pts[0].y, cfg.headHoldMs);
+    drag.moves++;
     let lastBack = -1;
     let i = 1;
     while (i < path.length) {
