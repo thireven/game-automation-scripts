@@ -895,7 +895,8 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // Did the last drag do anything? The chain is gone from a board that took
     // it, and standing on a board that refused it.
     if (drawnChain !== null) {
-      let held = boardStillHolds(board, drawnChain, DeadScanTolerancePx);
+      // The whole read: the ledger leaves the chain's own tsums out of `board`.
+      let held = boardStillHolds(board.concat(this.boardClearing), drawnChain, DeadScanTolerancePx);
       // Standing on a read too soon to tell: read again (`DeadScanReadAfterMs`).
       const sureAt = this.dragReleasedAt + DeadScanReadAfterMs;
       if (held >= drawnChain.length * DeadScanStillFraction && readAt < sureAt) {
@@ -904,7 +905,7 @@ Tsum.prototype.taskPlayGameQuick = function() {
         if (board == null) {
           break;
         }
-        held = boardStillHolds(board, drawnChain, DeadScanTolerancePx);
+        held = boardStillHolds(board.concat(this.boardClearing), drawnChain, DeadScanTolerancePx);
       }
       if (held >= drawnChain.length * DeadScanStillFraction) {
         deadScans++;

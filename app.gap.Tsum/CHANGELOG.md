@@ -52,7 +52,11 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Rapunzel+ skill improved: her chain no longer runs into dead ends, draws faster, and starts from a lantern when one is on the board.
+- Rapunzel+ skill improved: her chain no longer runs into dead ends or tsums still clearing, draws faster, and starts from a lantern when one is on the board.
+- Cinderella skill improved: her strokes steer round tsums still clearing from the last one.
+
+*Play*
+- Chains are planned around tsums the game is still clearing, instead of being drawn into them.
 
 **Fixes**
 - GAP Companion no longer asks for directions on loading screens, or when the game restarts itself for an update.
@@ -66,6 +70,16 @@ release note; they fold back in here when she ships.
 - **Rapunzel+'s drag is one MOVE per tsum at 20ms** (was three events, ~35ms),
   read against the game's chain counter every 6 tsums and at the end; a stall
   walks back to the chain's end and replans (`rewinds` in `skill.rapunzel.done`).
+- **Clearing ledger** (`BoardFlux` in `board.ts`): each drag records its tsums
+  and when each is gone (`popStartMs` + k x 90ms, `feverScale` 0.6 in a Fever,
+  paused `cutInMs` by an activation, flushed by a bubble pop); scans drop those
+  circles. At full speed a scan read 13-33 of ~45 tsums, the rest still clearing.
+  Timings past Gaston's 90ms are NOT MEASURED.
+- **Rapunzel+ goes for her cap fast**: a look is retaken only when its plan is
+  short of the cap; no end-of-drag counter read; no post-chain settle (her
+  flash clear and lantern columns go into the ledger).
+- **Cinderella picks each stroke** off the ledger (`cinderellaPickStroke`): the
+  half and direction with the longest free run, cut at the first clearing tsum.
 - **Rapunzel+ starts on a lantern** (`rapunzelLanterns`): found by its lemon-yellow
   sun (18 of 20 hits real on a 40s recording), chosen when its chain is at least
   75% of the best (`lanternKeep`).

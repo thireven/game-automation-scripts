@@ -64,8 +64,120 @@ Tsum.prototype.linkTsums = function(path) {
       // Before the call, as the host stamps its `input.up` trace.
       this.dragReleasedAt = Date.now();
       tapUp(x, y, releaseDuring);
+      fluxNoteChain(path, this.dragReleasedAt);
     }
   }
+}
+
+// --- Tsums still clearing ----------------------------------------------------
+//
+// A released chain does not leave the board at once: the game pops its tsums
+// one after another, and a linked tsum waiting its turn cannot be linked again.
+// We draw a 3-chain in ~40ms and the game takes most of a second to clear it,
+// so at full speed a fifth to a half of the board is waiting (a scan read 13-33
+// of ~45 on a recording), and a chain planned through one stops there.
+//
+// So every drag records what it linked here, with when each tsum should be
+// gone, and `scanBoardQuick` leaves those circles out (`fluxDrop`): the next
+// chain is planned around them rather than waited for. Three things move the
+// times: a Fever clears faster (`feverScale`), a skill's cut-in freezes the
+// board (`fluxPause`), and a bubble popped while a chain clears finishes it at
+// once (`fluxCancel`, the game's "bomb cancel").
+var BoardFluxConfig = {
+  // Tsum k of a chain is gone `popStartMs + k * popPerTsumMs` after release,
+  // and its spot stays out `landMs` more while the refill lands in it.
+  // `popPerTsumMs` is Gaston's measurement (outside Fever); the other two are
+  // NOT MEASURED.
+  popStartMs: 150,
+  popPerTsumMs: 90,
+  landMs: 200,
+  // Share of those times in a Fever. NOT MEASURED: the user's observation is
+  // that a Fever clears faster, not by how much.
+  feverScale: 0.6,
+  // A skill's cut-in, during which nothing on the board moves. Cinderella's
+  // measured `cutInMs`; Rapunzel+'s veil lifts at ~1.5s too.
+  cutInMs: 1500,
+  // A bubble pop finishes every clear in progress this soon after it.
+  cancelMs: 150,
+  // A scanned circle within this (tsum widths) of a spot is that spot's tsum.
+  reach: 0.5,
+};
+
+/** One linked tsum still on the board: its centre in the play square, and when it is gone. */
+interface FluxSpot { x: number; y: number; freeAt: number; }
+
+var gFlux: FluxSpot[] = [];
+
+/** Record a released chain (board points, top-left corners, in link order). */
+function fluxNoteChain(path: Point[], releasedAt: number): void {
+  const cfg = BoardFluxConfig;
+  const scale = gFever.active ? cfg.feverScale : 1;
+  const half = Config.tsumWidth / 2;
+  for (let k = 0; k < path.length; k++) {
+    gFlux.push({
+      x: path[k].x + half,
+      y: path[k].y + half,
+      freeAt: releasedAt + scale * (cfg.popStartMs + k * cfg.popPerTsumMs) + cfg.landMs,
+    });
+  }
+}
+
+/** Record spots (centres) that stay out until `freeAt`: a skill's own clear. */
+function fluxNoteSpots(centres: Point[], freeAt: number): void {
+  for (let i = 0; i < centres.length; i++) {
+    gFlux.push({ x: centres[i].x, y: centres[i].y, freeAt: freeAt });
+  }
+}
+
+/** A skill fired at `at`: whatever was still clearing waits out its cut-in. */
+function fluxPause(at: number, ms: number): void {
+  for (let i = 0; i < gFlux.length; i++) {
+    if (gFlux[i].freeAt > at) { gFlux[i].freeAt += ms; }
+  }
+}
+
+/** A bubble popped at `at`: every clear in progress finishes now. */
+function fluxCancel(at: number): void {
+  const by = at + BoardFluxConfig.cancelMs;
+  for (let i = 0; i < gFlux.length; i++) {
+    if (gFlux[i].freeAt > by) { gFlux[i].freeAt = by; }
+  }
+}
+
+/**
+ * How many of `path`'s points (top-left corners), from the start, sit on no
+ * spot still clearing: a chain links no further than its first blocked tsum.
+ */
+function fluxFreeRun(path: Point[]): number {
+  const now = Date.now();
+  const half = Config.tsumWidth / 2;
+  const r = BoardFluxConfig.reach * Config.tsumWidth;
+  const rSq = r * r;
+  for (let k = 0; k < path.length; k++) {
+    const c = { x: path[k].x + half, y: path[k].y + half };
+    for (let i = 0; i < gFlux.length; i++) {
+      if (gFlux[i].freeAt > now && getDistance(c, gFlux[i]) < rSq) { return k; }
+    }
+  }
+  return path.length;
+}
+
+/**
+ * `points` (circle centres) less those sitting on a spot still clearing.
+ * Forgets the spots that have cleared.
+ */
+function fluxDrop<T extends Point>(points: T[]): T[] {
+  const now = Date.now();
+  gFlux = gFlux.filter(function(s) { return s.freeAt > now; });
+  if (gFlux.length === 0) { return points; }
+  const r = BoardFluxConfig.reach * Config.tsumWidth;
+  const rSq = r * r;
+  return points.filter(function(p) {
+    for (let i = 0; i < gFlux.length; i++) {
+      if (getDistance(p, gFlux[i]) < rSq) { return false; }
+    }
+    return true;
+  });
 }
 
 // The chain length that earns a bubble, for the limits in force.
@@ -253,6 +365,7 @@ function tapGameBubble(ts: Tsum, b: GameBubble): void {
   const y = Math.floor(ts.playOffsetY + b.y * ts.playHeight / ts.playResizeHeight);
   tap(x, y, GameBubbleConfig.tapDuring, TapHoldMs);
   b.popped = true;
+  fluxCancel(Date.now());
 }
 
 // Tap the bubbles the last board scan found. Taps only -- the positions were
@@ -681,7 +794,17 @@ Tsum.prototype.scanBoardQuick = function() {
       logInfo(Log.Board.LargeTsums, { count: large.length,
         at: large.map(function(l) { return [Math.round(l.x), Math.round(l.y)]; }) });
     }
-    const points = findTsums(srcImg, grayImg, dropInsideLarge(circles, large), large);
+    // Circles still waiting to clear are not tsums a chain can use (`fluxDrop`).
+    const seen = findTsums(srcImg, grayImg, dropInsideLarge(circles, large), large);
+    const points = fluxDrop(seen);
+    // Kept for the dead-scan check, which asks whether a chain just drawn is
+    // still standing -- exactly the tsums the ledger leaves out.
+    this.boardClearing = [];
+    for (let i = 0; i < seen.length; i++) {
+      if (points.indexOf(seen[i]) < 0) {
+        this.boardClearing.push({ tsumIdx: '', x: seen[i].x - Config.tsumWidth / 2, y: seen[i].y - Config.tsumWidth / 2 });
+      }
+    }
     // Each one's first sighting, carried over from earlier scans -- what
     // `ripeGameBubbles` ages it by. Run on an empty list too: that is what
     // lets old sightings go.
@@ -815,7 +938,7 @@ Tsum.prototype.scanBoardQuick = function() {
     if (grayImg != null) { releaseImage(grayImg); }
     releaseImage(srcImg);
   }
-  logDebug(Log.Board.Recognized, { tsums: board.length });
+  logDebug(Log.Board.Recognized, { tsums: board.length, clearing: this.boardClearing.length });
   logDebug(Log.Board.RecognitionTime, { durationMs: Date.now() - startTime });
   // Compact arrays: a scan is ~50 tsums, several times a second.
   traceSend(Trace.Kind.BoardScan, () => {

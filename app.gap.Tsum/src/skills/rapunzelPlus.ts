@@ -14,18 +14,19 @@
 // pays out. They are also left alone for that ordinary play: her chains outside
 // the window are worth exactly what they clear, so no `chainLimits` here.
 //
-// Three things the window has to get right:
+// What the window has to get right. The aim is her level's cap, drawn as fast
+// as possible -- not the whole board, as Gaston's window wants:
 //
 //   - **every tsum has to be in the board array.** A scan keeps only the
 //     `uniqueTsumCount - 1` biggest colour clusters, and a colour without a
 //     slot is not in the array at all, so no chain can be planned over it.
 //     Ordinarily that is the cheapest colour to drop; for a chain that ignores
 //     colour it is a tenth of the board. `extraClusterSlots` buys it back.
-//   - **the board must have stopped falling.** The window opens on the refill
-//     from the batch the play loop linked just before activating, and a capture
-//     taken mid-fall reads tsums where they are passing through -- the drag then
-//     goes out at air. A look that reads clearly fewer tsums than the play
-//     loop's own scan did is waited out and retaken.
+//   - **only tsums that can still link.** The window opens on the batch the
+//     play loop linked just before activating, still clearing: the cut-in
+//     froze those clears, so they finish under her drag. The scan leaves them
+//     out (`fluxDrop`, board.ts), and a look whose plan falls short of the cap
+//     is retaken a moment later (`rapunzelPlanned`).
 //   - **a bubble breaks the drag.** One crossed mid-travel pops and ends the
 //     chain there, and this chain crosses the whole board. `beforeActivate`
 //     spends the hoard aimed, off the positions the cycle's scan already holds,
@@ -36,7 +37,7 @@
 //     (no hop passes near a third tsum or through a bubble), and the drag is
 //     one MOVE per tsum held `dwellMs`, longer than a display frame.
 //   - **a stalled drag is walked back.** About one hop in fifty fails anyway.
-//     Every `checkEvery` tsums, and once at the end, the game's chain counter
+//     Every `checkEvery` tsums the game's chain counter
 //     is read (`chainCounterRead`); a count well behind the finger walks it
 //     back to the chain's real end and replans the rest from there
 //     (`rapunzelLinkChain`), as Gaston's coin check does.
@@ -95,12 +96,10 @@ var RapunzelPlusConfig = {
   // Nothing darkened by here is not an exit any more, only the finding that
   // this reading cannot see the animation -- the floor above covers it.
   darkByMs: 700,
-  // A look reading fewer than this fraction of the board the play loop scanned
-  // is a board still falling -- waited out and retaken, at most `settleMaxWaits`
-  // times before it is chained anyway. This gate is for the *fall*; the light
-  // gate above is for the animation, which is what it used to be spending its
-  // retries on at 250ms a scan.
-  settledFraction: 0.8,
+  // Her chain stops at her level's cap, so the only thing a look is for is a
+  // chain that reaches it: a plan at the cap goes at once, a short one waits
+  // `settleRetryMs` and looks again (the refill may still be landing, or tsums
+  // still clearing), at most `settleMaxWaits` times, keeping the longest plan.
   settleRetryMs: 150,
   settleMaxWaits: 2,
   // Gaston's hop rules (`buildClearHops`): longest hop and how close a hop's
@@ -153,15 +152,14 @@ var RapunzelPlusConfig = {
   dwellMs: 20,
   releaseMs: 10,
   // --- the rewind (Gaston's `rewind`, off the chain counter) ---
-  // From tsum `checkFrom` on, every `checkEvery` tsums and once more at the
-  // end (`countSettleMs` after the last MOVE), the game's count is read. A
+  // From tsum `checkFrom` on, every `checkEvery` tsums, the game's count is
+  // read. Not at the end: a stall there costs a few tsums, a read ~100ms. A
   // count more than `countSlack` behind the finger is a stall: the finger
   // walks back to the chain's end and the rest is replanned from there, clear
   // of what is linked (and of the failing tsum on a repeat stall), at most
   // `maxRewinds` times. An unread count is trusted, not a stall.
   checkFrom: 6,
   checkEvery: 6,
-  countSettleMs: 60,
   countSlack: 3,
   maxRewinds: 3,
   // --- lanterns ---
@@ -184,12 +182,12 @@ var RapunzelPlusConfig = {
   // A chain from a lantern is drawn when it is at least this share of the
   // longest chain from anywhere: the lantern's own clear makes up the rest.
   lanternKeep: 0.75,
-  // Kept after the drag, so the clear and its refill are over before the play
-  // loop scans again. Scales with the chain, capped: 24 tsums leave a bigger
-  // hole than 9.
-  clearSettleMs: 400,
-  clearSettlePerTsumMs: 25,
-  clearSettleMaxMs: 1200,
+  // Her chain clears in one flash, not a tsum at a time; a lantern in it
+  // then clears a column, ~1.5s later (a recording at 106fps). Both go into
+  // the clearing ledger (`fluxNoteSpots`) so the play loop resumes at once and
+  // plans around them, rather than sleeping. NOT MEASURED past that one clip.
+  skillClearMs: 600,
+  lanternClearMs: 1800,
 };
 
 // --- Waiting out the activation animation -----------------------------------
@@ -533,8 +531,7 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
       hop(i);
       const end = i === path.length - 1;
       if (drag.rewinds.length < cfg.maxRewinds && i + 1 >= cfg.checkFrom
-          && (end || i % cfg.checkEvery === 0)) {
-        if (end) { ts.sleep(cfg.countSettleMs); }
+          && !end && i % cfg.checkEvery === 0) {
         const count = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1))).value;
         drag.count = count;
         if (count !== null && count < i + 1 - cfg.countSlack) {
@@ -572,23 +569,62 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
   return drag;
 }
 
+/** One look at the board and the chain planned on it. */
+interface RapunzelLook {
+  board: BoardPoint[];
+  /** Tsums the scan read, before any lantern was added. */
+  read: number;
+  bubbles: GameBubble[];
+  lanterns: BoardPoint[];
+  plan: { path: TsumPath, fromLantern: boolean } | null;
+  looks: number;
+}
+
 /**
- * One capture of a board that has finished falling, or the best look of
- * `settleMaxWaits + 1` tries. `expected` is the play loop's own count.
+ * Scan and plan until the plan reaches `cap`, at most `settleMaxWaits` more
+ * looks `settleRetryMs` apart, and keep the longest. A plan at the cap goes at
+ * once: nothing past it is worth waiting for.
  */
-function rapunzelSettledBoard(ts: Tsum, expected: number): BoardPoint[] {
+function rapunzelPlanned(ts: Tsum, cap: number): RapunzelLook {
   const cfg = RapunzelPlusConfig;
-  let board = ts.scanBoardQuick();
-  let waits = 0;
-  while (ts.isRunning && waits < cfg.settleMaxWaits
-      && board.length < cfg.settledFraction * expected) {
-    waits++;
-    ts.sleep(cfg.settleRetryMs);
-    const again = ts.scanBoardQuick();
-    // Keep the fuller read: a retake can land on the next fall.
-    if (again.length > board.length) { board = again; }
+  let best: RapunzelLook | null = null;
+  for (let look = 0; look <= cfg.settleMaxWaits && ts.isRunning; look++) {
+    if (look > 0) { ts.sleep(cfg.settleRetryMs); }
+    const board = ts.scanBoardQuick();
+    // The scan reads bubbles off its own frame; `beforeActivate` spent the
+    // hoard, so this is whatever has appeared since.
+    const bubbles = ts.gameBubbles.slice();
+    const read = board.length;
+    // May add lanterns the circle pass missed to `board`.
+    const lanterns = rapunzelLanterns(ts, board);
+    const plan = rapunzelChain(board, bubbles, cap, lanterns);
+    const len = plan ? plan.path.length : 0;
+    if (best === null || len > (best.plan ? best.plan.path.length : 0)) {
+      best = { board: board, read: read, bubbles: bubbles, lanterns: lanterns, plan: plan, looks: look + 1 };
+    } else {
+      best.looks = look + 1;
+    }
+    if (len >= cap) { break; }
   }
-  return board;
+  return best || { board: [], read: 0, bubbles: [], lanterns: [], plan: null, looks: 0 };
+}
+
+/**
+ * Put her chain's clear into the board's clearing ledger: the chain itself
+ * goes in one flash, and each lantern linked in it clears its column later.
+ */
+function rapunzelNoteClear(path: TsumPath, lanterns: BoardPoint[], releasedAt: number): void {
+  const cfg = RapunzelPlusConfig;
+  const half = Config.tsumWidth / 2;
+  fluxNoteSpots(chainRouteCentres(path), releasedAt + cfg.skillClearMs);
+  for (let i = 0; i < lanterns.length; i++) {
+    if (path.indexOf(lanterns[i]) < 0) { continue; }
+    const column: Point[] = [];
+    for (let y = half; y < Config.screenResize; y += half) {
+      column.push({ x: lanterns[i].x + half, y: y });
+    }
+    fluxNoteSpots(column, releasedAt + cfg.lanternClearMs);
+  }
 }
 
 registerSkill({
@@ -637,34 +673,18 @@ registerSkill({
     // `litFraction`.
     const light = rapunzelWaitForBoard(ts, t0);
 
-    // The play loop's board was scanned before its last batch linked, so its
-    // length is a full board's population -- the settle gate's seed.
-    const fresh = rapunzelSettledBoard(ts, board ? board.length : 0);
-    // The scan reads bubbles off its own frame; `beforeActivate` spent the
-    // hoard, so this is whatever has appeared since.
-    const bubbles = ts.gameBubbles.slice();
-    const read = fresh.length;
-    // May add lanterns the circle pass missed to `fresh`.
-    const lanterns = rapunzelLanterns(ts, fresh);
-    const plan = rapunzelChain(fresh, bubbles, cap, lanterns);
-    const path = plan ? plan.path : null;
+    const look = rapunzelPlanned(ts, cap);
+    const path = look.plan ? look.plan.path : null;
     let drag: RapunzelDrag | null = null;
     let dragMs = 0;
-    // Is the window still open now that the scan has been paid for? In the one
-    // clip measured the board stayed lit for the whole drag and went dark on
-    // release, so the window closes on a completed chain rather than on a
-    // clock -- if this starts reading dark, that is wrong and the scan has to
-    // come out of the window (the board is still refilling under the veil, so
-    // it cannot simply move before the tap).
-    const litAtDrag = path ? rapunzelLitRatio(ts) : 0;
     if (path) {
       const dragAt = Date.now();
       drag = rapunzelLinkChain(ts, path, function(from, used, maxLen) {
-        return rapunzelChainFrom(from, fresh, used, bubbles, maxLen);
+        return rapunzelChainFrom(from, look.board, used, look.bubbles, maxLen);
       });
       dragMs = Date.now() - dragAt;
-      ts.sleep(Math.min(cfg.clearSettleMaxMs,
-        cfg.clearSettleMs + drag.path.length * cfg.clearSettlePerTsumMs));
+      // No settle: the play loop goes on at once, planning around the clear.
+      rapunzelNoteClear(drag.path, look.lanterns, Date.now());
     }
 
     logInfo(Log.Skill.RapunzelDone, {
@@ -679,12 +699,15 @@ registerSkill({
       // are then the pacing. Well under `levelCap` with a small `read` is the
       // opposite problem, a board scan that put too few tsums in the array.
       chain: path ? path.length : 0,
-      read: read,
+      read: look.read,
+      // Scans taken to reach the cap; tsums the last left out as clearing.
+      looks: look.looks,
+      clearing: ts.boardClearing.length,
       moves: drag ? drag.moves : 0,
       dragMs: dragMs,
       // Lanterns found, and whether the chain started on one.
-      lanterns: lanterns.length,
-      fromLantern: plan ? plan.fromLantern : false,
+      lanterns: look.lanterns.length,
+      fromLantern: look.plan ? look.plan.fromLantern : false,
       // The drag's stall checks: what it ended up drawing, each walk-back as
       // [finger index, back to, replanned], and the game's last count. A
       // `drawn` under `chain` is a repeat stall that released early.
@@ -701,7 +724,6 @@ registerSkill({
       litMs: light.litMs,
       sawDark: light.sawDark,
       lit: light.lit,
-      litAtDrag: Math.round(litAtDrag * 100) / 100,
       totalMs: Date.now() - t0,
     });
     return true;

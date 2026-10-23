@@ -44,6 +44,8 @@ class Tsum {
   touchedAt: number;
   /** Epoch ms `linkTsums` last released a chain; 0 for none yet. */
   dragReleasedAt: number;
+  /** Circles the last scan left out as still clearing (`fluxDrop`), as board points. */
+  boardClearing: BoardPoint[];
   /** Epoch ms `settleScreen` last watched the screen move and then hold still; 0 for never. */
   screenStillAt: number;
   /** Trace frame id of the latest play-square capture; 0 when it was not sent. */
@@ -370,6 +372,7 @@ class Tsum {
     this.gestureOpen = false;
     this.touchedAt = 0;
     this.dragReleasedAt = 0;
+    this.boardClearing = [];
     this.screenStillAt = 0;
     this.squareFrame = 0;
     this.yieldAsked = false;

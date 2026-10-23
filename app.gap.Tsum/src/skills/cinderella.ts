@@ -1,7 +1,10 @@
 // Cinderella — for a few seconds any tsums can be linked, whatever their kind.
 //
-// The window is filled with blind serpentine strokes, alternating left and
-// right half of the play area, then the bubbles left behind are cleared. Blind
+// The window is filled with blind serpentine strokes over the left or right
+// half of the play area, then the bubbles left behind are cleared. Each stroke
+// is the half and direction that runs longest before a tsum an earlier stroke
+// linked and the game is still clearing (`cinderellaPickStroke`, off the
+// clearing ledger in board.ts), and stops there. Blind
 // on purpose: a scan and a settle per chain cost over a second, and the window
 // is 3-4s (`windowMs`). The coordinates are in the playResize space, not
 // screen pixels.
@@ -42,6 +45,30 @@ function cinderellaStroke(right: boolean): Point[] {
   return path;
 }
 
+/**
+ * The stroke to draw next: whichever half and direction runs longest before
+ * a tsum still clearing from an earlier stroke (`fluxFreeRun`), cut there,
+ * since the chain stops at that tsum anyway. Ties go to `preferRight`'s half,
+ * which keeps the old alternation when nothing is clearing.
+ */
+function cinderellaPickStroke(preferRight: boolean): { path: Point[], right: boolean, reversed: boolean } {
+  let best: { path: Point[], right: boolean, reversed: boolean } | null = null;
+  let bestRun = -1;
+  const sides = [preferRight, !preferRight];
+  for (let s = 0; s < sides.length; s++) {
+    for (let r = 0; r < 2; r++) {
+      const path = cinderellaStroke(sides[s]);
+      if (r === 1) { path.reverse(); }
+      const run = fluxFreeRun(path);
+      if (run > bestRun) {
+        bestRun = run;
+        best = { path: path.slice(0, Math.max(run, 3)), right: sides[s], reversed: r === 1 };
+      }
+    }
+  }
+  return best!;
+}
+
 /** Draw a stroke, holding each point for a frame. False if cut by a pause. */
 function cinderellaDraw(ts: Tsum, path: Point[]): boolean {
   const cfg = CinderellaConfig;
@@ -73,12 +100,17 @@ Tsum.prototype.useCinderellaSkill = function(activatedAt) {
   // Only start a stroke that can finish inside the window; the first is
   // estimated, the rest go by how long the last one actually took.
   let strokeMs = 27 * cfg.dwellMs + cfg.grabMs + cfg.releaseMs;
+  let lastRight = true;
   for (let i = 0; this.isRunning && Date.now() + strokeMs <= closesAt; i++) {
-    const right = i % 2 === 1;
+    const pick = cinderellaPickStroke(!lastRight);
+    lastRight = pick.right;
     const from = Date.now();
-    const whole = cinderellaDraw(this, cinderellaStroke(right));
+    const whole = cinderellaDraw(this, pick.path);
     strokeMs = Date.now() - from;
-    logDebug(Log.Skill.CinderellaStroke, { stroke: i, right: right, ms: strokeMs, level: level });
+    // What it linked is clearing now; the next stroke steers round it.
+    fluxNoteChain(pick.path, Date.now());
+    logDebug(Log.Skill.CinderellaStroke, { stroke: i, right: pick.right, reversed: pick.reversed,
+      points: pick.path.length, ms: strokeMs, level: level });
     if (!whole) { return; }
   }
   this.sleep(cfg.afterWindowMs);
