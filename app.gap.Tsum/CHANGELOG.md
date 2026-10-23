@@ -77,8 +77,10 @@ release note; they fold back in here when she ships.
   circles only for Rapunzel+'s look after her cut-in (`fluxFilter`): on every
   scan it halved the play loop's pace (8.9 to 4.7 drags/s) for no fewer dead
   scans. Timings past Gaston's 90ms are NOT MEASURED.
-- **Rapunzel+ goes for her cap fast**: a look is retaken once, only when its
-  plan is under 75% of the cap; no end-of-drag counter read; no post-chain settle (her
+- **Rapunzel+ goes for her cap fast**: the light gate gives up at 1.8s (was
+  2.5s, hit by half the activations); a look is retaken once, when its plan is
+  under 75% of the cap or short of it with tsums still clearing (then after
+  most have cleared, `clearedWaitMs`); no end-of-drag counter read; no post-chain settle (her
   flash clear and lantern columns go into the ledger).
 - **Cinderella picks each stroke** off the ledger (`cinderellaPickStroke`): the
   half and direction with the longest free run, cut at the first clearing tsum.

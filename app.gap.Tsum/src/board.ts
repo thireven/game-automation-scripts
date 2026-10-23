@@ -149,6 +149,15 @@ function fluxCancel(at: number): void {
   }
 }
 
+/** Ms from now until `share` of the spots still clearing are gone; 0 with none. */
+function fluxClearedInMs(share: number): number {
+  const now = Date.now();
+  const left = gFlux.filter(function(s) { return s.freeAt > now; })
+    .map(function(s) { return s.freeAt - now; }).sort(function(a, b) { return a - b; });
+  if (left.length === 0) { return 0; }
+  return left[Math.min(left.length - 1, Math.ceil(share * left.length) - 1)];
+}
+
 /**
  * How many of `path`'s points (top-left corners), from the start, sit on no
  * spot still clearing: a chain links no further than its first blocked tsum.

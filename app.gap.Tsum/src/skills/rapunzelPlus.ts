@@ -77,9 +77,11 @@ var RapunzelPlusConfig = {
   // the right. 0.85 sits in the gap with room on both sides.
   litFraction: 0.85,
   litPollMs: 50,
-  // Chain anyway once this is spent. A board that reads badly is a short chain;
-  // a drag never sent is no chain at all, and the skill is spent either way.
-  litWaitMs: 2500,
+  // Chain anyway once this is spent. The veil is gone by 1.5s; on a 70s trace
+  // half the activations never read the board lit and sat here to 2.5s, about
+  // 1s of a ~7s cycle. What that wait bought (a fuller board) the retake below
+  // buys only when it is needed.
+  litWaitMs: 1800,
   // Nothing leaves the gate before this, whatever the light says --
   // `settleBoard`'s `minMs` for the same reason it has one. Every reading is a
   // ratio against `rapunzelBaseLight`, one sample taken a moment before the
@@ -103,6 +105,11 @@ var RapunzelPlusConfig = {
   retakeBelow: 0.75,
   settleRetryMs: 150,
   settleMaxWaits: 1,
+  // A plan short of the cap whose look left tsums out as still clearing waits
+  // until `clearedShare` of the ledger's spots are gone, at most
+  // `clearedWaitMs`, and looks again: those tsums are the missing links.
+  clearedShare: 0.75,
+  clearedWaitMs: 600,
   // Gaston's hop rules (`buildClearHops`): longest hop and how close a hop's
   // line may pass to a third tsum's centre, both in tsum widths. The clearance
   // test is what keeps the drag from linking a tsum it was not meant to; the
@@ -586,17 +593,24 @@ interface RapunzelLook {
   lanterns: BoardPoint[];
   plan: { path: TsumPath, fromLantern: boolean } | null;
   looks: number;
+  /** Tsums this look left out as still clearing. */
+  clearing: number;
 }
 
 /**
- * Scan and plan; a plan under `retakeBelow` of `cap` looks again, at most
- * `settleMaxWaits` more times `settleRetryMs` apart, keeping the longest.
+ * Scan and plan; a plan under `retakeBelow` of `cap`, or short of it with
+ * tsums left out as clearing, looks again (`settleMaxWaits` more times),
+ * keeping the longest.
  */
 function rapunzelPlanned(ts: Tsum, cap: number): RapunzelLook {
   const cfg = RapunzelPlusConfig;
   let best: RapunzelLook | null = null;
   for (let look = 0; look <= cfg.settleMaxWaits && ts.isRunning; look++) {
-    if (look > 0) { ts.sleep(cfg.settleRetryMs); }
+    if (look > 0) {
+      ts.sleep(best !== null && best.clearing > 0
+        ? Math.max(cfg.settleRetryMs, Math.min(cfg.clearedWaitMs, fluxClearedInMs(cfg.clearedShare)))
+        : cfg.settleRetryMs);
+    }
     ts.fluxFilter = true;
     let board: BoardPoint[];
     try {
@@ -612,14 +626,16 @@ function rapunzelPlanned(ts: Tsum, cap: number): RapunzelLook {
     const lanterns = rapunzelLanterns(ts, board);
     const plan = rapunzelChain(board, bubbles, cap, lanterns);
     const len = plan ? plan.path.length : 0;
+    const clearing = ts.boardClearing.length;
     if (best === null || len > (best.plan ? best.plan.path.length : 0)) {
-      best = { board: board, read: read, bubbles: bubbles, lanterns: lanterns, plan: plan, looks: look + 1 };
+      best = { board: board, read: read, bubbles: bubbles, lanterns: lanterns, plan: plan, looks: look + 1, clearing: clearing };
     } else {
       best.looks = look + 1;
     }
-    if (len >= cfg.retakeBelow * cap) { break; }
+    // Good enough: at the cap, or near it with nothing left out to wait for.
+    if (len >= cap || (len >= cfg.retakeBelow * cap && clearing === 0)) { break; }
   }
-  return best || { board: [], read: 0, bubbles: [], lanterns: [], plan: null, looks: 0 };
+  return best || { board: [], read: 0, bubbles: [], lanterns: [], plan: null, looks: 0, clearing: 0 };
 }
 
 /**
@@ -715,7 +731,10 @@ registerSkill({
       read: look.read,
       // Scans taken to reach the cap; tsums the last left out as clearing.
       looks: look.looks,
-      clearing: ts.boardClearing.length,
+      clearing: look.clearing,
+      // Her own tsums in the chain: does clearing them charge the next gauge?
+      myTsums: path ? path.filter(function(p) { return +p.tsumIdx === ts.myTsumIdx; }).length : 0,
+      myTsumIdx: ts.myTsumIdx,
       moves: drag ? drag.moves : 0,
       dragMs: dragMs,
       // Lanterns found, and whether the chain started on one.
