@@ -514,7 +514,7 @@ interface RapunzelDrag {
  * game's chain counter as it goes (see `checkEvery`). A stall walks the finger
  * back to the chain's end -- moving back over linked tsums unlinks them -- and
  * the rest is replanned from there by `replan`. A repeat stall at the same
- * place also skips the tsum that failed; one with no route left releases.
+ * place also skips the tsum that failed, if a route round it exists.
  *
  * Its own drag, not `linkTsums` and not `link`: `link`'s `maybeAutoTapSkill`
  * would re-enter this choreography the moment the clear refilled the gauge.
@@ -557,14 +557,13 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
           for (let k = i - 1; k >= back; k--) { hop(k); }
           const used = path.slice(0, back + 1);
           if (again && back + 1 < path.length) { used.push(path[back + 1]); }
-          const next = replan(path[back], used, cap - back);
+          let next = replan(path[back], used, cap - back);
+          // Nothing round the failing tsum: try through it again rather than
+          // let go -- a release here threw away 16 tsums on a trace.
+          if (next === null && again) { next = replan(path[back], path.slice(0, back + 1), cap - back); }
           drag.rewinds.push([i, back, next !== null ? next.length - 1 : 0]);
           if (next === null) {
-            if (again) {
-              drag.path = path.slice(0, back + 1) as TsumPath;
-              break;
-            }
-            // No better route: redraw the old one from the chain's end.
+            // No route at all: redraw the old one from the chain's end.
           } else {
             path = path.slice(0, back).concat(next) as TsumPath;
             pts.length = back + 1;
@@ -742,7 +741,7 @@ registerSkill({
       fromLantern: look.plan ? look.plan.fromLantern : false,
       // The drag's stall checks: what it ended up drawing, each walk-back as
       // [finger index, back to, replanned], and the game's last count. A
-      // `drawn` under `chain` is a repeat stall that released early.
+      // `drawn` differs from `chain` when a replan changed the route.
       drawn: drag ? drag.path.length : 0,
       rewinds: drag ? drag.rewinds : [],
       registered: drag ? drag.count : null,
