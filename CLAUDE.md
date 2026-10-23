@@ -2,7 +2,9 @@
 index: which file owns what, which document already answers a question, where a
 given name is defined, and what the invariants are. One read of it replaces most
 of a scan, and it is checked against the tree by `npm run map:check`, so it is
-current. Anything it does not cover is worth adding to it once found.
+current. Its per-file detail is `app.gap.Tsum/SOURCEMAP.md`: grep that for the
+row you need rather than reading it whole. Anything neither covers is worth
+adding once found.
 
 These scripts target **General Automation Platform** (source at `../general-automation-app`),
 and only that. Feel free to perform updates in that folder as needed.

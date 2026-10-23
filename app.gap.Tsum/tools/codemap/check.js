@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Keep CODEMAP.md honest.
+// Keep the map honest: CODEMAP.md (the index, repo root) and SOURCEMAP.md (the
+// per-file detail, beside this package). Both are read as one text, so a file
+// may be mentioned in either.
 //
 //   npm run map:check
 //
@@ -33,7 +35,8 @@ const { extractFile, listSources } = require('./symbols');
 
 const projectDir = path.resolve(__dirname, '..', '..');
 const repoRoot = path.resolve(projectDir, '..');
-const mapFile = path.join(repoRoot, 'CODEMAP.md');
+const mapFiles = [path.join(repoRoot, 'CODEMAP.md'), path.join(projectDir, 'SOURCEMAP.md')];
+const MAP = 'the map (CODEMAP.md / SOURCEMAP.md)';
 
 const errors = [];
 const notes = [];
@@ -58,7 +61,7 @@ function tableUnder(text, title) {
   const lines = text.split('\n');
   const start = lines.findIndex((l) => /^#{2,3} /.test(l) && l.toLowerCase().includes(title.toLowerCase()));
   if (start < 0) {
-    fail('CODEMAP.md has no heading containing "' + title + '" -- this checker reads its tables by heading.');
+    fail(MAP + ' has no heading containing "' + title + '" -- this checker reads its tables by heading.');
     return [];
   }
   const rows = [];
@@ -139,11 +142,11 @@ function checkPathsExist(fullText) {
   for (const token of ticked(text)) {
     if (!isRepoPath(token) || seen.has(token)) continue;
     seen.add(token);
-    if (!resolveRepoPath(token)) fail('CODEMAP.md names `' + token + '`, which does not exist.');
+    if (!resolveRepoPath(token)) fail(MAP + ' names `' + token + '`, which does not exist.');
   }
   for (const [, target] of text.matchAll(/\]\(([^)\s]+)\)/g)) {
     if (target.startsWith('#') || /^https?:/.test(target)) continue;
-    if (!resolveRepoPath(target)) fail('CODEMAP.md links to ' + target + ', which does not exist.');
+    if (!resolveRepoPath(target)) fail(MAP + ' links to ' + target + ', which does not exist.');
   }
 }
 
@@ -166,12 +169,12 @@ function walk(dir, keep, rel = '') {
  */
 function checkCoverage(text) {
   for (const rel of walk(path.join(projectDir, 'src'), (r) => /\.(ts|html|css)$/.test(r))) {
-    if (!text.includes('src/' + rel)) fail('src/' + rel + ' is not mentioned in CODEMAP.md.');
+    if (!text.includes('src/' + rel)) fail('src/' + rel + ' is not mentioned in ' + MAP + '.');
   }
 
   for (const entry of fs.readdirSync(path.join(projectDir, 'tools'), { withFileTypes: true })) {
     if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-    if (!text.includes('tools/' + entry.name)) fail('tools/' + entry.name + '/ is not mentioned in CODEMAP.md.');
+    if (!text.includes('tools/' + entry.name)) fail('tools/' + entry.name + '/ is not mentioned in ' + MAP + '.');
   }
 
   const docs = [
@@ -180,7 +183,7 @@ function checkCoverage(text) {
   ];
   for (const doc of new Set(docs)) {
     const name = doc.includes('/') ? doc : path.basename(doc);
-    if (!text.includes(name)) fail(doc + ' is not mentioned in CODEMAP.md.');
+    if (!text.includes(name)) fail(doc + ' is not mentioned in ' + MAP + '.');
   }
 }
 
@@ -221,12 +224,12 @@ function checkNameFamilies(text) {
       const re = globToRegExp(pattern);
       const hits = symbols.filter((s) => re.test(s.key) || re.test(s.bare));
       if (!hits.length) {
-        fail('CODEMAP.md name family `' + pattern + '` matches no symbol in src/ any more.');
+        fail(MAP + ' name family `' + pattern + '` matches no symbol in src/ any more.');
         continue;
       }
       const strays = [...new Set(hits.filter((h) => !files.includes(h.file)).map((h) => h.file + ' (' + h.key + ')'))];
       if (strays.length) {
-        fail('CODEMAP.md says `' + pattern + '` lives in ' + files.join(', ')
+        fail(MAP + ' says `' + pattern + '` lives in ' + files.join(', ')
           + ', but it also matches: ' + strays.slice(0, 5).join(', ')
           + (strays.length > 5 ? ' and ' + (strays.length - 5) + ' more' : '') + '.');
       }
@@ -247,12 +250,12 @@ function checkSkills(text) {
     const source = fs.readFileSync(resolved, 'utf8');
     for (const type of ticked(typeCell).filter((t) => t.startsWith('SkillType.'))) {
       if (!source.includes(type)) {
-        fail('CODEMAP.md lists ' + type + ' under ' + file + ', which does not mention it.');
+        fail(MAP + ' lists ' + type + ' under ' + file + ', which does not mention it.');
       }
     }
   }
   for (const rel of walk(path.join(projectDir, 'src', 'skills'), (r) => r.endsWith('.ts'))) {
-    if (!listed.has('src/skills/' + rel)) fail('src/skills/' + rel + ' is missing from the skills table in CODEMAP.md.');
+    if (!listed.has('src/skills/' + rel)) fail('src/skills/' + rel + ' is missing from the skills table in ' + MAP + '.');
   }
 }
 
@@ -263,10 +266,10 @@ function checkCommands(text) {
   const mentioned = new Set([...text.matchAll(/npm run ([A-Za-z0-9:_-]+)/g)].map((m) => m[1]));
 
   for (const name of mentioned) {
-    if (!scripts.includes(name)) fail('CODEMAP.md documents `npm run ' + name + '`, which is not in package.json.');
+    if (!scripts.includes(name)) fail(MAP + ' documents `npm run ' + name + '`, which is not in package.json.');
   }
   for (const name of scripts) {
-    if (!mentioned.has(name)) fail('package.json has a `' + name + '` script that CODEMAP.md does not mention.');
+    if (!mentioned.has(name)) fail('package.json has a `' + name + '` script that ' + MAP + ' does not mention.');
   }
 }
 
@@ -274,11 +277,13 @@ function checkCommands(text) {
 
 function main() {
   const quiet = process.argv.includes('--quiet');
-  if (!fs.existsSync(mapFile)) {
-    console.error('CODEMAP.md not found at ' + mapFile);
-    process.exit(2);
+  for (const f of mapFiles) {
+    if (!fs.existsSync(f)) {
+      console.error('map file not found: ' + f);
+      process.exit(2);
+    }
   }
-  const text = fs.readFileSync(mapFile, 'utf8');
+  const text = mapFiles.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
 
   checkPathsExist(text);
   checkCoverage(text);
@@ -290,11 +295,11 @@ function main() {
   for (const error of errors) console.error('error: ' + error);
 
   if (errors.length) {
-    console.error('\nCODEMAP.md is out of date in ' + errors.length + ' place'
+    console.error('\n' + MAP + ' is out of date in ' + errors.length + ' place'
       + (errors.length === 1 ? '' : 's') + '. Fix the map, or the tree.');
     process.exit(1);
   }
-  if (!quiet) console.log('CODEMAP.md matches the tree.');
+  if (!quiet) console.log(MAP + ' matches the tree.');
 }
 
 main();

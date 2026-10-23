@@ -63,6 +63,10 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
+- **`CODEMAP.md` is an index again** (36 KB from 93 KB): the per-file tables
+  (source map, skills, tooling, what a change has to touch) moved to
+  `SOURCEMAP.md`, which `map:check` reads together with it.
+
 - **Rapunzel+ routes by Gaston's rules** (`buildClearHops`, now shared in
   `pathfinding.ts`): no hop passes near a third tsum or through a bubble, which
   in her colour-blind window links it out of order. Over 300 synthetic boards

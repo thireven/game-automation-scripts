@@ -218,8 +218,8 @@ changed setting look like it needed the whole script reloaded.
 ## File map
 
 Which file owns what is
-[CODEMAP.md § Source map](../CODEMAP.md#source-map--src), checked against the
-tree by `npm run map:check`; the depth behind any one row is that file's own
+[SOURCEMAP.md § Source map](SOURCEMAP.md#source-map--src), the detail half of
+`CODEMAP.md`, checked against the tree by `npm run map:check`; the depth behind any one row is that file's own
 header comment. This section used to hold a second copy of that table and
 drifted out of date against it — it still placed `TiaraLayouts` in `data.ts` a
 release after that table moved into `skills/tiaraMinniePlus.ts` — so there is
