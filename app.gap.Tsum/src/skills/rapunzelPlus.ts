@@ -36,13 +36,11 @@
 //     and the rest of the plan leads nowhere. Hops come from `buildClearHops`
 //     (no hop passes near a third tsum or through a bubble), and the drag is
 //     one MOVE per tsum held `dwellMs`, longer than a display frame.
-//   - **the drag follows the board as it changes.** Every `checkEvery` tsums
-//     the game's chain counter is read (`chainCounterRead`) and the board
-//     scanned again with the finger down; the rest of the route is replanned
-//     on that scan, so tsums that dropped in since the first look are used and
-//     ones that cleared are not. A count well behind the finger (confirmed by a
-//     second read) walks it back to the chain's real end first, as Gaston's
-//     coin check does (`rapunzelLinkChain`).
+//   - **a stalled drag is walked back.** About one hop in fifty fails anyway.
+//     Every `checkEvery` tsums the game's chain counter
+//     is read (`chainCounterRead`); a count well behind the finger walks it
+//     back to the chain's real end and replans the rest from there
+//     (`rapunzelLinkChain`), as Gaston's coin check does.
 //   - **a lantern starts the chain.** One of her skill patches drops lanterns
 //     on the board, and a lantern that is linked clears more on its own. The
 //     chain is planned from one (`rapunzelLanterns`, found by the lemon-yellow
@@ -366,38 +364,21 @@ function rapunzelSearch(board: BoardPoint[], hops: number[][], maxLen: number,
 }
 
 /**
- * The longest chain on from `from` (the chain's current end) over a fresh
- * scan, at most `maxLen` tsums with `from` counted; null under 2. A fresh scan
- * has its own point objects, so the chain so far (`used`) is left out by
- * position. Linked tsums are not obstacles, as in Gaston's replan: crossing
- * one does not link it again.
+ * The longest chain on from `from` (the chain's current end) over `board`
+ * less `used`, at most `maxLen` tsums with `from` counted; null under 2. The
+ * replan after a stall walk-back. Linked tsums are left out of the hop test,
+ * as Gaston's replan does: crossing one does not link it again.
  */
-function rapunzelChainOn(from: BoardPoint, board: BoardPoint[], used: BoardPoint[],
-    bubbles: GameBubble[], maxLen: number, myTsumIdx: number): TsumPath | null {
+function rapunzelChainFrom(from: BoardPoint, board: BoardPoint[], used: BoardPoint[],
+    bubbles: GameBubble[], maxLen: number): TsumPath | null {
   const cfg = RapunzelPlusConfig;
-  const near = Config.tsumWidth * 0.5;
-  const nearSq = near * near;
   const points: BoardPoint[] = [from];
   for (let i = 0; i < board.length; i++) {
-    let taken = getDistance(board[i], from) < nearSq;
-    for (let k = 0; k < used.length && !taken; k++) { taken = getDistance(board[i], used[k]) < nearSq; }
-    if (!taken) { points.push(board[i]); }
+    if (board[i] !== from && used.indexOf(board[i]) < 0) { points.push(board[i]); }
   }
   const hops = buildClearHops(points, bubbles, cfg.hopReach, cfg.crossAvoid);
-  const found = rapunzelSearch(points, hops, maxLen, [0], myTsumIdx);
+  const found = rapunzelSearch(points, hops, maxLen, [0]);
   return found.length >= 2 ? found as TsumPath : null;
-}
-
-/** How many of `rest`, in order, a fresh scan still shows where the plan put them. */
-function rapunzelStillThere(rest: BoardPoint[], board: BoardPoint[]): number {
-  const near = Config.tsumWidth * 0.5;
-  const nearSq = near * near;
-  for (let k = 0; k < rest.length; k++) {
-    let seen = false;
-    for (let i = 0; i < board.length && !seen; i++) { seen = getDistance(board[i], rest[k]) < nearSq; }
-    if (!seen) { return k; }
-  }
-  return rest.length;
 }
 
 /**
@@ -550,35 +531,25 @@ interface RapunzelDrag {
   countMs: number;
   /** Stalls a second counter read did not confirm. */
   falseStalls: number;
-  /** Scans taken mid-drag, and their cost in ms. */
-  rescans: number;
-  rescanMs: number;
-  /** Checks that swapped the rest of the route for one planned on a fresh scan. */
-  refreshed: number;
 }
 
 /**
  * Draw the chain: one MOVE per tsum, each held `dwellMs`, checked against the
- * game's chain counter as it goes (see `checkEvery`). At each check the board
- * is scanned again with the finger down (`rescan`, ~15-30ms) and the rest of
- * the route replanned on it, taken when it reaches at least as far as the old
- * plan still stands. A confirmed stall walks the finger back to the chain's
- * end -- moving back over linked tsums unlinks them -- and replans from there
- * on a fresh scan; a repeat stall at the same place also skips the tsum that
- * failed, if a route round it exists.
+ * game's chain counter as it goes (see `checkEvery`). A stall walks the finger
+ * back to the chain's end -- moving back over linked tsums unlinks them -- and
+ * the rest is replanned from there by `replan`. A repeat stall at the same
+ * place also skips the tsum that failed, if a route round it exists.
  *
  * Its own drag, not `linkTsums` and not `link`: `link`'s `maybeAutoTapSkill`
  * would re-enter this choreography the moment the clear refilled the gauge.
  */
-function rapunzelLinkChain(ts: Tsum, path: TsumPath, levelCap: number,
-    rescan: () => { board: BoardPoint[], bubbles: GameBubble[] }): RapunzelDrag {
-  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], count: null, countMs: 0, falseStalls: 0,
-    rescans: 0, rescanMs: 0, refreshed: 0 };
+function rapunzelLinkChain(ts: Tsum, path: TsumPath,
+    replan: (from: BoardPoint, used: BoardPoint[], maxLen: number) => TsumPath | null): RapunzelDrag {
+  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], count: null, countMs: 0, falseStalls: 0 };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.mayTouchBoard() || path.length < 2) { return drag; }
   const cfg = RapunzelPlusConfig;
-  // A replan may reach past a short first plan, up to her level's cap.
-  const cap = Math.max(levelCap, path.length);
+  const cap = path.length;
   const pts: Point[] = [];
   for (let i = 0; i < path.length; i++) { pts.push(rapunzelToScreen(ts, path[i])); }
   let finger = pts[0];
@@ -593,20 +564,6 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath, levelCap: number,
     drag.moves++;
     let lastBack = -1;
     let lastCount: number | null = null;
-    // Swap `path` from index `at` on for `next` (whose first point is `path[at]`).
-    const adopt = function(at: number, next: TsumPath): void {
-      path = path.slice(0, at).concat(next) as TsumPath;
-      pts.length = at + 1;
-      for (let k = 1; k < next.length; k++) { pts.push(rapunzelToScreen(ts, next[k])); }
-      drag.path = path;
-    };
-    const look = function(): { board: BoardPoint[], bubbles: GameBubble[] } {
-      const from = Date.now();
-      const fresh = rescan();
-      drag.rescans++;
-      drag.rescanMs += Date.now() - from;
-      return fresh;
-    };
     let i = 1;
     while (i < path.length) {
       hop(i);
@@ -645,31 +602,23 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath, levelCap: number,
           // Walking back unlinks, so the next count may rightly be lower.
           lastCount = null;
           for (let k = i - 1; k >= back; k--) { hop(k); }
-          // Replan over what is there now, finger still down: the stall was
-          // most likely tsums the plan saw that have since cleared.
-          const fresh = look();
           const used = path.slice(0, back + 1);
           if (again && back + 1 < path.length) { used.push(path[back + 1]); }
-          let next = rapunzelChainOn(path[back], fresh.board, used, fresh.bubbles, cap - back, ts.myTsumIdx);
+          let next = replan(path[back], used, cap - back);
           // Nothing round the failing tsum: try through it again rather than
           // let go -- a release here threw away 16 tsums on a trace.
-          if (next === null && again) {
-            next = rapunzelChainOn(path[back], fresh.board, path.slice(0, back + 1), fresh.bubbles, cap - back, ts.myTsumIdx);
-          }
+          if (next === null && again) { next = replan(path[back], path.slice(0, back + 1), cap - back); }
           drag.rewinds.push([i, back, next !== null ? next.length - 1 : 0]);
-          // No route at all: redraw the old one from the chain's end.
-          if (next !== null) { adopt(back, next); }
+          if (next === null) {
+            // No route at all: redraw the old one from the chain's end.
+          } else {
+            path = path.slice(0, back).concat(next) as TsumPath;
+            pts.length = back + 1;
+            for (let k = 1; k < next.length; k++) { pts.push(rapunzelToScreen(ts, next[k])); }
+            drag.path = path;
+          }
           i = back + 1;
           continue;
-        }
-        // Linking: plan the rest over what is there now, and take it unless
-        // the old plan still stands further. Heads off the stall a cleared
-        // tsum ahead would cause.
-        const fresh = look();
-        const next = rapunzelChainOn(path[i], fresh.board, path.slice(0, i + 1), fresh.bubbles, cap - i, ts.myTsumIdx);
-        if (next !== null && next.length - 1 >= rapunzelStillThere(path.slice(i + 1), fresh.board)) {
-          adopt(i, next);
-          drag.refreshed++;
         }
       }
       i++;
@@ -807,14 +756,8 @@ registerSkill({
     let dragMs = 0;
     if (path) {
       const dragAt = Date.now();
-      drag = rapunzelLinkChain(ts, path, cap, function() {
-        ts.fluxFilter = true;
-        try {
-          const board = ts.scanBoardQuick();
-          return { board: board, bubbles: ts.gameBubbles.slice() };
-        } finally {
-          ts.fluxFilter = false;
-        }
+      drag = rapunzelLinkChain(ts, path, function(from, used, maxLen) {
+        return rapunzelChainFrom(from, look.board, used, look.bubbles, maxLen);
       });
       dragMs = Date.now() - dragAt;
       // No settle: the play loop goes on at once, planning around the clear.
@@ -853,11 +796,6 @@ registerSkill({
       registered: drag ? drag.count : null,
       countMs: drag ? drag.countMs : 0,
       falseStalls: drag ? drag.falseStalls : 0,
-      // Mid-drag scans (one per counter check, plus one per walk-back), their
-      // total cost, and how many swapped in a fresher route.
-      rescans: drag ? drag.rescans : 0,
-      rescanMs: drag ? drag.rescanMs : 0,
-      refreshed: drag ? drag.refreshed : 0,
       // How long the activation animation held the board, and whether it was
       // really seen to lift. Three shapes: `lit: true` is the gate working;
       // `sawDark: false` with `litMs` near `litMinMs` is the veil never seen at

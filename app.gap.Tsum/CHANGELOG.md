@@ -52,7 +52,7 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Rapunzel+ skill improved: her chain no longer runs into dead ends or tsums still clearing, picks up tsums that drop in mid-chain, draws faster, and starts from a lantern when one is on the board.
+- Rapunzel+ skill improved: her chain no longer runs into dead ends or tsums still clearing, draws faster, and starts from a lantern when one is on the board.
 - Cinderella skill improved: her strokes steer round tsums still clearing from the last one.
 
 **Fixes**
@@ -84,10 +84,6 @@ release note; they fold back in here when she ships.
   flash clear and lantern columns go into the ledger).
 - **Cinderella picks each stroke** off the ledger (`cinderellaPickStroke`): the
   half and direction with the longest free run, cut at the first clearing tsum.
-- **Rapunzel+ rescans mid-drag**: at each counter check and after a walk-back,
-  the board is scanned with the finger down (~15-30ms) and the rest of the
-  route replanned on it, so tsums that just dropped are used (`rescans`,
-  `refreshed` in `skill.rapunzel.done`).
 - **Rapunzel+ confirms a stall before walking back**: a second counter read
   must agree, and a count below the last read is a misread. A popup's 1 once
   walked a healthy 17-chain back to its head, doubling the drag to 1.6s.
