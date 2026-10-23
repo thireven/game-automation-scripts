@@ -30,7 +30,9 @@
 //   - **a bubble breaks the drag.** One crossed mid-travel pops and ends the
 //     chain there, and this chain crosses the whole board. `beforeActivate`
 //     spends the hoard aimed, off the positions the cycle's scan already holds,
-//     so it costs no capture.
+//     so it costs no capture. Before the tap, never after: the game takes any
+//     touch on the board inside her window as her chain, so a bubble popped
+//     after the cut-in spends the skill (tried twice, reverted in ddd42b9).
 //   - **the route follows Gaston's rules.** Nothing on the board is inert in
 //     the window, so a tsum the drag line merely clips is linked out of order
 //     and the rest of the plan leads nowhere. Hops come from `buildClearHops`
