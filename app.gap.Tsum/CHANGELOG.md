@@ -69,7 +69,7 @@ release note; they fold back in here when she ships.
   in her colour-blind window links it out of order. Over 300 synthetic boards
   the chain is as long, and clipped routes go from 64-85% to 0.
 - **Rapunzel+'s drag is one MOVE per tsum at 20ms** (was three events, ~35ms),
-  read against the game's chain counter every 8 tsums; a stall
+  read against the game's chain counter at tsum 6 and every 8 after; a stall
   walks back to the chain's end and replans (`rewinds` in `skill.rapunzel.done`).
 - **Clearing ledger** (`BoardFlux` in `board.ts`): each drag records its tsums
   and when each is gone (`popStartMs` + k x 90ms, `feverScale` 0.6 in a Fever,
@@ -77,8 +77,8 @@ release note; they fold back in here when she ships.
   circles only for Rapunzel+'s look after her cut-in (`fluxFilter`): on every
   scan it halved the play loop's pace (8.9 to 4.7 drags/s) for no fewer dead
   scans. Timings past Gaston's 90ms are NOT MEASURED.
-- **Rapunzel+ goes for her cap fast**: a look is retaken only when its plan is
-  short of the cap; no end-of-drag counter read; no post-chain settle (her
+- **Rapunzel+ goes for her cap fast**: a look is retaken once, only when its
+  plan is under 75% of the cap; no end-of-drag counter read; no post-chain settle (her
   flash clear and lantern columns go into the ledger).
 - **Cinderella picks each stroke** off the ledger (`cinderellaPickStroke`): the
   half and direction with the longest free run, cut at the first clearing tsum.

@@ -96,12 +96,13 @@ var RapunzelPlusConfig = {
   // Nothing darkened by here is not an exit any more, only the finding that
   // this reading cannot see the animation -- the floor above covers it.
   darkByMs: 700,
-  // Her chain stops at her level's cap, so the only thing a look is for is a
-  // chain that reaches it: a plan at the cap goes at once, a short one waits
-  // `settleRetryMs` and looks again (the refill may still be landing, or tsums
-  // still clearing), at most `settleMaxWaits` times, keeping the longest plan.
+  // A plan under `retakeBelow` of her cap waits `settleRetryMs` and looks
+  // again (the refill may still be landing), at most `settleMaxWaits` times,
+  // keeping the longest plan. Anything nearer the cap goes at once: on a 50s
+  // trace, retakes of 21-22 of 24 cost ~0.5s and never found a longer chain.
+  retakeBelow: 0.75,
   settleRetryMs: 150,
-  settleMaxWaits: 2,
+  settleMaxWaits: 1,
   // Gaston's hop rules (`buildClearHops`): longest hop and how close a hop's
   // line may pass to a third tsum's centre, both in tsum widths. The clearance
   // test is what keeps the drag from linking a tsum it was not meant to; the
@@ -158,8 +159,10 @@ var RapunzelPlusConfig = {
   // walks back to the chain's end and the rest is replanned from there, clear
   // of what is linked (and of the failing tsum on a repeat stall), at most
   // `maxRewinds` times. An unread count is trusted, not a stall.
-  checkFrom: 8,
+  checkFrom: 6,
   checkEvery: 8,
+  // No read this close to the end: little is left to save.
+  checkTail: 4,
   countSlack: 3,
   maxRewinds: 3,
   // --- lanterns ---
@@ -533,7 +536,8 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
       hop(i);
       const end = i === path.length - 1;
       if (drag.rewinds.length < cfg.maxRewinds && i + 1 >= cfg.checkFrom
-          && !end && i % cfg.checkEvery === 0) {
+          && !end && (i + 1 - cfg.checkFrom) % cfg.checkEvery === 0
+          && path.length - 1 - i > cfg.checkTail) {
         const read = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1)));
         const count = read.value;
         drag.count = count;
@@ -585,9 +589,8 @@ interface RapunzelLook {
 }
 
 /**
- * Scan and plan until the plan reaches `cap`, at most `settleMaxWaits` more
- * looks `settleRetryMs` apart, and keep the longest. A plan at the cap goes at
- * once: nothing past it is worth waiting for.
+ * Scan and plan; a plan under `retakeBelow` of `cap` looks again, at most
+ * `settleMaxWaits` more times `settleRetryMs` apart, keeping the longest.
  */
 function rapunzelPlanned(ts: Tsum, cap: number): RapunzelLook {
   const cfg = RapunzelPlusConfig;
@@ -614,7 +617,7 @@ function rapunzelPlanned(ts: Tsum, cap: number): RapunzelLook {
     } else {
       best.looks = look + 1;
     }
-    if (len >= cap) { break; }
+    if (len >= cfg.retakeBelow * cap) { break; }
   }
   return best || { board: [], read: 0, bubbles: [], lanterns: [], plan: null, looks: 0 };
 }
