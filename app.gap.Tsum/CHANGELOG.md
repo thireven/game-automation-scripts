@@ -52,7 +52,7 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Rapunzel+ skill improved: her chain no longer runs into dead ends or tsums still clearing, draws faster, and starts from a lantern when one is on the board.
+- Rapunzel+ skill improved: bubbles no longer pop around her activation, her chain no longer runs into dead ends or tsums still clearing, draws faster, and starts from a lantern when one is on the board.
 - Cinderella skill improved: her strokes steer round tsums still clearing from the last one.
 
 **Fixes**
@@ -84,6 +84,11 @@ release note; they fold back in here when she ships.
   flash clear and lantern columns go into the ledger).
 - **Cinderella picks each stroke** off the ledger (`cinderellaPickStroke`): the
   half and direction with the longest free run, cut at the first clearing tsum.
+- **No bubble pops round Rapunzel+'s activation** (`popsAfterActivating`):
+  none in `beforeActivate` (her route goes round bubbles), `link` checks the
+  gauge before a chain's strategy pop, and scan-time pops wait while the gauge
+  reads full. A pop's refill was frozen through the cut-in and landed under
+  her drag (47% of such drags stalled, against 18%).
 - **Rapunzel+ confirms a stall before walking back**: a second counter read
   must agree, and a count below the last read is a misread. A popup's 1 once
   walked a healthy 17-chain back to its head, doubling the drag to 1.6s.

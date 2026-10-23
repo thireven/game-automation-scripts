@@ -942,7 +942,12 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // first long chain of this batch -- less any overflow, popped now (Save
     // One: all but one).
     bubblesSeen = this.gameBubbles.length;
-    if (this.bubbleStrategy === BubbleStrategy.AllAsap) {
+    // Not with the gauge full under `popsAfterActivating`: the activation is a
+    // chain or two away, and this pop's refill would land under its chain.
+    if (skillPopsAfterActivating(this) && this.gameBubbles.length > 0
+        && this.checkSkillReadinessFast() === SkillReadiness.Active) {
+      // Held: the bubbles stay for after the skill's chain.
+    } else if (this.bubbleStrategy === BubbleStrategy.AllAsap) {
       this.popGameBubbles();
     } else {
       this.popBubbleOverflow();

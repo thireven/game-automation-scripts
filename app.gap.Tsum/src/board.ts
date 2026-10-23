@@ -494,19 +494,27 @@ Tsum.prototype.link = function(paths, board) {
     // go is the Bubble Strategy setting's call -- one, under the default. Under
     // All Bubbles ASAP there is nothing left here to pop: the loop spent them
     // the moment the scan found them.
-    if (path.length >= this.bubblePopChainLength()) {
-      this.popGameBubbles();
-    }
-    // A skill that claimed the bubbles gets its own say. The budget above is 0
-    // while a claim stands, and hoarding every bubble for the next activation
-    // leaves the board clearing no faster than tsum chains clear it -- so Aurora
-    // spends one every couple of long chains. See `popBubblesAfterChain`. Held
-    // after an activation as the strategy's pops are, since an explicit count
-    // is an override to `popGameBubbles`.
-    const pops = skillPopBubblesAfterChain(this, path.length);
-    if (pops > 0 && !this.bubblesHeldAfterSkill(GameBubbleConfig.holdAfterSkillMs)) {
-      this.popGameBubbles(pops);
-    }
+    const ts = this;
+    const len = path.length;
+    const popAfterChain = function(): void {
+      if (len >= ts.bubblePopChainLength()) {
+        ts.popGameBubbles();
+      }
+      // A skill that claimed the bubbles gets its own say. The budget above is 0
+      // while a claim stands, and hoarding every bubble for the next activation
+      // leaves the board clearing no faster than tsum chains clear it -- so Aurora
+      // spends one every couple of long chains. See `popBubblesAfterChain`. Held
+      // after an activation as the strategy's pops are, since an explicit count
+      // is an override to `popGameBubbles`.
+      const pops = skillPopBubblesAfterChain(ts, len);
+      if (pops > 0 && !ts.bubblesHeldAfterSkill(GameBubbleConfig.holdAfterSkillMs)) {
+        ts.popGameBubbles(pops);
+      }
+    };
+    // Normally the pop goes out with the chain; a skill that wants its gauge
+    // checked first (`popsAfterActivating`) pops only if it did not fire.
+    const popsLate = skillPopsAfterActivating(this);
+    if (!popsLate) { popAfterChain(); }
     // Linking a full batch of chains can take several seconds; check between
     // chains so a gauge that fills mid-batch fires right away.
     //
@@ -520,6 +528,7 @@ Tsum.prototype.link = function(paths, board) {
     if (this.maybeAutoTapSkill(board)) {
       break;
     }
+    if (popsLate) { popAfterChain(); }
   }
   return isBubble;
 }

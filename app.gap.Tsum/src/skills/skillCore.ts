@@ -138,6 +138,12 @@ interface SkillHandler {
   // chain a capture and `ChainCounterConfig.settleMs`, which is why not every
   // skill. A function is asked once per chain.
   readsChainCounter?: boolean | ((ts: Tsum) => boolean);
+  // Bubble pops wait for the gauge: `link` checks for an activation before a
+  // chain's strategy pop rather than after, and the scan-time pops are skipped
+  // while the gauge reads full. For a skill whose own chain follows its
+  // cut-in: a pop just before the tap has its refill frozen through the cut-in
+  // and landing under that chain (Rapunzel+: 47% of such drags stalled).
+  popsAfterActivating?: boolean;
   // The skill changes how big the tsums are, so each scan reads their size
   // and scales the board read to it (`updateBoardScale`, `Config.boardScale`).
   // Costs a Hough pass per scan, which is why not every skill.
@@ -250,6 +256,12 @@ const SkillTapHoldMs = 300;
 
 // Whether the play loop reads the chain counter after each of its drags. See
 // `SkillHandler.readsChainCounter`; every other skill's drags go unmeasured.
+// Whether bubble pops wait for the gauge. See `SkillHandler.popsAfterActivating`.
+function skillPopsAfterActivating(ts: Tsum): boolean {
+  const handler = SkillHandlers[ts.skillType];
+  return !!(handler && handler.popsAfterActivating);
+}
+
 function skillReadsChainCounter(ts: Tsum): boolean {
   const handler = SkillHandlers[ts.skillType];
   const reads = handler && handler.readsChainCounter;

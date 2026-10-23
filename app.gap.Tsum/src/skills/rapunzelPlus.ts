@@ -28,11 +28,14 @@
 //     out (`fluxDrop`, board.ts), and a look whose plan falls short of the cap
 //     is retaken a moment later (`rapunzelPlanned`).
 //   - **a bubble breaks the drag.** One crossed mid-travel pops and ends the
-//     chain there, and this chain crosses the whole board. `beforeActivate`
-//     spends the hoard aimed, off the positions the cycle's scan already holds,
-//     so it costs no capture. Before the tap, never after: the game takes any
-//     touch on the board inside her window as her chain, so a bubble popped
-//     after the cut-in spends the skill (tried twice, reverted in ddd42b9).
+//     chain there, and this chain crosses the whole board. So her route goes
+//     round them (`buildClearHops`) and nothing pops one near her activation:
+//     not after the tap -- the game takes any touch on the board inside her
+//     window as her chain, so a bubble popped after the cut-in spends the skill
+//     (tried twice, reverted in ddd42b9) -- and not just before it, where a
+//     pop's refill is frozen through the cut-in and lands under her drag (47%
+//     of such drags stalled). The play loop holds its pops while her gauge is
+//     full (`popsAfterActivating`).
 //   - **the route follows Gaston's rules.** Nothing on the board is inert in
 //     the window, so a tsum the drag line merely clips is linked out of order
 //     and the rest of the plan leads nowhere. Hops come from `buildClearHops`
@@ -720,19 +723,12 @@ registerSkill({
   // colour is chainable inside the window, so one missing from the board array
   // is tsums the chain cannot reach -- see the header.
   extraClusterSlots: 1,
+  popsAfterActivating: true,
   beforeActivate: function(ts) {
     // The last look at the board before the activation veil comes down, which
-    // is what every reading after the tap is measured against. Before the pops
-    // below, not after: they are a burst of taps and a bubble's pop is a bright
-    // flash, so a baseline taken on the far side of them measures the flash
-    // rather than the board. The bubbles themselves are a few cells of an 8x8
-    // downsample; the flash is the whole band.
+    // is what every reading after the tap is measured against.
     rapunzelBaseLight = rapunzelEdgeLight(ts);
-    // Spend the hoarded bubbles aimed, before the window opens: a bubble the
-    // drag crosses pops mid-travel and ends the chain there, and the chain this
-    // skill draws crosses the board. Under All Bubbles ASAP the list is already
-    // spent and this is zero taps. The light gate below covers the fall.
-    ts.popGameBubbles(ts.gameBubbles.length);
+    // No bubble pops here: see the header. Her route goes round them.
   },
   afterActivate: function(ts, board, activatedAt) {
     const cfg = RapunzelPlusConfig;
