@@ -46,6 +46,9 @@ class Tsum {
   dragReleasedAt: number;
   /** Circles the last scan left out as still clearing (`fluxDrop`), as board points. */
   boardClearing: BoardPoint[];
+  /** When the last board scan ran, and how many tsums it kept. */
+  boardSeenAt: number;
+  boardSeenTsums: number;
   /** While set, scans leave out tsums the ledger says are still clearing. */
   fluxFilter: boolean;
   /** Epoch ms `settleScreen` last watched the screen move and then hold still; 0 for never. */
@@ -375,6 +378,8 @@ class Tsum {
     this.touchedAt = 0;
     this.dragReleasedAt = 0;
     this.boardClearing = [];
+    this.boardSeenAt = 0;
+    this.boardSeenTsums = 0;
     this.fluxFilter = false;
     this.screenStillAt = 0;
     this.squareFrame = 0;

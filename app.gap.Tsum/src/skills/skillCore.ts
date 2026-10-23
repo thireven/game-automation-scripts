@@ -771,6 +771,14 @@ function skillWaitOutEndingFever(ts: Tsum) {
 // needs.
 const SkillReadDebounceMs = 30;
 
+// A look that matched no page at all may still be the board with its HUD rail
+// covered: on a Rapunzel+ trace the rail missed in runs of up to 3.6s right
+// before activations, once a second, while the board scanned full. With a scan
+// this recent keeping this many tsums, the gauge read goes ahead; the gauge
+// itself still has to read Active twice.
+const SkillHudMissGraceMs = 1500;
+const SkillHudMissMinTsums = 10;
+
 /**
  * How often `useSkill`'s look scores the whole page table; in between it scores
  * `inRoundPages()`, at half the cost (~0.5ms a turn). The full look keeps the
@@ -814,9 +822,17 @@ Tsum.prototype.useSkill = function(board, fast) {
   const handler = SkillHandlers[this.skillType];
   const usesSecondButton = !!(handler && handler.usesSecondButton);
   let skillActive2 = false;
+  // The look matched nothing but the board was scanned full a moment ago
+  // (`SkillHudMissGraceMs`): the HUD rail was covered, not gone.
+  let hudMissed = false;
   try {
     if (look.page !== PageName.GamePlaying) {
-      return false;
+      const boardFresh = Date.now() - this.boardSeenAt <= SkillHudMissGraceMs
+        && this.boardSeenTsums >= SkillHudMissMinTsums;
+      if (look.page !== PageName.Unknown || !boardFresh) {
+        return false;
+      }
+      hudMissed = true;
     }
 
     // A skill whose last activation is still running says so, and a full gauge
@@ -896,7 +912,7 @@ Tsum.prototype.useSkill = function(board, fast) {
   // `settleMs` is what the wait above actually took, against the setting's
   // ceiling; `settled` is whether the board held still inside it.
   logInfo(Log.Skill.Use, { skill: this.skillType, skillLevel: this.skillLevel,
-    settleMs: settleMs, settled: settled });
+    settleMs: settleMs, settled: settled, hudMissed: hudMissed });
   if (handler && handler.beforeActivate) {
     handler.beforeActivate(this);
   }

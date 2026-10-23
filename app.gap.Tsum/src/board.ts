@@ -962,6 +962,8 @@ Tsum.prototype.scanBoardQuick = function() {
     if (grayImg != null) { releaseImage(grayImg); }
     releaseImage(srcImg);
   }
+  this.boardSeenAt = Date.now();
+  this.boardSeenTsums = board.length;
   logDebug(Log.Board.Recognized, { tsums: board.length, clearing: this.boardClearing.length });
   logDebug(Log.Board.RecognitionTime, { durationMs: Date.now() - startTime });
   // Compact arrays: a scan is ~50 tsums, several times a second.

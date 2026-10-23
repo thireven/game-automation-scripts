@@ -57,6 +57,7 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - GAP Companion no longer asks for directions on loading screens, or when the game restarts itself for an update.
+- A ready skill no longer waits a few seconds while effects cover the Pause and Fan buttons.
 
 ### Changed
 
@@ -84,6 +85,11 @@ release note; they fold back in here when she ships.
   flash clear and lantern columns go into the ledger).
 - **Cinderella picks each stroke** off the ledger (`cinderellaPickStroke`): the
   half and direction with the longest free run, cut at the first clearing tsum.
+- **A ready gauge fires through a covered HUD** (`SkillHudMissGraceMs`):
+  `useSkill` skipped its gauge read whenever the look matched no page, and on a
+  Rapunzel+ trace the Pause/Fan rail missed in runs of up to 3.6s right before
+  activations. A look matching nothing, with a full board scanned in the last
+  1.5s, now reads the gauge (logged as `hudMissed` on `skill.use`).
 - **No bubble pops round Rapunzel+'s activation** (`popsAfterActivating`):
   none in `beforeActivate` (her route goes round bubbles), `link` checks the
   gauge before a chain's strategy pop, and scan-time pops wait while the gauge
