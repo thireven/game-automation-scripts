@@ -88,6 +88,9 @@ release note; they fold back in here when she ships.
   once the veil lifts, it cancels every clear still pending; the look waits
   for the refill to land (tsum count holding still, 0.4-1.1s). A pop before
   the tap gave fuller boards but more stalls, its refill landing mid-drag.
+  Between activations the play loop's chains are cut short of any bubble
+  (`orderPaths`), since a drag across one pops it, and an emptied bubble list
+  is re-read before saving.
 - **Rapunzel+ confirms a stall before walking back**: a second counter read
   must agree, and a count below the last read is a misread. A popup's 1 once
   walked a healthy 17-chain back to its head, doubling the drag to 1.6s.

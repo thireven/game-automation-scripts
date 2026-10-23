@@ -266,6 +266,31 @@ function rapunzelPopSaved(ts: Tsum): { ms: number, count: number } | null {
   return { ms: Date.now() - from, count: count };
 }
 
+/**
+ * `paths` with each one cut short at its first hop through a known bubble,
+ * and dropped under 3: a drag across a bubble pops it, and the play loop's
+ * quick chains were popping the one kept for her next activation.
+ */
+function rapunzelSpareBubbles(paths: TsumPath[], bubbles: GameBubble[]): TsumPath[] {
+  if (bubbles.length === 0) { return paths; }
+  const half = Config.tsumWidth / 2;
+  const out: TsumPath[] = [];
+  for (let p = 0; p < paths.length; p++) {
+    const path = paths[p];
+    let keep = path.length;
+    for (let i = 0; i < path.length && keep === path.length; i++) {
+      const b = { x: path[i].x + half, y: path[i].y + half };
+      const a = i > 0 ? { x: path[i - 1].x + half, y: path[i - 1].y + half } : b;
+      for (let k = 0; k < bubbles.length; k++) {
+        if (bubbles[k].popped) { continue; }
+        if (segmentNearPoint(a, b, bubbles[k], bubbles[k].r * bubbles[k].r)) { keep = i; break; }
+      }
+    }
+    if (keep >= 3) { out.push(keep === path.length ? path : path.slice(0, keep) as TsumPath); }
+  }
+  return out;
+}
+
 // --- Waiting out the activation animation -----------------------------------
 
 // Cells per side of the play-square downsample the light probe reads.
@@ -780,6 +805,11 @@ registerSkill({
   // colour is chainable inside the window, so one missing from the board array
   // is tsums the chain cannot reach -- see the header.
   extraClusterSlots: 1,
+  // Between activations, keep the play loop's chains off the bubbles, so the
+  // one kept for her next activation is still there (`saveBubble`).
+  orderPaths: function(ts, paths) {
+    return RapunzelPlusConfig.saveBubble ? rapunzelSpareBubbles(paths, ts.gameBubbles) : paths;
+  },
   beforeActivate: function(ts) {
     // The last look at the board before the activation veil comes down, which
     // is what every reading after the tap is measured against. Before the pops
@@ -794,6 +824,9 @@ registerSkill({
     // spent and this is zero taps. All but the smallest blast go now; that one
     // is popped after the veil, to cancel what is still clearing (`saveBubble`).
     rapunzelSavedBubble = null;
+    // The list is spent by any strategy pop, which forgets the bubble it kept;
+    // read the board again rather than activate without one (~20ms).
+    if (RapunzelPlusConfig.saveBubble && ts.gameBubbles.length === 0) { ts.scanBoardQuick(); }
     const all = ts.gameBubbles;
     if (RapunzelPlusConfig.saveBubble && all.length > 0) {
       const order = richestFirst(all);
