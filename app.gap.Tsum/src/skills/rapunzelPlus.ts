@@ -30,7 +30,9 @@
 //   - **a bubble breaks the drag.** One crossed mid-travel pops and ends the
 //     chain there, and this chain crosses the whole board. `beforeActivate`
 //     spends the hoard aimed, off the positions the cycle's scan already holds,
-//     so it costs no capture.
+//     so it costs no capture -- all but one, popped once the veil lifts to
+//     cancel every clear still pending, so she plans on a settled board
+//     (`saveBubble`, `rapunzelPopSaved`).
 //   - **the route follows Gaston's rules.** Nothing on the board is inert in
 //     the window, so a tsum the drag line merely clips is linked out of order
 //     and the rest of the plan leads nowhere. Hops come from `buildClearHops`
@@ -193,6 +195,23 @@ var RapunzelPlusConfig = {
   // A scanned circle within this (tsum widths) of a lantern is that lantern;
   // otherwise the lantern goes into the board at the sun's centre.
   lanternSnap: 0.6,
+  // --- the saved bubble ---
+  // One bubble is kept back from the pre-tap pops and popped once the veil
+  // lifts: the pop cancels every clear still pending (the game's bomb cancel),
+  // so she plans on a board with nothing waiting to disappear. The refill then
+  // takes ~1s to land (Gaston's measurement), so the look waits for the tsum
+  // count to hold still: `refillStillReads` reads within `refillNoise`,
+  // `refillPollMs` apart, no sooner than `refillMinMs`, no later than
+  // `refillMaxMs`. The bubble kept is the one with the smallest blast, whose
+  // refill lands soonest. A trace saw a pop *before* the tap give fuller
+  // boards (31.8 tsums read, not 28.3) but more stalls (47%, not 18%): its
+  // refill was frozen through the cut-in and landed under the drag.
+  saveBubble: true,
+  refillMinMs: 400,
+  refillMaxMs: 1100,
+  refillPollMs: 80,
+  refillNoise: 1,
+  refillStillReads: 2,
   // A chain from a lantern is drawn when it is at least this share of the
   // longest chain from anywhere: the lantern's own clear makes up the rest.
   lanternKeep: 0.75,
@@ -203,6 +222,49 @@ var RapunzelPlusConfig = {
   skillClearMs: 600,
   lanternClearMs: 1800,
 };
+
+// --- The saved bubble ---------------------------------------------------------
+
+// The bubble `beforeActivate` kept back, popped once the veil lifts.
+var rapunzelSavedBubble: GameBubble | null = null;
+
+/** The tsums on the board now: one capture and the circle pass, no colours. */
+function rapunzelCountTsums(ts: Tsum): number {
+  const img = ts.playScreenshotSquare();
+  let gray: NativeImage | null = null;
+  try {
+    gray = buildBoardGray(img);
+    return findTsumCount(gray);
+  } finally {
+    if (gray != null) { releaseImage(gray); }
+    releaseImage(img);
+  }
+}
+
+/**
+ * Pop the saved bubble and wait for the refill it causes to land: the tsum
+ * count holding still (see `saveBubble`). Returns how long that took and the
+ * count it settled at; null with no bubble saved.
+ */
+function rapunzelPopSaved(ts: Tsum): { ms: number, count: number } | null {
+  const cfg = RapunzelPlusConfig;
+  const b = rapunzelSavedBubble;
+  rapunzelSavedBubble = null;
+  if (b === null || !ts.isRunning) { return null; }
+  const from = Date.now();
+  tapGameBubble(ts, b);
+  let prev = -1;
+  let still = 0;
+  let count = 0;
+  while (ts.isRunning && Date.now() - from < cfg.refillMaxMs) {
+    ts.sleep(cfg.refillPollMs);
+    count = rapunzelCountTsums(ts);
+    still = prev >= 0 && Math.abs(count - prev) <= cfg.refillNoise ? still + 1 : 0;
+    prev = count;
+    if (still >= cfg.refillStillReads - 1 && Date.now() - from >= cfg.refillMinMs) { break; }
+  }
+  return { ms: Date.now() - from, count: count };
+}
 
 // --- Waiting out the activation animation -----------------------------------
 
@@ -729,8 +791,18 @@ registerSkill({
     // Spend the hoarded bubbles aimed, before the window opens: a bubble the
     // drag crosses pops mid-travel and ends the chain there, and the chain this
     // skill draws crosses the board. Under All Bubbles ASAP the list is already
-    // spent and this is zero taps. The light gate below covers the fall.
-    ts.popGameBubbles(ts.gameBubbles.length);
+    // spent and this is zero taps. All but the smallest blast go now; that one
+    // is popped after the veil, to cancel what is still clearing (`saveBubble`).
+    rapunzelSavedBubble = null;
+    const all = ts.gameBubbles;
+    if (RapunzelPlusConfig.saveBubble && all.length > 0) {
+      const order = richestFirst(all);
+      for (let i = 0; i < order.length - 1; i++) { tapGameBubble(ts, order[i]); }
+      rapunzelSavedBubble = order[order.length - 1];
+      ts.gameBubbles = [];
+    } else {
+      ts.popGameBubbles(all.length);
+    }
   },
   afterActivate: function(ts, board, activatedAt) {
     const cfg = RapunzelPlusConfig;
@@ -749,6 +821,8 @@ registerSkill({
     // a scan taken under it is what made this skill chain three. See
     // `litFraction`.
     const light = rapunzelWaitForBoard(ts, t0);
+    // The saved bubble: cancel what is still clearing, let the refill land.
+    const refill = rapunzelPopSaved(ts);
 
     const look = rapunzelPlanned(ts, cap);
     const path = look.plan ? look.plan.path : null;
@@ -803,6 +877,10 @@ registerSkill({
       // `lit: false` with `litMs` near `litWaitMs` is the board never coming
       // back to its own pre-tap brightness, and everything after it was planned
       // off a veiled board.
+      // The saved bubble popped after the veil, and how long its refill took
+      // to land; null when none was saved.
+      refillMs: refill ? refill.ms : null,
+      refillCount: refill ? refill.count : null,
       litMs: light.litMs,
       sawDark: light.sawDark,
       lit: light.lit,
