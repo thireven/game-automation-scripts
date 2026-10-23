@@ -106,9 +106,6 @@ var BoardFluxConfig = {
   cancelMs: 150,
   // A scanned circle within this (tsum widths) of a spot is that spot's tsum.
   reach: 0.5,
-  // A tsum this close (tsum widths) to a spot's column, and above it, falls
-  // when the spot clears (`fluxAbove`).
-  column: 0.75,
 };
 
 /** One linked tsum still on the board: its centre in the play square, and when it is gone. */
@@ -177,25 +174,6 @@ function fluxFreeRun(path: Point[]): number {
     }
   }
   return path.length;
-}
-
-/**
- * Which of `points` (top-left corners) sit above a spot still clearing, in
- * its column: they fall once it goes, so a plan made now misses them.
- */
-function fluxAbove(points: Point[]): boolean[] {
-  const now = Date.now();
-  const half = Config.tsumWidth / 2;
-  const dx = BoardFluxConfig.column * Config.tsumWidth;
-  const live = gFlux.filter(function(s) { return s.freeAt > now; });
-  return points.map(function(p) {
-    const cx = p.x + half;
-    const cy = p.y + half;
-    for (let i = 0; i < live.length; i++) {
-      if (Math.abs(cx - live[i].x) < dx && cy < live[i].y - half) { return true; }
-    }
-    return false;
-  });
 }
 
 /**

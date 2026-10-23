@@ -95,10 +95,6 @@ release note; they fold back in here when she ships.
   gauge before a chain's strategy pop, and scan-time pops wait while the gauge
   reads full. A pop's refill was frozen through the cut-in and landed under
   her drag (47% of such drags stalled, against 18%).
-- **Rapunzel+ keeps out of falling columns** (`fluxAbove`, `fallingKeep`):
-  tsums above a spot still clearing are left out of her route unless that
-  costs over a quarter of it. The play loop's last chain clears under her
-  drag and those tsums fall after her scan: a traced drag linked 5 of 23.
 - **Rapunzel+ confirms a stall before walking back**: a second counter read
   must agree, and a count below the last read is a misread. A popup's 1 once
   walked a healthy 17-chain back to its head, doubling the drag to 1.6s.

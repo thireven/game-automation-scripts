@@ -25,10 +25,8 @@
 //   - **only tsums that can still link.** The window opens on the batch the
 //     play loop linked just before activating, still clearing: the cut-in
 //     froze those clears, so they finish under her drag. The scan leaves them
-//     out (`fluxDrop`, board.ts), the tsums above them fall once they go, so
-//     the route keeps out of those columns (`fluxAbove`, `fallingKeep`), and
-//     a look whose plan falls short of the cap is retaken a moment later
-//     (`rapunzelPlanned`).
+//     out (`fluxDrop`, board.ts), and a look whose plan falls short of the cap
+//     is retaken a moment later (`rapunzelPlanned`).
 //   - **a bubble breaks the drag.** One crossed mid-travel pops and ends the
 //     chain there, and this chain crosses the whole board. So her route goes
 //     round them (`buildClearHops`) and nothing pops one near her activation:
@@ -145,11 +143,6 @@ var RapunzelPlusConfig = {
   // only a board eaten to 70% costs anything (22.62), where the fallback below
   // is what is holding it up.
   bottomFirst: true,
-  // Tsums above a spot still clearing (`fluxAbove`) fall once it goes: the
-  // play loop's last chain is frozen through her cut-in and clears under her
-  // drag. Planned round unless that costs more than this share of the chain:
-  // a route into a falling column links up to it and no further.
-  fallingKeep: 0.75,
   // The top slice of the *occupied* board -- a share of pile height, not of the
   // play square -- held out of planning as the ground the refill is still
   // arriving on. Swept at 0.20/0.30/0.40: all cost nothing and all put the
@@ -414,30 +407,16 @@ function rapunzelSettledHops(board: BoardPoint[], hops: number[][], band: number
   return out;
 }
 
-/** `hops` with the `out` tsums cut off: no chain uses them, they still block. */
-function rapunzelMaskHops(hops: number[][], out: boolean[]): number[][] {
-  return hops.map(function(h, i) { return out[i] ? [] : h.filter(function(j) { return !out[j]; }); });
-}
-
 /**
  * The chain to draw, in the order to draw it. From a lantern when that chain
  * is at least `lanternKeep` of the best free one; otherwise bottom-first, and
  * planned over the settled part of the board wherever that fills it alone.
  */
 function rapunzelChain(board: BoardPoint[], bubbles: GameBubble[], maxLen: number,
-    lanterns: BoardPoint[], myTsumIdx?: number, falling?: boolean[]): { path: TsumPath, fromLantern: boolean } | null {
+    lanterns: BoardPoint[], myTsumIdx?: number): { path: TsumPath, fromLantern: boolean } | null {
   const cfg = RapunzelPlusConfig;
   if (board.length < 3 || maxLen < 3) { return null; }
-  const allHops = buildClearHops(board, bubbles, cfg.hopReach, cfg.crossAvoid);
-  let hops = allHops;
-  if (falling && falling.indexOf(true) >= 0) {
-    // Round the falling columns, unless that costs too much length.
-    const steady = rapunzelMaskHops(allHops, falling);
-    const kept = rapunzelSearch(board, steady, maxLen, undefined, myTsumIdx).length;
-    if (kept >= maxLen || kept >= cfg.fallingKeep * rapunzelSearch(board, allHops, maxLen, undefined, myTsumIdx).length) {
-      hops = steady;
-    }
-  }
+  const hops = buildClearHops(board, bubbles, cfg.hopReach, cfg.crossAvoid);
   // The settled part first. If it can fill the chain on its own the top never
   // comes into the plan at all.
   let best = cfg.bottomFirst
@@ -667,8 +646,6 @@ interface RapunzelLook {
   looks: number;
   /** Tsums this look left out as still clearing. */
   clearing: number;
-  /** Tsums above a spot still clearing (`fluxAbove`). */
-  falling: number;
 }
 
 /**
@@ -698,22 +675,20 @@ function rapunzelPlanned(ts: Tsum, cap: number): RapunzelLook {
     const read = board.length;
     // May add lanterns the circle pass missed to `board`.
     const lanterns = rapunzelLanterns(ts, board);
-    const falling = fluxAbove(board);
     // Her own tsums first where it costs no length: each one in her chain
     // took ~0.19s off the next gauge's refill over 157 activations.
-    const plan = rapunzelChain(board, bubbles, cap, lanterns, ts.myTsumIdx, falling);
+    const plan = rapunzelChain(board, bubbles, cap, lanterns, ts.myTsumIdx);
     const len = plan ? plan.path.length : 0;
     const clearing = ts.boardClearing.length;
     if (best === null || len > (best.plan ? best.plan.path.length : 0)) {
-      best = { board: board, read: read, bubbles: bubbles, lanterns: lanterns, plan: plan, looks: look + 1, clearing: clearing,
-        falling: falling.filter(function(f) { return f; }).length };
+      best = { board: board, read: read, bubbles: bubbles, lanterns: lanterns, plan: plan, looks: look + 1, clearing: clearing };
     } else {
       best.looks = look + 1;
     }
     // Good enough: at the cap, or near it with nothing left out to wait for.
     if (len >= cap || (len >= cfg.retakeBelow * cap && clearing === 0)) { break; }
   }
-  return best || { board: [], read: 0, bubbles: [], lanterns: [], plan: null, looks: 0, clearing: 0, falling: 0 };
+  return best || { board: [], read: 0, bubbles: [], lanterns: [], plan: null, looks: 0, clearing: 0 };
 }
 
 /**
@@ -803,7 +778,6 @@ registerSkill({
       // Scans taken to reach the cap; tsums the last left out as clearing.
       looks: look.looks,
       clearing: look.clearing,
-      falling: look.falling,
       // Her own tsums in the chain: does clearing them charge the next gauge?
       myTsums: path ? path.filter(function(p) { return +p.tsumIdx === ts.myTsumIdx; }).length : 0,
       myTsumIdx: ts.myTsumIdx,
