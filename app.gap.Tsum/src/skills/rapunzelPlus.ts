@@ -529,6 +529,8 @@ interface RapunzelDrag {
   count: number | null;
   /** Time spent reading the counter, in ms: the price of the stall checks. */
   countMs: number;
+  /** Stalls a second counter read did not confirm. */
+  falseStalls: number;
 }
 
 /**
@@ -543,7 +545,7 @@ interface RapunzelDrag {
  */
 function rapunzelLinkChain(ts: Tsum, path: TsumPath,
     replan: (from: BoardPoint, used: BoardPoint[], maxLen: number) => TsumPath | null): RapunzelDrag {
-  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], count: null, countMs: 0 };
+  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], count: null, countMs: 0, falseStalls: 0 };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.mayTouchBoard() || path.length < 2) { return drag; }
   const cfg = RapunzelPlusConfig;
@@ -561,6 +563,7 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
     moveTo(pts[0].x, pts[0].y, cfg.headHoldMs);
     drag.moves++;
     let lastBack = -1;
+    let lastCount: number | null = null;
     let i = 1;
     while (i < path.length) {
       hop(i);
@@ -568,15 +571,36 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
       if (drag.rewinds.length < cfg.maxRewinds && i + 1 >= cfg.checkFrom
           && !end && (i + 1 - cfg.checkFrom) % cfg.checkEvery === 0
           && path.length - 1 - i > cfg.checkTail) {
-        const read = chainCounterRead(ts, chainRouteCentres(path.slice(0, i + 1)));
-        const count = read.value;
-        drag.count = count;
+        const route = chainRouteCentres(path.slice(0, i + 1));
+        const read = chainCounterRead(ts, route);
+        let count = read.value;
         drag.countMs += read.ms;
-        if (count !== null && count < i + 1 - cfg.countSlack) {
+        const behind = function(c: number | null): boolean {
+          // A count under the last one is a misread: a chain does not shrink
+          // while the finger moves on. A 1 read off a popup once walked a
+          // healthy 17-chain back to its head.
+          return c !== null && c < i + 1 - cfg.countSlack && (lastCount === null || c >= lastCount);
+        };
+        if (behind(count)) {
+          // Believed only when a second read agrees.
+          const again = chainCounterRead(ts, route);
+          drag.countMs += again.ms;
+          if (behind(again.value)) {
+            count = Math.max(count!, again.value!);
+          } else {
+            drag.falseStalls++;
+            count = again.value;
+          }
+        }
+        drag.count = count;
+        if (count !== null && (lastCount === null || count >= lastCount)) { lastCount = count; }
+        if (behind(count) && count !== null) {
           // The chain ends at path[back]; walk back to it.
           const back = Math.max(0, Math.min(i, count) - 1);
           const again = lastBack >= 0 && back <= lastBack + 1;
           lastBack = back;
+          // Walking back unlinks, so the next count may rightly be lower.
+          lastCount = null;
           for (let k = i - 1; k >= back; k--) { hop(k); }
           const used = path.slice(0, back + 1);
           if (again && back + 1 < path.length) { used.push(path[back + 1]); }
@@ -771,6 +795,7 @@ registerSkill({
       rewinds: drag ? drag.rewinds : [],
       registered: drag ? drag.count : null,
       countMs: drag ? drag.countMs : 0,
+      falseStalls: drag ? drag.falseStalls : 0,
       // How long the activation animation held the board, and whether it was
       // really seen to lift. Three shapes: `lit: true` is the gate working;
       // `sawDark: false` with `litMs` near `litMinMs` is the veil never seen at

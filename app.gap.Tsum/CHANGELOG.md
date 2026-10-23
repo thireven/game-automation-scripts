@@ -84,6 +84,9 @@ release note; they fold back in here when she ships.
   flash clear and lantern columns go into the ledger).
 - **Cinderella picks each stroke** off the ledger (`cinderellaPickStroke`): the
   half and direction with the longest free run, cut at the first clearing tsum.
+- **Rapunzel+ confirms a stall before walking back**: a second counter read
+  must agree, and a count below the last read is a misread. A popup's 1 once
+  walked a healthy 17-chain back to its head, doubling the drag to 1.6s.
 - **Rapunzel+ holds the head 80ms** before the first move (`headHoldMs`):
   27% of 187 activations stalled, nearly half at the first link.
 - **Rapunzel+ prefers her own tsums** at equal length (`prefer` in
