@@ -79,7 +79,7 @@ release note; they fold back in here when she ships.
 - A ready skill no longer waits a few seconds while effects cover the Pause and Fan buttons.
 - Villains Set uses its skill as soon as the gauge is full.
 - Bonus items no longer all flip on and off before a round.
-- Sending hearts no longer stops partway down the friend list.
+- Sending hearts no longer stops partway down the friend list, including at a run of look-alike friends or friends with low scores.
 - Receiving mail one by one no longer gets stuck on the new-tsum card after opening a tsum box.
 - No longer gets stuck on the coloring event's mission tip after a round.
 - Box Buying finds the Select Box in the Japanese game, where it can be the last of three boxes shown.
