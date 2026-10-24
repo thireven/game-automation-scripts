@@ -45,6 +45,19 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b3]
+
+### Summary
+
+**Fixes**
+- When the game crashes mid-round, Auto launch now reopens it instead of the run stopping.
+
+### Fixed
+
+- **Game away mid-round**: a game with no process is relaunched at once, and the
+  backgrounded-game relaunch moved from 30 s to 15 s. At 30 s the host's own
+  30 s stop for a game with no task always fired first, so a crash ended the run.
+
 ## [6.0b2]
 
 ### Summary
