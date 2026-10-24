@@ -16,8 +16,8 @@
 //
 // This replaced an earlier loop that tracked four fixed row positions and read
 // four hand-measured pixels to decide it had reached the end of the list. The
-// end is now the point where the list will not move, and the rows are wherever
-// the pink is.
+// end is now the point where the list will not move with an end in view (the
+// invite banner, or rank 1), and the rows are wherever the pink is.
 //
 // A slow connection puts a "Loading" spinner over the list, which blocks input
 // and can end in a timeout dialog. So a send whose row is still pink is waited
@@ -108,6 +108,12 @@ const HeartListEndRecheckMs = 3000;
 /** Rechecks a list end gets; more when that screenful had a send fail. */
 const HeartListEndRechecks = 1;
 const HeartListEndRechecksAfterFailure = 3;
+/**
+ * Drags in a row that may read as still with no end in view before the old
+ * recheck decides. Look-alike rows can fill a few screenfuls; a frozen list
+ * costs this many extra drags.
+ */
+const HeartListStillMax = 10;
 
 /**
  * Reopen the ranking, which puts our own row back in view.
@@ -170,12 +176,13 @@ Tsum.prototype.readHeartColumn = function(img) {
 Tsum.prototype.friendRowScoreIsZero = function(img, heart) {
   const y = heart.y + HeartColumn.scoreOffsetY;
   const points: Point[] = [];
-  for (let x = Button.outFriendScoreFrom.x; x <= Button.outFriendScoreTo.x; x += 20) {
+  for (let x = Button.outFriendScoreFrom.x; x <= Button.outFriendScoreTo.x; x += 4) {
     points.push({x: x, y: y});
   }
   const row = this.getColors(img, points);
   // A zero score is one narrow digit, so this band is empty panel all the way
-  // across; any real score puts a glyph somewhere in it.
+  // across; any real score puts a glyph somewhere in it. Fine-grained, since a
+  // 2-digit score only just reaches into it.
   for (let i = 0; i < row.length; i++) {
     if (!isSameColor(Button.outFriendScoreFrom.color!, row[i], 40)) {
       return false;
@@ -467,6 +474,44 @@ Tsum.prototype.friendListMovesAfterAll = function(down, sendFailed) {
   return false;
 }
 
+Tsum.prototype.friendListEndInView = function(down) {
+  const ends = FriendListEnds;
+  const xs = down ? ends.inviteXs : [ends.rankOneX];
+  const color = down ? ends.inviteColor : ends.rankOneColor;
+  const points: Point[] = [];
+  for (let y = ends.fromY; y <= ends.toY; y += ends.step) {
+    for (const x of xs) {
+      points.push({x: x, y: y});
+    }
+  }
+  const img = this.screenshot();
+  let colors: Color[];
+  try {
+    colors = this.getColors(img, points);
+  } finally {
+    releaseImage(img);
+  }
+
+  // Down: lines where every x is gold. Up: the longest gold run down the column.
+  let rows = 0;
+  let run = 0;
+  let longest = 0;
+  for (let i = 0; i < colors.length; i += xs.length) {
+    let all = true;
+    for (let j = 0; j < xs.length; j++) {
+      all = all && isSameColor(color, colors[i + j], ends.threshold);
+    }
+    if (all) {
+      rows++;
+      run += ends.step;
+      longest = Math.max(longest, run);
+    } else {
+      run = 0;
+    }
+  }
+  return down ? rows >= ends.inviteMinRows : longest >= ends.rankOneMinRun;
+}
+
 Tsum.prototype.outOfHeartTime = function(startTime) {
   if (this.sendHeartMaxDuring === 0) {
     return false;
@@ -481,6 +526,7 @@ Tsum.prototype.outOfHeartTime = function(startTime) {
 
 Tsum.prototype.sweepHearts = function(down, startTime) {
   let screenfuls = 0;
+  let still = 0;
   while (this.isRunning) {
     if (gPages.detect(1, 500, heartSweepPages()) !== PageName.FriendPage) {
       gPages.navigate(PageName.FriendPage);
@@ -518,7 +564,15 @@ Tsum.prototype.sweepHearts = function(down, startTime) {
     if (this.outOfHeartTime(startTime)) {
       return false;
     }
-    if (!this.scrollFriendList(down) && !this.friendListMovesAfterAll(down, page.failed !== 0)) {
+    if (this.scrollFriendList(down)) {
+      still = 0;
+    } else if (still < HeartListStillMax && !this.friendListEndInView(down)) {
+      // Look-alike rows read as unmoved. With no end in view the drag most
+      // likely did move, so send on this screen rather than drag past it.
+      still++;
+      logInfo(Log.Hearts.ListStill, 'The list read as still with no end in view; carrying on',
+        {down: down, screenfuls: screenfuls, still: still});
+    } else if (!this.friendListMovesAfterAll(down, page.failed !== 0)) {
       logInfo(Log.Hearts.ListEnd, {down: down, screenfuls: screenfuls, lastSent: page.sent});
       return true;
     }

@@ -1540,6 +1540,8 @@ interface Tsum {
   waitOutHeartNetwork(ms: number): void;
   /** Recheck a drag that did not move; true when the list moved after all. */
   friendListMovesAfterAll(down: boolean, sendFailed: boolean): boolean;
+  /** Whether the end the sweep is heading for is on screen: the invite banner, or rank 1. */
+  friendListEndInView(down: boolean): boolean;
   /** Tap one heart and see it through the gift dialog and the toast. */
   sendOneHeart(heart: Point): boolean;
   /** Tap the "Heart sent!" toast away, again if the first tap was lost. */

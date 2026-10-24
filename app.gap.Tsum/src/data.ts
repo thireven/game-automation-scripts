@@ -424,8 +424,11 @@ var Button = {
   // heart tables further down; the four `outSendHeart*` row positions,
   // the three end-of-list probes and the close button that used to live here
   // went with the rewrite that replaced them.
+  // The score band `friendRowScoreIsZero` reads. Scores are right-aligned and
+  // a lone "0" starts at x 780, so the band stops just short of it: any score
+  // of two digits or more puts a glyph in it.
   outFriendScoreFrom: {x: 550, y: 935, color: {"a":0,"b":140,"g":93,"r":55}},
-  outFriendScoreTo: {x: 760, y: 935},
+  outFriendScoreTo: {x: 768, y: 935},
   /** The Home tab on the hub left rail; `PageDef.home` on every page that has it. */
   outHomePage: {x: 60, y: 1000},
   skillLuke1: {x: 1000, y: 1372},
@@ -2683,6 +2686,30 @@ var FriendListSample = {
   /** How many of the points must change before the list has moved. */
   minMoved: 8
 } satisfies ListSample;
+
+// The two ends of the ranking, so a drag that changed nothing is only taken as
+// the end when one of them is in view. A run of look-alike rows (alt accounts:
+// same avatar, short scores) reads as unmoved, because a 4-row drag lands each
+// row exactly where a row was -- that ended a 607-friend sweep at rank 373.
+//
+// Bottom: the "Earn Coins by inviting friends" banner's gold + button, read as
+// both edges of its ring on one line. Top: rank 1's gold badge, right of the
+// left rail's Rankings tab (gold too); silver and bronze fail the colour.
+// Measured on MuMu, October 2026.
+var FriendListEnds = {
+  fromY: 556,
+  toY: 1354,
+  step: 4,
+  threshold: 40,
+  inviteXs: [204, 248],
+  inviteColor: {r: 247, g: 185, b: 30},
+  /** Lines where both edges match. The ring gives ~7; one stray line is not it. */
+  inviteMinRows: 3,
+  rankOneX: 186,
+  rankOneColor: {r: 255, g: 210, b: 60},
+  /** The badge is ~40px of gold down this column. */
+  rankOneMinRun: 24
+};
 
 // One screenful of scroll, the gesture unchanged since the fork: a drag down the heart
 // column through the four row positions, ending at 500ms so the list settles

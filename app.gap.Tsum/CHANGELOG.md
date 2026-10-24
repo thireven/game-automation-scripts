@@ -144,6 +144,13 @@ release note; they fold back in here when she ships.
 - **The data download prompt starts the boot phase** (`observe.startupPhase` on
   `ExtraUpdate`): an update restarts the game in its own process, so neither a
   launch nor `catchUpBoot`'s process age saw it booting.
+- **A heart sweep ends only with an end in view** (`friendListEndInView`,
+  `FriendListEnds`): the invite banner below the last row, or rank 1's badge.
+  A 4-row drag over look-alike alt accounts read as unmoved and ended a
+  607-friend sweep at rank 373; a still read with no end in view now carries
+  on (`hearts.listStill`, up to 10 in a row).
+- **Zero-score test reads every 4px to x 768** (was every 20px to 760): a
+  3-digit score fell between the samples and stopped the sweep at the low scorers.
 
 ## [6.0a20]
 

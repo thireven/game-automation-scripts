@@ -278,6 +278,7 @@ namespace Log {
     GoToSelfStart       = 'hearts.goToSelf.start',
     ListEnd             = 'hearts.listEnd',
     ListEndRecheck      = 'hearts.listEnd.recheck',
+    ListStill           = 'hearts.listStill',
     NetworkDown         = 'hearts.network.down',
     NetworkRetry        = 'hearts.network.retry',
     NoToast             = 'hearts.noToast',
