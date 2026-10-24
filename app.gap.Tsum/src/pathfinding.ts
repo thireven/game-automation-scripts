@@ -1319,43 +1319,78 @@ function classifyTsums(points: TsumPoint[]): TsumCluster[] {
   return clusters;
 }
 
-function detectOffsetYInGame() {
+/** Columns the letterbox is measured in, as fractions of the screen width. */
+const LetterboxColumns = [0.1, 0.25, 0.4, 0.6, 0.75, 0.9];
+/** How far, in screen px, two edge readings may differ and still agree. */
+const LetterboxTolerancePx = 6;
+
+/**
+ * Where the game's top edge is on a screen taller than the game, or -1.
+ *
+ * The game draws at `gameHeight` and Android places it in the screen with black
+ * bars, not always centred: a Samsung keeps it out of the camera cutout's band,
+ * then centres it in what is left. So the bars are measured, in several columns
+ * and from both edges, because anything can sit in a bar: GAP's own bar and
+ * status line in the top one, the Quick Bar in the bottom one. Each column gives
+ * a top from the top bar and another from the bottom bar minus `gameHeight`;
+ * the answer is a value at least three of those agree on. A frame with no such
+ * value (the game not in front, a black loading screen, both bars covered)
+ * gives -1.
+ */
+function measureGameTop(gameHeight: number): number {
   const img = getScreenshot();
   try {
     const size = getImageSize(img);
-    const centerY = Math.floor(size.height / 2);
+    const slack = size.height - gameHeight;
+    const black = {r: 0, g: 0, b: 0};
+    const xs = LetterboxColumns.map(f => Math.floor(size.width * f));
+    const isBlack = (x: number, y: number) => isSameColor(black, getImageColor(img, x, y), 6);
+    // Whether row y is bar rather than game, in at least two columns.
+    const barAt = (y: number) => y < 0 || y >= size.height
+      || xs.filter(x => isBlack(x, y)).length >= 2;
+    const tops: number[] = [];
+    for (const x of xs) {
+      // A run of 0 is something drawn over the bar, and one past `slack`
+      // never met the game; neither says where the game is. A run that does
+      // must also put a bar where the game's other edge would end.
+      let top = 0;
+      while (top <= slack && isBlack(x, top)) {
+        top++;
+      }
+      if (top > 0 && top <= slack && barAt(top + gameHeight + LetterboxTolerancePx)) {
+        tops.push(top);
+      }
+      let bottom = 0;
+      while (bottom <= slack && isBlack(x, size.height - 1 - bottom)) {
+        bottom++;
+      }
+      const fromBottom = size.height - bottom - gameHeight;
+      if (bottom > 0 && bottom <= slack && barAt(fromBottom - LetterboxTolerancePx - 1)) {
+        tops.push(fromBottom);
+      }
+    }
 
-    // find top black
-    let topBlackY = 0;
-    let y: number;
-    let color: Color;
-    for (y = centerY; y >= 0; y--) {
-      color = getImageColor(img, size.width*0.9, y);
-      if (isSameColor({r: 0, g: 0, b: 0}, color, 6)) {
-        // black color found
-        topBlackY = y;
-        break;
+    let best = -1;
+    let bestVotes: number[] = [];
+    for (const t of tops) {
+      const votes = tops.filter(o => Math.abs(o - t) <= LetterboxTolerancePx);
+      if (votes.length > bestVotes.length) {
+        best = t;
+        bestVotes = votes;
       }
     }
-    let bottomBlackY = size.height;
-    for (y = centerY; y < size.height; y++) {
-      color = getImageColor(img, size.width*0.9, y);
-      if (isSameColor({r: 0, g: 0, b: 0}, color, 6)) {
-        // black color found
-        bottomBlackY = y;
-        break;
-      }
-    }
-    // One record rather than the four separate numbers this used to print:
-    // they are one measurement, and reading them apart never made sense.
-    logInfo(Log.Screen.DetectOffset, 'Detected the game area inside the device screen', {
+    const found = bestVotes.length >= 3 && best >= 0 && best <= slack;
+    bestVotes.sort((a, b) => a - b);
+    const top = found ? bestVotes[Math.floor(bestVotes.length / 2)] : -1;
+    logDebug(Log.Screen.DetectOffset, 'Measured the game area inside the device screen', {
       deviceWidth: size.width,
       deviceHeight: size.height,
-      topBlackY: topBlackY,
-      bottomBlackY: bottomBlackY,
-      screenHeight: bottomBlackY - topBlackY + 1,
+      gameHeight: gameHeight,
+      readings: tops.join(','),
+      votes: bestVotes.length,
+      top: top,
     });
-    return -topBlackY;
+    return top;
   } finally {
     releaseImage(img);
   }

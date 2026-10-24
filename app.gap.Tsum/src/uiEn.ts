@@ -43,12 +43,10 @@ i18nRegister(Locale.English, 'English', {
 
     [UiText.SettingLanguage]: 'Language',
     [UiText.SettingLanguageHelp]: 'For this page and the Quick Bar.',
-    [UiText.SettingSpecialScreenRatio]: 'Special Screen Ratio (Long Screen) (Should start in game)',
-    [UiText.SettingSpecialScreenRatioHelp]: 'For long screens with uneven black bars. Start the game yourself; not with Auto Launch.',
     [UiText.SettingDeviceFps]: 'Device frame rate',
     [UiText.SettingDeviceFpsHelp]: 'Scales how long self-dismissing screens stay up.',
     [UiText.SettingAutoLaunchApp]: 'Auto Launch Tsum App',
-    [UiText.SettingAutoLaunchAppHelp]: 'Opens Tsum Tsum on start. Leave off with Special Screen Ratio.',
+    [UiText.SettingAutoLaunchAppHelp]: 'Opens Tsum Tsum on start.',
     [UiText.SettingGameRegion]: 'Game Region',
     [UiText.SettingGameRegionHelp]: 'Which Tsum Tsum to open and play when both are installed. Automatic uses the open one, else the installed one.',
     [UiText.GameRegionAuto]: 'Automatic',

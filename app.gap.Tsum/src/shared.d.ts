@@ -322,7 +322,6 @@ declare const enum SettingKey {
   DebugGame = 'debugGame',
   CollectUnknownScreens = 'collectUnknownScreens',
   Walkthrough = 'walkthrough',
-  SpecialScreenRatio = 'specialScreenRatio',
   DeviceFps = 'deviceFps',
   PageHistoryDepth = 'pageHistoryDepth',
   Locale = 'locale',
@@ -408,7 +407,6 @@ interface Settings {
    * what followed. Exclusive -- no other task is registered while it is on.
    */
   [SettingKey.Walkthrough]: boolean;
-  [SettingKey.SpecialScreenRatio]: boolean;
   /**
    * The device's frame rate. Scales the transient windows in `PageProfiles`,
    * which are quoted at `PageBaselineFps` because the game counts them in

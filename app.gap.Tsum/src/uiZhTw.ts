@@ -47,12 +47,10 @@ i18nRegister(Locale.Taiwan, '中文', {
 
     [UiText.SettingLanguage]: '語言',
     [UiText.SettingLanguageHelp]: '本頁與快捷列的語言。',
-    [UiText.SettingSpecialScreenRatio]: '特殊螢幕比例(長螢幕)(遊戲中啟動)',
-    [UiText.SettingSpecialScreenRatioHelp]: '適用上下黑邊不對稱的長螢幕。請先自己開遊戲，不能搭配自動開啟。',
     [UiText.SettingDeviceFps]: '裝置畫面更新率',
     [UiText.SettingDeviceFpsHelp]: '影響自動消失畫面的持續時間。',
     [UiText.SettingAutoLaunchApp]: '自動開啟 Tsum App',
-    [UiText.SettingAutoLaunchAppHelp]: '腳本啟動時開啟 Tsum Tsum。開特殊螢幕比例時請關閉。',
+    [UiText.SettingAutoLaunchAppHelp]: '腳本啟動時開啟 Tsum Tsum。',
     [UiText.SettingGameRegion]: '遊戲地區',
     [UiText.SettingGameRegionHelp]: '兩個版本都安裝時要開啟並遊玩哪一個。自動會用已開啟的，否則用已安裝的。',
     [UiText.GameRegionAuto]: '自動',

@@ -591,12 +591,6 @@ var tabs: TabSpec[] = [
                         buttons: localeButtons()
                     },
                     {
-                        key: SettingKey.SpecialScreenRatio,
-                        title: UiText.SettingSpecialScreenRatio,
-                        help: UiText.SettingSpecialScreenRatioHelp,
-                        default: SettingDefaults[SettingKey.SpecialScreenRatio]
-                    },
-                    {
                         // Minutes, in 30-minute steps.
                         key: SettingKey.TsumAppRestartFrequency,
                         title: UiText.SettingAppRestartFrequency,

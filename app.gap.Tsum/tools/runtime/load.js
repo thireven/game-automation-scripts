@@ -122,7 +122,7 @@ function createRuntime(options) {
  *
  * Geometry is the part a screenshot cannot carry on its own: `toResizeXY`
  * depends on captureGameRatio / gameOffsetX / gameOffsetY / resizeRatio, and on
- * special screen ratios gameOffsetY comes from `detectOffsetYInGame()`, which
+ * a taller-than-16:9 screen gameOffsetY is measured off the letterbox, which
  * needs a live screen. So the sidecar wins where it supplies a value and the
  * constructor's own derivation stands in everywhere else.
  */
@@ -130,7 +130,7 @@ function createTsum(ctx, host, frame, meta) {
   const m = meta || {};
   host.setCapture(frame);
 
-  const ts = new ctx.Tsum(!!m.specialScreenRatio, ctx.Logs);
+  const ts = new ctx.Tsum(ctx.Logs);
   // Seeded so `gameBuild()` answers from the sidecar: the shim's `execute`
   // returns nothing, so neither the focus nor the package read could. Older
   // sidecars wrote `isJP` instead of `build`.

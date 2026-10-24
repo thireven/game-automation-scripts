@@ -42,12 +42,10 @@ i18nRegister(Locale.Japanese, '日本語', {
 
     [UiText.SettingLanguage]: '言語',
     [UiText.SettingLanguageHelp]: 'このページとクイックバーの言語。',
-    [UiText.SettingSpecialScreenRatio]: '特殊な画面比率（縦長画面）（ゲーム内で開始）',
-    [UiText.SettingSpecialScreenRatioHelp]: '黒帯が不均等な縦長画面向け。ゲームは手動で起動してください（自動起動は不可）。',
     [UiText.SettingDeviceFps]: 'デバイスのフレームレート',
     [UiText.SettingDeviceFpsHelp]: '自動で閉じる画面の表示時間を調整します。',
     [UiText.SettingAutoLaunchApp]: 'ツムツムを自動起動',
-    [UiText.SettingAutoLaunchAppHelp]: '開始時にツムツムを起動します。特殊な画面比率とは併用しないでください。',
+    [UiText.SettingAutoLaunchAppHelp]: '開始時にツムツムを起動します。',
     [UiText.SettingGameRegion]: 'ゲームの地域',
     [UiText.SettingGameRegionHelp]: '両方インストールされているとき、起動してプレイするツムツム。自動では開いている方、なければインストール済みの方を使います。',
     [UiText.GameRegionAuto]: '自動',

@@ -102,8 +102,8 @@ Tsum.prototype.saveCorpusFrame = function(tag) {
  * The metadata a screenshot cannot carry.
  *
  * Geometry above all: `toResizeXY` reads captureGameRatio, gameOffsetX/Y and
- * resizeRatio, and on a taller-than-16:9 screen with "special screen ratio" on,
- * gameOffsetY comes from `detectOffsetYInGame()` -- which needs a live screen
+ * resizeRatio, and on a taller-than-16:9 screen gameOffsetY is measured off the
+ * letterbox (`measureGameTop`) -- which needs a live screen
  * and cannot be recovered from a still. A frame from such a device is not
  * replayable without this file.
  *
@@ -123,7 +123,6 @@ Tsum.prototype.corpusSidecar = function(tag) {
   const bool = function(key: string, value: boolean): string {
     return quote(key) + ': ' + (value ? 'true' : 'false');
   };
-  const special = !!(this.settings && this.settings.specialScreenRatio);
 
   return [
     '{',
@@ -141,9 +140,6 @@ Tsum.prototype.corpusSidecar = function(tag) {
     // Was `isJP` before builds had names; load.js still reads that from old
     // sidecars.
     '  ' + quote('build') + ': ' + quote(this.gameBuild()) + ',',
-    // A literal, not SettingKey: this is the sidecar's own field name, read by
-    // tools/runtime/load.js. Renaming the setting must not rename it.
-    '  ' + bool('specialScreenRatio', special) + ',',
     '  ' + bool('startupPhase', this.isStartupPhase) + ',',
     '  ' + quote('candidates') + ': [' + this.corpusCandidates() + '],',
     '  ' + quote('notes') + ': ' + quote(''),

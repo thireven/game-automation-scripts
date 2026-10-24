@@ -261,7 +261,6 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.DebugGame]: RemoteKind.Bool,
   [SettingKey.CollectUnknownScreens]: RemoteKind.Bool,
   [SettingKey.Walkthrough]: RemoteKind.Bool,
-  [SettingKey.SpecialScreenRatio]: RemoteKind.Bool,
   [SettingKey.DeviceFps]: RemoteKind.Int,
   [SettingKey.PageHistoryDepth]: RemoteKind.Int,
   [SettingKey.AutoLaunchApp]: RemoteKind.Bool,
@@ -573,7 +572,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // The Debug tab's Direct on a stopped script: that request and no other job.
   const directOnly = gDirectOnlyRun && !gWorkflowRun;
   gDirectOnlyRun = false;
-  ts = new Tsum(settings.specialScreenRatio, logs);
+  ts = new Tsum(logs);
   // From here on there is a world to dismantle, whether or not the rest of this
   // function gets to finish -- `start()` tears it down in its `finally`.
   gRunActive = true;

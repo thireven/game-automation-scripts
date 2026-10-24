@@ -71,6 +71,7 @@ namespace Log {
     CalculateSize = 'screen.calculateSize',
     Detect        = 'screen.detect',
     DetectOffset  = 'screen.detectOffset',
+    DetectFailed  = 'screen.detectFailed',
     Offset        = 'screen.offset',
     Settled       = 'screen.settled',
     TallGeometry  = 'screen.tallGeometry',

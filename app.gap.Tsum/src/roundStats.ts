@@ -1778,9 +1778,7 @@ function detectMyTsum(settings?: Settings): string {
     }
     return JSON.stringify({ reason: DetectMyTsumRefusal.Run });
   }
-  const probe = new Tsum(
-    settings !== undefined && settings.specialScreenRatio === true,
-    logStringsFor(settings !== undefined ? settings.locale : undefined));
+  const probe = new Tsum(logStringsFor(settings !== undefined ? settings.locale : undefined));
   sleep(DetectMyTsumSettleMs);
   const selected = probe.selectedTsum();
   if (selected === null) {

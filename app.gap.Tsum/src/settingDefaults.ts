@@ -47,7 +47,6 @@ var SettingDefaults: Readonly<Settings> = {
   [SettingKey.BuyBoxType]: BoxType.Premium,
   [SettingKey.BuyBoxSize]: BoxPurchaseSize.One,
   [SettingKey.BuyBoxMaxPurchases]: 10,
-  [SettingKey.SpecialScreenRatio]: false,
   [SettingKey.DeviceFps]: 60,
   [SettingKey.AutoLaunchApp]: true,
   [SettingKey.GameRegion]: GameRegion.Auto,

@@ -113,6 +113,13 @@ class Tsum {
   playWidth: number;
   playResizeWidth: number;
   playResizeHeight: number;
+  /** On a screen taller than the game, whether the letterbox is still to be measured (`measureGameArea`). */
+  gameAreaPending: boolean;
+  gameAreaTries: number;
+  /** The last measured top, -1 for a miss; a second agreeing one settles it. */
+  gameAreaLastTop: number;
+  gameAreaNextAt: number;
+  gameAreaSince: number;
   uniqueTsumCount: number;
   maxChainsPerScan: number;
   prioritizeMyTsum: boolean;
@@ -370,7 +377,7 @@ class Tsum {
   /** How long this run and its rounds have taken, for the Quick Bar. */
   runClock: RunClock;
 
-  constructor(detect: boolean, logs: LogCatalogue) {
+  constructor(logs: LogCatalogue) {
     this.debug = false;
     this.autoLaunch = false;
     this.isRunning = true;
@@ -415,6 +422,11 @@ class Tsum {
     this.playWidth = 0;
     this.playResizeWidth = Config.screenResize;
     this.playResizeHeight = Config.screenResize;
+    this.gameAreaPending = false;
+    this.gameAreaTries = 0;
+    this.gameAreaLastTop = -1;
+    this.gameAreaNextAt = 0;
+    this.gameAreaSince = 0;
 
     this.uniqueTsumCount = 5;
     this.maxChainsPerScan = 6;
@@ -544,11 +556,11 @@ class Tsum {
     this.runCoins = {rounds: 0, baseRounds: 0, baseTotal: 0, finalRounds: 0, finalTotal: 0,
       medalRounds: 0, medalTotal: 0, baseMin: -1, baseMax: -1, medalMin: -1, medalMax: -1};
     this.runClock = {startedAt: Date.now(), rounds: 0, roundSec: 0, minSec: -1, maxSec: -1};
-    this.init(detect);
+    this.init();
   }
 }
 
-Tsum.prototype.init = function(detect) {
+Tsum.prototype.init = function() {
   logInfo(Log.Screen.CalculateSize);
   let isFat = false;
   if (this.screenHeight / this.screenWidth < 1.5) {
@@ -569,14 +581,6 @@ Tsum.prototype.init = function(detect) {
     });
   }
 
-  if (detect && this.screenHeight / this.screenWidth > 16 / 9) {
-    logInfo(Log.Screen.Detect, { reason: 'specialScreenRatio' });
-    this.gameWidth = this.screenWidth;
-    this.gameHeight = this.gameWidth * 1.5;
-    this.gameOffsetX = 0;
-    this.gameOffsetY = detectOffsetYInGame();
-  }
-
   this.captureGameRatio = this.gameWidth / 1080;
   if (isFat) {
     this.playWidth = this.gameWidth;
@@ -587,17 +591,73 @@ Tsum.prototype.init = function(detect) {
   }
   // noinspection JSSuspiciousNameCombination
   this.playHeight = this.playWidth; // game has square dimension
-  this.playOffsetY = PlayAreaTopY * this.captureGameRatio - this.gameOffsetY;
 
+  // Taller than the game: centred is only a first guess until the bars are measured.
+  this.gameAreaPending = !isFat && this.screenHeight - this.gameHeight > LetterboxTolerancePx;
+  this.gameAreaTries = 0;
+  this.gameAreaLastTop = -1;
+  this.gameAreaNextAt = 0;
+  this.gameAreaSince = 0;
+  this.placeGame();
+  makeDirs(this.devicePath + '/tmp');
+  makeDirs(this.devicePath + '/' + Config.statsDir);
+  this.measureGameArea();
+}
+
+/** Everything that follows `gameOffsetY`: the play square's top and the read-top row. */
+Tsum.prototype.placeGame = function() {
+  this.playOffsetY = PlayAreaTopY * this.captureGameRatio - this.gameOffsetY;
   logInfo(Log.Screen.Offset, {
     gameOffsetX: this.gameOffsetX,
     gameOffsetY: this.gameOffsetY,
     screenHeight: this.screenHeight,
     screenWidth: this.screenWidth,
+    measured: !this.gameAreaPending,
   });
   this.declareReadTop();
-  makeDirs(this.devicePath + '/tmp');
-  makeDirs(this.devicePath + '/' + Config.statsDir);
+}
+
+/** How long a tall screen keeps trying before it settles for the centred guess. */
+const GameAreaGiveUpMs = 90000;
+const GameAreaRetryMs = 1000;
+/** The confirming second look after a hit. */
+const GameAreaConfirmMs = 200;
+
+/**
+ * Measures the letterbox on a screen taller than the game (`measureGameTop`).
+ *
+ * Retried from `screenshot` until it lands, so a run started with the game not
+ * yet in front (Auto Launch) measures once it is. Two frames in a row must
+ * agree, so one odd frame cannot move every probe.
+ */
+Tsum.prototype.measureGameArea = function() {
+  if (!this.gameAreaPending || Date.now() < this.gameAreaNextAt) {
+    return;
+  }
+  const now = Date.now();
+  if (this.gameAreaTries === 0) {
+    this.gameAreaSince = now;
+  }
+  this.gameAreaTries++;
+  const top = measureGameTop(this.gameHeight);
+  const agreed = top >= 0 && this.gameAreaLastTop >= 0
+    && Math.abs(top - this.gameAreaLastTop) <= LetterboxTolerancePx;
+  if (agreed) {
+    this.gameAreaPending = false;
+    logInfo(Log.Screen.Detect, { top: top, tries: this.gameAreaTries });
+    if (top !== -this.gameOffsetY) {
+      this.gameOffsetY = -top;
+      this.placeGame();
+    }
+    return;
+  }
+  this.gameAreaLastTop = top;
+  this.gameAreaNextAt = now + (top >= 0 ? GameAreaConfirmMs : GameAreaRetryMs);
+  if (now - this.gameAreaSince >= GameAreaGiveUpMs) {
+    this.gameAreaPending = false;
+    logWarn(Log.Screen.DetectFailed, 'Could not measure the game area; keeping it centred',
+      { tries: this.gameAreaTries, gameOffsetY: this.gameOffsetY });
+  }
 }
 
 // Quality 100: no JPEG round-trip. This was 80 only because Robotmon captured
@@ -608,6 +668,7 @@ Tsum.prototype.init = function(detect) {
 // `pages:selftest` listed six otherwise-sound entries that only q80 lost.
 // The downscale itself is exact, so nothing else here changes.
 Tsum.prototype.screenshot = function() {
+  this.measureGameArea();
   return getScreenshotModify(
     0,
     0,

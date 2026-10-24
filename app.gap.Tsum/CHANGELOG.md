@@ -85,10 +85,12 @@ release note; they fold back in here when she ships.
 - Box Buying finds the Select Box in the Japanese game, where it can be the last of three boxes shown.
 - GAP Companion no longer asks for directions on loading or startup screens, or when the game restarts itself for an update.
 - Starting from GAP Companion no longer resets your settings to the defaults after a script update.
+- Long screens with uneven black bars (phones with a camera cutout) are recognised automatically, Auto Launch included; the Special Screen Ratio setting is gone.
 
 ### Changed
 
 - **6.0b1 opens the 6.0 beta**: Colorful Mickey (Set) moves from Alpha to Beta. Its Summary covers 6.0 since production 5.4, less what 5.0b5-b10 already shipped; 6.0a21 was never cut and its entries are filed here.
+- **Letterbox measured on every screen taller than 16:9** (`measureGameTop`, `Tsum.measureGameArea`): six columns, both bars, a reading kept only when the opposite edge is bar too, two frames in agreement; retried from `screenshot()` for up to 90 s so Auto Launch works. The old one-column walk up from the centre stopped at GAP's status line in the top bar (offset 252 for 343) or read a frame with no bar (0). The Special Screen Ratio setting and the sidecar's `specialScreenRatio` field are removed.
 
 - **`CODEMAP.md` is an index again** (36 KB from 93 KB): the per-file tables
   (source map, skills, tooling, what a change has to touch) moved to

@@ -340,7 +340,7 @@ function reportManifest(tsum: Tsum, id: string, at: Date,
  * name a product rather than a person.
  *
  * The geometry is the half that decides whether a frame can be replayed at all
- * -- `gameOffsetY` on a tall screen comes from a live detection and cannot be
+ * -- `gameOffsetY` on a tall screen is measured off a live screen and cannot be
  * recovered from a still. The sidecar beside the frame carries it too; it is
  * here as well so the manifest alone answers "what was this run playing on".
  */

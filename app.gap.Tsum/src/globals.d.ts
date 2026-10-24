@@ -1264,7 +1264,9 @@ interface TsumConfig {
 
 interface Tsum {
   // --- tsum.ts ---------------------------------------------------------
-  init(detect: boolean): void;
+  init(): void;
+  placeGame(): void;
+  measureGameArea(): void;
   screenshot(): NativeImage;
   playScreenshotSquare(): NativeImage;
   toResizeXY(x: number, y: number): Point;
