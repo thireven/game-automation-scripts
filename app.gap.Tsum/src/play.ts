@@ -370,9 +370,11 @@ const GameAwayPollMs = 500;
 /**
  * Away this long and the script brings the game back itself (Auto launch only),
  * then again at the same interval. Long enough not to fight a quick look at
- * another app.
+ * another app, and well under the host's 30 s stop for a game with no task: at
+ * 30 s the host stopped the run first, every time. A game whose process died
+ * is relaunched at once instead.
  */
-const GameAwayRelaunchMs = 30000;
+const GameAwayRelaunchMs = 15000;
 
 /** Whether the game has left the front, read at most once per `FrontCheckMs`. */
 Tsum.prototype.gameAway = function() {
@@ -387,8 +389,10 @@ Tsum.prototype.gameAway = function() {
 /**
  * Mid-round, the game is not in front. Hold the board, so nothing taps whatever
  * is showing, and wait for the game to come back -- bringing it back past
- * `GameAwayRelaunchMs`. It returns on its pause menu, which the play loop's held
- * turns press Continue on. The time away is taken off the round's clock.
+ * `GameAwayRelaunchMs`, or at once if it crashed (no process: it will not come
+ * back by itself). A backgrounded game returns on its pause menu, which the play
+ * loop's held turns press Continue on; a crashed one boots to its title. The
+ * time away is taken off the round's clock.
  */
 Tsum.prototype.awaitGameBack = function() {
   const leftAt = Date.now();
@@ -398,7 +402,10 @@ Tsum.prototype.awaitGameBack = function() {
   let relaunchAt = leftAt + GameAwayRelaunchMs;
   let relaunches = 0;
   while (this.isRunning && !this.gameInFront()) {
-    if (this.autoLaunch && Date.now() >= relaunchAt) {
+    // Only the first relaunch skips the wait, so a game that keeps crashing
+    // at launch is retried every `GameAwayRelaunchMs`, not back to back.
+    const crashed = relaunches === 0 && this.autoLaunch && !gameRunning(this.gameBuild());
+    if (this.autoLaunch && (Date.now() >= relaunchAt || crashed)) {
       relaunches++;
       logInfo(Log.Play.GameAwayRelaunch, 'The game is still not back; bringing it to the front',
         { awayMs: Date.now() - leftAt, relaunches: relaunches });
