@@ -45,6 +45,19 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.6]
+
+### Summary
+
+**Fixes**
+- Receiving mail one by one no longer restarts the game over and over on emulators with little free memory.
+
+### Fixed
+
+- **Mail one by one**: removed the low-memory restart (`MemAvailable` under
+  600 MB every 10 gifts). On emulators that never get above that, it restarted
+  the game every 10 gifts. The relaunch after a crash stays.
+
 ## [5.5]
 
 ### Summary
