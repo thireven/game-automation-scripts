@@ -45,6 +45,17 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b2]
+
+### Summary
+
+**Fixes**
+- Receiving mail one by one no longer restarts the game over and over on emulators with little free memory (merged up from 5.6).
+
+### Fixed
+
+- **Mail one by one**: the low-memory restart is removed (see 5.6).
+
 ## [6.0b1]
 
 ### Summary
