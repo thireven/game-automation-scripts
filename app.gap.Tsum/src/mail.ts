@@ -181,15 +181,6 @@ const ReceiveOneOpenSettleMs = 1500;
 const ReceiveOneDoneSettleMs = 2000;
 /** Times one run relaunches a game that died mid-mail before giving up. */
 const ReceiveOneMaxRelaunches = 3;
-/**
- * The game's memory grows with every gift, and on a small emulator the crash
- * follows the low-memory warning (2 min at 4 GB, 3 at 6 GB). So free memory is
- * read every few gifts and the game restarted before it runs that low.
- * Provisional: tune from the `gifts.receiveOne.freeMemory` lines in users' logs.
- */
-const ReceiveOneMemCheckGifts = 10;
-const ReceiveOneMinFreeMb = 600;
-
 /** Budget for the mailbox to arrive after its button, before the loop looks anyway. */
 const ReceiveOneMailOpenMs = 2000;
 
@@ -224,12 +215,6 @@ function isMailTsumCard(ts: Tsum, img: NativeImage): boolean {
   return MailTsumCardProbes.every((c, i) => isSameColor(c, read[i], 35));
 }
 
-/** The device's available memory in MB, or null when it cannot be read. */
-function memAvailableMb(): number | null {
-  const m = /^MemAvailable:\s+(\d+) kB/m.exec(readFile('/proc/meminfo'));
-  return m ? Math.round(Number(m[1]) / 1024) : null;
-}
-
 Tsum.prototype.taskReceiveOneItem = function() {
   if (roundInProgress()) {
     return;
@@ -253,7 +238,6 @@ Tsum.prototype.taskReceiveOneItem = function() {
   // is refilled by every gift that does get taken.
   let mailScrolls = 0;
   let relaunches = 0;
-  let giftsSinceMemCheck = 0;
   // From the friend page back into the mail, with the loop's state reset.
   const reopenMail = () => {
     receiveOneOpenMail(this);
@@ -415,20 +399,6 @@ Tsum.prototype.taskReceiveOneItem = function() {
       timeoutCounter = 0;
       if (this.claimAllWithoutCoins &&  isHeartWithoutCoins)
         receivedHeartWithoutCoins++;
-      // A restart stops and relaunches the game, so it needs Auto launch.
-      if (this.autoLaunch && ++giftsSinceMemCheck >= ReceiveOneMemCheckGifts) {
-        giftsSinceMemCheck = 0;
-        const freeMb = memAvailableMb();
-        logInfo(Log.Gifts.ReceiveOneFreeMemory, 'Free memory check', { freeMb: freeMb, minMb: ReceiveOneMinFreeMb });
-        if (freeMb !== null && freeMb < ReceiveOneMinFreeMb) {
-          logInfo(Log.Gifts.ReceiveOneLowMemory, 'Memory is low; restarting the game before it crashes',
-            { freeMb: freeMb, minMb: ReceiveOneMinFreeMb });
-          // Navigates to the friend page at both ends.
-          this.taskTsumAppRestart();
-          reopenMail();
-          continue;
-        }
-      }
     } else if (isTsumCard) {
       // The gift dialog's Close spot below lands mid-card and does nothing.
       logDebug(Log.Gifts.ReceiveOneTsumCard);
