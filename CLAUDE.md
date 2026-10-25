@@ -72,6 +72,16 @@ half of that in `findLargeTsums`, and about 30% of a single-pass page sweep's
 own time. A JIT engine runs this code ~10× faster but would save only a few
 percent, so a hot kernel moves to a host native rather than the engine changing.
 
+**Work for one tsum's skill stays inside that skill until it is proven
+harmless everywhere else.** If a new mechanism is added for one skill, any
+shared code it touches (play loop, `linkTsums`, scans, bubble taps,
+`skillCore`) runs it only while that skill is in play, behind a flag or check
+that is off for every other tsum. Make it general only after long runs on other
+tsums show no drop in coins. Why: 6.0a21's clearing ledger was built for
+Rapunzel+ but recorded on every drag for every tsum, nothing pruned it, and
+every long run lost coins hour by hour until restart (up to 75% by the end).
+Isolated, the same bug would have hurt only Rapunzel+.
+
 **This is a Windows checkout, so do file work with the Read/Edit/Write/Grep
 tools, not with `cat`, `sed`, heredocs or `grep` through Bash.** Those tools
 talk to the filesystem directly, with no shell quoting layer in between. Three
