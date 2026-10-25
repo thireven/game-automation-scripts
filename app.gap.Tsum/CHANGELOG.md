@@ -51,9 +51,14 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - When the game crashes mid-round, Auto launch now reopens it instead of the run stopping.
+- Long runs no longer earn fewer coins hour by hour (play slowed until the script restarted).
 
 ### Fixed
 
+- **Clearing ledger leak**: every drag's tsums were kept forever, since only
+  Rapunzel+'s look pruned them; each bubble tap and skill walked the whole list.
+  Skills per round fell from ~65 to ~10 over a run and coins by up to 75%.
+  Cleared spots are now dropped on every record.
 - **Game away mid-round**: a game with no process is relaunched at once, and the
   backgrounded-game relaunch moved from 30 s to 15 s. At 30 s the host's own
   30 s stop for a game with no task always fired first, so a crash ended the run.

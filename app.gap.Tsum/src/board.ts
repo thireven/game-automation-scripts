@@ -113,8 +113,19 @@ interface FluxSpot { x: number; y: number; freeAt: number; }
 
 var gFlux: FluxSpot[] = [];
 
+/**
+ * Forget spots that have cleared. Run on every record: only Rapunzel+'s look
+ * calls `fluxDrop`, so without this the ledger grew all session and every
+ * bubble tap and skill walked it, slowing play hour by hour.
+ */
+function fluxForget(): void {
+  const now = Date.now();
+  gFlux = gFlux.filter(function(s) { return s.freeAt > now; });
+}
+
 /** Record a released chain (board points, top-left corners, in link order). */
 function fluxNoteChain(path: Point[], releasedAt: number): void {
+  fluxForget();
   const cfg = BoardFluxConfig;
   const scale = gFever.active ? cfg.feverScale : 1;
   const half = Config.tsumWidth / 2;
@@ -129,6 +140,7 @@ function fluxNoteChain(path: Point[], releasedAt: number): void {
 
 /** Record spots (centres) that stay out until `freeAt`: a skill's own clear. */
 function fluxNoteSpots(centres: Point[], freeAt: number): void {
+  fluxForget();
   for (let i = 0; i < centres.length; i++) {
     gFlux.push({ x: centres[i].x, y: centres[i].y, freeAt: freeAt });
   }
@@ -181,8 +193,7 @@ function fluxFreeRun(path: Point[]): number {
  * Forgets the spots that have cleared.
  */
 function fluxDrop<T extends Point>(points: T[]): T[] {
-  const now = Date.now();
-  gFlux = gFlux.filter(function(s) { return s.freeAt > now; });
+  fluxForget();
   if (gFlux.length === 0) { return points; }
   const r = BoardFluxConfig.reach * Config.tsumWidth;
   const rSq = r * r;
