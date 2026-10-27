@@ -36,6 +36,8 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Skill.TiaraDream]: '[皇冠米妮] 泡泡顯示',
   [Log.Skill.TiaraPicked]: '[皇冠米妮] 點擊',
   [Log.Skill.TiaraUnsure]: '[皇冠米妮] 沒有禮物符合，停止',
+  [Log.Skill.TiaraCloudStayed]: '[皇冠米妮] 泡泡沒有消失，停止',
+  [Log.Skill.TiaraMissShot]: '[皇冠米妮] 已儲存失誤畫面',
   [Log.Skill.FormalBeastModeStart]: '[禮服野獸] 雙量表出現，維持平衡',
   [Log.Skill.FormalBeastModeEnd]: '[禮服野獸] 雙量表結束',
   [Log.Skill.ElsaDone]: '[加冕日艾莎] 冰凍時間結束',

@@ -1855,6 +1855,7 @@ interface Tsum {
   /** The sampled bubble template, or null if no bubble appeared in time. */
   tiaraWaitForDream(timeoutMs: number): number[] | null;
   tiaraPick(scan: TiaraScan): TiaraMatch | null;
+  tiaraSaveMissFrame(why: string): void;
   useTiaraMinniePlusSkill(): number;
 }
 

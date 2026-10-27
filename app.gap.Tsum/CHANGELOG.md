@@ -52,9 +52,17 @@ release note; they fold back in here when she ships.
 **Fixes**
 - When the game crashes mid-round, Auto launch now reopens it instead of the run stopping.
 - Long runs no longer earn fewer coins hour by hour (play slowed until the script restarted).
+- Tiara Minnie+ no longer stands still for 6-9 seconds when her skill trigger turns out to be false.
 
 ### Fixed
 
+- **Tiara Minnie+ idle after a false trigger**: 28 of 30 misses on a player's
+  device left the 2-to-6 count untouched, so no choice screen had come up, yet
+  each waited out the full 3 s bubble and 6 s choice windows. The bubble wait is
+  now 1 s (real ones read within 0.5 s), a cloud that has not cleared 2 s after
+  the read ends the attempt (`skill.tiara.cloudStayed`), and scanning stops 2 s
+  after it clears. A miss now saves a rate-limited screen (`skill.tiara.missShot`)
+  and `skill.tiara.unsure` logs the centres each scan named.
 - **Clearing ledger leak**: every drag's tsums were kept forever, since only
   Rapunzel+'s look pruned them; each bubble tap and skill walked the whole list.
   Skills per round fell from ~65 to ~10 over a run and coins by up to 75%.

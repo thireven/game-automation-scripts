@@ -39,6 +39,8 @@ var LogsEn = {
   [Log.Skill.TiaraDream]: '[Tiara] Bubble shows',
   [Log.Skill.TiaraPicked]: '[Tiara] Tapped',
   [Log.Skill.TiaraUnsure]: '[Tiara] No confident match, stopping',
+  [Log.Skill.TiaraCloudStayed]: '[Tiara] Bubble never cleared, stopping',
+  [Log.Skill.TiaraMissShot]: '[Tiara] Saved the screen of a miss',
   [Log.Skill.FormalBeastModeStart]: '[Formal Beast] Twin gauge up; levelling halves',
   [Log.Skill.FormalBeastModeEnd]: '[Formal Beast] Twin gauge gone',
   [Log.Skill.ElsaDone]: '[Coronation Elsa] Freeze window closed',

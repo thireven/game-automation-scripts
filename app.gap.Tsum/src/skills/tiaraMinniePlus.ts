@@ -242,9 +242,12 @@ var TiaraMinnieConfig = {
   // rather than spending ~15 screenshots polling for something that cannot have
   // happened yet.
   dreamLeadMs: 1500,
-  // Covers the lead plus a bubble arriving late. Only ever spent in full when
-  // the skill did not actually fire.
-  dreamWaitMs: 3000,
+  // How long after the lead to look for the bubble. Across 4,277 picks on a
+  // player's device (Oct 2026) every real bubble was read within 505ms of the
+  // lead; all ten first seen later than 1s were not the skill (the 2-to-6 count
+  // carried on as if they never happened) and cost ~8s of standing still each.
+  // Was 3000.
+  dreamWaitMs: 1000,
   // The bubble scales in over ~150ms and is gone about 750ms after it appears,
   // so this is the wait between first sighting and reading the present out of
   // it. It is a budget, not a sleep: tiaraWaitForDream reads once immediately
@@ -308,7 +311,23 @@ var TiaraMinnieConfig = {
   // makes the trim safe is coverageFloor, which was added after the wrong taps
   // described above and rejects every hand-over frame in all three recordings.
   choiceLeadMs: 400,
-  choiceWaitMs: 6000,
+  // Most time for the cloud to clear once the bubble is read. A real one is gone
+  // ~750ms after it appears; a cloud still there after this is something pale
+  // left on the board, not the bubble (8 such on the same device, each one
+  // waiting out the old 6s window with the count left untouched).
+  cloudGoneWaitMs: 2000,
+  // Most time to scan for presents once the cloud has cleared. They stop being
+  // tappable ~1150ms after it; successful picks were readable within 450ms
+  // (99th percentile), and the only slower ones landed as the round ended.
+  // These two replace a single 6000ms choiceWaitMs.
+  choiceScanMs: 2000,
+  // Full-resolution frames saved on a miss (tiaraSaveMissFrame): at most this
+  // many per reason per run, this far apart, so the next log drop shows the
+  // screen without filling storage.
+  missShotMax: 6,
+  missShotGapMs: 60000,
+  // Readable scans kept in the miss log's trail.
+  missTrailMax: 12,
   // Poll intervals for the two cloud waits and for the match loop.
   //
   // The game clock is stopped for the whole skill, not just the choice screen.
@@ -924,6 +943,7 @@ Tsum.prototype.tiaraWaitForDream = function(timeoutMs) {
   // the log. They want different fixes.
   if (!seen) {
     logInfo(Log.Skill.TiaraNoDream);
+    this.tiaraSaveMissFrame('noDream');
     return null;
   }
 
@@ -1028,16 +1048,16 @@ Tsum.prototype.tiaraWaitForDream = function(timeoutMs) {
 Tsum.prototype.tiaraPick = function(scan) {
   const cfg = TiaraMinnieConfig;
   const tpl = scan.tpl;
-  const deadline = Date.now() + cfg.choiceWaitMs;
   // A template with no cells scores every candidate 0, so no tap can ever clear
-  // the floor. Leave now rather than spend choiceWaitMs of full-resolution
+  // the floor. Leave now rather than spend the scan window of full-resolution
   // captures proving it.
   if (tpl.n <= 0) { return null; }
 
   // The presents only exist once the bubble has gone.
-  while (Date.now() < deadline) {
+  const cloudDeadline = Date.now() + cfg.cloudGoneWaitMs;
+  let gone = false;
+  while (Date.now() < cloudDeadline) {
     const img = this.tiaraCloudCapture();
-    let gone;
     try {
       gone = this.tiaraCloudFrac(img) < cfg.cloudMinFrac;
     } finally {
@@ -1046,7 +1066,13 @@ Tsum.prototype.tiaraPick = function(scan) {
     if (gone) { break; }
     this.sleep(cfg.pollMs);
   }
+  if (!gone) {
+    logInfo(Log.Skill.TiaraCloudStayed, { waitedMs: cfg.cloudGoneWaitMs });
+    this.tiaraSaveMissFrame('cloudStayed');
+    return null;
+  }
   this.sleep(cfg.choiceLeadMs);
+  const deadline = Date.now() + cfg.choiceScanMs;
 
   // The centre a scan proposed, and when. It is confirmed by a later scan that
   // names the same centre at least confirmGapMs afterwards -- a separation in
@@ -1060,6 +1086,9 @@ Tsum.prototype.tiaraPick = function(scan) {
   let readableAt = 0;
   let scans = 0;
   let scanCost = 0;
+  // The centre each readable scan named, for the miss log: a screen readable
+  // for seconds with no confirmation means two centres kept trading places.
+  const trail: string[] = [];
   while (Date.now() < deadline) {
     const scanStart = Date.now();
     const img = this.tiaraCapture();
@@ -1075,6 +1104,9 @@ Tsum.prototype.tiaraPick = function(scan) {
     if (m.coverage >= cfg.coverageFloor
         && m.score >= cfg.confidenceFloor && m.margin >= cfg.marginFloor) {
       if (readableAt === 0) { readableAt = now; }
+      if (trail.length < cfg.missTrailMax) {
+        trail.push(m.x + ',' + m.y + '@' + m.score.toFixed(2) + '/' + m.margin.toFixed(2));
+      }
       const sameAsCand = cand != null && cand.x === m.x && cand.y === m.y;
       // Confirmed: the same centre, seen again far enough later that the second
       // look could have disagreed.
@@ -1117,8 +1149,38 @@ Tsum.prototype.tiaraPick = function(scan) {
     scanCostMs: scanCost,
     everReadable: readableAt !== 0,
     readableMs: readableAt === 0 ? undefined : Date.now() - readableAt,
+    trail: trail.length > 0 ? trail.join(' ') : undefined,
   });
+  this.tiaraSaveMissFrame('unsure');
   return null;
+};
+
+// Per-reason count of miss frames saved this run, and when the last one was.
+let gTiaraMissShots: { [why: string]: number } = {};
+let gTiaraMissShotAt = 0;
+
+// Save the screen as it is when an activation is given up, so the next log drop
+// shows what the script was looking at. Each reason has its own budget: the
+// end-of-round misses are the common kind and must not use up the rest.
+Tsum.prototype.tiaraSaveMissFrame = function(why) {
+  const cfg = TiaraMinnieConfig;
+  const shots = gTiaraMissShots[why] || 0;
+  if (shots >= cfg.missShotMax || Date.now() - gTiaraMissShotAt < cfg.missShotGapMs) {
+    return;
+  }
+  gTiaraMissShots[why] = shots + 1;
+  gTiaraMissShotAt = Date.now();
+  const path = this.devicePath + '/tmp/tiara-' + why + '_' + Date.now() + '.png';
+  const img = this.dialogScreenshot(this.originScreenWidth, this.originScreenHeight);
+  try {
+    saveImage(img, path);
+    logInfo(Log.Skill.TiaraMissShot, { why: why, path: path });
+  } catch (e) {
+    logWarn(Log.Dialog.ScreenSaveFailed, 'Could not save the debug screenshot',
+      { path: path, errorText: '' + e });
+  } finally {
+    releaseImage(img);
+  }
 };
 
 // One bubble, one pick, per activation.
@@ -1142,8 +1204,8 @@ Tsum.prototype.useTiaraMinniePlusSkill = function() {
   });
   // Compiled once and reused by every candidate of every scan, along with the
   // pixel list those cells turn into.
-  // tiaraPick logs tiaraUnsure itself, with the scan counts and timings that
-  // say whether it ran out of window or never saw a readable screen.
+  // tiaraPick logs its own misses: tiaraCloudStayed when the cloud never
+  // cleared, tiaraUnsure (with scan counts and timings) when no tap was safe.
   const pick = this.tiaraPick(tiaraCompileScan(tiaraCompileTemplate(template, cfg.grid)));
   if (pick == null) { return 0; }
   // The timings are in the ordinary log, not behind `debug`, because what this

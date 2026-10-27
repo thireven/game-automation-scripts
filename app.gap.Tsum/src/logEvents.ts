@@ -249,8 +249,12 @@ namespace Log {
     StillRunning          = 'skill.stillRunning',
     TiaraBubbleRead       = 'skill.tiara.bubbleRead',
     TiaraBusy             = 'skill.tiara.busy',
+    /** The cloud never cleared after the bubble read: not a real bubble. */
+    TiaraCloudStayed      = 'skill.tiara.cloudStayed',
     TiaraDimDream         = 'skill.tiara.dimDream',
     TiaraDream            = 'skill.tiara.dream',
+    /** A screen saved for a missed activation; `path` is on the device. */
+    TiaraMissShot         = 'skill.tiara.missShot',
     TiaraNoDream          = 'skill.tiara.noDream',
     TiaraPicked           = 'skill.tiara.picked',
     TiaraSettled          = 'skill.tiara.settled',
