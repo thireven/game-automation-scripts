@@ -47,6 +47,11 @@ interface ListSample {
   threshold: number;
   /** How many of the points must change before the list has moved. */
   minMoved: number;
+  /**
+   * When set, `dragList` also re-reads these points this far apart until two
+   * reads agree, so a list still bouncing at an end is not read as moved.
+   */
+  pollMs?: number;
 }
 
 /** A BGRA colour sample as returned by the image/colour APIs. */

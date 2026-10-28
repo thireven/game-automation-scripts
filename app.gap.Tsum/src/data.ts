@@ -2684,7 +2684,13 @@ var FriendListSample = {
   /** Total channel movement at one point that counts as a change. */
   threshold: 40,
   /** How many of the points must change before the list has moved. */
-  minMoved: 8
+  minMoved: 8,
+  /**
+   * At the bottom the view is mostly plain blue, so `ScreenSettle`'s grid sees
+   * 2-8 of its 60 points move during the ~310ms bounce and can call it still;
+   * a drag then read as moved forever (debug/heart_sending/keeps_dragging.gif).
+   */
+  pollMs: 100
 } satisfies ListSample;
 
 // The two ends of the ranking, so a drag that changed nothing is only taken as

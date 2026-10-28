@@ -952,13 +952,25 @@ Tsum.prototype.dragList = function(x, path, settleMs, sample, leadMs) {
     }
   }
 
-  let before: Color[];
-  const first = this.screenshot();
-  try {
-    before = this.getColors(first, points);
-  } finally {
-    releaseImage(first);
-  }
+  const read = (): Color[] => {
+    const img = this.screenshot();
+    try {
+      return this.getColors(img, points);
+    } finally {
+      releaseImage(img);
+    }
+  };
+  const changed = (a: Color[], b: Color[]): number => {
+    let n = 0;
+    for (let i = 0; i < a.length; i++) {
+      if (absColor(a[i], b[i]) > sample.threshold) {
+        n++;
+      }
+    }
+    return n;
+  };
+
+  const before = read();
 
   const last = path.length - 1;
   this.tapDown({x: x, y: path[0]}, 50);
@@ -974,19 +986,22 @@ Tsum.prototype.dragList = function(x, path, settleMs, sample, leadMs) {
   const lead = leadMs === undefined ? ScreenSettle.leadMs : leadMs;
   this.settleScreen(settleMs - lead, lead);
 
-  let moved = 0;
-  const second = this.screenshot();
-  try {
-    const after = this.getColors(second, points);
-    for (let i = 0; i < after.length; i++) {
-      if (absColor(before[i], after[i]) > sample.threshold) {
-        moved++;
+  let after = read();
+  if (sample.pollMs !== undefined) {
+    // The settle's coarse grid can call a list still mid-bounce, so wait until
+    // two reads of the list's own points agree. See `ListSample.pollMs`.
+    const startedAt = Date.now();
+    while (this.isRunning && Date.now() - startedAt < settleMs) {
+      this.sleep(sample.pollMs);
+      const next = read();
+      const still = changed(after, next) < sample.minMoved;
+      after = next;
+      if (still) {
+        break;
       }
     }
-  } finally {
-    releaseImage(second);
   }
-  return moved;
+  return changed(before, after);
 }
 
 Tsum.prototype.exitUnknownPage = function() {
