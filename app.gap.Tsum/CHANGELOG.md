@@ -45,6 +45,21 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b4]
+
+### Summary
+
+**Fixes**
+- Sending hearts no longer keeps dragging at the bottom of the friend list.
+
+### Fixed
+
+- **Heart list end read as moving**: the settle after each drag often returned
+  on its first poll while the list was still bouncing back (most of the view at
+  the bottom is plain blue), so every drag there read 14-28 points moved and
+  the sweep ran out its time. The friend list now also waits until two reads of
+  its own sample agree (`FriendListSample.pollMs`).
+
 ## [6.0b3]
 
 ### Summary
