@@ -170,7 +170,7 @@ older build over a newer one, so leaving it means uninstalling first.
 
 Installing the app
 ------------------
-"Download & install the latest APK" fetches the newest General Automation
+"Install the latest APK" fetches the newest General Automation
 Platform release from GitHub, picks the build for your device, and installs it.
 The download is kept in the "apk" folder next to this README.
 
