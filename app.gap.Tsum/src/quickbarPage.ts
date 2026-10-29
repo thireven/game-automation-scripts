@@ -391,10 +391,11 @@ function qbSetEnabled(enabled: boolean): void {
         if (button.classList.contains('qb-copy-share')) {
             continue;
         }
-        // Unlock and Stop after this round act on a run, so they also need one.
+        // Unlock, Stop after this round and Time out act on a run, so they also need one.
         button.disabled = !enabled
             || ((button.classList.contains('qb-unlock-now')
-                || button.classList.contains('qb-wrap-up')) && !qbActive);
+                || button.classList.contains('qb-wrap-up')
+                || button.classList.contains('qb-time-out')) && !qbActive);
     }
 }
 
@@ -987,6 +988,36 @@ function onQuickBarWrapUp(answer: string): void {
 }
 
 /**
+ * Time out (`coastThisRound`, src/index.ts): the round in progress stops being
+ * played and runs out on the game's timer, unrecorded. The engine banners a
+ * success; only "no round" is said here.
+ */
+function qbTimeOut(): void {
+    var bridge = qbBridge();
+    if (!qbActive || !qbLive || bridge === undefined) {
+        return;
+    }
+    if (!qbBusyStart('.qb-time-out', function () { onQuickBarTimeOut('no answer'); })) {
+        return;
+    }
+    bridge.runScriptCallback('typeof coastThisRound === "function" ? coastThisRound() : "no script"',
+        'onQuickBarTimeOut');
+}
+
+/** The engine's answer to `qbTimeOut`. */
+// noinspection JSUnusedGlobalSymbols
+function onQuickBarTimeOut(answer: string): void {
+    if (!qbBusyEnd('.qb-time-out')) {
+        return;
+    }
+    var said = String(answer);
+    qbLogInfo(Log.QuickBar.CoastAsked, 'Time out pressed on the Quick Bar', {answer: said});
+    if (said === 'no round') {
+        qbBanner(i18nText(UiText.QbTimeOutNoRound));
+    }
+}
+
+/**
  * Asks the settings page for the share code -- it owns the format. The store is
  * flushed first because that is what the code is built from; the answer comes
  * back through `onGapMessage`.
@@ -1318,6 +1349,10 @@ function qbBind(): void {
     var wrapUp = document.querySelector('.qb-wrap-up');
     if (wrapUp !== null) {
         wrapUp.addEventListener('click', qbWrapUp);
+    }
+    var timeOut = document.querySelector('.qb-time-out');
+    if (timeOut !== null) {
+        timeOut.addEventListener('click', qbTimeOut);
     }
     var copyShare = document.querySelector('.qb-copy-share');
     if (copyShare !== null) {

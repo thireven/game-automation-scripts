@@ -793,6 +793,10 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // Whatever happens next is not this walk. A round the pre-round screen
     // already opened stays open and is closed by the pass that finds the board.
     this.openingRound = false;
+    // A Time out pressed on the walk in has no round left to apply to.
+    if (this.roundStartedAt === 0) {
+      this.coastAsked = false;
+    }
     if (this.yieldAsked) {
       logInfo(Log.Unlock.NowYielded, { task: 'playRound', stage: 'navigating' });
     }
@@ -843,6 +847,13 @@ Tsum.prototype.taskPlayGameQuick = function() {
   let drawnChain: BoardPoint[] | null = null;
   let deadScans = 0;
   while(this.isRunning) {
+    // Time out (`coastThisRound`, src/index.ts): the same coast as the cap's,
+    // asked for by hand. Taken first, so the cap cannot then stop the run.
+    if (coastStartedAt === 0 && this.coastAsked) {
+      logInfo(Log.Play.RoundCoastStarted, { ranMs: Date.now() - this.roundStartedAt });
+      coastStartedAt = Date.now();
+      nextCoastBeatAt = coastStartedAt + RoundCoastHeartbeatMs;
+    }
     // The Max Round Duration cap. Read off `ts` each turn, which is what lets a
     // Quick Bar change land at once, and measured from `roundStartedAt` -- the
     // board coming up, not the walk in.
@@ -1105,6 +1116,13 @@ Tsum.prototype.taskPlayGameQuick = function() {
       deadScans = 0;
     }
     this.runTimes++;
+  }
+  // A round left to time out was not played in full: unstamping its end is what
+  // has the clock below and `finishRoundStats` drop it, as for an abandoned one.
+  if (this.coastAsked) {
+    this.coastAsked = false;
+    this.roundEndedAt = 0;
+    logInfo(Log.Play.RoundStatsDropped, { reason: 'timeOut' });
   }
   // Captured first: finishRoundStats closes the round by zeroing both, and this
   // is the one figure `round.end` must carry even when it read nothing.

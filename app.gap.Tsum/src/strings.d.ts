@@ -481,6 +481,9 @@ declare const enum UiText {
   QbThen = 'qb.then',
   /** Stop after this round: a run-time toggle, not a setting. */
   QbStopAfterRound = 'qb.stopAfterRound',
+  /** Time out: stop playing this round and let it run out, unrecorded. */
+  QbTimeOut = 'qb.timeOut',
+  QbTimeOutNoRound = 'qb.timeOutNoRound',
   QbSendHearts = 'qb.sendHearts',
   QbReceiveOneByOne = 'qb.receiveOneByOne',
   QbUnlockNow = 'qb.unlockNow',

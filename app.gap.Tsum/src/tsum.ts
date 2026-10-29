@@ -205,6 +205,12 @@ class Tsum {
    */
   wrapUpAsked: boolean;
   /**
+   * "Time out" was pressed for the round in progress (`coastThisRound`,
+   * src/index.ts): the play loop stops playing and waits for the game's timer,
+   * and the round's stats are dropped. Run-time only; cleared at the round's tail.
+   */
+  coastAsked: boolean;
+  /**
    * When the next round may start, epoch ms; 0 when nothing is waiting.
    *
    * An instant rather than a countdown, so nothing has to tick it down: the
@@ -485,6 +491,7 @@ class Tsum {
     this.stopAfterAction = StopAfterAction.AutoPlayOff;
     this.gamesTowardStop = 0;
     this.wrapUpAsked = false;
+    this.coastAsked = false;
     // A new world per start(), so pressing Play always plays now rather than
     // resuming a wait the previous run was in.
     this.nextRoundAt = 0;

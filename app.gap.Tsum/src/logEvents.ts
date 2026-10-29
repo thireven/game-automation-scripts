@@ -187,6 +187,10 @@ namespace Log {
     RoundDelayStarted     = 'play.roundDelayStarted',
     RoundDelayWaiting     = 'play.roundDelayWaiting',
     RoundCoasting         = 'play.roundCoasting',
+    /** Time out: asked for, the loop coasting, and the stats it dropped. */
+    CoastAsked            = 'play.coastAsked',
+    RoundCoastStarted     = 'play.roundCoastStarted',
+    RoundStatsDropped     = 'play.roundStatsDropped',
     RoundTimeUp           = 'play.roundTimeUp',
     /** "Stop after this round": armed, cancelled, and the stop it made. */
     WrapUpArmed           = 'play.wrapUpArmed',
@@ -598,6 +602,7 @@ namespace Log {
     PresetApplied  = 'quickBar.presetApplied',
     UnlockNowAsked = 'quickBar.unlockNowAsked',
     WrapUpAsked    = 'quickBar.wrapUpAsked',
+    CoastAsked     = 'quickBar.coastAsked',
     CopyShareAsked = 'quickBar.copyShareAsked',
     /** The readout chip was tapped: the run's figures went to the clipboard. */
     StatsCopied    = 'quickBar.statsCopied',

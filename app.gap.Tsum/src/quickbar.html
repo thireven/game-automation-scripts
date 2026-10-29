@@ -59,6 +59,7 @@
           settings, and have no `data-key` either;
         * `.qb-wrap-up` (Stop after this round) is a `.qb-toggle` with no
           `data-key`: a run-time flag the engine reports, never stored;
+        * `.qb-time-out` is an action with no `data-key`, live only in a run;
         * `.qb-page-toggle` flips `<body data-page>` between `1` and `2`, which
           is what the CSS shows a `.qb-page[data-page]` from. It sits in
           `.qb-side`, which with `.qb-readout-toggle` is the one patch
@@ -292,9 +293,14 @@
           <!--
             Stop after games: how many rounds (0 = off), then what happens.
             The action chip draws its option's short name, as Bubble does.
-            `.qb-wrap-up` before them is Stop after this round, for this run only.
+            `.qb-wrap-up` before them is Stop after this round, for this run only,
+            and `.qb-time-out` before that stops playing the round in progress
+            and lets it run out, unrecorded (`coastThisRound`).
           -->
           <div class="qb-cluster">
+            <div class="qb-cell">
+              <button class="qb-action qb-time-out" type="button" data-i18n="qb.timeOut">Time out</button>
+            </div>
             <div class="qb-cell">
               <button class="qb-toggle qb-wrap-up" type="button" role="switch" aria-checked="false" data-i18n="qb.stopAfterRound">Last round</button>
             </div>

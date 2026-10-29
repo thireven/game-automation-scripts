@@ -49,6 +49,11 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*Quick Bar*
+- Time out button on page two: stops playing the current round and lets it run out, without recording its stats.
+
 **Fixes**
 - Sending hearts no longer keeps dragging at the bottom of the friend list.
 - Tiara Minnie+ no longer stands still for 6-9 seconds when her skill trigger turns out to be false.
@@ -67,6 +72,13 @@ release note; they fold back in here when she ships.
   the bottom is plain blue), so every drag there read 14-28 points moved and
   the sweep ran out its time. The friend list now also waits until two reads of
   its own sample agree (`FriendListSample.pollMs`).
+
+### Added
+
+- **Time out** (`coastThisRound`): sets `coastAsked`, which the play loop
+  takes into the Max Round Duration coast. At the tail the round's end is
+  unstamped, so `finishRoundStats` and the run clock drop it
+  (`play.roundStatsDropped`); `round.end` still goes out, with nulls.
 
 ## [6.0b3]
 

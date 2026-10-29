@@ -948,6 +948,29 @@ function roundDelaySkip(): string {
   return 'skipped ' + Math.round(left / 1000) + 's';
 }
 
+/**
+ * "Time out": stop playing the round in progress and let the game's timer end
+ * it. The run then carries on as normal, but the round writes no stats row and
+ * adds nothing to the Quick Bar's averages. A global the Quick Bar reaches by
+ * name; returns a short status for the host's log.
+ */
+// noinspection JSUnusedGlobalSymbols
+function coastThisRound(): string {
+  if (!gRunActive || ts === undefined) {
+    return 'no run';
+  }
+  if (!quickBarInRound(ts)) {
+    return 'no round';
+  }
+  if (ts.coastAsked) {
+    return 'already coasting';
+  }
+  ts.coastAsked = true;
+  logInfo(Log.Play.CoastAsked);
+  ts.banner('Letting this round time out', 4000);
+  return 'coasting';
+}
+
 /** Name of the one-shot job `stopAfterThisRound` queues for between rounds. */
 const WrapUpNowTask = 'wrapUpNow';
 
