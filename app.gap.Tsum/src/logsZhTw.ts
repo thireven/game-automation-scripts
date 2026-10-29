@@ -69,7 +69,6 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Play.RoundCoasting]: '仍在等待本局結束',
   [Log.Play.CoastAsked]: '讓本局時間耗盡',
   [Log.Play.RoundCoastStarted]: '停止遊玩，等待本局結束',
-  [Log.Play.RoundStatsDropped]: '本局未完整遊玩，不記錄統計',
   [Log.Tsums.Detected]: '從設定頁讀取使用中的 Tsum',
   [Log.Tsums.Identified]: '使用中的 Tsum',
   [Log.Tsums.Unidentified]: '無法辨識 Tsum，本局不記錄',

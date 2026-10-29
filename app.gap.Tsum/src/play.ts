@@ -687,6 +687,11 @@ Tsum.prototype.wrapUpIfAsked = function(at: string) {
   return true;
 }
 
+/** Where this round's duration ends: the Time out press, else the game over. */
+Tsum.prototype.roundPlayedUntil = function() {
+  return this.roundCoastedAt !== 0 ? this.roundCoastedAt : this.roundEndedAt;
+}
+
 Tsum.prototype.roundDelayRemainingMs = function() {
   const left = this.nextRoundAt - Date.now();
   return left > 0 ? left : 0;
@@ -852,6 +857,9 @@ Tsum.prototype.taskPlayGameQuick = function() {
     if (coastStartedAt === 0 && this.coastAsked) {
       logInfo(Log.Play.RoundCoastStarted, { ranMs: Date.now() - this.roundStartedAt });
       coastStartedAt = Date.now();
+      // Where the round's duration stops: the coast is not play, so it must not
+      // dilute coins per second.
+      this.roundCoastedAt = coastStartedAt;
       nextCoastBeatAt = coastStartedAt + RoundCoastHeartbeatMs;
     }
     // The Max Round Duration cap. Read off `ts` each turn, which is what lets a
@@ -1117,17 +1125,11 @@ Tsum.prototype.taskPlayGameQuick = function() {
     }
     this.runTimes++;
   }
-  // A round left to time out was not played in full: unstamping its end is what
-  // has the clock below and `finishRoundStats` drop it, as for an abandoned one.
-  if (this.coastAsked) {
-    this.coastAsked = false;
-    this.roundEndedAt = 0;
-    logInfo(Log.Play.RoundStatsDropped, { reason: 'timeOut' });
-  }
+  this.coastAsked = false;
   // Captured first: finishRoundStats closes the round by zeroing both, and this
   // is the one figure `round.end` must carry even when it read nothing.
   const roundSeconds = this.roundStartedAt && this.roundEndedAt
-    ? Math.round((this.roundEndedAt - this.roundStartedAt) / 1000)
+    ? Math.round((this.roundPlayedUntil() - this.roundStartedAt) / 1000)
     : 0;
   if (roundSeconds > 0) {
     this.runClock.rounds++;

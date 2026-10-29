@@ -2074,6 +2074,7 @@ Tsum.prototype.finishRoundStats = function() {
   if (!this.trackRoundStats || !startedAt || !endedAt) {
     this.roundStartedAt = 0;
     this.roundEndedAt = 0;
+    this.roundCoastedAt = 0;
     return;
   }
   try {
@@ -2127,7 +2128,7 @@ Tsum.prototype.finishRoundStats = function() {
     if (missing.length > 0) {
       this.saveStatsDebugShot(missing.join('+'));
     }
-    const seconds = Math.round((endedAt - startedAt) / 1000);
+    const seconds = Math.round((this.roundPlayedUntil() - startedAt) / 1000);
     // What the caller's `round.end` carries. Set before the write, so a write
     // that throws still leaves the figures that were read.
     this.lastRound = {
@@ -2177,6 +2178,7 @@ Tsum.prototype.finishRoundStats = function() {
     // the friend page can add to a figure that has already been written.
     this.roundStartedAt = 0;
     this.roundEndedAt = 0;
+    this.roundCoastedAt = 0;
   }
 };
 

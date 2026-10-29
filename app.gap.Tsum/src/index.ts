@@ -950,8 +950,8 @@ function roundDelaySkip(): string {
 
 /**
  * "Time out": stop playing the round in progress and let the game's timer end
- * it. The run then carries on as normal, but the round writes no stats row and
- * adds nothing to the Quick Bar's averages. A global the Quick Bar reaches by
+ * it. Its stats are recorded as normal, but its duration stops at the press, so
+ * the coast does not lower coins per second. A global the Quick Bar reaches by
  * name; returns a short status for the host's log.
  */
 // noinspection JSUnusedGlobalSymbols

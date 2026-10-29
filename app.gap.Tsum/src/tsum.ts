@@ -207,7 +207,8 @@ class Tsum {
   /**
    * "Time out" was pressed for the round in progress (`coastThisRound`,
    * src/index.ts): the play loop stops playing and waits for the game's timer,
-   * and the round's stats are dropped. Run-time only; cleared at the round's tail.
+   * and the round's duration stops there (`roundCoastedAt`). Run-time only;
+   * cleared at the round's tail.
    */
   coastAsked: boolean;
   /**
@@ -343,6 +344,8 @@ class Tsum {
    */
   boardHeld: boolean;
   roundEndedAt: number;
+  /** When Time out stopped play this round, epoch ms; 0 if it did not. Ends the round's duration. */
+  roundCoastedAt: number;
   roundBaseCoins: number;
   /**
    * The tally's button row as the last look at it read it, written by
@@ -552,6 +555,7 @@ class Tsum {
     this.pausedInRound = false;
     this.boardHeld = false;
     this.roundEndedAt = 0;
+    this.roundCoastedAt = 0;
     this.roundBaseCoins = -1;
     this.tallyRow = {buttons: false, medals: false, play: false};
     this.tallySkipTapAt = 0;

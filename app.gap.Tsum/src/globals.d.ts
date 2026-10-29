@@ -1475,6 +1475,7 @@ interface Tsum {
   awaitGameBack(): void;
   /** What is left of the between-rounds delay, in ms; 0 when none is running. */
   roundDelayRemainingMs(): number;
+  roundPlayedUntil(): number;
   /**
    * At a round's tail: ends the run if "Stop after this round" is armed, else
    * counts the round toward "Stop after games". True if either fired.

@@ -187,10 +187,9 @@ namespace Log {
     RoundDelayStarted     = 'play.roundDelayStarted',
     RoundDelayWaiting     = 'play.roundDelayWaiting',
     RoundCoasting         = 'play.roundCoasting',
-    /** Time out: asked for, the loop coasting, and the stats it dropped. */
+    /** Time out: asked for, and the loop coasting. */
     CoastAsked            = 'play.coastAsked',
     RoundCoastStarted     = 'play.roundCoastStarted',
-    RoundStatsDropped     = 'play.roundStatsDropped',
     RoundTimeUp           = 'play.roundTimeUp',
     /** "Stop after this round": armed, cancelled, and the stop it made. */
     WrapUpArmed           = 'play.wrapUpArmed',

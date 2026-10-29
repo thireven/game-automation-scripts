@@ -989,7 +989,7 @@ function onQuickBarWrapUp(answer: string): void {
 
 /**
  * Time out (`coastThisRound`, src/index.ts): the round in progress stops being
- * played and runs out on the game's timer, unrecorded. The engine banners a
+ * played and runs out on the game's timer; its duration stops at the press. The engine banners a
  * success; only "no round" is said here.
  */
 function qbTimeOut(): void {

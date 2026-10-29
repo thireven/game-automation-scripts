@@ -52,7 +52,7 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Quick Bar*
-- Time out button on page two: stops playing the current round and lets it run out, without recording its stats.
+- Time out button on page two: stops playing the current round and lets it run out; its time stops counting at the tap, so coins per second stay fair.
 
 **Fixes**
 - Sending hearts no longer keeps dragging at the bottom of the friend list.
@@ -76,9 +76,9 @@ release note; they fold back in here when she ships.
 ### Added
 
 - **Time out** (`coastThisRound`): sets `coastAsked`, which the play loop
-  takes into the Max Round Duration coast. At the tail the round's end is
-  unstamped, so `finishRoundStats` and the run clock drop it
-  (`play.roundStatsDropped`); `round.end` still goes out, with nulls.
+  takes into the Max Round Duration coast. `roundCoastedAt` stamps the press,
+  and `roundPlayedUntil` ends `duration_seconds`, the run clock and
+  `round.end`'s seconds there; the rest of the row is recorded as normal.
 
 ## [6.0b3]
 
