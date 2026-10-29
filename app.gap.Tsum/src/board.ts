@@ -904,11 +904,10 @@ Tsum.prototype.scanBoardQuick = function() {
         // the first choice any more.
         //
         // The library column is HSV, so it converts here -- clusters live on
-        // the chroma plane. It answers null for the file shipping today: that
-        // column was derived through the old blur ordering, so
-        // `MyTsumBoard.tag` no longer matches it and the loader drops it. The
-        // button sample needs no conversion, `sampleMyTsumColor` already
-        // building it the way this scan built its clusters.
+        // the chroma plane. It answers null only for a tsum with no colour or
+        // a library whose `board=` tag is not `MyTsumBoard.tag`. The button
+        // sample needs no conversion, `sampleMyTsumColor` already building it
+        // the way this scan built its clusters.
         const known = myTsumBoardColor(this.myTsum);
         this.myTsumColor = known ? chromaFeature(known) : this.sampleMyTsumColor();
         logDebug(Log.Board.MyTsumColor, {
