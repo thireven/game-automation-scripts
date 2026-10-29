@@ -45,15 +45,29 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0b4]
+## [6.0b5]
 
 ### Summary
 
 **Additions**
 
 *Quick Bar*
-- Time out button on page two: stops playing the current round and lets it run out; its time stops counting at the tap, so coins per second stay fair.
-- Time out and Last round can now be tapped while the script is running, not only when paused. Both have moved to the end of page two's bottom row.
+- Time out button on page two: stops playing the current round and lets it run out; its time stops counting at the tap, so coins per second stay fair. Works while the script is running.
+- Last round can now be tapped while the script is running, not only when paused. It and Time out sit at the end of page two's bottom row.
+
+### Added
+
+- **Time out** (`coastThisRound`): sets `coastAsked`, which the play loop
+  takes into the Max Round Duration coast. `roundCoastedAt` stamps the press,
+  and `roundPlayedUntil` ends `duration_seconds`, the run clock and
+  `round.end`'s seconds there; the rest of the row is recorded as normal.
+- **Time out and Last round live mid-run**: `.qb-time-out` and `.qb-wrap-up`
+  moved beside the side column and `qbNameHotspot` widens the host rect over
+  them on page two; they are enabled whenever a run is active.
+
+## [6.0b4]
+
+### Summary
 
 **Fixes**
 - Sending hearts no longer keeps dragging at the bottom of the friend list.
@@ -73,16 +87,6 @@ release note; they fold back in here when she ships.
   the bottom is plain blue), so every drag there read 14-28 points moved and
   the sweep ran out its time. The friend list now also waits until two reads of
   its own sample agree (`FriendListSample.pollMs`).
-
-### Added
-
-- **Time out** (`coastThisRound`): sets `coastAsked`, which the play loop
-  takes into the Max Round Duration coast. `roundCoastedAt` stamps the press,
-  and `roundPlayedUntil` ends `duration_seconds`, the run clock and
-  `round.end`'s seconds there; the rest of the row is recorded as normal.
-- **Time out and Last round live mid-run**: `.qb-time-out` and `.qb-wrap-up`
-  moved beside the side column and `qbNameHotspot` widens the host rect over
-  them on page two; they are enabled whenever a run is active.
 
 ## [6.0b3]
 
