@@ -53,7 +53,7 @@ release note; they fold back in here when she ships.
 
 *Quick Bar*
 - Time out button on page two: stops playing the current round and lets it run out; its time stops counting at the tap, so coins per second stay fair.
-- Last round can now be tapped while the script is running, not only when paused. It has moved to the end of page two's bottom row.
+- Time out and Last round can now be tapped while the script is running, not only when paused. Both have moved to the end of page two's bottom row.
 
 **Fixes**
 - Sending hearts no longer keeps dragging at the bottom of the friend list.
@@ -80,9 +80,9 @@ release note; they fold back in here when she ships.
   takes into the Max Round Duration coast. `roundCoastedAt` stamps the press,
   and `roundPlayedUntil` ends `duration_seconds`, the run clock and
   `round.end`'s seconds there; the rest of the row is recorded as normal.
-- **Last round live mid-run**: `.qb-wrap-up` moved beside the side column and
-  `qbNameHotspot` widens the host rect over it on page two; it is enabled
-  whenever a run is active.
+- **Time out and Last round live mid-run**: `.qb-time-out` and `.qb-wrap-up`
+  moved beside the side column and `qbNameHotspot` widens the host rect over
+  them on page two; they are enabled whenever a run is active.
 
 ## [6.0b3]
 

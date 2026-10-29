@@ -391,15 +391,14 @@ function qbSetEnabled(enabled: boolean): void {
         if (button.classList.contains('qb-copy-share')) {
             continue;
         }
-        // Stop after this round only needs a run, paused or not (`qbNameHotspot`).
-        if (button.classList.contains('qb-wrap-up')) {
+        // Stop after this round and Time out only need a run, paused or not (`qbNameHotspot`).
+        if (button.classList.contains('qb-wrap-up') || button.classList.contains('qb-time-out')) {
             button.disabled = !qbActive;
             continue;
         }
-        // Unlock and Time out act on a run, so they also need one.
+        // Unlock acts on a run, so it also needs one.
         button.disabled = !enabled
-            || ((button.classList.contains('qb-unlock-now')
-                || button.classList.contains('qb-time-out')) && !qbActive);
+            || (button.classList.contains('qb-unlock-now') && !qbActive);
     }
 }
 
@@ -410,7 +409,7 @@ var qbHotspotSent = '';
  * Tells the host where the side column is, so the page toggle stays pressable
  * mid-run -- and the readout chip beside it, in the same rect: its dots flip the
  * table, and the table itself copies the figures. On page two the rect also
- * reaches left over Copy code and Last round. The host takes one rect and drops the script's
+ * reaches left over Copy code, Time out and Last round. The host takes one rect and drops the script's
  * own taps inside it, so the wider one is only named while that page is up.
  *
  * The strip's window is untouchable while the script runs -- a touchable
@@ -443,7 +442,7 @@ function qbNameHotspot(): void {
     var leftEdge = box.left;
     var topEdge = box.top;
     if (document.body.getAttribute('data-page') === '2') {
-        var extras = document.querySelectorAll('.qb-copy-share, .qb-wrap-up');
+        var extras = document.querySelectorAll('.qb-copy-share, .qb-time-out, .qb-wrap-up');
         for (var i = 0; i < extras.length; i++) {
             var cbox = extras[i].getBoundingClientRect();
             leftEdge = Math.min(leftEdge, cbox.left);
@@ -1000,7 +999,7 @@ function onQuickBarWrapUp(answer: string): void {
  */
 function qbTimeOut(): void {
     var bridge = qbBridge();
-    if (!qbActive || !qbLive || bridge === undefined) {
+    if (!qbActive || bridge === undefined) {
         return;
     }
     if (!qbBusyStart('.qb-time-out', function () { onQuickBarTimeOut('no answer'); })) {

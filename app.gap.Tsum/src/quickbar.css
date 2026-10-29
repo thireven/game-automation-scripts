@@ -846,7 +846,7 @@ body[data-dense="true"] .qb-stat-rounds .qb-stat-value { font-size: calc(9 * var
  * this". quickbarPage.ts sets each button's `disabled` from the same fact, so
  * the control refuses the tap as well as looking like it would. The side column
  * is left out of these rules -- see *the side column* above -- and so is
- * Last round (`.qb-wrap-up`), which stays pressable mid-run.
+ * Last round (`.qb-wrap-up`), which stays pressable mid-run as Time out does.
  */
 body[data-state="running"] .qb-stepper,
 body[data-state="running"] .qb-select,

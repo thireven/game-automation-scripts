@@ -60,7 +60,8 @@
         * `.qb-wrap-up` (Stop after this round) is a `.qb-toggle` with no
           `data-key`: a run-time flag the engine reports, never stored, and
           pressable mid-run as well as paused;
-        * `.qb-time-out` is an action with no `data-key`, live only in a run;
+        * `.qb-time-out` is an action with no `data-key`, live only in a run,
+          paused or not;
         * `.qb-page-toggle` flips `<body data-page>` between `1` and `2`, which
           is what the CSS shows a `.qb-page[data-page]` from. It sits in
           `.qb-side`, which with `.qb-readout-toggle` is the one patch
@@ -294,16 +295,13 @@
           <!--
             Stop after games: how many rounds (0 = off), then what happens.
             The action chip draws its option's short name, as Bubble does.
-            `.qb-time-out` before them stops playing the round in progress and
-            lets it run out, its duration stopped there (`coastThisRound`).
-            `.qb-wrap-up` after them is Stop after this round, for this run only;
-            it is last so it sits beside the side column, inside the rect that
-            stays pressable mid-run (`qbNameHotspot`).
+            After them, `.qb-time-out` stops playing the round in progress and
+            lets it run out, its duration stopped there (`coastThisRound`), and
+            `.qb-wrap-up` is Stop after this round, for this run only. Both are
+            last so they sit beside the side column, inside the rect that stays
+            pressable mid-run (`qbNameHotspot`).
           -->
           <div class="qb-cluster">
-            <div class="qb-cell">
-              <button class="qb-action qb-time-out" type="button" data-i18n="qb.timeOut">Time out</button>
-            </div>
             <div class="qb-cell" data-key="stopAfterGames" data-min="0" data-max="999">
               <div class="qb-stepper">
                 <button class="qb-step" type="button" data-step="-1">&minus;</button>
@@ -325,6 +323,9 @@
                   <path d="M6 9l6 6 6-6"/>
                 </svg>
               </button>
+            </div>
+            <div class="qb-cell">
+              <button class="qb-action qb-time-out" type="button" data-i18n="qb.timeOut">Time out</button>
             </div>
             <div class="qb-cell">
               <button class="qb-toggle qb-wrap-up" type="button" role="switch" aria-checked="false" data-i18n="qb.stopAfterRound">Last round</button>
