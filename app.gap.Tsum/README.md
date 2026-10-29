@@ -118,8 +118,8 @@ steps aside and the log moves up over it.
 | 🔓 Lvl | *Page two.* Not a setting: raises level caps once the current round is over, like the Now button beside Unlock Level. Needs a run. The chip shimmers while it asks, and a banner confirms |
 | Copy code | *Page two.* Not a setting: copies your settings code, as the Copy button on the settings panel does. The chip shimmers while it works, and a banner says when the code is on the clipboard |
 | Time out | *Page two.* Not a setting: stops playing the round in progress and lets the game's timer end it. Its stats are still recorded, but its duration stops when you tap, so the time left to run out does not lower coins per second. The round's coins only cover what was played before the tap. Pause the script, tap it, then resume. Needs a round being played: it is refused until the board is up |
-| Last round | *Page two.* Not a setting: stop the script once the round in progress is over, or before the next round starts if none is being played. For this run only — never saved, and off at the next start. Tap again to cancel. Needs a run |
 | Games, Then | *Page two.* Stop after games and what happens then. Take effect at once |
+| Last round | *Page two.* Not a setting: stop the script once the round in progress is over, or before the next round starts if none is being played. For this run only — never saved, and off at the next start. Tap again to cancel. Needs a run; works while it is playing, not only paused |
 | ⟳▶ (under the page dots) | Auto Play Game, drawn as a play-on-repeat icon; solid blue when on. Takes effect at once: off lets the round in progress finish and plays no more; on starts playing again |
 
 **Page two's readout** swaps the coin figures for times: **Avg** is the average

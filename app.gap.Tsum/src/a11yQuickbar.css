@@ -101,7 +101,7 @@ body {
 /* Running: the ring recedes with the border. */
 body[data-state="running"] .qb-stepper,
 body[data-state="running"] .qb-select,
-body[data-state="running"] .qb-toggle { --qb-ring: var(--qb-chip-edge-off); }
+body[data-state="running"] .qb-toggle:not(.qb-wrap-up) { --qb-ring: var(--qb-chip-edge-off); }
 
 .qb-step {
   color: var(--qb-on);

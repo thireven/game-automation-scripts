@@ -845,11 +845,12 @@ body[data-dense="true"] .qb-stat-rounds .qb-stat-value { font-size: calc(9 * var
  * which is the difference between "you cannot read this" and "you cannot press
  * this". quickbarPage.ts sets each button's `disabled` from the same fact, so
  * the control refuses the tap as well as looking like it would. The side column
- * is left out of these rules -- see *the side column* above.
+ * is left out of these rules -- see *the side column* above -- and so is
+ * Last round (`.qb-wrap-up`), which stays pressable mid-run.
  */
 body[data-state="running"] .qb-stepper,
 body[data-state="running"] .qb-select,
-body[data-state="running"] .qb-toggle { border-color: var(--qb-chip-edge-off); }
+body[data-state="running"] .qb-toggle:not(.qb-wrap-up) { border-color: var(--qb-chip-edge-off); }
 
 body[data-state="running"] .qb-step { color: var(--qb-off); opacity: .6; }
 body[data-state="running"] .qb-caret { stroke: var(--qb-off); opacity: .6; }
@@ -858,7 +859,7 @@ body[data-state="running"] .qb-caret { stroke: var(--qb-off); opacity: .6; }
  * The toggle keeps its ON tint -- checked or not is a reading, not an
  * affordance -- and only its edge recedes with the rest.
  */
-body[data-state="running"] .qb-toggle[aria-checked="true"] { border-color: var(--qb-chip-edge-off); }
+body[data-state="running"] .qb-toggle:not(.qb-wrap-up)[aria-checked="true"] { border-color: var(--qb-chip-edge-off); }
 
 /* The strip's top edge is the one thing that changes colour: blue means you can act. */
 body:not([data-state="running"]) .qb { border-top-color: var(--tap); }

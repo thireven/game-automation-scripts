@@ -140,7 +140,7 @@ body[data-state="running"] .qb-cell[data-when] .qb-select { box-shadow: 0 var(--
 /* Running: the stitches recede with the rest of the affordances. */
 body[data-state="running"] .qb-stepper,
 body[data-state="running"] .qb-select,
-body[data-state="running"] .qb-toggle { outline-color: var(--rule); }
+body[data-state="running"] .qb-toggle:not(.qb-wrap-up) { outline-color: var(--rule); }
 
 /* --- the readout: a sunken pocket -------------------------------------- */
 
