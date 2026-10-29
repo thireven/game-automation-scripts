@@ -990,7 +990,7 @@ function onQuickBarWrapUp(answer: string): void {
 /**
  * Time out (`coastThisRound`, src/index.ts): the round in progress stops being
  * played and runs out on the game's timer; its duration stops at the press. The engine banners a
- * success; only "no round" is said here.
+ * success; only a refusal is said here.
  */
 function qbTimeOut(): void {
     var bridge = qbBridge();
@@ -1014,6 +1014,8 @@ function onQuickBarTimeOut(answer: string): void {
     qbLogInfo(Log.QuickBar.CoastAsked, 'Time out pressed on the Quick Bar', {answer: said});
     if (said === 'no round') {
         qbBanner(i18nText(UiText.QbTimeOutNoRound));
+    } else if (said === 'not playing yet') {
+        qbBanner(i18nText(UiText.QbTimeOutTooEarly));
     }
 }
 

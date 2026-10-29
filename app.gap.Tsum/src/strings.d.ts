@@ -484,6 +484,7 @@ declare const enum UiText {
   /** Time out: stop playing this round and let it run out, unrecorded. */
   QbTimeOut = 'qb.timeOut',
   QbTimeOutNoRound = 'qb.timeOutNoRound',
+  QbTimeOutTooEarly = 'qb.timeOutTooEarly',
   QbSendHearts = 'qb.sendHearts',
   QbReceiveOneByOne = 'qb.receiveOneByOne',
   QbUnlockNow = 'qb.unlockNow',

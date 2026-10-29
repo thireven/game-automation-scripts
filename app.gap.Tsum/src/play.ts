@@ -798,10 +798,6 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // Whatever happens next is not this walk. A round the pre-round screen
     // already opened stays open and is closed by the pass that finds the board.
     this.openingRound = false;
-    // A Time out pressed on the walk in has no round left to apply to.
-    if (this.roundStartedAt === 0) {
-      this.coastAsked = false;
-    }
     if (this.yieldAsked) {
       logInfo(Log.Unlock.NowYielded, { task: 'playRound', stage: 'navigating' });
     }
@@ -815,6 +811,7 @@ Tsum.prototype.taskPlayGameQuick = function() {
   // ahead of the tap so `round.start` lands with the items in frame, and
   // `duration_seconds` must still measure play rather than the walk in.
   this.roundStartedAt = Date.now();
+  this.roundPlaying = true;
   // A new round's first activation is never held by the last round's.
   this.skillActivatedAt = 0;
   // Nor its board by a hold the last round never cleared.
@@ -1126,6 +1123,7 @@ Tsum.prototype.taskPlayGameQuick = function() {
     this.runTimes++;
   }
   this.coastAsked = false;
+  this.roundPlaying = false;
   // Captured first: finishRoundStats closes the round by zeroing both, and this
   // is the one figure `round.end` must carry even when it read nothing.
   const roundSeconds = this.roundStartedAt && this.roundEndedAt

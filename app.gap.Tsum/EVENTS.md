@@ -21,7 +21,7 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `task.start` | `src/taskController.ts:93` | `task` |
 | `round.over` | `src/play.ts:537` | `id`, `round`, `seconds` |
 | `round.start` | `src/play.ts:732` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
-| `round.end` | `src/play.ts:1151` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
+| `round.end` | `src/play.ts:1149` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
 | `workflow.end` | `src/gapWorkflow.ts:669` | `id`, `rev`, `status`, `reason`, `loop`, `index` |
 | `workflow.start` | `src/gapWorkflow.ts:733` | `id`, `rev`, `name`, `total`, `resumed` |
 | `workflow.node` | `src/gapWorkflow.ts:777` | `id`, `loop`, `index`, `nodeId`, `node` |
@@ -100,7 +100,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:1151` — `this.emit(Emit.Round.End, …)`
+- `src/play.ts:1149` — `this.emit(Emit.Round.End, …)`
 
 ### `workflow.end`
 

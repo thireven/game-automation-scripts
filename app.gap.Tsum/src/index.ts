@@ -962,6 +962,10 @@ function coastThisRound(): string {
   if (!quickBarInRound(ts)) {
     return 'no round';
   }
+  // Not on the walk in: the duration would stop before any play, at ~0 s.
+  if (!ts.roundPlaying) {
+    return 'not playing yet';
+  }
   if (ts.coastAsked) {
     return 'already coasting';
   }

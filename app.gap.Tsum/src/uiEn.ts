@@ -404,6 +404,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.QbStopAfterRound]: 'Last round',
     [UiText.QbTimeOut]: 'Time out',
     [UiText.QbTimeOutNoRound]: 'No round to time out',
+    [UiText.QbTimeOutTooEarly]: 'Round not started yet: try again once it is playing',
     // U+FE0E keeps the heart a text glyph rather than an emoji.
     [UiText.QbSendHearts]: '\u2665\uFE0E Send',
     [UiText.QbReceiveOneByOne]: '\u2665\uFE0E 1-by-1',

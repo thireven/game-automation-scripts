@@ -211,6 +211,8 @@ class Tsum {
    * cleared at the round's tail.
    */
   coastAsked: boolean;
+  /** The play loop has the board up for this round; Time out waits for it. */
+  roundPlaying: boolean;
   /**
    * When the next round may start, epoch ms; 0 when nothing is waiting.
    *
@@ -495,6 +497,7 @@ class Tsum {
     this.gamesTowardStop = 0;
     this.wrapUpAsked = false;
     this.coastAsked = false;
+    this.roundPlaying = false;
     // A new world per start(), so pressing Play always plays now rather than
     // resuming a wait the previous run was in.
     this.nextRoundAt = 0;
