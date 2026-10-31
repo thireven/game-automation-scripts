@@ -45,6 +45,24 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.7]
+
+### Summary
+
+**Additions**
+
+*Tsums*
+- The five newest JP tsums are recognised before a round: Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+.
+
+**Fixes**
+- Magic Wand Clarice, Daisy and Minnie, Mabel+ and Mysterious Knight Mickey show their English names on the international game instead of their Japanese ones.
+
+### Changed
+
+- **`src/tsums.dat`**: the five JP rows (`belleink`, `cruellaink`, `donaldink`,
+  `woodyink`, `mickeysplus`), English names for five rows that had only a
+  Japanese one, and a space before `(Change)` to match the other suffixes.
+
 ## [5.6]
 
 ### Summary
