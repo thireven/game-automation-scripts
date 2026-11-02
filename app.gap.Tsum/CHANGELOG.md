@@ -56,11 +56,13 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Round stats now record base coins for the Change tsums, whose game screen has its own colours.
+- Auto Unlock MyTsum Level now notices when a Change tsum, or a MyTsum whose ears or bow stick out, is level locked.
 
 ### Fixed
 
 - **Change tsums' themed HUD**: dimmed, its pastel chrome reads 147-208, so
-  `LevelUpDimmedChrome` (cap 120) missed the level-up panel; the cap is now 250
+  `LevelUpDimmedChrome` (cap 120) missed the level-up panel, and with it the
+  base-coin and MyTsum-cap reads; the cap is now 250
   (anything the overlay dims). On the panel the band round the coin pill
   clears the counter's floor of 40 and hides the digits, so `baseCounters`
   gets `themedLo` (65, set by Minnie's band at 63), retried on the same crop
@@ -68,6 +70,10 @@ release note; they fold back in here when she ships.
 - **Level-up with a big-eared tsum in panel 4**: `TsumLevelUp5to4Bonus`'s
   (450,1271) gutter probe landed on the icon's ear; moved to the left margin
   at (230,1340).
+- **MyTsum cap read off a broken first card**: Minnie (Change)'s ears cut her
+  card's gutter run to 120 (a card needs 170), so nothing was read; a "Level
+  Up" glow did the same and the next card was read as the MyTsum's. The read
+  now steps up from the first whole card by `cardPitchY` (236).
 
 ### Changed
 

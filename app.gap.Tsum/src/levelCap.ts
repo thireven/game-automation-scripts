@@ -787,6 +787,7 @@ Tsum.prototype.readLevelUpMyTsumCap = function() {
     column.push({x: t.gutterX, y: y});
   }
   let capped: boolean | null = null;
+  const runs: {top: number, bottom: number}[] = [];
   const cards: {top: number, bottom: number}[] = [];
   let barY = 0;
   const lock: number[][] = [];
@@ -805,24 +806,48 @@ Tsum.prototype.readLevelUpMyTsumCap = function() {
       if (top < 0) {
         top = y;
       } else if (y - last > t.mergeGapY) {
-        if (last - top >= t.minRunY) {
-          cards.push({top: top, bottom: last});
-        }
+        runs.push({top: top, bottom: last});
         top = y;
       }
       last = y;
     }
-    if (top >= 0 && last - top >= t.minRunY) {
-      cards.push({top: top, bottom: last});
+    if (top >= 0) {
+      runs.push({top: top, bottom: last});
     }
-    if (cards.length > 0) {
-      const card = cards[0];
-      const height = card.bottom - card.top;
-      if (cards.length === 1 && card.top >= t.singleMinTopY) {
-        barY = card.top + t.singleBarFromTopY;
-      } else if (height >= t.cardMinY && height <= t.cardMaxY) {
-        barY = Math.floor((card.top + card.bottom) / 2);
+    for (let i = 0; i < runs.length; i++) {
+      if (runs[i].bottom - runs[i].top >= t.minRunY) {
+        cards.push(runs[i]);
       }
+    }
+    if (cards.length === 1 && cards[0].top >= t.singleMinTopY) {
+      barY = cards[0].top + t.singleBarFromTopY;
+    } else {
+      // The first whole card, stepped up a card at a time while there is blue
+      // above it: an icon's ears or a "Level Up" glow can break the MyTsum's
+      // own run, which would otherwise make the next card look like the first.
+      let mid = 0;
+      let above = 0;
+      for (let i = 0; i < runs.length && mid === 0; i++) {
+        const height = runs[i].bottom - runs[i].top;
+        if (height >= t.cardMinY && height <= t.cardMaxY) {
+          mid = Math.floor((runs[i].top + runs[i].bottom) / 2);
+          above = runs[i].top;
+        }
+      }
+      // A card above ends ~30px clear of this one's top; its own rim does not.
+      const blueAbove = function(y: number): boolean {
+        for (let i = 0; i < runs.length; i++) {
+          if (runs[i].bottom < y - t.mergeGapY && runs[i].bottom >= y - t.cardPitchY) {
+            return true;
+          }
+        }
+        return false;
+      };
+      while (mid > 0 && blueAbove(above)) {
+        mid -= t.cardPitchY;
+        above -= t.cardPitchY;
+      }
+      barY = mid;
     }
     if (barY > 0) {
       const points: Coord[] = [];

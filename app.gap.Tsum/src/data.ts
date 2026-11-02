@@ -2906,6 +2906,12 @@ var LevelUpMyTsumCard = {
   cardMinY: 170,
   cardMaxY: 230,
   /**
+   * Top to top, one card to the next: 234-237 in both multi-card layouts. The
+   * MyTsum's own run can be broken by its ears or bow (Magic Wand Minnie) or a
+   * "Level Up" glow, so the read steps up from the first whole card by this.
+   */
+  cardPitchY: 236,
+  /**
    * A lone card sits far below any multi-card first card (~860 against
    * ~400-575 mid-bounce), and its own gutter run is cut short by its wider
    * Score row -- so it is told by its top, and its bar placed off the top
