@@ -45,6 +45,24 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b6]
+
+### Summary
+
+**Additions**
+
+*Chains*
+- Maximum Chain Number can be set to 0 for no limit: the script links the longest chain it finds. Stepping down from 3 goes to 0, and up from 0 goes back to 3, on the settings page, the Quick Bar and GAP Companion.
+
+### Changed
+
+- **Maximum Chain Number takes 0** (`SettingSpec.allowZero`, generic):
+  `clampToRow` on the page and `data-zero` on the Quick Bar cell snap 1–2
+  away from the current value; the engine does the same in `maxChainSnap`
+  (Quick Bar apply, and GAP Companion's set while stopped). The phone gets the
+  row as 0–15, since its contract has no "0 or 3–15". Run order shows
+  `FlowPlanNoLimit` at 0. The planner already read 0 as no cap.
+
 ## [6.0b5]
 
 ### Summary
