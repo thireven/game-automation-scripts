@@ -54,6 +54,14 @@ release note; they fold back in here when she ships.
 *Skills*
 - Magic Wand Change skill improved by popping its heart bubble as soon as it appears.
 
+**Fixes**
+- Round stats record base coins for Magic Wand Daisy when her coins have a 0 in them.
+
+### Fixed
+
+- **Second '0' template (`'0b'`)**: MuMu's counter at `themedLo` draws '0' thin
+  and leaning right, which led '6' by 0.021, under the margin floor (Daisy's 1,038 and 1,057).
+
 ### Changed
 
 - **Magic Wand Change pops its heart bubble the scan it shows**: each

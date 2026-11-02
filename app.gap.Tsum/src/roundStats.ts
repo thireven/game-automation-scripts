@@ -119,6 +119,23 @@ const StatsDigits: {[digit: string]: string[]} = {
         '.##....##.',
         '..##..##..',
         '...####...'],
+  // Second '0': MuMu's RGB565 counter at `themedLo` (67) draws it with
+  // two-pixel strokes leaning right, which led '6' by 0.021 under the shape
+  // above and failed the margin (Daisy's 1,038 and 1,057).
+  '0b': ['...#####..',
+        '.###...##.',
+        '.##.....##',
+        '.##.....##',
+        '##......##',
+        '##......##',
+        '##......##',
+        '##......##',
+        '##......##',
+        '###.....##',
+        '.##.....##',
+        '.##....##.',
+        '..##..###.',
+        '...####...'],
   '1': ['.....#####',
         '..########',
         '##########',
