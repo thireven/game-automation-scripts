@@ -227,6 +227,8 @@ namespace Log {
     ElsaRoundOver         = 'skill.elsa.roundOver',
     /** Colorful Mickey Set: its bar came up (long reach on) or went (off). */
     ColorfulMickeyReach   = 'skill.colorfulMickey.reach',
+    /** Magic Wand Change: the locket was up (Pause lit, Fan dimmed) and was tapped. */
+    MagicWandLocket       = 'skill.magicWand.locket',
     FeverHoldOff          = 'skill.feverHoldOff',
     FormalBeastModeEnd    = 'skill.formalBeast.modeEnd',
     FormalBeastModeStart  = 'skill.formalBeast.modeStart',

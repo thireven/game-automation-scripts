@@ -109,6 +109,8 @@ var SkillsDeclared: SkillOption[] = [
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
     {key: SkillType.LightningMcQueenPlus, share: 'q', title: UiText.SkillLightningMcQueenPlus,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
+    {key: SkillType.MagicWandChange, share: 'W', title: UiText.SkillMagicWandChange,
+     status: ReleaseStatus.Alpha, group: UiText.SkillGroupBurst},
     {key: SkillType.NightmareSet, share: 'N', title: UiText.SkillNightmareSet,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
     {key: SkillType.VillainsSet, share: 'v', title: UiText.SkillVillainsSet,

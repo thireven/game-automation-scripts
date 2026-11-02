@@ -108,6 +108,12 @@ declare const enum SkillType {
    * reach -- see `src/skills/colorfulMickeySet.ts`.
    */
   ColorfulMickeySet = 'colorful_mickey_set',
+  /**
+   * Magic Wand Minnie, Daisy and Clarice (Change). Plays as a burst, and taps
+   * the locket (the event's magical jewel) the moment it holds the board -- see
+   * `src/skills/magicWandChange.ts`.
+   */
+  MagicWandChange = 'magic_wand_change',
   PairTsum = 'pair_tsum',
   /** Offered in the dropdown; short-circuited in useSkill, so it has no handler. */
   NoSkill = 'nokill',

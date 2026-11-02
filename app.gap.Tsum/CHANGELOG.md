@@ -54,9 +54,22 @@ release note; they fold back in here when she ships.
 *Chains*
 - Maximum Chain Number can be set to 0 for no limit: the script links the longest chain it finds. Stepping down from 3 goes to 0, and up from 0 goes back to 3, on the settings page, the Quick Bar and GAP Companion.
 
+*Skills*
+- Magic Wand Change skill added (Alpha): plays as a burst and taps the locket as soon as it appears, so the round no longer stops there.
+
 **Fixes**
 - Round stats now record base coins for the Change tsums, whose game screen has its own colours.
 - Auto Unlock MyTsum Level now notices when a Change tsum, or a MyTsum whose ears or bow stick out, is level locked.
+
+### Added
+
+- **Magic Wand Change skill** (`src/skills/magicWandChange.ts`, Alpha, share
+  `W`): a burst for Magic Wand Minnie, Daisy and Clarice. Their locket stops
+  the round and dims the Fan, so the board stopped fingerprinting and the
+  script sat in `confirmGameOver`. Pause lit with the Fan dimmed is the tell
+  (the locket pulses near-white and its gem is each tsum's colour); seen on a
+  scan or a `confirmGameOver` poll, it taps mid-board, at most once a second.
+  New `SkillHandler.watchHudLost` hook, called from `confirmGameOver`.
 
 ### Fixed
 

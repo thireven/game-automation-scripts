@@ -180,6 +180,11 @@ interface SkillHandler {
   // through: NBC Set's Oogie Boogie, whose dice any touch rerolls. Runs on
   // every scan, so it has to stay cheap.
   watchScan?: (ts: Tsum, img: NativeImage) => boolean;
+  // Runs on every `confirmGameOver` poll, once the HUD has stopped
+  // fingerprinting. For a skill whose own popup hides the HUD and waits to be
+  // tapped (Magic Wand Change's locket): tap it away here, so the poll sees
+  // the board come back. Takes its own capture.
+  watchHudLost?: (ts: Tsum) => void;
   // Runs after the gauge check but before the activation tap -- settle waits and
   // pre-taps that have to land while the skill is not yet running.
   beforeActivate?: (ts: Tsum) => void;
@@ -279,6 +284,12 @@ function skillScalesBoard(ts: Tsum): boolean {
 function skillWatchScan(ts: Tsum, img: NativeImage): boolean {
   const handler = SkillHandlers[ts.skillType];
   return !!(handler && handler.watchScan && handler.watchScan(ts, img));
+}
+
+// Lets the skill clear a popup of its own. See `SkillHandler.watchHudLost`.
+function skillWatchHudLost(ts: Tsum): void {
+  const handler = SkillHandlers[ts.skillType];
+  if (handler && handler.watchHudLost) { handler.watchHudLost(ts); }
 }
 
 // The colour sample's blur width. See `SkillHandler.colorBlur`.

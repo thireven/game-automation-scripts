@@ -276,6 +276,9 @@ Tsum.prototype.confirmGameOver = function() {
   const deadline = startedAt + this.gameOverGraceMs;
   let looks = 0;
   while (this.isRunning) {
+    // A popup of the skill's own can hide the HUD (Magic Wand Change's
+    // locket); the skill taps it away here and the HUD comes back.
+    skillWatchHudLost(this);
     // One look, no retry budget. `detect`'s timeout is spent only when *nothing*
     // fingerprints -- which is this function's entire situation, since it is
     // only ever called after the board stopped fingerprinting. So the 1500ms
