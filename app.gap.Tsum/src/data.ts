@@ -798,8 +798,7 @@ var FeverBar = {
 // three entries below needed them. Every hub screen draws a button or a bar at
 // all four (the coin bars, the Play row, the bottom frame): the *lowest* any of
 // FriendPage, ProfilePage, SquarePage or StartPage reads is 372, against a
-// level-up worst of 20. The threshold sits at 120 -- six times the darkest
-// reading, a third of the brightest -- so nothing here is close.
+// level-up worst of 20 (themed HUDs aside, below).
 //
 // `pages:studio` will rate each one unusable on its own, and it is right to: a
 // dark pixel says nothing about *which* dim screen this is, and Magical Time and
@@ -807,11 +806,17 @@ var FeverBar = {
 // is a conjunction, and these four are the half of it the old entries were
 // missing -- nine samples of panel blue with nothing to say that the friends
 // list, which is also a column of panel blue, was not it.
+//
+// The Change tsums draw this chrome in their own colours, so dimmed it is not
+// black: Magic Wand Daisy's reads 147-208. What holds for every theme is the
+// dimming itself -- white comes through it at ~74 a channel, 222 summed -- so
+// the threshold is 250: anything the overlay dims passes, and the hub's 372+
+// still fails.
 var LevelUpDimmedChrome: PageColor[] = [
-  {x: 300, y:  250, r: 0, g: 0, b: 0, match: true, threshold: 120},  // left of the score capsule, hub reads 416+
-  {x: 800, y:  250, r: 0, g: 0, b: 0, match: true, threshold: 120},  // right of the score capsule, hub reads 392+
-  {x: 540, y: 1600, r: 0, g: 0, b: 0, match: true, threshold: 120},  // the fever bar, hub reads 408+
-  {x: 150, y: 1750, r: 0, g: 0, b: 0, match: true, threshold: 120}   // below the skill button, hub reads 646+
+  {x: 300, y:  250, r: 0, g: 0, b: 0, match: true, threshold: 250},  // left of the score capsule, hub reads 416+
+  {x: 800, y:  250, r: 0, g: 0, b: 0, match: true, threshold: 250},  // right of the score capsule, hub reads 392+
+  {x: 540, y: 1600, r: 0, g: 0, b: 0, match: true, threshold: 250},  // the fever bar, hub reads 408+
+  {x: 150, y: 1750, r: 0, g: 0, b: 0, match: true, threshold: 250}   // below the skill button, hub reads 646+
 ];
 
 // `satisfies` rather than a plain annotation: every entry is still checked

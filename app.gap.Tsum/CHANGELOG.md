@@ -54,6 +54,17 @@ release note; they fold back in here when she ships.
 *Chains*
 - Maximum Chain Number can be set to 0 for no limit: the script links the longest chain it finds. Stepping down from 3 goes to 0, and up from 0 goes back to 3, on the settings page, the Quick Bar and GAP Companion.
 
+**Fixes**
+- Round stats now record base coins for the Change tsums, whose game screen has its own colours.
+
+### Fixed
+
+- **Change tsums' themed HUD**: dimmed, its pastel chrome reads 147-208, so
+  `LevelUpDimmedChrome` (cap 120) missed the level-up panel; the cap is now 250
+  (anything the overlay dims). On the panel the band round the coin pill
+  clears the counter's floor of 40 and hides the digits, so `baseCounters`
+  gets `themedLo` (63), retried on the same crop when 40 reads nothing.
+
 ### Changed
 
 - **Maximum Chain Number takes 0** (`SettingSpec.allowZero`, generic):

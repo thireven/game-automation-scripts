@@ -838,6 +838,8 @@ interface StatsRegion {
   /** Inclusive colour bounds as [r, g, b] -- reversed when handed to inRange. */
   lo: [number, number, number];
   hi: [number, number, number];
+  /** A stricter `lo`, tried on the same crop when `lo` reads nothing (see `baseCounters`). */
+  themedLo?: [number, number, number];
   /** A '/' ends one number and starts the next ("5/10" reads [5, 10]). */
   slash?: boolean;
   /** Read the crop this many times the 540-wide template space, for small text. */

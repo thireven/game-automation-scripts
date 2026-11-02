@@ -372,10 +372,19 @@ const StatsRegions: {
   // five would start under the icon and be cut by the edge. A clipped glyph
   // fails, and it fails the *row*, so a five-digit medal count would cost
   // `base_coins` as well. Medal awards seen so far are in the hundreds.
+  //
+  // `themedLo` is for the Change tsums, which draw the HUD in their own colours
+  // (Magic Wand Daisy's: a pastel pink band round a purple pill). Dimmed, that
+  // band reads ~(73,58,73) and clears 40, so it masks as one blob round the
+  // pill and hides the digits. The digits are still neutral grey (~74), and
+  // any pastel has one channel well below that, so a higher floor keeps the
+  // digits and drops the band: 60-66 all read Daisy's frame, and no floor from
+  // 56 to 70 misreads any corpus frame. Only tried when 40 reads nothing.
   baseCounters: {
     name: 'base counters',
     x: 368, y: 286, w: 432, h: 78,
-    lo: [40, 40, 40], hi: [255, 255, 255]
+    lo: [40, 40, 40], hi: [255, 255, 255],
+    themedLo: [63, 63, 63]
   }
 };
 
@@ -863,6 +872,21 @@ Tsum.prototype.readStatsNumbers = function(region) {
   if (!statsImageOk(img)) {
     return null;
   }
+  try {
+    const fields = statsReadFields(img, region);
+    if (fields !== null || region.themedLo === undefined) {
+      return fields;
+    }
+    // A themed HUD: retry the same crop at the stricter floor.
+    return statsReadFields(img, Object.assign({}, region,
+      {name: region.name + ' (themed)', lo: region.themedLo}));
+  } finally {
+    releaseImage(img);
+  }
+};
+
+/** `readStatsNumbers`' work on a crop it has already captured, at the region's `lo`. */
+function statsReadFields(img: NativeImage, region: StatsRegion): number[] | null {
   let mask: NativeImage | null = null;
   try {
     // inRange takes its bounds per BGRA channel, so the region's r/g/b
@@ -974,9 +998,8 @@ Tsum.prototype.readStatsNumbers = function(region) {
     if (mask != null) {
       releaseImage(mask);
     }
-    releaseImage(img);
   }
-};
+}
 
 /**
  * Is the score page's button row up?
