@@ -46,7 +46,8 @@
           `.qb-toggle`, or `.qb-select` (with `.qb-select-value`);
         * a `.qb-select` cell's key must have a list in `qbOptionsFor`
           (quickbarPage.ts), which is what decides the sheet it opens;
-        * a stepper cell carries `data-min` / `data-max`;
+        * a stepper cell carries `data-min` / `data-max`, and `data-zero`
+          when 0 is a value below `data-min` (`SettingSpec.allowZero`);
         * a cell for a setting that is not finished carries `data-status`
           -- `alpha` or `beta`, and absent means Production -- which must say
           what that row says in the settings schema (`SettingSpec.status`,
@@ -227,7 +228,7 @@
             </div>
           </div>
 
-          <div class="qb-cell" data-key="maxChain" data-min="3" data-max="15">
+          <div class="qb-cell" data-key="maxChain" data-min="3" data-max="15" data-zero>
             <div class="qb-stepper">
               <button class="qb-step" type="button" data-step="-1">&minus;</button>
               <span class="qb-readout">

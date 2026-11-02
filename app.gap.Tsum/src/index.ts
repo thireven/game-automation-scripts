@@ -402,11 +402,14 @@ function remoteSettingsApply(key: string, value: string | number | boolean): str
   if (quickBarWorkflowOwns(key)) {
     return JSON.stringify({ ok: false, why: 'workflow' });
   }
-  let taken = value;
+  // The phone steps through 1 and 2 (its range is 0-15); snapped here as well,
+  // since with no run nothing else checks the value before the next start.
+  let taken = key === SettingKey.MaxChain
+    ? maxChainSnap(value, remoteSettingsValues()[key] as number) : value;
   let applies = 'nextStart';
   const when = LiveSettings[key];
   if (quickBarRunning() && when !== undefined && when !== LiveWhen.Restart) {
-    const res = JSON.parse(quickBarApply(key as SettingKey, value));
+    const res = JSON.parse(quickBarApply(key as SettingKey, taken));
     if (res.ok !== true) {
       return JSON.stringify(res);
     }

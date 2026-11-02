@@ -448,6 +448,8 @@ declare const enum UiText {
   FlowPopAllButOne = 'flow.popAllButOne',
   /** Chains up to `{max}` long at `{reach}`% reach. */
   FlowPlan = 'flow.plan',
+  /** FlowPlan with Maximum Chain Number at 0: any length, `{reach}`% reach. */
+  FlowPlanNoLimit = 'flow.planNoLimit',
   FlowMyTsumFirst = 'flow.myTsumFirst',
   /** Keep `{count}`. */
   FlowKeep = 'flow.keep',

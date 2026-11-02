@@ -1422,7 +1422,11 @@ function qbBind(): void {
                         // Clamped here as well as in the engine: the engine's
                         // clamp is what makes the value safe, and this one is
                         // what stops the button looking broken at the end.
-                        if (next < min) { next = min; }
+                        // `data-zero`: down from min is 0, and up from 0 is min.
+                        if (next < min) {
+                            next = cell.hasAttribute('data-zero')
+                                && (current >= min || next < current) ? 0 : min;
+                        }
                         if (next > max) { next = max; }
                         if (next !== current) {
                             qbApply(key, next);

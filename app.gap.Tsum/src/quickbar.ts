@@ -374,7 +374,7 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
       tsum.maxChainsPerScan = applied as number;
       break;
     case SettingKey.MaxChain:
-      applied = quickBarClamp(value, 3, 15);
+      applied = maxChainSnap(value, Config.maxChain);
       Config.maxChain = applied as number;
       break;
     // The six bonus items. Only `openRound`'s item screen reads them, which is
@@ -912,6 +912,16 @@ function quickBarClamp(value: string | number | boolean, min: number, max: numbe
     return min;
   }
   return n < min ? min : (n > max ? max : n);
+}
+
+/**
+ * "Maximum Chain Number": 0 (no limit) or 3-15. A cap of 1 or 2 would plan no
+ * chain at all, so those snap away from `current` -- to 0 going down, to 3
+ * going up -- which is what lets a stepper moving by one cross the gap.
+ */
+function maxChainSnap(value: string | number | boolean, current: number): number {
+  const n = quickBarClamp(value, 0, 15);
+  return n > 0 && n < 3 ? (current >= 3 ? 0 : 3) : n;
 }
 
 /**

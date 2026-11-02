@@ -309,6 +309,12 @@ interface SettingSpec {
   build?: () => HTMLElement;
   min?: number;
   max?: number;
+  /**
+   * On a number row whose `min` is above 0: 0 is a value too ("no limit").
+   * One between 0 and `min` snaps away from the current value -- to 0 going
+   * down, to `min` going up -- so a stepper crosses the gap in one press.
+   */
+  allowZero?: boolean;
   step?: number;
   /**
    * On a number row: the field shows the stored value divided by this, so a

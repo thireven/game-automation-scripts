@@ -92,7 +92,9 @@ function walk(ctx) {
       // of a scaled unit) is what a value may land on.
       const scale = row.scale || 1;
       const fine = scale > 1 ? Math.max(1, Math.round(scale / 10)) : 1;
-      Object.assign(c, { type: 'int', min: row.min, max: row.max, step: fine });
+      // The contract has no "0 or min-max", so an `allowZero` row goes as 0-max
+      // and the engine snaps the values between (`maxChainSnap`).
+      Object.assign(c, { type: 'int', min: row.allowZero ? 0 : row.min, max: row.max, step: fine });
       if ((row.step || 1) !== fine) c.bigStep = row.step;
       if (scale > 1) c.scale = scale;
     } else {

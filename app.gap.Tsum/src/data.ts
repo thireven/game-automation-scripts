@@ -41,8 +41,7 @@ var Config: TsumConfig = {
   // 8,7,4,3. Raise it while the game keeps accepting the links.
   linkReach: 1.9,
   // Longest chain the board scan may return -- the "Maximum Chain Number"
-  // setting, 3-15. 0 is not reachable from the settings UI and is treated as
-  // "no limit", which is what a hand-written start() command can ask for.
+  // setting, 3-15, or 0 for no limit.
   maxChain: 3,
   // How big the tsums are against `tsumWidth`, read off the board each scan
   // (`updateBoardScale`) and reset to 1 every round. Some skills put more tsums

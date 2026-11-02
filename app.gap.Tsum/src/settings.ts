@@ -196,7 +196,8 @@ var tabs: TabSpec[] = [
                         default: SettingDefaults[SettingKey.MaxChain],
                         step: 1,
                         max: 15,
-                        min: 3
+                        min: 3,
+                        allowZero: true
                     }
                 ]
             },
@@ -2141,12 +2142,7 @@ function applySettingValue(setting: SettingSpec, value: SettingValue): boolean {
         }
         // Clamped rather than refused: a code made where the range was wider is
         // still worth taking, at this version's limits.
-        if (setting.max !== undefined) {
-            num = Math.min(num, setting.max);
-        }
-        if (setting.min !== undefined) {
-            num = Math.max(num, setting.min);
-        }
+        num = clampToRow(setting, num, setting.default as number);
         setting.default = num;
         if (control !== null) {
             control.value = shownNumber(setting, num);
@@ -4017,7 +4013,8 @@ function roundFlowChips(values: { [key: string]: SettingValue }): string[] {
     } else if (strategy === BubbleStrategy.SaveOne) {
         chips.push(i18nText(UiText.FlowPopAllButOne));
     }
-    chips.push(i18nFormat(UiText.FlowPlan, {
+    // A Maximum Chain Number of 0 is no limit.
+    chips.push(i18nFormat(num(SettingKey.MaxChain) > 0 ? UiText.FlowPlan : UiText.FlowPlanNoLimit, {
         max: num(SettingKey.MaxChain),
         reach: num(SettingKey.LinkReachPercent)
     }));
@@ -4450,7 +4447,7 @@ function buildStepper(setting: SettingSpec): HTMLElement {
     input.value = shownNumber(setting, setting.default as number);
     input.step = String(step / scale);
     if (setting.min !== undefined) {
-        input.min = String(setting.min / scale);
+        input.min = String(setting.allowZero ? 0 : setting.min / scale);
     }
     if (setting.max !== undefined) {
         input.max = String(setting.max / scale);
@@ -4502,12 +4499,7 @@ function buildStepper(setting: SettingSpec): HTMLElement {
 function setNumberValue(setting: SettingSpec, input: HTMLInputElement, value: number): void {
     var fine = fineStep(setting);
     var next = isFinite(value) ? Math.round(value / fine) * fine : (setting.default as number);
-    if (setting.max !== undefined) {
-        next = Math.min(next, setting.max);
-    }
-    if (setting.min !== undefined) {
-        next = Math.max(next, setting.min);
-    }
+    next = clampToRow(setting, next, setting.default as number);
     input.value = shownNumber(setting, next);
     setting.default = next;
     if (input.parentNode !== null) {
@@ -4516,14 +4508,33 @@ function setNumberValue(setting: SettingSpec, input: HTMLInputElement, value: nu
     saveSettings(settings);
 }
 
+/**
+ * A number clamped to its row's range. On an `allowZero` row a value between 0
+ * and `min` snaps away from `current`: to 0 from `min` or above, else to `min`.
+ */
+function clampToRow(setting: SettingSpec, value: number, current: number): number {
+    var next = value;
+    if (setting.max !== undefined) {
+        next = Math.min(next, setting.max);
+    }
+    if (setting.min !== undefined) {
+        if (setting.allowZero && next < setting.min) {
+            return next <= 0 || current >= setting.min ? 0 : setting.min;
+        }
+        next = Math.max(next, setting.min);
+    }
+    return next;
+}
+
 /** Disables a stepper's buttons that point past the row's min or max. */
 function syncStepLimits(stepper: HTMLElement, setting: SettingSpec): void {
     var value = setting.default as number;
+    var floor = setting.allowZero ? 0 : setting.min;
     var steps = stepper.querySelectorAll('.step');
     for (var i = 0; i < steps.length; i++) {
         var button = steps[i] as HTMLButtonElement;
         var by = +button.getAttribute('data-by')!;
-        button.disabled = (by < 0 && setting.min !== undefined && value <= setting.min) ||
+        button.disabled = (by < 0 && floor !== undefined && value <= floor) ||
             (by > 0 && setting.max !== undefined && value >= setting.max);
     }
 }
