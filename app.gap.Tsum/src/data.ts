@@ -1938,6 +1938,11 @@ var Page = {
   // with the level-up still standing, so the whole round went to the CSV
   // blank. x 216 reads the same on all five four-panel frames in the corpus.
   //
+  // The gutter is not clear near a panel's top either: a big-eared icon in
+  // panel 4 (the grey mouse beside Magic Wand Minnie) covered (450,1271), so
+  // that probe moved to the margin low in the panel, (230,1340), clear of both
+  // the ears and the dotted border at x ~216.
+  //
   // `drift` in the comments is how far each pixel is from the same coordinate on
   // the five-panel frame, which is what says this list is evidence for *this*
   // layout: the margin probes sit in a gap on the other one.
@@ -1957,7 +1962,7 @@ var Page = {
     colors: LevelUpDimmedChrome.concat([
       {x: 450, y:  641, r: 57, g: 95, b: 148, match: true, threshold: 40},  // panel 1 gutter, drift 302
       {x: 216, y:  864, r: 24, g: 56, b:  99, match: true, threshold: 40},  // panel 2 left margin, drift 153
-      {x: 450, y: 1271, r: 56, g: 94, b: 147, match: true, threshold: 40},  // panel 4 gutter, drift 282
+      {x: 230, y: 1340, r: 27, g: 57, b:  98, match: true, threshold: 40},  // panel 4 left margin low, spread 11, drift 144
       {x: 450, y: 1379, r: 54, g: 92, b: 145, match: true, threshold: 80}   // panel 4 gutter low, drift 255, separation 49
     ]),
     back: {x: 300, y: 1660},

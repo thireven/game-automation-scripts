@@ -63,7 +63,11 @@ release note; they fold back in here when she ships.
   `LevelUpDimmedChrome` (cap 120) missed the level-up panel; the cap is now 250
   (anything the overlay dims). On the panel the band round the coin pill
   clears the counter's floor of 40 and hides the digits, so `baseCounters`
-  gets `themedLo` (63), retried on the same crop when 40 reads nothing.
+  gets `themedLo` (65, set by Minnie's band at 63), retried on the same crop
+  when 40 reads nothing.
+- **Level-up with a big-eared tsum in panel 4**: `TsumLevelUp5to4Bonus`'s
+  (450,1271) gutter probe landed on the icon's ear; moved to the left margin
+  at (230,1340).
 
 ### Changed
 

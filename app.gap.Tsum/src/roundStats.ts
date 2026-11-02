@@ -377,14 +377,15 @@ const StatsRegions: {
   // (Magic Wand Daisy's: a pastel pink band round a purple pill). Dimmed, that
   // band reads ~(73,58,73) and clears 40, so it masks as one blob round the
   // pill and hides the digits. The digits are still neutral grey (~74), and
-  // any pastel has one channel well below that, so a higher floor keeps the
-  // digits and drops the band: 60-66 all read Daisy's frame, and no floor from
-  // 56 to 70 misreads any corpus frame. Only tried when 40 reads nothing.
+  // a pastel has one channel below that, so a higher floor keeps the digits
+  // and drops the band. Minnie's band is the palest so far, (73,63,63): 64-65
+  // read her frames and 60-66 Daisy's, and no floor from 56 to 70 misreads any
+  // corpus frame. Only tried when 40 reads nothing.
   baseCounters: {
     name: 'base counters',
     x: 368, y: 286, w: 432, h: 78,
     lo: [40, 40, 40], hi: [255, 255, 255],
-    themedLo: [63, 63, 63]
+    themedLo: [65, 65, 65]
   }
 };
 
