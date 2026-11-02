@@ -87,7 +87,8 @@ release note; they fold back in here when she ships.
 - **MyTsum cap read off a broken first card**: Minnie (Change)'s ears cut her
   card's gutter run to 120 (a card needs 170), so nothing was read; a "Level
   Up" glow did the same and the next card was read as the MyTsum's. The read
-  now steps up from the first whole card by `cardPitchY` (236).
+  now steps up from the first whole card by `cardPitchY` (236), and a first
+  card the glow hides whole is placed off the stack's middle (`stackMidY`).
 
 ### Changed
 

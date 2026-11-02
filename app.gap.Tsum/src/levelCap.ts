@@ -819,35 +819,59 @@ Tsum.prototype.readLevelUpMyTsumCap = function() {
         cards.push(runs[i]);
       }
     }
-    if (cards.length === 1 && cards[0].top >= t.singleMinTopY) {
+    // A lone card's run is cut short by its Score row; a whole one is a card
+    // of a bigger stack whose others are hidden, which the mirror below finds.
+    if (cards.length === 1 && cards[0].top >= t.singleMinTopY
+        && cards[0].bottom - cards[0].top < t.cardMinY) {
       barY = cards[0].top + t.singleBarFromTopY;
     } else {
-      // The first whole card, stepped up a card at a time while there is blue
-      // above it: an icon's ears or a "Level Up" glow can break the MyTsum's
-      // own run, which would otherwise make the next card look like the first.
-      let mid = 0;
-      let above = 0;
-      for (let i = 0; i < runs.length && mid === 0; i++) {
+      // The first and last whole cards, each stepped outwards a card at a time
+      // while there is blue beyond it: an icon's ears or a "Level Up" glow can
+      // break a card's run, which would otherwise make the next card look like
+      // the first.
+      let first = -1;
+      let last = -1;
+      for (let i = 0; i < runs.length; i++) {
         const height = runs[i].bottom - runs[i].top;
         if (height >= t.cardMinY && height <= t.cardMaxY) {
-          mid = Math.floor((runs[i].top + runs[i].bottom) / 2);
-          above = runs[i].top;
+          if (first < 0) {
+            first = i;
+          }
+          last = i;
         }
       }
-      // A card above ends ~30px clear of this one's top; its own rim does not.
-      const blueAbove = function(y: number): boolean {
+      // Any run overlapping (y0, y1). The gap between cards is ~30px, so a
+      // card's own rim never reaches past `mergeGapY` into the next slot.
+      const blueBetween = function(y0: number, y1: number): boolean {
         for (let i = 0; i < runs.length; i++) {
-          if (runs[i].bottom < y - t.mergeGapY && runs[i].bottom >= y - t.cardPitchY) {
+          if (runs[i].bottom > y0 && runs[i].top < y1) {
             return true;
           }
         }
         return false;
       };
-      while (mid > 0 && blueAbove(above)) {
-        mid -= t.cardPitchY;
-        above -= t.cardPitchY;
+      if (first >= 0) {
+        let top = runs[first].top;
+        let mid = Math.floor((top + runs[first].bottom) / 2);
+        while (blueBetween(top - t.cardPitchY, top - t.mergeGapY)) {
+          mid -= t.cardPitchY;
+          top -= t.cardPitchY;
+        }
+        let bottom = runs[last].bottom;
+        let lastMid = Math.floor((runs[last].top + bottom) / 2);
+        while (blueBetween(bottom + t.mergeGapY, bottom + t.cardPitchY)) {
+          lastMid += t.cardPitchY;
+          bottom += t.cardPitchY;
+        }
+        // A first card hidden whole leaves no blue to step to, but the stack is
+        // centred on `stackMidY`: each card missing at the top puts the middle
+        // of what is seen half a card low. Missing at the bottom is ignored.
+        const missing = Math.round(((mid + lastMid) / 2 - t.stackMidY) / (t.cardPitchY / 2));
+        if (missing > 0) {
+          mid -= missing * t.cardPitchY;
+        }
+        barY = mid;
       }
-      barY = mid;
     }
     if (barY > 0) {
       const points: Coord[] = [];
