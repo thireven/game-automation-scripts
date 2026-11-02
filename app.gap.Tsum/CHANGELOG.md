@@ -45,6 +45,24 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b7]
+
+### Summary
+
+**Fixes**
+- Round stats record base coins for the Change tsums on MuMu too.
+- Auto Unlock MyTsum Level no longer checks the wrong tsum while a Level Up glow covers yours.
+
+### Fixed
+
+- **Themed base-coin floor on MuMu**: MuMu captures RGB565, where Daisy's
+  dimmed band reads (74,65,74) and the digits (74,77,74), so `themedLo` 65
+  still let the band in. Now 67: 66-69 read every MuMu unread-base shot.
+- **MyTsum card hidden whole**: a Level Up glow can hide the MyTsum's card
+  with no blue left to step up from, so the next card was read. The stack is
+  centred on `stackMidY` (958) at every size, so a first card missing shows
+  as the stack sitting half a pitch low.
+
 ## [6.0b6]
 
 ### Summary
@@ -78,17 +96,15 @@ release note; they fold back in here when she ships.
   base-coin and MyTsum-cap reads; the cap is now 250
   (anything the overlay dims). On the panel the band round the coin pill
   clears the counter's floor of 40 and hides the digits, so `baseCounters`
-  gets `themedLo` (67), retried on the same crop when 40 reads nothing. MuMu
-  captures RGB565, where Daisy's band reads (74,65,74) and the digits
-  (74,77,74), so 65 still failed there.
+  gets `themedLo` (65, set by Minnie's band at 63), retried on the same crop
+  when 40 reads nothing.
 - **Level-up with a big-eared tsum in panel 4**: `TsumLevelUp5to4Bonus`'s
   (450,1271) gutter probe landed on the icon's ear; moved to the left margin
   at (230,1340).
 - **MyTsum cap read off a broken first card**: Minnie (Change)'s ears cut her
   card's gutter run to 120 (a card needs 170), so nothing was read; a "Level
   Up" glow did the same and the next card was read as the MyTsum's. The read
-  now steps up from the first whole card by `cardPitchY` (236), and a first
-  card the glow hides whole is placed off the stack's middle (`stackMidY`).
+  now steps up from the first whole card by `cardPitchY` (236).
 
 ### Changed
 
