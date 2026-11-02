@@ -45,6 +45,15 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b9]
+
+### Summary
+
+**Additions**
+
+*Skills*
+- Magic Wand Change skill improved by popping its heart bubble as soon as it appears.
+
 ## [6.0b8]
 
 ### Summary
