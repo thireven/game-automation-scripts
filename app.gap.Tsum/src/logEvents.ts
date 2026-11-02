@@ -229,6 +229,8 @@ namespace Log {
     ColorfulMickeyReach   = 'skill.colorfulMickey.reach',
     /** Magic Wand Change: the locket was up (Pause lit, Fan dimmed) and was tapped. */
     MagicWandLocket       = 'skill.magicWand.locket',
+    /** Magic Wand Change: the heart bubble an activation leaves was found and tapped. */
+    MagicWandHeart        = 'skill.magicWand.heart',
     FeverHoldOff          = 'skill.feverHoldOff',
     FormalBeastModeEnd    = 'skill.formalBeast.modeEnd',
     FormalBeastModeStart  = 'skill.formalBeast.modeStart',

@@ -56,6 +56,7 @@ var LogsEn = {
   [Log.Skill.NbcOogie]: '[NBC Set] Oogie Boogie up; holding for his dice',
   [Log.Skill.ColorfulMickeyReach]: '[Colorful Mickey Set] Long reach changed',
   [Log.Skill.MagicWandLocket]: '[Magic Wand Change] Locket tapped',
+  [Log.Skill.MagicWandHeart]: '[Magic Wand Change] Heart bubble tapped',
   [Log.Skill.NbcDice]: '[NBC Set] Dice read',
   [Log.Skill.NbcDiceUnread]: '[NBC Set] Dice not read',
   [Log.Play.GameStart]: 'Game Start',

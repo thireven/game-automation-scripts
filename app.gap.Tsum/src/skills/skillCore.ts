@@ -185,6 +185,13 @@ interface SkillHandler {
   // tapped (Magic Wand Change's locket): tap it away here, so the poll sees
   // the board come back. Takes its own capture.
   watchHudLost?: (ts: Tsum) => void;
+  // Sees each scan's game bubbles (`findGameBubbles`, on `img`, the scan's
+  // frame) before the Bubble Strategy does, and returns the ones it leaves to
+  // it. For a skill that makes a bubble of its own worth popping at once
+  // (Magic Wand Change's heart bubble): tap it here and drop it from the list.
+  // The deliberate override of the strategy for that one bubble. Runs on
+  // every scan, so it has to stay cheap.
+  watchBubbles?: (ts: Tsum, img: NativeImage, bubbles: GameBubble[]) => GameBubble[];
   // Runs after the gauge check but before the activation tap -- settle waits and
   // pre-taps that have to land while the skill is not yet running.
   beforeActivate?: (ts: Tsum) => void;
@@ -290,6 +297,13 @@ function skillWatchScan(ts: Tsum, img: NativeImage): boolean {
 function skillWatchHudLost(ts: Tsum): void {
   const handler = SkillHandlers[ts.skillType];
   if (handler && handler.watchHudLost) { handler.watchHudLost(ts); }
+}
+
+// The scan's bubbles less any the skill popped. See `SkillHandler.watchBubbles`.
+function skillWatchBubbles(ts: Tsum, img: NativeImage, bubbles: GameBubble[]): GameBubble[] {
+  const handler = SkillHandlers[ts.skillType];
+  return handler && handler.watchBubbles && bubbles.length > 0
+    ? handler.watchBubbles(ts, img, bubbles) : bubbles;
 }
 
 // The colour sample's blur width. See `SkillHandler.colorBlur`.

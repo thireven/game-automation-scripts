@@ -54,6 +54,16 @@ release note; they fold back in here when she ships.
 *Skills*
 - Magic Wand Change skill improved by popping its heart bubble as soon as it appears.
 
+### Changed
+
+- **Magic Wand Change pops its heart bubble the scan it shows**: each
+  activation leaves one bubble mid-board, and the Bubble Strategy held it like
+  a game bubble (~1s each time, `minAgeMs`). A new skill hook, `watchBubbles`,
+  sees each scan's Hough bubbles first; this skill taps the one with a
+  pure-white rim, its pink or lavender heart inside and no white past the rim
+  (a cut-in's face). On Minnie and Daisy recordings it fires on the bubble's
+  first or second frame; false taps ~0.04% per circle, mostly in cut-ins.
+
 ## [6.0b8]
 
 ### Summary

@@ -1,9 +1,18 @@
 // Magic Wand Change -- Magic Wand Minnie, Daisy and Clarice (Change).
 //
-// Plays as a burst. What these tsums add is the locket, the game's "magical
-// jewel" in the Secret Magical Minnie event: once clears have charged it, the
-// game dims the board and holds a winged heart in the middle of it, round
-// timer stopped, until it is tapped. One tap clears it and sets off the Change.
+// Plays as a burst, with two things of its own to tap.
+//
+// The heart bubble: every activation's clear leaves one bubble near the middle
+// of the board, a white rim round the tsum's heart (pink for Minnie, lavender
+// for Daisy). It falls with the refill until tapped, and the Bubble Strategy
+// held it like any game bubble, about a second each time. It is popped the
+// scan it is first seen instead (`watchBubbles`): the scan's bubble pass
+// already finds it, and its colours tell it from the game's bubbles.
+//
+// The locket, the game's "magical jewel" in the Secret Magical Minnie event:
+// once clears have charged it, the game dims the board and holds a winged
+// heart in the middle of it, round timer stopped, until it is tapped. One tap
+// clears it and sets off the Change.
 //
 // While it is up the Fan dims with the board, so the board stops
 // fingerprinting as `GamePlaying`: the HUD debounce runs out and
@@ -39,6 +48,26 @@ var MagicWandLocket = {
 
 /** When the locket was last tapped. */
 var gMagicWandTappedAt = 0;
+
+// In play-square px (`Config.screenResize`), read off the scan's own frame.
+// Measured on three Minnie and six Daisy activations (emulator and phone
+// recordings): the rim sits at radius ~15. A cut-in's face fits the rim and
+// the heart, so the ring just past the rim must be mostly not white.
+var MagicWandHeart = {
+  /** Radii each rim ray samples: spread so a Hough centre 2px off still lands. */
+  rimRadii: [13, 14, 15, 16, 17, 18],
+  /** Rays round the centre, and how many must meet the rim. */
+  rays: 12,
+  rimRays: 9,
+  /** The rim reads ~250; a tsum's cream face ~218. */
+  rimWhite: 230,
+  /** Just past the rim: at most `outerMax` of the rays white there. */
+  outerRadius: 23,
+  outerWhite: 200,
+  outerMax: 0.3,
+  /** Offsets from the centre where the heart is looked for; any one will do. */
+  heartAt: [[0, 1], [-2, 1], [2, 1], [0, -1], [0, 3]],
+};
 
 // ---- Reader ---------------------------------------------------------------
 
@@ -84,9 +113,70 @@ function magicWandTapLocket(ts: Tsum, from: string): boolean {
   return true;
 }
 
+/** The heart's pink or lavender: saturated, blue well over green (coins are gold). */
+function magicWandHeartColor(c: Color): boolean {
+  const hi = Math.max(c.r, c.g, c.b);
+  const lo = Math.min(c.r, c.g, c.b);
+  return c.r >= 180 && c.b >= 170 && c.g <= 205 && c.b - c.g >= 20 && hi - lo >= 50;
+}
+
+/** One bubble's samples, in the order `magicWandIsHeart` reads them. */
+function magicWandHeartPoints(x: number, y: number): Point[] {
+  const cfg = MagicWandHeart;
+  const pts: Point[] = [];
+  for (const d of cfg.heartAt) { pts.push({x: Math.round(x + d[0]), y: Math.round(y + d[1])}); }
+  for (let k = 0; k < cfg.rays; k++) {
+    const a = 2 * Math.PI * k / cfg.rays;
+    const ux = Math.cos(a), uy = Math.sin(a);
+    for (const r of cfg.rimRadii) { pts.push({x: Math.round(x + r * ux), y: Math.round(y + r * uy)}); }
+    pts.push({x: Math.round(x + cfg.outerRadius * ux), y: Math.round(y + cfg.outerRadius * uy)});
+  }
+  return pts;
+}
+
+/** Whether the samples from `at` show the heart bubble. */
+function magicWandIsHeart(colors: Color[], at: number): boolean {
+  const cfg = MagicWandHeart;
+  let i = at;
+  let heart = false;
+  for (let k = 0; k < cfg.heartAt.length; k++) {
+    if (magicWandHeartColor(colors[i++])) { heart = true; }
+  }
+  let rim = 0, outer = 0;
+  for (let k = 0; k < cfg.rays; k++) {
+    let hit = false;
+    for (let j = 0; j < cfg.rimRadii.length; j++) {
+      const c = colors[i++];
+      if (Math.min(c.r, c.g, c.b) >= cfg.rimWhite) { hit = true; }
+    }
+    if (hit) { rim++; }
+    const o = colors[i++];
+    if (Math.min(o.r, o.g, o.b) >= cfg.outerWhite) { outer++; }
+  }
+  return heart && rim >= cfg.rimRays && outer <= cfg.outerMax * cfg.rays;
+}
+
+/** Tap the heart bubble if the scan found it; the rest go back to the strategy. */
+function magicWandPopHeart(ts: Tsum, img: NativeImage, bubbles: GameBubble[]): GameBubble[] {
+  if (!ts.mayTouchBoard()) { return bubbles; }
+  const pts: Point[] = [];
+  for (const b of bubbles) { pts.push(...magicWandHeartPoints(b.x, b.y)); }
+  const colors = getImageColors(img, pts);
+  const per = pts.length / bubbles.length;
+  const rest: GameBubble[] = [];
+  for (let i = 0; i < bubbles.length; i++) {
+    const b = bubbles[i];
+    if (!magicWandIsHeart(colors, i * per)) { rest.push(b); continue; }
+    tapGameBubble(ts, b);
+    logInfo(Log.Skill.MagicWandHeart, { x: Math.round(b.x), y: Math.round(b.y), near: b.near || 0 });
+  }
+  return rest;
+}
+
 registerSkill({
   types: [SkillType.MagicWandChange],
   bareTapActivates: true,
+  watchBubbles: magicWandPopHeart,
   watchScan: function(ts) {
     return magicWandTapLocket(ts, 'scan');
   },

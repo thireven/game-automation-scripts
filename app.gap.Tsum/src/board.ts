@@ -819,6 +819,9 @@ Tsum.prototype.scanBoardQuick = function() {
     this.gameBubbles = findGameBubbles(grayImg, srcImg, circles).filter(function(b) {
       return !pointInLarge(b, large, 1);
     });
+    // A bubble the skill makes for itself is popped here, before the rest of
+    // the scan, and never reaches the strategy (`SkillHandler.watchBubbles`).
+    this.gameBubbles = skillWatchBubbles(this, srcImg, this.gameBubbles);
     // Large tsums are sampled and planned with the rest, and reach farther
     // (`buildTsumNeighbors`).
     // Info, but only when the count changes: the debug records never reach the
