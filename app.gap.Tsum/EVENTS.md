@@ -19,9 +19,9 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | event | emitted from | payload |
 |---|---|---|
 | `task.start` | `src/taskController.ts:93` | `task` |
-| `round.over` | `src/play.ts:537` | `id`, `round`, `seconds` |
-| `round.start` | `src/play.ts:732` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
-| `round.end` | `src/play.ts:1149` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
+| `round.over` | `src/play.ts:540` | `id`, `round`, `seconds` |
+| `round.start` | `src/play.ts:735` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
+| `round.end` | `src/play.ts:1152` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
 | `workflow.end` | `src/gapWorkflow.ts:669` | `id`, `rev`, `status`, `reason`, `loop`, `index` |
 | `workflow.start` | `src/gapWorkflow.ts:733` | `id`, `rev`, `name`, `total`, `resumed` |
 | `workflow.node` | `src/gapWorkflow.ts:777` | `id`, `loop`, `index`, `nodeId`, `node` |
@@ -29,7 +29,7 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `workflow.nodeFailed` | `src/gapWorkflow.ts:842`<br>`src/gapWorkflow.ts:944` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
 | `workflow.restart` | `src/gapWorkflow.ts:933` | `id`, `nodeId`, `index`, `loop`, `outcome`, `error`, `why`, `fps`, `captureMs` |
 | `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:865` | `rounds` |
+| `run.stopped` | `src/index.ts:868` | `rounds` |
 | `gap.notify` | `src/companion.ts:64` | _none_ |
 | `gap.direct` | `src/companion.ts:157` | _none_ |
 
@@ -59,7 +59,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:537` — `this.emit(Emit.Round.Over, …)`
+- `src/play.ts:540` — `this.emit(Emit.Round.Over, …)`
 
 ### `round.start`
 
@@ -77,7 +77,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:732` — `this.emit(Emit.Round.Start, …)`
+- `src/play.ts:735` — `this.emit(Emit.Round.Start, …)`
 
 ### `round.end`
 
@@ -100,7 +100,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:1149` — `this.emit(Emit.Round.End, …)`
+- `src/play.ts:1152` — `this.emit(Emit.Round.End, …)`
 
 ### `workflow.end`
 
@@ -227,7 +227,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:865` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:868` — `emitScriptEvent(Emit.Run.Stopped, …)`
 
 ### `gap.notify`
 
