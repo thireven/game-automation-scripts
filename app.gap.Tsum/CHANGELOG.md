@@ -45,6 +45,13 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b8]
+
+### Summary
+
+**Fixes**
+- Round stats record base coins for Hero Style Stitch too.
+
 ## [6.0b7]
 
 ### Summary
