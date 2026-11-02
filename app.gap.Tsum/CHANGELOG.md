@@ -78,8 +78,9 @@ release note; they fold back in here when she ships.
   base-coin and MyTsum-cap reads; the cap is now 250
   (anything the overlay dims). On the panel the band round the coin pill
   clears the counter's floor of 40 and hides the digits, so `baseCounters`
-  gets `themedLo` (65, set by Minnie's band at 63), retried on the same crop
-  when 40 reads nothing.
+  gets `themedLo` (67), retried on the same crop when 40 reads nothing. MuMu
+  captures RGB565, where Daisy's band reads (74,65,74) and the digits
+  (74,77,74), so 65 still failed there.
 - **Level-up with a big-eared tsum in panel 4**: `TsumLevelUp5to4Bonus`'s
   (450,1271) gutter probe landed on the icon's ear; moved to the left margin
   at (230,1340).

@@ -359,7 +359,8 @@ const StatsRegions: {
   //
   // The undimmed counter does not read through this at all -- too much of the
   // live HUD clears a floor that low -- and that is the safe direction: an
-  // unreadable field is left empty, where a wrong one would be recorded.
+  // unreadable field is left empty, where a wrong one would be recorded. (The
+  // `themedLo` retry below can read it, and reads it right.)
   //
   // The whole row rather than the coin figure alone, because a game carrying
   // medals draws a second counter to the left of it and pushes the coins ~130px
@@ -376,16 +377,20 @@ const StatsRegions: {
   // `themedLo` is for the Change tsums, which draw the HUD in their own colours
   // (Magic Wand Daisy's: a pastel pink band round a purple pill). Dimmed, that
   // band reads ~(73,58,73) and clears 40, so it masks as one blob round the
-  // pill and hides the digits. The digits are still neutral grey (~74), and
+  // pill and hides the digits. The digits are still neutral grey (~75), and
   // a pastel has one channel below that, so a higher floor keeps the digits
-  // and drops the band. Minnie's band is the palest so far, (73,63,63): 64-65
-  // read her frames and 60-66 Daisy's, and no floor from 56 to 70 misreads any
-  // corpus frame. Only tried when 40 reads nothing.
+  // and drops the band. Only tried when 40 reads nothing.
+  //
+  // 67 because MuMu captures RGB565: there the digits read (74,77,74) and
+  // Daisy's band (74,65,74), so the floor has to clear 65 and stay under 74;
+  // 66-69 read her MuMu frames, best from 67. Minnie's band, (73,63,63)
+  // lossless, is the palest so far. Frames cut from screen recordings blur
+  // the digits and read only up to 65-66, so they do not set this.
   baseCounters: {
     name: 'base counters',
     x: 368, y: 286, w: 432, h: 78,
     lo: [40, 40, 40], hi: [255, 255, 255],
-    themedLo: [65, 65, 65]
+    themedLo: [67, 67, 67]
   }
 };
 
