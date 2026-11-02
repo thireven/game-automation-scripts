@@ -386,6 +386,10 @@ const StatsRegions: {
   // 66-69 read her MuMu frames, best from 67. Minnie's band, (73,63,63)
   // lossless, is the palest so far. Frames cut from screen recordings blur
   // the digits and read only up to 65-66, so they do not set this.
+  //
+  // Some themes draw art the digits' own grey (Hero Style Stitch's flowers)
+  // that runs off this crop and fails both floors as a clipped glyph; the
+  // last retries read past it (`statsReadFields`' `pastArt`).
   baseCounters: {
     name: 'base counters',
     x: 368, y: 286, w: 432, h: 78,
@@ -407,6 +411,11 @@ const StatsSeparatorHeight = 0.62;
 // inside a number -- the one straddling a thousands separator, which is dropped
 // before this is measured -- is 0.5, and on the big orange score it is 0.42.
 const StatsFieldGapHeights = 1.2;
+
+// Read past HUD art (`statsReadFields`' `pastArt`), the number needs this many
+// glyph heights of unlit columns either side. Digits sit 0.1-0.3 apart, so art
+// that swallowed one is closer; Stitch's flowers are 1+ clear of his counter.
+const StatsArtClearHeights = 0.5;
 
 // The narrowest and widest a digit is, in glyph heights: '1' measures 0.39-0.47
 // and '4' up to 0.84 on every frame in the corpus. A contour wider than the
@@ -675,6 +684,29 @@ function statsGlyphBitmap(mask: NativeImage, box: ContourBox): string[] | null {
   }
 }
 
+/** Whether any pixel in the crop's columns x0..x1-1, rows y0..y1-1 is in the region's range. */
+function statsInked(img: NativeImage, region: StatsRegion, x0: number, x1: number, y0: number, y1: number): boolean {
+  const size = getImageSize(img);
+  const points: Point[] = [];
+  for (let y = Math.max(0, y0); y < Math.min(size.height, y1); y++) {
+    for (let x = Math.max(0, x0); x < Math.min(size.width, x1); x++) {
+      points.push({x: x, y: y});
+    }
+  }
+  if (points.length === 0) {
+    return false;
+  }
+  const pixels = getImageColors(img, points);
+  for (let i = 0; i < pixels.length; i++) {
+    const p = pixels[i];
+    if (p.r >= region.lo[0] && p.g >= region.lo[1] && p.b >= region.lo[2]
+        && p.r <= region.hi[0] && p.g <= region.hi[1] && p.b <= region.hi[2]) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Cuts a contour the mask joined across two glyphs back into them, or returns
  * it alone.
@@ -883,16 +915,27 @@ Tsum.prototype.readStatsNumbers = function(region) {
     if (fields !== null || region.themedLo === undefined) {
       return fields;
     }
-    // A themed HUD: retry the same crop at the stricter floor.
-    return statsReadFields(img, Object.assign({}, region,
-      {name: region.name + ' (themed)', lo: region.themedLo}));
+    // A themed HUD: retry the same crop at the stricter floor, then past art
+    // running off the crop at either floor.
+    const themed = Object.assign({}, region, {name: region.name + ' (themed)', lo: region.themedLo});
+    return statsReadFields(img, themed)
+      ?? statsReadFields(img, Object.assign({}, themed, {lo: region.lo}), true)
+      ?? statsReadFields(img, themed, true);
   } finally {
     releaseImage(img);
   }
 };
 
-/** `readStatsNumbers`' work on a crop it has already captured, at the region's `lo`. */
-function statsReadFields(img: NativeImage, region: StatsRegion): number[] | null {
+/**
+ * `readStatsNumbers`' work on a crop it has already captured, at the region's `lo`.
+ *
+ * `pastArt` (the last themed retries only) skips blobs on the crop's top or
+ * bottom edge as HUD art instead of failing on them: Hero Style Stitch's
+ * flowers are the digits' own grey, sit either side of the pill and run off
+ * the crop. Art can also swallow digits, so a joined box fails rather than
+ * being cut, and the number must have clear space either side.
+ */
+function statsReadFields(img: NativeImage, region: StatsRegion, pastArt = false): number[] | null {
   let mask: NativeImage | null = null;
   try {
     // inRange takes its bounds per BGRA channel, so the region's r/g/b
@@ -904,7 +947,11 @@ function statsReadFields(img: NativeImage, region: StatsRegion): number[] | null
       return null;
     }
     mask = masked;
-    const boxes = findContours(mask, 2, 0);
+    const cropH = getImageSize(mask).height;
+    let boxes = findContours(mask, 2, 0);
+    if (pastArt) {
+      boxes = boxes.filter(function(b) { return b.y > 0 && b.y + b.height < cropH; });
+    }
     if (boxes.length === 0) {
       return null;
     }
@@ -917,7 +964,6 @@ function statsReadFields(img: NativeImage, region: StatsRegion): number[] | null
     }
     // One box per glyph: separators and speckle out, and a contour the mask
     // joined across two glyphs cut back into them.
-    const cropH = getImageSize(mask).height;
     const glyphs: ContourBox[] = [];
     for (let i = 0; i < boxes.length; i++) {
       const box = boxes[i];
@@ -932,9 +978,32 @@ function statsReadFields(img: NativeImage, region: StatsRegion): number[] | null
         logDebug(Log.Stats.ClippedGlyph, { region: region.name, x: box.x, y: box.y, height: box.height, cropHeight: cropH });
         return null;
       }
+      // Past art, a joined box is digits run into it (Minnie's band at 40
+      // read 1,635 as 686): fail rather than cut it.
+      if (pastArt && box.width > tallest) {
+        return null;
+      }
       const parts = statsSplitJoined(img, region, box, tallest);
       for (let j = 0; j < parts.length; j++) {
         glyphs.push(parts[j]);
+      }
+    }
+    // Past art, digits the art swallowed leave the rest touching it: a live
+    // orange HUD took '8,39' of 8,391 and left the '1'.
+    if (pastArt && glyphs.length > 0) {
+      const first = glyphs[0];
+      const last = glyphs[glyphs.length - 1];
+      let top = cropH;
+      let bottom = 0;
+      for (let i = 0; i < glyphs.length; i++) {
+        top = Math.min(top, glyphs[i].y);
+        bottom = Math.max(bottom, glyphs[i].y + glyphs[i].height);
+      }
+      const clear = Math.ceil(tallest * StatsArtClearHeights);
+      const right = last.x + last.width;
+      if (statsInked(img, region, first.x - clear, first.x, top, bottom)
+          || statsInked(img, region, right, right + clear, top, bottom)) {
+        return null;
       }
     }
     const fields: number[] = [];

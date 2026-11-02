@@ -52,6 +52,15 @@ release note; they fold back in here when she ships.
 **Fixes**
 - Round stats record base coins for Hero Style Stitch too.
 
+### Fixed
+
+- **Base coins past themed HUD art**: Hero Style Stitch's flowers dim to the
+  digits' own grey and run off the base-counter crop, so both floors failed on
+  a clipped glyph. After both fail, a last retry (`pastArt`, at 40 then 67)
+  skips blobs on the crop's edge, refuses joined boxes and needs half a glyph
+  height clear either side of the number. Corpus, 197 recording frames and 564
+  debug shots read as before; only the Stitch shot changes (to 9,196).
+
 ## [6.0b7]
 
 ### Summary
