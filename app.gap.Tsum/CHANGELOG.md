@@ -45,6 +45,13 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b11]
+
+### Summary
+
+**Fixes**
+- Round stats are still recorded when GAP Companion directs the game off a screen after a round (like the JP event's page).
+
 ## [6.0b10]
 
 ### Summary
