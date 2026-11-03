@@ -55,6 +55,20 @@ release note; they fold back in here when she ships.
 - Take over: pause the script wherever it is, even mid-round, and direct the game from GAP Companion until you press Continue.
 - Stats: This run shows coins and medals per second, and Recent rounds shows each round's medals once you have earned any.
 
+**Fixes**
+- Round stats record base coins more reliably on emulators: totals of 10,000-10,999, and Daisy, Minnie and Hero Style Stitch counts that came back blank.
+
+### Fixed
+
+- **Digit templates recut over 616 labelled glyphs** (30 unread-base shots off
+  three emulators and the collection panel added): the dimmed RGB565 '0' led
+  '6' by 0.021, so every 10,xxx was blank, and 6.0b9's one-sample `'0b'` sat on
+  the thin '9' (Daisy's 490, Minnie's 6,990). `'0b'`/`'6b'` are now cut from
+  their closest samples. 124 of 124 device shots read right (was 79), one of
+  them 10,924, which the old set wrote as 10,124.
+- **Past-art read splits a two-digit join**: Stitch's 9,442 ("44" bar to bar);
+  a box wider than two digits still fails.
+
 ### Added
 
 - **Companion rates**: `baseCoinPerSec`, `finalCoinPerSec`, `medalPerSec`

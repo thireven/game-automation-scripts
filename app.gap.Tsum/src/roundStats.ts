@@ -78,12 +78,13 @@ const StatsGlyphPoints: Point[] = (function() {
 
 // Digit shapes, normalised to StatsGlyphW x StatsGlyphH. What `pages:stats
 // --digits` prints: the per-pixel majority of every glyph the corpus labels --
-// 388 of them, across the three sizes the game draws a number at (the orange
-// score ~50px, the tally rows ~20px, the dimmed level-up counter ~17px), on a
-// 540 emulator and a 1080 phone -- then the two pixels a quarter of its samples
-// disagreed on that a '3' gains a lead by. Over that set the worst genuine
-// digit scores 0.807 with a 0.036 lead over the runner-up. Recut the same way
-// from fresh frames if the game ever changes its typeface.
+// 616 of them, across the three sizes the game draws a number at (the orange
+// score ~50px, the tally rows ~20px, the dimmed level-up counter ~17px), on
+// 540 emulators (RGB565 MuMu-style ones included), a 1080 phone and the
+// collection panel -- then the few pixels its samples split on, flipped
+// wherever that lifts a glyph over the floors. Every one of them clears both
+// (worst score 0.779, worst lead 0.036). Recut the same way from fresh frames
+// if the game ever changes its typeface.
 //
 // Cut from tally-size glyphs as much as score-size ones, because that is where
 // a template goes wrong: a stroke is two pixels of this grid there rather than
@@ -106,35 +107,36 @@ const StatsGlyphPoints: Point[] = (function() {
 // its lower loop that a '0' cut short shared with it.
 const StatsDigits: {[digit: string]: string[]} = {
   '0': ['...####...',
-        '..##..##..',
+        '..######..',
+        '.##....##.',
+        '.##....###',
+        '###....###',
+        '###....###',
+        '###....###',
+        '###....###',
+        '###....###',
+        '###....###',
         '.##....##.',
         '.##....##.',
-        '###....###',
-        '###....###',
-        '###....###',
-        '###....###',
-        '###....###',
-        '###....###',
-        '.##....##.',
-        '.##....##.',
-        '..##..##..',
+        '.####.##..',
         '...####...'],
-  // Second '0': MuMu's RGB565 counter at `themedLo` (67) draws it with
-  // two-pixel strokes leaning right, which led '6' by 0.021 under the shape
-  // above and failed the margin (Daisy's 1,038 and 1,057).
-  '0b': ['...#####..',
-        '.###...##.',
-        '.##.....##',
-        '.##.....##',
-        '##......##',
-        '##......##',
-        '##......##',
-        '##......##',
-        '##......##',
-        '###.....##',
-        '.##.....##',
+  // Second '0': the dimmed counter on RGB565 emulators draws it with
+  // two-pixel strokes leaning right (every 10,xxx, Daisy's 1,038), which led
+  // '6' by 0.021 under the shape above. Cut from the 22 samples closest to it;
+  // the one-sample cut 6.0b9 shipped sat on the same counter's thin '9'.
+  '0b': ['...####...',
+        '.###..###.',
         '.##....##.',
-        '..##..###.',
+        '.##....##.',
+        '##......##',
+        '##......##',
+        '##......##',
+        '##......##',
+        '##......##',
+        '##.....###',
+        '.##....##.',
+        '.##....##.',
+        '..##..##..',
         '...####...'],
   '1': ['.....#####',
         '..########',
@@ -149,7 +151,7 @@ const StatsDigits: {[digit: string]: string[]} = {
         '.....#####',
         '.....#####',
         '.....#####',
-        '......###.'],
+        '......####'],
   '2': ['...#####..',
         '.###..###.',
         '.##....###',
@@ -178,13 +180,13 @@ const StatsDigits: {[digit: string]: string[]} = {
         '##.....##.',
         '.###..###.',
         '..#####...'],
-  '4': ['......#...',
+  '4': ['......##..',
         '.....###..',
         '....####..',
         '....####..',
         '...##.##..',
         '...#..##..',
-        '..##..##..',
+        '..#...##..',
         '.##...##..',
         '.#....##..',
         '##....##..',
@@ -196,7 +198,7 @@ const StatsDigits: {[digit: string]: string[]} = {
         '.########.',
         '.##.......',
         '.##.......',
-        '###..##...',
+        '###.###...',
         '#########.',
         '###...###.',
         '.#.....###',
@@ -205,9 +207,9 @@ const StatsDigits: {[digit: string]: string[]} = {
         '##.....###',
         '##.....##.',
         '.###..###.',
-        '..#####...'],
+        '...####...'],
   '6': ['...#####..',
-        '.###...##.',
+        '..##...##.',
         '.##.....#.',
         '.##.......',
         '###.......',
@@ -222,19 +224,20 @@ const StatsDigits: {[digit: string]: string[]} = {
         '...####...'],
   // Second '6': the dimmed level-up counter at 17px draws a filled lower loop,
   // which scored 0.02 above '8' under the shape above and failed the margin.
-  '6b': ['...#####..',
+  // Cut from the 22 samples closest to it.
+  '6b': ['.....#....',
         '..#######.',
         '.###...##.',
-        '.###...##.',
-        '.##.......',
+        '###.....#.',
+        '###.......',
         '########..',
         '####..###.',
-        '####..###.',
+        '###....###',
+        '###....###',
         '###....###',
         '###....###',
         '.##....###',
-        '.###..####',
-        '..#######.',
+        '.########.',
         '...####...'],
   '7': ['##########',
         '##########',
@@ -247,7 +250,7 @@ const StatsDigits: {[digit: string]: string[]} = {
         '....###...',
         '...###....',
         '...###....',
-        '...##.....',
+        '..###.....',
         '..###.....',
         '..##......'],
   '8': ['...####...',
@@ -271,13 +274,13 @@ const StatsDigits: {[digit: string]: string[]} = {
         '###....###',
         '###....###',
         '###....###',
-        '.##....###',
-        '..########',
+        '.###..####',
+        '..####.###',
         '.......###',
-        '.......##.',
-        '.#.....##.',
-        '.##...###.',
-        '..#####...']
+        '.......###',
+        '.##....##.',
+        '.###.###..',
+        '...####...']
 };
 
 // Width over height of each digit as the game draws it. Squashing every glyph
@@ -1003,9 +1006,10 @@ function statsReadFields(img: NativeImage, region: StatsRegion, pastArt = false)
         logDebug(Log.Stats.ClippedGlyph, { region: region.name, x: box.x, y: box.y, height: box.height, cropHeight: cropH });
         return null;
       }
-      // Past art, a joined box is digits run into it (Minnie's band at 40
-      // read 1,635 as 686): fail rather than cut it.
-      if (pastArt && box.width > tallest) {
+      // Past art, a box wider than two digits is digits run into it (Minnie's
+      // band at 40 read 1,635 as 686): fail rather than cut it. Two digits wide
+      // is the '44' join `statsSplitJoined` is for (Stitch's 9,442).
+      if (pastArt && box.width > tallest * 2 * StatsDigitMaxWidth) {
         return null;
       }
       const parts = statsSplitJoined(img, region, box, tallest);
