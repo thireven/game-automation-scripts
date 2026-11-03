@@ -640,5 +640,7 @@ namespace Log {
     TakeoverAsked = 'direct.takeoverAsked',
     /** The run took over: a request opens where it was. `inRound` when a round was on. */
     Takeover = 'direct.takeover',
+    /** Take over on a stopped script: armed for the phone's start, a run for that request alone. */
+    TakeoverStarting = 'direct.takeoverStarting',
   }
 }

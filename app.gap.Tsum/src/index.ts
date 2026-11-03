@@ -575,6 +575,10 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // The Debug tab's Direct on a stopped script: that request and no other job.
   const directOnly = gDirectOnlyRun && !gWorkflowRun;
   gDirectOnlyRun = false;
+  // The phone's Take over on a stopped script: the same, opened at once as a takeover (src/companion.ts).
+  gTakeoverOnlyRun = gTakeoverOnlyStart && !gWorkflowRun;
+  gTakeoverOnlyStart = false;
+  const takeoverOnly = gTakeoverOnlyRun;
   ts = new Tsum(logs);
   // From here on there is a world to dismantle, whether or not the rest of this
   // function gets to finish -- `start()` tears it down in its `finally`.
@@ -589,7 +593,8 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   }
   ts.prioritizeMyTsum = settings.prioritizeMyTsum;
   // A workflow runs unattended, and its Restart app node launches the game.
-  ts.autoLaunch = settings.autoLaunchApp || gWorkflowRun;
+  // A Take over shows the screen as it is, so it never launches the game.
+  ts.autoLaunch = !takeoverOnly && (settings.autoLaunchApp || gWorkflowRun);
   ts.chosenBuild = chosenGameBuild(settings.gameRegion);
   ts.scoreItem = settings.bonusScore;
   ts.coinItem = settings.bonusCoin;
@@ -749,7 +754,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // returns it alone, which is what enforces that -- the recorder itself only
   // ever calls `gPages.sweep`, which scores the table without broadcasting, so
   // not even a dismiss handler fires. See src/walkthrough.ts.
-  gWalkthroughRun = !gWorkflowRun && settings.walkthrough === true;
+  gWalkthroughRun = !gWorkflowRun && !takeoverOnly && settings.walkthrough === true;
   if (gWalkthroughRun) {
     if (unlockFirst) {
       logWarn(Log.Unlock.NowRefused, { reason: 'walkthrough' });
@@ -772,7 +777,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   }
   // The settings page asks about a missing or old list before it starts; this
   // is for every start that has no page to ask (Companion, workflow, restart).
-  if (ts.autoSkillLevel && !tsumListOnly && !directOnly) {
+  if (ts.autoSkillLevel && !tsumListOnly && !directOnly && !takeoverOnly) {
     const health = tsumListHealth();
     if (health.state !== TsumListState.Fresh) {
       logWarn(Log.TsumList.AutoSkillNoList, 'Auto Set Skill Level has no current Tsum list',
@@ -782,12 +787,15 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
         : 'No Tsum List. Run Export Tsum List so Auto Set Skill Level can work.', 8000, 3);
     }
   }
-  const jobs = gWorkflowRun ? workflowTaskTable() : directOnly ? [] : runTaskTable(settings);
+  const jobs = gWorkflowRun ? workflowTaskTable() : directOnly || takeoverOnly ? [] : runTaskTable(settings);
   for (let i = 0; i < jobs.length; i++) {
     gTaskController.register(jobs[i], taskBody(ts, jobs[i].name));
   }
   if (directOnly) {
     queueDirectNow(ts, gTaskController, true);
+  } else if (takeoverOnly) {
+    // The task loop's first pass opens it (`takeoverPoint`).
+    gTakeoverAsked = true;
   } else if (!gWalkthroughRun) {
     if (unlockFirst) {
       queueUnlockSweep(ts, gTaskController, choreOnly);
@@ -803,7 +811,10 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     queueBuyOpenCapsule(ts, gTaskController);
   }
   // Add-ons (src/addons.ts) queue their own one-shots; each checks the run's mode.
-  gapAddonsRunStart(ts, gTaskController);
+  // A run for one request starts none (e.g. a My Tsum change would tap first).
+  if (!directOnly && !takeoverOnly) {
+    gapAddonsRunStart(ts, gTaskController);
+  }
 }
 
 /**
@@ -848,6 +859,7 @@ function endRun(): void {
   gTsumListNowQueued = false;
   gDirectNowQueued = false;
   gTakeoverAsked = false;
+  gTakeoverOnlyRun = false;
   gapAddonsRunEnd();
   // Before `ts` goes, so the workflow's closing banner still has somewhere to go.
   workflowRunEnded();

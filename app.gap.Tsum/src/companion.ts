@@ -140,7 +140,9 @@ function notifyChoreDone(chore: 'unlock' | 'boxes' | 'tsumList', outcome: LogFie
 // drags on a screenshot, then Continue. The director add-on (src/addons.ts,
 // `setDirector`) does the work; without one nothing here does anything.
 // The script asks on its own (`requestUserDirection`), or the phone's Take over
-// asks it to stop wherever it is (`takeoverAsk`, then `takeoverPoint`).
+// asks it to stop wherever it is (`takeoverAsk`, then `takeoverPoint`). Take
+// over on a stopped script starts a run for that request alone, which stops
+// again when the request ends.
 
 /** The `gap.direct` event: one request's state, for the server and the phones. */
 interface GapDirectEvent {
@@ -159,10 +161,16 @@ interface GapDirectEvent {
   reason?: 'continue' | 'timeout' | 'stopped' | 'error';
   /** Opened by the phone's Take over: the server keeps its pushes silent. */
   takeover?: boolean;
+  /** The run stops when this request ends (Take over on a stopped script). */
+  endsRun?: boolean;
 }
 
 /** What a takeover's request says on the phone. */
 const TakeoverBody = 'Paused where it was. Press Continue to hand it back.';
+/** The same, when the script was stopped. */
+const TakeoverStoppedBody = 'The script was stopped. It stops again when you press Continue.';
+/** How long a Take over armed on a stopped script waits for the phone's `start`. */
+const TakeoverArmedMs = 60 * 1000;
 
 /** Set by the phone's Take over until the run thread opens the request (`takeoverPoint`). */
 let gTakeoverAsked = false;
@@ -172,11 +180,21 @@ let gDirecting = false;
 let gDirectTakeover = false;
 /** Above 0 inside the host's pause hooks (src/quickbar.ts), which run off the run thread. */
 let gHostHookDepth = 0;
+/** When Take over was pressed on a stopped script (0 = not), until `gapRemoteStartPrepare` takes it. */
+let gTakeoverArmedAt = 0;
+/** Set by `gapRemoteStartRun` for a run started for a Take over alone; `buildRun` takes it. */
+let gTakeoverOnlyStart = false;
+/** True through a run started for a Take over alone: it stops when the request ends. */
+let gTakeoverOnlyRun = false;
 
 /** Sends a request's state. The director calls it; nothing happens without GAP Companion. */
 function gapDirectEmit(event: GapDirectEvent): void {
   if (gDirectTakeover && event.state === 'waiting') {
     event = Object.assign({}, event, { takeover: true });
+  }
+  // Every event: the phones say the script stops again, and the server sends no idle push.
+  if (gDirectTakeover && gTakeoverOnlyRun) {
+    event = Object.assign({}, event, { endsRun: true });
   }
   emitScriptEvent(Emit.Companion.Direct, event);
 }
@@ -221,19 +239,34 @@ function userDirectionAvailable(): boolean {
   return gAddonDirector !== null && ts !== undefined;
 }
 
-/** The standard `canTakeOver` flag: a director, a run going, not paused and not already directed. */
+/**
+ * The standard `canTakeOver` flag: a director, not already directed, and
+ * either no run (one starts for it) or a run going that is not paused.
+ */
 function takeoverPossible(): boolean {
-  return gAddonDirector !== null && gRunActive && ts !== undefined && ts.isRunning && !gDirecting
-    && !gWalkthroughRun && ts.pausedAt === 0;
+  if (gAddonDirector === null || gDirecting) {
+    return false;
+  }
+  if (!gRunActive) {
+    return true;
+  }
+  return ts !== undefined && ts.isRunning && !gWalkthroughRun && ts.pausedAt === 0;
 }
 
 /**
  * The phone's Take over, on the companion's thread: only flags it. The run
  * thread opens the request at its next wait or screen read (`takeoverPoint`).
+ * Stopped, it arms it and answers `start`: the phone then starts the run that
+ * opens it (`gapRemoteStartPrepare`).
  */
-function takeoverAsk(): { ok: boolean; why?: string; open?: boolean } {
+function takeoverAsk(): { ok: boolean; why?: string; open?: boolean; status?: string; start?: boolean } {
   const run = ts;
-  if (!gRunActive || run === undefined || !run.isRunning) {
+  if (!gRunActive) {
+    gTakeoverArmedAt = Date.now();
+    logInfo(Log.Direct.TakeoverStarting, 'Taking over: starting a run for it alone');
+    return { ok: true, status: 'starting', start: true };
+  }
+  if (run === undefined || !run.isRunning) {
     return { ok: false, why: 'not-running' };
   }
   if (gDirecting) {
@@ -272,11 +305,22 @@ function takeoverPoint(): boolean {
   logInfo(Log.Direct.Takeover, 'Taken over from GAP Companion', { inRound: run.roundStartedAt !== 0 });
   gDirectTakeover = true;
   try {
-    requestUserDirection({ body: TakeoverBody });
+    requestUserDirection({ body: gTakeoverOnlyRun ? TakeoverStoppedBody : TakeoverBody });
   } finally {
     gDirectTakeover = false;
   }
+  // A run started for it alone stops with it.
+  if (gTakeoverOnlyRun) {
+    requestStop();
+  }
   return true;
+}
+
+/** Whether a Take over armed on a stopped script is still waiting for its start; clears it either way. */
+function takeoverTakeArmed(): boolean {
+  const at = gTakeoverArmedAt;
+  gTakeoverArmedAt = 0;
+  return at !== 0 && Date.now() - at <= TakeoverArmedMs;
 }
 
 /**
@@ -454,22 +498,28 @@ function gapRemoteStartPrepare(optsJson: string): string {
   if (chore !== null) {
     (settings as unknown as { [key: string]: unknown })[chore] = true;
   }
-  return JSON.stringify({ settings: settings, workflow: opts.workflow || null, choreOnly: chore !== null });
+  // A Take over pressed while stopped (`takeoverAsk`): a run for that request alone.
+  const takeover = takeoverTakeArmed() && !opts.workflow && chore === null;
+  return JSON.stringify({ settings: settings, workflow: opts.workflow || null, choreOnly: chore !== null,
+    takeoverOnly: takeover });
 }
 
 /** Starts the run `gapRemoteStartPrepare` answered. Returns when the run ends. */
 // noinspection JSUnusedGlobalSymbols
 function gapRemoteStartRun(preparedJson: string): void {
-  const p = JSON.parse(preparedJson) as { settings: Settings; workflow: unknown; choreOnly?: boolean };
+  const p = JSON.parse(preparedJson) as { settings: Settings; workflow: unknown; choreOnly?: boolean;
+    takeoverOnly?: boolean };
   if (p.workflow) {
     startWorkflow(p.settings, JSON.stringify(p.workflow));
   } else {
     gChoreOnlyRun = p.choreOnly === true;
+    gTakeoverOnlyStart = p.takeoverOnly === true;
     try {
       start(p.settings);
     } finally {
-      // `buildRun` takes it; cleared here too for a start that never got that far.
+      // `buildRun` takes them; cleared here too for a start that never got that far.
       gChoreOnlyRun = false;
+      gTakeoverOnlyStart = false;
     }
   }
 }

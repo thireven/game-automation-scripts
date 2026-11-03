@@ -52,7 +52,7 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *GAP Companion*
-- Take over: pause the script wherever it is, even mid-round, and direct the game from GAP Companion until you press Continue.
+- Take over: pause the script wherever it is, even mid-round or stopped, and direct the game from GAP Companion until you press Continue.
 - Stats: This run shows coins and medals per second, and Recent rounds shows each round's medals once you have earned any.
 - Round button in the run bar: Stop after round, or Time out as on the Quick Bar.
 
@@ -88,6 +88,10 @@ release note; they fold back in here when she ships.
   `takeover: true` so the push is silent. `canTakeOver` state flag; refused
   while paused or recording a walkthrough. `onPause` / `onResume` guard it off
   the host's thread.
+- **Take over on a stopped script**: arms it and answers `start: true`; the
+  phone's start runs that request alone (`takeoverOnly`): no jobs, no add-on
+  run start, no game launch, events with `endsRun: true`, stopped when it ends.
+  The Debug tab's Direct run skips add-on run starts too.
 
 ### Changed
 
