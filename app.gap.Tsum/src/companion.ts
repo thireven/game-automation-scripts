@@ -18,7 +18,10 @@ const CompanionReadouts = [
   { key: 'avgRoundSec', label: 'Avg round', unit: 'sec' },
   { key: 'baseCoinAvg', label: 'Avg coins (base)', unit: 'coins' },
   { key: 'finalCoinAvg', label: 'Avg coins (final)', unit: 'coins' },
+  { key: 'baseCoinPerSec', label: 'Coins/sec (base)' },
+  { key: 'finalCoinPerSec', label: 'Coins/sec (final)' },
   { key: 'medals', label: 'Medals', unit: 'medals' },
+  { key: 'medalPerSec', label: 'Medals/sec' },
   { key: 'restRemainingSec', label: 'Rest left', unit: 'sec' },
 ];
 
@@ -332,6 +335,15 @@ function companionNum(v: unknown): number | null {
   return typeof v === 'number' && v >= 0 ? v : null;
 }
 
+/**
+ * `total` per second in rounds, as the Quick Bar copy's PerSec. Text with two
+ * decimals: the phone shows numbers to one, and medals/sec is often under 0.1.
+ */
+function companionRate(total: unknown, playedSec: unknown): string | null {
+  return typeof total === 'number' && total >= 0 && typeof playedSec === 'number' && playedSec > 0
+    ? (total / playedSec).toFixed(2) : null;
+}
+
 /** What the phone shows for this script: readouts, stats rules and actions. */
 // noinspection JSUnusedGlobalSymbols
 function gapCompanion(): string {
@@ -354,8 +366,11 @@ function gapRemoteState(): string {
       avgRoundSec: companionNum(s.avgRoundSec),
       baseCoinAvg: companionNum(s.baseCoinAvg),
       finalCoinAvg: companionNum(s.finalCoinAvg),
+      baseCoinPerSec: companionRate(s.baseCoinTotal, s.playedSec),
+      finalCoinPerSec: companionRate(s.finalCoinTotal, s.playedSec),
       // 0 rather than a dash while a run has earned none.
       medals: active ? (companionNum(s.medals) ?? 0) : null,
+      medalPerSec: companionRate(s.medals, s.playedSec),
       restRemainingSec: typeof s.roundDelayRemainingMs === 'number'
         ? Math.ceil(s.roundDelayRemainingMs / 1000) : null,
     },

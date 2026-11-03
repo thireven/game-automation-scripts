@@ -30,6 +30,13 @@ const SKILL_FACT = { label: 'Skill', bind: 'data.skill', format: 'option:skillTy
 const BONUSES = ['Bonuses: {data.settings|trueKeys:bonus}', 'No bonus items'];
 const NO_ROUNDS = 'Finished rounds show here.';
 const ROUND_ROWS = { from: 'events', event: 'round.end' };
+const ROUND_COLUMNS = [
+  { label: 'Round', bind: 'data.round', format: 'int' },
+  { label: 'Time', bind: 'data.seconds', format: 'clock', icon: 'time' },
+  { label: 'Base', bind: 'data.baseCoins', format: 'number' },
+  { label: 'Coins', bind: 'data.finalCoins', format: 'number', icon: 'coins', bold: true },
+];
+const RECENT_ROUNDS = { rows: { ...ROUND_ROWS, limit: 10 }, empty: NO_ROUNDS };
 
 /** The Stats tab's My Tsum card; `gapScreens` fills its items, add-on parts included. */
 const CompanionMyTsumCard = { card: 'My Tsum', icon: 'tsum', items: [] as unknown[] };
@@ -56,7 +63,11 @@ const CompanionScreens = {
           { label: 'Avg round', bind: 'state.readouts.avgRoundSec', unit: 'sec', icon: 'avgTime' },
           { label: 'Avg coins (base)', bind: 'state.readouts.baseCoinAvg', unit: 'coins', icon: 'coins' },
           { label: 'Avg coins (final)', bind: 'state.readouts.finalCoinAvg', unit: 'coins', icon: 'coins' },
+          // The rates arrive as text with two decimals (`companionRate`, src/companion.ts).
+          { label: 'Coins/sec (base)', bind: 'state.readouts.baseCoinPerSec', format: 'text', icon: 'coins' },
+          { label: 'Coins/sec (final)', bind: 'state.readouts.finalCoinPerSec', format: 'text', icon: 'coins' },
           { label: 'Medals', bind: 'state.readouts.medals', unit: 'medals', icon: 'medal' },
+          { label: 'Medals/sec', bind: 'state.readouts.medalPerSec', format: 'text', icon: 'medal' },
         ] },
         { when: 'state.readouts.restRemainingSec', stats: [
           { label: 'Rest left', bind: 'state.readouts.restRemainingSec', unit: 'sec', icon: 'rest' },
@@ -68,13 +79,11 @@ const CompanionScreens = {
           { label: 'Base', bind: 'data.baseCoins', color: 'muted' },
         ] } },
       ] },
+      // A Medals column once the device's totals hold any, so other tsums get no column of zeros.
       { card: 'Recent rounds', icon: 'rounds', items: [
-        { table: { rows: { ...ROUND_ROWS, limit: 10 }, empty: NO_ROUNDS, columns: [
-          { label: 'Round', bind: 'data.round', format: 'int' },
-          { label: 'Time', bind: 'data.seconds', format: 'clock', icon: 'time' },
-          { label: 'Base', bind: 'data.baseCoins', format: 'number' },
-          { label: 'Coins', bind: 'data.finalCoins', format: 'number', icon: 'coins', bold: true },
-        ] } },
+        { when: '!totals.medals', table: { ...RECENT_ROUNDS, columns: ROUND_COLUMNS } },
+        { when: 'totals.medals', table: { ...RECENT_ROUNDS, columns: [...ROUND_COLUMNS,
+          { label: 'Medals', bind: 'data.medals', format: 'number', icon: 'medal' }] } },
       ] },
     ] as unknown[] },
     { id: 'settings', label: 'Settings', items: [{ slot: 'settings' }] as unknown[] },

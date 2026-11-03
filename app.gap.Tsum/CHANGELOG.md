@@ -53,9 +53,15 @@ release note; they fold back in here when she ships.
 
 *GAP Companion*
 - Take over: pause the script wherever it is, even mid-round, and direct the game from GAP Companion until you press Continue.
+- Stats: This run shows coins and medals per second, and Recent rounds shows each round's medals once you have earned any.
 
 ### Added
 
+- **Companion rates**: `baseCoinPerSec`, `finalCoinPerSec`, `medalPerSec`
+  readouts, over time in rounds like the Quick Bar copy's PerSec. Sent as
+  two-decimal text, since the phone formats numbers to one decimal.
+- **Recent rounds' Medals column**: a second table behind `when: totals.medals`,
+  so a device whose totals hold no medals keeps the four-column table.
 - **Take over** (the companion's `direct.takeover`): `gapDirect('takeover')`
   only flags it; `takeoverPoint` opens a request at the run's next `Tsum#sleep`
   slice, screenshot or task-loop turn, so a stuck loop or a round still yields.
