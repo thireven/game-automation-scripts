@@ -52,6 +52,15 @@ release note; they fold back in here when she ships.
 **Fixes**
 - A screen after a round that taps cannot clear (like the JP event's page) now asks GAP Companion for help in about 10 seconds instead of a minute.
 
+### Changed
+
+- **Score-page wait stops when its taps change nothing**: the overlay taps
+  read `ScreenSettle`'s grid first, and 5 in a row unchanged (`StatsStuckTaps`,
+  ~9s) end the wait with `stuck` in `stats.scorePageGaveUp`. The JP event page
+  that needs a drag used up all 60s every round, so the phone was asked ~58s in.
+  In past logs, 19% of the overlays that cleared on their own took over 10s, so
+  the check looks for "nothing changed" instead of capping the time.
+
 ## [6.0b9]
 
 ### Summary

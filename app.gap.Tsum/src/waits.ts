@@ -42,14 +42,36 @@ Tsum.prototype.stillSinceTouch = function(withinMs) {
   return this.screenStillAt > this.touchedAt && Date.now() - this.screenStillAt <= withinMs;
 }
 
+/** The settle grid's sixty points, worked out once. */
+let ScreenSettlePoints: Point[] | null = null;
+
 /** One reading of the settle grid: one capture, one crossing, released. */
-function screenSettleSample(ts: Tsum, points: Point[]): Color[] {
+function screenSettleSample(ts: Tsum): Color[] {
+  if (ScreenSettlePoints === null) {
+    ScreenSettlePoints = [];
+    for (let i = 0; i < ScreenSettle.ys.length; i++) {
+      for (let j = 0; j < ScreenSettle.xs.length; j++) {
+        ScreenSettlePoints.push({x: ScreenSettle.xs[j], y: ScreenSettle.ys[i]});
+      }
+    }
+  }
   const img = ts.screenshot();
   try {
-    return ts.getColors(img, points);
+    return ts.getColors(img, ScreenSettlePoints);
   } finally {
     releaseImage(img);
   }
+}
+
+/** Grid points that changed between two readings; `ScreenSettle.maxMoved` or fewer is still. */
+function screenSettleMoved(before: Color[], after: Color[]): number {
+  let moved = 0;
+  for (let i = 0; i < after.length; i++) {
+    if (absColor(before[i], after[i]) > ScreenSettle.threshold) {
+      moved++;
+    }
+  }
+  return moved;
 }
 
 /**
@@ -80,12 +102,6 @@ Tsum.prototype.settleScreen = function(maxMs, leadMs, spacingMs) {
     return false;
   }
   const budget = maxMs === undefined ? ScreenSettle.maxMs : maxMs;
-  const points: Point[] = [];
-  for (let i = 0; i < ScreenSettle.ys.length; i++) {
-    for (let j = 0; j < ScreenSettle.xs.length; j++) {
-      points.push({x: ScreenSettle.xs[j], y: ScreenSettle.ys[i]});
-    }
-  }
 
   // The animation this is waiting on has not necessarily started: a sample taken
   // the instant after the tap reads the old screen, and the one after it reads
@@ -93,20 +109,15 @@ Tsum.prototype.settleScreen = function(maxMs, leadMs, spacingMs) {
   this.sleep(leadMs === undefined ? ScreenSettle.leadMs : leadMs);
   const spacing = spacingMs === undefined ? ScreenSettle.spacingMs : spacingMs;
   const startedAt = Date.now();
-  let before = screenSettleSample(this, points);
-  let moved = points.length;
+  let before = screenSettleSample(this);
+  let moved = before.length;
   let polls = 0;
   let sawMove = false;
   while (this.isRunning && Date.now() - startedAt < budget) {
     this.sleep(spacing);
-    const after = screenSettleSample(this, points);
+    const after = screenSettleSample(this);
     polls++;
-    moved = 0;
-    for (let i = 0; i < after.length; i++) {
-      if (absColor(before[i], after[i]) > ScreenSettle.threshold) {
-        moved++;
-      }
-    }
+    moved = screenSettleMoved(before, after);
     if (moved <= ScreenSettle.maxMoved) {
       if (sawMove) {
         this.screenStillAt = Date.now();
