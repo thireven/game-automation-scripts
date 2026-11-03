@@ -1559,6 +1559,23 @@ var Page = {
     back: {x: 761, y: 1248},
     next: {x: 539, y: 1657}
   },
+  // The JP pause menu draws its two buttons (やり直し, ホーム画面へ) ~100px
+  // lower, where the entry above reads blue panel -- so it matched only
+  // ClosePage, the Quick Bar's resume never pressed Continue, and the round
+  // was given up as over (6.0b11, Hero Style Stitch).
+  GamePauseJp: {
+    name: PageName.GamePause,
+    variant: 'jp',
+    colors: [
+      {x: 366, y:  654, r: 255, g: 251, b: 247, match: true, threshold: 80},  // white title band
+      {x: 155, y: 1328, r: 239, g: 170, b:   8, match: true, threshold: 80},  // やり直し
+      {x: 540, y: 1328, r:  57, g:  97, b: 148, match: true, threshold: 80},  // blue gap between the buttons
+      {x: 623, y: 1328, r: 239, g: 178, b:   8, match: true, threshold: 80},  // ホーム画面へ
+      {x: 477, y: 1595, r: 239, g: 178, b:   8, match: true, threshold: 40}   // 続ける (Continue)
+    ],
+    back: {x: 761, y: 1248},
+    next: {x: 539, y: 1657}
+  },
   GamePlaying480x800: {
     name: PageName.GamePlaying,
     colors: [

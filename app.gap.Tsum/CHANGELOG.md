@@ -58,6 +58,7 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Round stats record base coins more reliably on emulators: totals of 10,000-10,999, and Daisy, Minnie and Hero Style Stitch counts that came back blank.
+- On JP, closing the Quick Bar mid-round resumes the round instead of giving it up as over.
 
 ### Fixed
 
@@ -69,6 +70,9 @@ release note; they fold back in here when she ships.
   them 10,924, which the old set wrote as 10,124.
 - **Past-art read splits a two-digit join**: Stitch's 9,442 ("44" bar to bar);
   a box wider than two digits still fails.
+- **`GamePauseJp`**: the JP pause menu's buttons sit ~100px lower, so only
+  ClosePage matched it; the Quick Bar's resume pressed nothing and the round
+  was assumed over, its rest recorded as a 19s round (725 coins/s).
 
 ### Added
 
