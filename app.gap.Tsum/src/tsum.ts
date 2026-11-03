@@ -682,6 +682,8 @@ Tsum.prototype.measureGameArea = function() {
 // `pages:selftest` listed six otherwise-sound entries that only q80 lost.
 // The downscale itself is exact, so nothing else here changes.
 Tsum.prototype.screenshot = function() {
+  // A Take over opens first; the frame is then of the screen it was left on.
+  takeoverPoint();
   this.measureGameArea();
   return getScreenshotModify(
     0,
@@ -695,6 +697,7 @@ Tsum.prototype.screenshot = function() {
 }
 
 Tsum.prototype.playScreenshotSquare = function() {
+  takeoverPoint();
   // Every square capture goes to a trace viewer, so a scan's findings land on
   // the frame they were read from (`board.scan`'s `frame`).
   traceFrameAsk();

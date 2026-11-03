@@ -134,6 +134,8 @@ function notifyChoreDone(chore: 'unlock' | 'boxes' | 'tsumList', outcome: LogFie
 // The script pauses and the user directs the device from the phone: taps and
 // drags on a screenshot, then Continue. The director add-on (src/addons.ts,
 // `setDirector`) does the work; without one nothing here does anything.
+// The script asks on its own (`requestUserDirection`), or the phone's Take over
+// asks it to stop wherever it is (`takeoverAsk`, then `takeoverPoint`).
 
 /** The `gap.direct` event: one request's state, for the server and the phones. */
 interface GapDirectEvent {
@@ -150,22 +152,43 @@ interface GapDirectEvent {
   maxActions?: number;
   /** Closed only. */
   reason?: 'continue' | 'timeout' | 'stopped' | 'error';
+  /** Opened by the phone's Take over: the server keeps its pushes silent. */
+  takeover?: boolean;
 }
+
+/** What a takeover's request says on the phone. */
+const TakeoverBody = 'Paused where it was. Press Continue to hand it back.';
+
+/** Set by the phone's Take over until the run thread opens the request (`takeoverPoint`). */
+let gTakeoverAsked = false;
+/** True while a request is open; a Take over then answers for that one. */
+let gDirecting = false;
+/** True while the open request is a takeover, so its events say so. */
+let gDirectTakeover = false;
+/** Above 0 inside the host's pause hooks (src/quickbar.ts), which run off the run thread. */
+let gHostHookDepth = 0;
 
 /** Sends a request's state. The director calls it; nothing happens without GAP Companion. */
 function gapDirectEmit(event: GapDirectEvent): void {
+  if (gDirectTakeover && event.state === 'waiting') {
+    event = Object.assign({}, event, { takeover: true });
+  }
   emitScriptEvent(Emit.Companion.Direct, event);
 }
 
 /**
  * The phone's `direct.play` / `direct.continue` (args already checked by the
- * adapter), handed to the director. Companion thread: check and store only.
+ * adapter), handed to the director; `direct.takeover` is the base's own.
+ * Companion thread: check and store only.
  */
 // noinspection JSUnusedGlobalSymbols
 function gapDirect(op: string, argsJson: string): string {
   const d = gAddonDirector;
   if (d === null) {
     return JSON.stringify({ ok: false, why: 'no-direct' });
+  }
+  if (op === 'takeover') {
+    return JSON.stringify(takeoverAsk());
   }
   if (op !== 'play' && op !== 'continue') {
     return JSON.stringify({ ok: false, why: 'unknown-op' });
@@ -193,6 +216,64 @@ function userDirectionAvailable(): boolean {
   return gAddonDirector !== null && ts !== undefined;
 }
 
+/** The standard `canTakeOver` flag: a director, a run going, not paused and not already directed. */
+function takeoverPossible(): boolean {
+  return gAddonDirector !== null && gRunActive && ts !== undefined && ts.isRunning && !gDirecting
+    && !gWalkthroughRun && ts.pausedAt === 0;
+}
+
+/**
+ * The phone's Take over, on the companion's thread: only flags it. The run
+ * thread opens the request at its next wait or screen read (`takeoverPoint`).
+ */
+function takeoverAsk(): { ok: boolean; why?: string; open?: boolean } {
+  const run = ts;
+  if (!gRunActive || run === undefined || !run.isRunning) {
+    return { ok: false, why: 'not-running' };
+  }
+  if (gDirecting) {
+    return { ok: true, open: true };
+  }
+  // Paused, the run thread is parked: it could not take over until Resume.
+  if (gWalkthroughRun || run.pausedAt > 0) {
+    return { ok: false, why: 'cant-take-over' };
+  }
+  if (!gTakeoverAsked) {
+    logInfo(Log.Direct.TakeoverAsked, 'Taking over at the next wait or screen read');
+  }
+  gTakeoverAsked = true;
+  return { ok: true };
+}
+
+/**
+ * The run thread's half of Take over, called where it waits or reads the
+ * screen (`Tsum#sleep`, `Tsum#screenshot`, `Tsum#playScreenshotSquare`, the
+ * task loop). Opens a request on whatever is on screen and returns when it
+ * ends; true when it did. The interrupted code then carries on as after a
+ * pause: a chain batch drops its plan (`pauses`) and the board is held until a
+ * look sees it.
+ */
+function takeoverPoint(): boolean {
+  if (!gTakeoverAsked || gDirecting || gHostHookDepth > 0) {
+    return false;
+  }
+  gTakeoverAsked = false;
+  const run = ts;
+  if (run === undefined || !run.isRunning) {
+    return false;
+  }
+  run.pauses++;
+  run.boardHeld = run.roundStartedAt !== 0;
+  logInfo(Log.Direct.Takeover, 'Taken over from GAP Companion', { inRound: run.roundStartedAt !== 0 });
+  gDirectTakeover = true;
+  try {
+    requestUserDirection({ body: TakeoverBody });
+  } finally {
+    gDirectTakeover = false;
+  }
+  return true;
+}
+
 /**
  * Asks the user to direct the device, from the run thread; returns when the
  * request ends. 'unavailable' at once without a director or a run. The stall
@@ -218,6 +299,9 @@ function requestUserDirection(opts?: GapAddonDirectOptions): GapAddonDirectOutco
   logInfo(Log.Direct.Asked, 'Asking for direction on the phone', { addon: d.id, body: ask.body ?? null });
   // A throw or a bad answer is a timeout, so the caller's old path runs.
   let outcome: GapAddonDirectOutcome = 'timeout';
+  // Any open request answers a pending Take over.
+  gTakeoverAsked = false;
+  gDirecting = true;
   try {
     const got = d.director.request(run, ask);
     if (got === 'continue' || got === 'timeout' || got === 'stopped') {
@@ -227,6 +311,8 @@ function requestUserDirection(opts?: GapAddonDirectOptions): GapAddonDirectOutco
     }
   } catch (e) {
     logError(Log.Addon.Failed, 'Add-on hook failed', { addon: d.id, hook: 'request', errorText: String(e) });
+  } finally {
+    gDirecting = false;
   }
   run.stallResets++;
   logInfo(Log.Direct.Ended, 'Direction request ended', { outcome: outcome, ms: Date.now() - startedAt });
@@ -277,6 +363,7 @@ function gapRemoteState(): string {
       inRound: s.inRound === true,
       wrapUpArmed: s.stopAfterThisRound === true,
       stopPending: s.stopAfterThisRound === true,
+      canTakeOver: takeoverPossible(),
     },
     // Full names; myTsum is null until the pre-round screen identified it.
     // Add-ons add their own fields (src/addons.ts).

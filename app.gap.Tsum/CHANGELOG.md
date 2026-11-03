@@ -49,8 +49,23 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*GAP Companion*
+- Take over: pause the script wherever it is, even mid-round, and direct the game from GAP Companion until you press Continue.
+
 **Fixes**
 - Round stats are still recorded when GAP Companion directs the game off a screen after a round (like the JP event's page).
+
+### Added
+
+- **Take over** (the companion's `direct.takeover`): `gapDirect('takeover')`
+  only flags it; `takeoverPoint` opens a request at the run's next `Tsum#sleep`
+  slice, screenshot or task-loop turn, so a stuck loop or a round still yields.
+  Bookkept like a pause (`pauses`, `boardHeld`); its events carry
+  `takeover: true` so the push is silent. `canTakeOver` state flag; refused
+  while paused or recording a walkthrough. `onPause` / `onResume` guard it off
+  the host's thread.
 
 ### Changed
 

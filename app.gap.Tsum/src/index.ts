@@ -847,6 +847,7 @@ function endRun(): void {
   gBuyBoxNowQueued = false;
   gTsumListNowQueued = false;
   gDirectNowQueued = false;
+  gTakeoverAsked = false;
   gapAddonsRunEnd();
   // Before `ts` goes, so the workflow's closing banner still has somewhere to go.
   workflowRunEnded();

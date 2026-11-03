@@ -29,9 +29,9 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `workflow.nodeFailed` | `src/gapWorkflow.ts:842`<br>`src/gapWorkflow.ts:944` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
 | `workflow.restart` | `src/gapWorkflow.ts:933` | `id`, `nodeId`, `index`, `loop`, `outcome`, `error`, `why`, `fps`, `captureMs` |
 | `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:868` | `rounds` |
+| `run.stopped` | `src/index.ts:869` | `rounds` |
 | `gap.notify` | `src/companion.ts:64` | _none_ |
-| `gap.direct` | `src/companion.ts:157` | _none_ |
+| `gap.direct` | `src/companion.ts:176` | _none_ |
 
 ## The events
 
@@ -227,7 +227,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:868` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:869` — `emitScriptEvent(Emit.Run.Stopped, …)`
 
 ### `gap.notify`
 
@@ -247,4 +247,4 @@ Payload built elsewhere: `event`, of type `GapDirectEvent`.
 
 Emitted from:
 
-- `src/companion.ts:157` — `emitScriptEvent(Emit.Companion.Direct, …)`
+- `src/companion.ts:176` — `emitScriptEvent(Emit.Companion.Direct, …)`

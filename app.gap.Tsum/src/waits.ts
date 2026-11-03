@@ -249,6 +249,10 @@ Tsum.prototype.sleep = function(t) {
   }
   let waitTime = t;
   while (this.isRunning && waitTime > 0) {
+    // The phone's Take over opens its request here; the wait is over after it.
+    if (takeoverPoint()) {
+      break;
+    }
     if (waitTime <= 500) {
       sleep(waitTime);
       break;

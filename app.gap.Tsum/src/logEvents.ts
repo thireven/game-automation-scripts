@@ -636,5 +636,9 @@ namespace Log {
     NowQueued = 'direct.nowQueued',
     /** `directNow` refused: `reason` no director or walkthrough. */
     NowRefused = 'direct.nowRefused',
+    /** The phone's Take over was asked; the run takes over at its next wait or screen read. */
+    TakeoverAsked = 'direct.takeoverAsked',
+    /** The run took over: a request opens where it was. `inRound` when a round was on. */
+    Takeover = 'direct.takeover',
   }
 }

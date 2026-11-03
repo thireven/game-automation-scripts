@@ -938,6 +938,17 @@ function maxChainSnap(value: string | number | boolean, current: number): number
  * case of not being in a round at all.
  */
 function onPause(): string {
+  // A Take over must not open on the host's thread (`takeoverPoint`).
+  gHostHookDepth++;
+  try {
+    return onPauseBody();
+  } finally {
+    gHostHookDepth--;
+  }
+}
+
+/** `onPause`'s work, above. */
+function onPauseBody(): string {
   if (!quickBarRunning()) {
     return 'no run';
   }
@@ -1022,6 +1033,17 @@ function resumeRereadMyTsum(t: Tsum): boolean {
  * then only looks until it sees the board. The string goes to the host log.
  */
 function onResume(): string {
+  // A Take over must not open on the host's thread (`takeoverPoint`).
+  gHostHookDepth++;
+  try {
+    return onResumeBody();
+  } finally {
+    gHostHookDepth--;
+  }
+}
+
+/** `onResume`'s work, above. */
+function onResumeBody(): string {
   if (!quickBarRunning()) {
     return 'no run';
   }

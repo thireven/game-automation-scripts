@@ -122,6 +122,8 @@ class TsumTaskController {
     logInfo(Log.Task.LoopStart, 'Task loop started', { intervalMs: this.interval });
     while (this.isRunning) {
       this.tick();
+      // Between jobs: a Take over opens here (src/companion.ts).
+      takeoverPoint();
       sleep(this.interval);
     }
     this.isRunning = false;
