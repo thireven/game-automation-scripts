@@ -49,6 +49,7 @@ var LogsEn = {
   [Log.Skill.GastonDone]: '[Gaston] Window closed',
   [Log.Skill.GastonPass]: '[Gaston] Chain drawn',
   [Log.Skill.RapunzelDone]: '[Rapunzel+] Mixed-colour chain drawn',
+  [Log.Skill.RapunzelDragIgnored]: '[Rapunzel+] The game is ignoring her drags; restart the script if this keeps up',
   [Log.Skill.LorcanaAuroraDone]: '[Lorcana Aurora] Bubble chain drawn',
   [Log.Skill.LorcanaAuroraNoChain]: '[Lorcana Aurora] No bubbles to chain; skill wasted',
   [Log.Skill.LorcanaAuroraStayed]: '[Lorcana Aurora] Bubbles stayed; chain not taken',

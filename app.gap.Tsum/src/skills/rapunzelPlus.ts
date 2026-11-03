@@ -45,7 +45,9 @@
 //     Every `checkEvery` tsums the game's chain counter
 //     is read (`chainCounterRead`); a count well behind the finger walks it
 //     back to the chain's real end and replans the rest from there
-//     (`rapunzelLinkChain`), as Gaston's coin check does.
+//     (`rapunzelLinkChain`), as Gaston's coin check does. A head left alone
+//     twice is the game not taking moves at all, and is not walked back again
+//     (`headStallsMax`); a replan never cuts the route short (`replanKeep`).
 //   - **a lantern starts the chain.** One of her skill patches drops lanterns
 //     on the board, and a lantern that is linked clears more on its own. The
 //     chain is planned from one (`rapunzelLanterns`, found by the lemon-yellow
@@ -180,6 +182,21 @@ var RapunzelPlusConfig = {
   checkTail: 4,
   countSlack: 3,
   maxRewinds: 3,
+  // A check finding only the head linked is walked back once. A second in a
+  // row means the game is not taking the drag's moves at all (it then links
+  // only the line from the head to the release), so the rest is drawn
+  // unchecked: on one run 227 of 387 activations walked back three times for
+  // nothing, against 4 in 1,354 on runs where drags were taken.
+  headStallsMax: 1,
+  // A replan replaces the route only when it keeps at least this share of the
+  // tsums left on it; otherwise the old route is redrawn. The repeat-stall
+  // replan (failing tsum excluded) once came back with 1 and cut an 18-chain
+  // to 2.
+  replanKeep: 0.75,
+  // Activations in a row whose drag was ignored before a warning is logged,
+  // and how often it repeats while that goes on.
+  ignoredWarnAfter: 3,
+  ignoredWarnEvery: 10,
   // --- lanterns ---
   // A patch drops lanterns; each is found by the lemon-yellow sun in its
   // middle. Measured on a 40s recording (81 frames, 540x960): a lantern's sun
@@ -527,8 +544,10 @@ interface RapunzelDrag {
   /** The route as finally drawn, replans included. */
   path: TsumPath;
   moves: number;
-  /** Each walk-back as [route index the finger was on, index it went back to, tsums replanned]. */
+  /** Each walk-back as [route index the finger was on, index it went back to, tsums replanned (0: old route redrawn)]. */
   rewinds: number[][];
+  /** Only the head linked at two checks running: the game was not taking the moves (`headStallsMax`). */
+  ignored: boolean;
   /** The game's count at the last read, null when unread or never read. */
   count: number | null;
   /** Time spent reading the counter, in ms: the price of the stall checks. */
@@ -549,7 +568,7 @@ interface RapunzelDrag {
  */
 function rapunzelLinkChain(ts: Tsum, path: TsumPath,
     replan: (from: BoardPoint, used: BoardPoint[], maxLen: number) => TsumPath | null): RapunzelDrag {
-  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], count: null, countMs: 0, falseStalls: 0 };
+  const drag: RapunzelDrag = { path: path, moves: 0, rewinds: [], ignored: false, count: null, countMs: 0, falseStalls: 0 };
   // A stopped run draws no new chain -- the same rule as `linkTsums`.
   if (!ts.mayTouchBoard() || path.length < 2) { return drag; }
   const cfg = RapunzelPlusConfig;
@@ -568,11 +587,13 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
     drag.moves++;
     let lastBack = -1;
     let lastCount: number | null = null;
+    // Checks in a row that found only the head linked.
+    let headStalls = 0;
     let i = 1;
     while (i < path.length) {
       hop(i);
       const end = i === path.length - 1;
-      if (drag.rewinds.length < cfg.maxRewinds && i + 1 >= cfg.checkFrom
+      if (!drag.ignored && drag.rewinds.length < cfg.maxRewinds && i + 1 >= cfg.checkFrom
           && !end && (i + 1 - cfg.checkFrom) % cfg.checkEvery === 0
           && path.length - 1 - i > cfg.checkTail) {
         const route = chainRouteCentres(path.slice(0, i + 1));
@@ -598,7 +619,12 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
         }
         drag.count = count;
         if (count !== null && (lastCount === null || count >= lastCount)) { lastCount = count; }
-        if (behind(count) && count !== null) {
+        headStalls = behind(count) && count !== null && count <= 1 ? headStalls + 1 : 0;
+        if (headStalls > cfg.headStallsMax) {
+          // The head alone again: the moves are not reaching the game, so a
+          // walk back cannot help. Draw the rest without checks.
+          drag.ignored = true;
+        } else if (behind(count) && count !== null) {
           // The chain ends at path[back]; walk back to it.
           const back = Math.max(0, Math.min(i, count) - 1);
           const again = lastBack >= 0 && back <= lastBack + 1;
@@ -608,13 +634,19 @@ function rapunzelLinkChain(ts: Tsum, path: TsumPath,
           for (let k = i - 1; k >= back; k--) { hop(k); }
           const used = path.slice(0, back + 1);
           if (again && back + 1 < path.length) { used.push(path[back + 1]); }
+          const oldLeft = path.length - 1 - back;
+          const keeps = function(p: TsumPath | null): boolean {
+            return p !== null && p.length - 1 >= cfg.replanKeep * oldLeft;
+          };
           let next = replan(path[back], used, cap - back);
-          // Nothing round the failing tsum: try through it again rather than
-          // let go -- a release here threw away 16 tsums on a trace.
-          if (next === null && again) { next = replan(path[back], path.slice(0, back + 1), cap - back); }
+          // No good route round the failing tsum: try through it again rather
+          // than let go -- a release here threw away 16 tsums on a trace.
+          if (again && !keeps(next)) { next = replan(path[back], path.slice(0, back + 1), cap - back); }
+          // Still short of the old route: redraw that instead (see `replanKeep`).
+          if (!keeps(next)) { next = null; }
           drag.rewinds.push([i, back, next !== null ? next.length - 1 : 0]);
           if (next === null) {
-            // No route at all: redraw the old one from the chain's end.
+            // Redraw the old route from the chain's end.
           } else {
             path = path.slice(0, back).concat(next) as TsumPath;
             pts.length = back + 1;
@@ -708,6 +740,29 @@ function rapunzelNoteClear(path: TsumPath, lanterns: BoardPoint[], releasedAt: n
   }
 }
 
+// Activations in a row whose drag the game ignored (`RapunzelDrag.ignored`).
+var rapunzelIgnoredRun = 0;
+
+/**
+ * Warn when drag after drag is ignored. On one run every activation for 36
+ * rounds linked only head-to-release and coins halved, until a script restart
+ * (the game left running) cleared it. The script cannot fix that state, so the
+ * player is told.
+ */
+function rapunzelNoteIgnored(drag: RapunzelDrag): void {
+  const cfg = RapunzelPlusConfig;
+  if (drag.ignored) {
+    rapunzelIgnoredRun++;
+    const n = rapunzelIgnoredRun - cfg.ignoredWarnAfter;
+    if (n >= 0 && n % cfg.ignoredWarnEvery === 0) {
+      logWarn(Log.Skill.RapunzelDragIgnored, { inARow: rapunzelIgnoredRun });
+    }
+  } else if (drag.count !== null && drag.count >= 2) {
+    // A read past the head: the game is taking moves again.
+    rapunzelIgnoredRun = 0;
+  }
+}
+
 registerSkill({
   types: [SkillType.RapunzelPlus],
   // No `chainLimits`, deliberately, and it is worth saying why since this skill
@@ -759,6 +814,7 @@ registerSkill({
       dragMs = Date.now() - dragAt;
       // No settle: the play loop goes on at once, planning around the clear.
       rapunzelNoteClear(drag.path, look.lanterns, Date.now());
+      rapunzelNoteIgnored(drag);
     }
 
     logInfo(Log.Skill.RapunzelDone, {
@@ -790,6 +846,8 @@ registerSkill({
       // `drawn` differs from `chain` when a replan changed the route.
       drawn: drag ? drag.path.length : 0,
       rewinds: drag ? drag.rewinds : [],
+      // Only the head linked twice running: the game was not taking the moves.
+      ignored: drag ? drag.ignored : false,
       registered: drag ? drag.count : null,
       countMs: drag ? drag.countMs : 0,
       falseStalls: drag ? drag.falseStalls : 0,

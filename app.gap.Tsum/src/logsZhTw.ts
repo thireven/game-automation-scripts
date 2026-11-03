@@ -46,6 +46,7 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Skill.GastonDone]: '[加斯頓] 時間結束',
   [Log.Skill.GastonPass]: '[加斯頓] 已連線',
   [Log.Skill.RapunzelDone]: '[樂佩+] 已連出混色連線',
+  [Log.Skill.RapunzelDragIgnored]: '[樂佩+] 遊戲未接受拖曳；若持續發生，請重新啟動腳本',
   [Log.Skill.LorcanaAuroraDone]: '[Lorcana 奧蘿拉] 已連出泡泡連線',
   [Log.Skill.LorcanaAuroraNoChain]: '[Lorcana 奧蘿拉] 沒有泡泡可連，技能浪費',
   [Log.Skill.LorcanaAuroraStayed]: '[Lorcana 奧蘿拉] 泡泡還在，連線未被接受',

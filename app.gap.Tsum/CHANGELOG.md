@@ -56,8 +56,19 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - MyTsum detection names look-alike tsums it used to leave unidentified, such as Anniversary Mickey and Steamboat Mickey.
+- Rapunzel+'s chain is no longer cut to a few tsums after a stall, and the script now says when the game stops taking her drags.
 
 ### Fixed
+
+- **Rapunzel+ drags the game ignores**: on a player's run, 36 rounds of
+  activations linked only the head (the game took DOWN and UP, not the moves,
+  so it linked the head-to-release line) until a script restart; coins halved.
+  A second head-only check in a row now stops the walk-backs (`headStallsMax`,
+  28 moves, not 48) and sets `ignored`; three such activations in a row log
+  `skill.rapunzel.dragIgnored`. The state itself is outside the script.
+- **Rapunzel+ short replans**: a replan keeping under 75% of the route left
+  (`replanKeep`) redraws the old route; the repeat-stall replan had cut
+  18-chains to 2-9.
 
 - **Pre-round art twins**: a pair closer than `minMargin` in the library could
   never be named (`mickey90th`/`mickeyb` are 0.036 apart: the crop cuts the

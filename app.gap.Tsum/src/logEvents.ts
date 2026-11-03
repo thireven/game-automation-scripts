@@ -251,6 +251,8 @@ namespace Log {
     NbcDiceUnread         = 'skill.nbc.diceUnread',
     OverloadProbe         = 'skill.overloadProbe',
     RapunzelDone          = 'skill.rapunzel.done',
+    /** Rapunzel+: drag after drag linked only its head; the game is not taking moves. */
+    RapunzelDragIgnored   = 'skill.rapunzel.dragIgnored',
     ReadyAgain            = 'skill.readyAgain',
     /** A tap withheld: the skill's last activation is still running. */
     StillRunning          = 'skill.stillRunning',

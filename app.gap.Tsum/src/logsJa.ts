@@ -44,6 +44,7 @@ var LogsJa: LogCataloguePartial = {
   [Log.Skill.GastonDone]: '[Gaston] 時間終了',
   [Log.Skill.GastonPass]: '[Gaston] チェーンを引いた',
   [Log.Skill.RapunzelDone]: '[Rapunzel+] 混色チェーンを引いた',
+  [Log.Skill.RapunzelDragIgnored]: '[Rapunzel+] ゲームがドラッグを受け付けていない。続くならスクリプトを再起動',
   [Log.Skill.LorcanaAuroraDone]: '[Lorcana Aurora] ボムのチェーンを引いた',
   [Log.Skill.LorcanaAuroraNoChain]: '[Lorcana Aurora] つなぐボムがなく、スキルが無駄に',
   [Log.Skill.LorcanaAuroraStayed]: '[Lorcana Aurora] ボムが残った。チェーンが通らず',
