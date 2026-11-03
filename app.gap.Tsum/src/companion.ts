@@ -43,6 +43,8 @@ const CompanionStats = [
 const CompanionRemoteActions: GapAddonAction[] = [
   { name: 'wrapUp', label: 'Stop after round', role: 'stopAfter' },
   { name: 'cancelWrapUp', label: 'Keep playing', role: 'cancelStopAfter' },
+  // The Quick Bar's Time out (`coastThisRound`); in the run bar's Round menu (src/companionScreens.ts).
+  { name: 'timeOut', label: 'Time out' },
   { name: 'lastSettings', label: 'Last run settings' },
 ];
 
@@ -416,6 +418,12 @@ function gapRemoteAction(name: string, argsJson: string): string {
     const status = armed ? stopAfterThisRound() : cancelStopAfterThisRound();
     return JSON.stringify(status === 'no run' ? { ok: false, why: 'no-run' }
       : { ok: true, status: status, armed: armed });
+  }
+  // Refused like the Quick Bar's button: the phone words no-round and not-playing-yet.
+  if (name === 'timeOut') {
+    const status = coastThisRound();
+    const why: { [status: string]: string } = { 'no run': 'no-run', 'no round': 'no-round', 'not playing yet': 'not-playing-yet' };
+    return JSON.stringify(why[status] ? { ok: false, why: why[status] } : { ok: true, status: status });
   }
   if (name === 'lastSettings') {
     return JSON.stringify({ ok: true, settings: lastRunSettings() });

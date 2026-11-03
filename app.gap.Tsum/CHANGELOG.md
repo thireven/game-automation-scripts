@@ -54,6 +54,7 @@ release note; they fold back in here when she ships.
 *GAP Companion*
 - Take over: pause the script wherever it is, even mid-round, and direct the game from GAP Companion until you press Continue.
 - Stats: This run shows coins and medals per second, and Recent rounds shows each round's medals once you have earned any.
+- Round button in the run bar: Stop after round, or Time out as on the Quick Bar.
 
 **Fixes**
 - Round stats record base coins more reliably on emulators: totals of 10,000-10,999, and Daisy, Minnie and Hero Style Stitch counts that came back blank.
@@ -86,8 +87,10 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
-- **GAP Companion's run bar says "Stop after round"** (`wrapUp`'s label, was
-  "Stop after this round"), shorter beside Take over.
+- **GAP Companion's run bar has a Round menu** (the companion's bar menu
+  entry): Stop after round (`wrapUp`, was "Stop after this round") or Keep
+  playing, and the new `timeOut` action, the Quick Bar's `coastThisRound`.
+  Its refusals are `no-round` and `not-playing-yet`.
 
 ## [6.0b11]
 

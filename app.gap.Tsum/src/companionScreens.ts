@@ -45,10 +45,13 @@ const CompanionScreens = {
   ui: 3,
   // quickBarState's myTsum is already the full name.
   summary: { headline: { label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum', whenEmpty: 'Not identified yet' } },
-  bar: [
-    { action: 'wrapUp', when: '!state.flags.stopPending' },
-    { action: 'cancelWrapUp', when: 'state.flags.stopPending' },
-  ],
+  // One Round tile; its menu opens above it. A phone older than bar menus shows the
+  // stop-after-round role's tile instead.
+  bar: [{ menu: 'Round', icon: 'rounds', items: [
+    { action: 'wrapUp', when: '!state.flags.stopPending', icon: 'skip' },
+    { action: 'cancelWrapUp', when: 'state.flags.stopPending', icon: 'play' },
+    { action: 'timeOut', icon: 'hourglass' },
+  ] }],
   barNote: [{ text: 'The run stops when this round ends.', when: 'state.flags.stopPending' }],
   tabs: [
     // `gapScreens` puts the add-ons' cards in after the My Tsum card.
