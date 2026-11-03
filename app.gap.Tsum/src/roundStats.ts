@@ -1695,14 +1695,17 @@ function myTsumMatch(sig: number[], build: GameBuild, library?: MyTsumEntry[]): 
   let best = -2;
   let second = -2;
   let winner = -1;
+  let runnerUp = -1;
   for (let i = 0; i < lib.length; i++) {
     const score = myTsumSimilarity(vec, lib[i].vec);
     if (score > best) {
       second = best;
+      runnerUp = winner;
       best = score;
       winner = i;
     } else if (score > second) {
       second = score;
+      runnerUp = i;
     }
   }
   if (winner < 0) {
@@ -1715,8 +1718,27 @@ function myTsumMatch(sig: number[], build: GameBuild, library?: MyTsumEntry[]): 
     score: best,
     // -2 is the sentinel: correlation cannot leave [-1, 1], so anything below
     // that means no second entry was scored at all.
-    margin: second < -1 ? best : best - second
+    margin: second < -1 ? best : best - second,
+    rival: runnerUp < 0 ? '' : lib[runnerUp].short,
+    rivalGap: runnerUp < 0 ? 2 : 1 - myTsumSimilarity(lib[winner].vec, lib[runnerUp].vec)
   };
+}
+
+/**
+ * Whether a pre-round match may be believed: a good score, and clear of the
+ * runner-up -- by `minMargin`, or for an art twin by `twinShare` of the gap
+ * between the two library entries (see `MyTsumPortrait`).
+ */
+function myTsumConfident(match: MyTsumMatch): boolean {
+  const p = MyTsumPortrait;
+  if (match.score < p.minScore) {
+    return false;
+  }
+  if (match.margin >= p.minMargin) {
+    return true;
+  }
+  return match.rivalGap < p.minMargin && match.rivalGap >= p.twinGap
+    && match.margin >= p.twinShare * match.rivalGap;
 }
 
 Tsum.prototype.myTsumSignature = function(rect) {
@@ -1814,8 +1836,9 @@ Tsum.prototype.selectedTsum = function() {
     build: match.build,
     score: match.score,
     margin: match.margin,
-    confident: match.score >= MyTsumPortrait.minScore
-      && match.margin >= MyTsumPortrait.minMargin
+    rival: match.rival,
+    rivalGap: match.rivalGap,
+    confident: myTsumConfident(match)
   };
 };
 
@@ -1848,6 +1871,8 @@ Tsum.prototype.identifyMyTsum = function() {
       build: selected.build,
       score: +selected.score.toFixed(3),
       margin: +selected.margin.toFixed(3),
+      rival: selected.rival,
+      rivalGap: +selected.rivalGap.toFixed(3),
     });
     // On the banner for the round it belongs to, not for a fixed few seconds:
     // one showing, and the next pre-round screen replaces it. The catalogue
@@ -1860,6 +1885,8 @@ Tsum.prototype.identifyMyTsum = function() {
       best: selected.short,
       score: +selected.score.toFixed(3),
       margin: +selected.margin.toFixed(3),
+      rival: selected.rival,
+      rivalGap: +selected.rivalGap.toFixed(3),
       minScore: MyTsumPortrait.minScore,
       minMargin: MyTsumPortrait.minMargin,
       signatures: myTsumLibrary().length,
@@ -1926,6 +1953,8 @@ function detectMyTsum(settings?: Settings): string {
     build: selected.build,
     score: +selected.score.toFixed(3),
     margin: +selected.margin.toFixed(3),
+    rival: selected.rival,
+    rivalGap: +selected.rivalGap.toFixed(3),
     confident: selected.confident,
   });
   probe.banner((selected.confident ? 'Tsum: ' : 'Tsum? ') + selected.full

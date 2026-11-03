@@ -278,7 +278,20 @@ var MyTsumPortrait = {
   // against 0.70/0.08 this names 97% of tsums rather than 91%, *and* invents a
   // name for an unknown icon less often, 12% against 15%.
   minScore: 0.85,
-  minMargin: 0.04
+  minMargin: 0.04,
+  // Art twins: two entries less than `minMargin` apart, so even a perfect read
+  // of one cannot clear it against the other (`mickey90th`/`mickeyb` are 0.036
+  // apart: the crop cuts the hat). Such a pair is judged on its own scale
+  // instead: the winner must lead by `twinShare` of the gap between the two
+  // entries. A pair under `twinGap` apart is the same drawing
+  // (`mickeykn`/`mickeyknsp`, 0.010) and stays refused.
+  //
+  // Measured on every tsum drawn onto a real pre-round capture, read unshifted,
+  // shifted a pixel each way and JPEG'd (4,842 reads): no wrong name at 0.3,
+  // and each twin's unshifted read sits at 0.47-0.90, except `eric` (0.31).
+  // The real Anniversary Mickey capture reads 0.61, and 0.60 in RGB565.
+  twinShare: 0.4,
+  twinGap: 0.02
 };
 
 // What a tsum looks like *on the board*, which is a different question from

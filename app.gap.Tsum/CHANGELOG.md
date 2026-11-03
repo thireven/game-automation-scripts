@@ -54,6 +54,18 @@ release note; they fold back in here when she ships.
 *GAP Companion*
 - Take over also works while the script is stopped.
 
+**Fixes**
+- MyTsum detection names look-alike tsums it used to leave unidentified, such as Anniversary Mickey and Steamboat Mickey.
+
+### Fixed
+
+- **Pre-round art twins**: a pair closer than `minMargin` in the library could
+  never be named (`mickey90th`/`mickeyb` are 0.036 apart: the crop cuts the
+  hat). A twin now passes when it leads by `twinShare` (0.4) of the pair's own
+  gap; pairs under `twinGap` (0.02) stay refused. 807 tsums drawn onto a real
+  capture, 4,842 reads: none named wrong. `tsums.*` records carry the
+  runner-up (`rival`, `rivalGap`).
+
 ### Added
 
 - **Take over on a stopped script**: arms it and answers `start: true`; the

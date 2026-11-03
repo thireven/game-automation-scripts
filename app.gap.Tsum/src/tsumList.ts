@@ -159,6 +159,8 @@ Tsum.prototype.identifyCollectionTsum = function() {
     build: match.build,
     score: match.score,
     margin: match.margin,
+    rival: match.rival,
+    rivalGap: match.rivalGap,
     confident: match.score >= TsumListPortrait.minScore && match.margin >= TsumListPortrait.minMargin
   };
   if (byPortrait !== null && byPortrait.confident) {
@@ -251,7 +253,8 @@ function tsumListMatchName(ts: Tsum, build: GameBuild): MyTsumSelection | null {
   const vec = tsumListNamePrepare(read.sig);
   let best = -2;
   let second = -2;
-  let winner = '';
+  let winner = -1;
+  let runnerUp = -1;
   for (let i = 0; i < lib.length; i++) {
     if (lib[i].build !== build) {
       continue;
@@ -262,22 +265,27 @@ function tsumListMatchName(ts: Tsum, build: GameBuild): MyTsumSelection | null {
     }
     if (dot > best) {
       second = best;
+      runnerUp = winner;
       best = dot;
-      winner = lib[i].short;
+      winner = i;
     } else if (dot > second) {
       second = dot;
+      runnerUp = i;
     }
   }
-  if (winner === '') {
+  if (winner < 0) {
     return null;
   }
+  const short = lib[winner].short;
   const margin = second < -1 ? best : best - second;
   return {
-    short: winner,
-    full: tsumListDisplayName(winner, build),
+    short: short,
+    full: tsumListDisplayName(short, build),
     build: build,
     score: best,
     margin: margin,
+    rival: runnerUp < 0 ? '' : lib[runnerUp].short,
+    rivalGap: runnerUp < 0 ? 2 : 1 - myTsumSimilarity(lib[winner].vec, lib[runnerUp].vec),
     confident: best >= TsumListName.minScore && margin >= TsumListName.minMargin
   };
 }

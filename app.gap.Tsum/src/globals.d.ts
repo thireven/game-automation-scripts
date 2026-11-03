@@ -954,6 +954,13 @@ interface MyTsumMatch {
   score: number;
   /** `score` itself when the library holds one entry: there is no rival to beat. */
   margin: number;
+  /** The runner-up's id; '' when the library holds one entry. */
+  rival: string;
+  /**
+   * How far apart the winner and runner-up are in the library itself (1 minus
+   * their similarity): the most `margin` can be. 2 with no runner-up.
+   */
+  rivalGap: number;
 }
 
 /**
@@ -961,7 +968,7 @@ interface MyTsumMatch {
  * for the icon on it, plus whether that match may be believed.
  */
 interface MyTsumSelection extends MyTsumMatch {
-  /** Both `MyTsumPortrait.minScore` and `.minMargin` cleared. */
+  /** The match may be believed; `myTsumConfident` decides it for the pre-round icon. */
   confident: boolean;
 }
 
