@@ -45,7 +45,7 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0b11]
+## [6.0b12]
 
 ### Summary
 
@@ -53,9 +53,6 @@ release note; they fold back in here when she ships.
 
 *GAP Companion*
 - Take over: pause the script wherever it is, even mid-round, and direct the game from GAP Companion until you press Continue.
-
-**Fixes**
-- Round stats are still recorded when GAP Companion directs the game off a screen after a round (like the JP event's page).
 
 ### Added
 
@@ -66,6 +63,13 @@ release note; they fold back in here when she ships.
   `takeover: true` so the push is silent. `canTakeOver` state flag; refused
   while paused or recording a walkthrough. `onPause` / `onResume` guard it off
   the host's thread.
+
+## [6.0b11]
+
+### Summary
+
+**Fixes**
+- Round stats are still recorded when GAP Companion directs the game off a screen after a round (like the JP event's page).
 
 ### Changed
 
