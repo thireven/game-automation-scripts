@@ -70,6 +70,11 @@ release note; they fold back in here when she ships.
   while paused or recording a walkthrough. `onPause` / `onResume` guard it off
   the host's thread.
 
+### Changed
+
+- **GAP Companion's run bar says "Stop after round"** (`wrapUp`'s label, was
+  "Stop after this round"), shorter beside Take over.
+
 ## [6.0b11]
 
 ### Summary

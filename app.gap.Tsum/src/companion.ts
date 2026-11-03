@@ -41,7 +41,7 @@ const CompanionStats = [
  * Tsum code. Add-ons add theirs (`gapAddonActionList`, src/addons.ts).
  */
 const CompanionRemoteActions: GapAddonAction[] = [
-  { name: 'wrapUp', label: 'Stop after this round', role: 'stopAfter' },
+  { name: 'wrapUp', label: 'Stop after round', role: 'stopAfter' },
   { name: 'cancelWrapUp', label: 'Keep playing', role: 'cancelStopAfter' },
   { name: 'lastSettings', label: 'Last run settings' },
 ];
