@@ -45,6 +45,13 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b10]
+
+### Summary
+
+**Fixes**
+- A screen after a round that taps cannot clear (like the JP event's page) now asks GAP Companion for help in about 10 seconds instead of a minute.
+
 ## [6.0b9]
 
 ### Summary
