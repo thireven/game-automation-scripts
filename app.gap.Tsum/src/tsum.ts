@@ -1047,9 +1047,10 @@ Tsum.prototype.exitUnknownPage = function() {
 }
 
 // Before the blind escape: ask the user to direct the device (a director
-// add-on, `requestUserDirection` in companion.ts). Called only by the navigate
-// band's `nav.move.unknown`, which never runs mid-round (a bare `detect()` in
-// the play loop does not offer that band). Continue or a stop means the screen
+// add-on, `requestUserDirection` in companion.ts). Called by the navigate band's
+// `nav.move.unknown`, which never runs mid-round (a bare `detect()` in the play
+// loop does not offer that band), and by `waitForScorePage` for a screen over
+// the tally that its taps cannot move. Continue or a stop means the screen
 // was handled; a timeout or no director runs the escape. After a timeout
 // nobody is watching, so the next unknown screens skip asking for a while.
 const UnknownDirectQuietMs = 30 * 60 * 1000;

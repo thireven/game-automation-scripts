@@ -52,6 +52,14 @@ release note; they fold back in here when she ships.
 **Fixes**
 - Round stats are still recorded when GAP Companion directs the game off a screen after a round (like the JP event's page).
 
+### Changed
+
+- **Score-page wait asks for direction itself**: once its taps are stuck it
+  calls `directUnknownPage` instead of giving up, and moves its 60s cap on by
+  the time the request took, so after Continue the tally is still read. A new
+  screen after Continue is tapped as usual, the same screen asked about again;
+  no director or no answer gives up as in 6.0b10.
+
 ## [6.0b10]
 
 ### Summary

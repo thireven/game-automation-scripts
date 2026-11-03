@@ -2075,16 +2075,19 @@ function statsPageTally(seen: {[page: string]: number}): string {
  * that every one so far advances on any tap. The same spot is inert on the
  * tally and on the panels that share its moment, and the window is renewed
  * while the tapping goes on, since the loop is then acting rather than
- * watching; `StatsScorePageMaxWaitMs` bounds it as before, and `StatsStuckTaps`
- * ends it once the taps change nothing. The count-up tap renews nothing: the
- * window it runs in is the count-up's own.
+ * watching; `StatsScorePageMaxWaitMs` bounds it as before. Once the taps change
+ * nothing (`StatsStuckTaps`) the user is asked to direct the device instead
+ * (`directUnknownPage`), the clock held while they do; with no one to ask, the
+ * wait gives up there. The count-up tap renews nothing: the window it runs in
+ * is the count-up's own.
  *
  * The polling also drives `record.baseCoins`, which reads the coin counter off
  * the level-up panel this loop passes through on the way.
  */
 Tsum.prototype.waitForScorePage = function() {
   const startedAt = Date.now();
-  const hardDeadline = startedAt + StatsScorePageMaxWaitMs;
+  // Moved on by the time a direction request takes (below).
+  let hardDeadline = startedAt + StatsScorePageMaxWaitMs;
   let deadline = startedAt + StatsScorePageWaitMs;
   // What the wait actually looked at. An empty score column is otherwise
   // indistinguishable between "the tally never came", "something was parked in
@@ -2110,6 +2113,7 @@ Tsum.prototype.waitForScorePage = function() {
     if (page !== PageName.Unknown) {
       tapFrame = null;
       stillTaps = 0;
+      stuck = false;
     }
     if (page === PageName.ScorePage) {
       if (!sawTally) {
@@ -2151,9 +2155,25 @@ Tsum.prototype.waitForScorePage = function() {
       // spot that is inert on the tally is tapped at an interval until a page
       // this loop knows is back. Renewing on `Unknown` is refused everywhere
       // else in this loop; here the loop is acting rather than watching, and
-      // `StatsScorePageMaxWaitMs` still bounds it. Taps that change nothing
-      // stop it sooner (`StatsStuckTaps`).
-      if (Date.now() - lastTapAt >= StatsUnknownTapMs) {
+      // `StatsScorePageMaxWaitMs` still bounds it. Once taps change nothing
+      // (`StatsStuckTaps`) the user is asked instead.
+      if (stuck) {
+        // Ask the user to direct the device off it, with this wait's clock held
+        // meanwhile: after Continue the tally is still there to read. False --
+        // no director, no answer, a screen still moving -- gives up.
+        const askedAt = Date.now();
+        if (!this.directUnknownPage()) {
+          break;
+        }
+        hardDeadline += Date.now() - askedAt;
+        // Another screen now: tap that one as usual. The same one is asked again.
+        const frame = screenSettleSample(this);
+        if (tapFrame !== null && screenSettleMoved(tapFrame, frame) > ScreenSettle.maxMoved) {
+          stuck = false;
+          stillTaps = 0;
+          tapFrame = frame;
+        }
+      } else if (Date.now() - lastTapAt >= StatsUnknownTapMs) {
         if (taps === 0) {
           logInfo(Log.Stats.TallyCovered,
             'A screen the table does not know is over the tally; tapping it away');
@@ -2166,11 +2186,11 @@ Tsum.prototype.waitForScorePage = function() {
         tapFrame = frame;
         if (stillTaps >= StatsStuckTaps) {
           stuck = true;
-          break;
+        } else {
+          this.tap(StatsBlindTapSpot);
+          lastTapAt = Date.now();
+          taps++;
         }
-        this.tap(StatsBlindTapSpot);
-        lastTapAt = Date.now();
-        taps++;
       }
       deadline = Date.now() + StatsScorePageWaitMs;
     }
@@ -2179,7 +2199,8 @@ Tsum.prototype.waitForScorePage = function() {
   if (this.isRunning) {
     // One record instead of three lines that only meant anything read together.
     logWarn(Log.Stats.ScorePageGaveUp, stuck
-      ? 'Gave up on the score page: taps do not move the screen over the tally'
+      ? 'Gave up on the score page: taps do not move the screen over the tally, '
+        + 'and no one directed it'
       : sawTally
       ? 'Gave up on the score page: the tally showed but never put its buttons out'
       : 'Gave up on the score page: the tally never showed -- a screen above with no '
@@ -2190,7 +2211,8 @@ Tsum.prototype.waitForScorePage = function() {
       // them. The second means the post-round screens kept renewing it, so the
       // fix is there rather than in the window's length.
       cappedOut: Date.now() >= hardDeadline,
-      // Neither: `StatsStuckTaps` taps in a row changed nothing.
+      // Neither: `StatsStuckTaps` taps in a row changed nothing, and the user
+      // could not be asked or did not answer.
       stuck: stuck,
       skipTaps: this.tallySkipTaps,
       blindTaps: taps,
