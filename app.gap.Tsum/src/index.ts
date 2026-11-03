@@ -579,6 +579,8 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   gTakeoverOnlyRun = gTakeoverOnlyStart && !gWorkflowRun;
   gTakeoverOnlyStart = false;
   const takeoverOnly = gTakeoverOnlyRun;
+  // Any run that starts makes an armed Take over stale (a local Start never takes it).
+  gTakeoverArmedAt = 0;
   ts = new Tsum(logs);
   // From here on there is a world to dismantle, whether or not the rest of this
   // function gets to finish -- `start()` tears it down in its `finally`.
@@ -860,6 +862,7 @@ function endRun(): void {
   gDirectNowQueued = false;
   gTakeoverAsked = false;
   gTakeoverOnlyRun = false;
+  gTakeoverArmedAt = 0;
   gapAddonsRunEnd();
   // Before `ts` goes, so the workflow's closing banner still has somewhere to go.
   workflowRunEnded();

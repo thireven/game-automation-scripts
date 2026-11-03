@@ -72,9 +72,13 @@ interface GapAddonHost {
   addMyTsumCard(part: { facts?: unknown[]; buttons?: unknown[] }): void;
   /** A card (`{card, icon, items}`) on the Stats tab, after the My Tsum card. */
   addStatsCard(card: unknown): void;
-  /** Called at each run's start; at once if a run is already going. */
+  /**
+   * Called at each run's start; at once if a run is already going. Not for a
+   * run started for one direction request alone (the Debug tab's Direct, GAP
+   * Companion's Take over on a stopped script): nothing may tap there.
+   */
   onRunStart(fn: (run: Tsum, controller: TsumTaskController) => void): void;
-  /** Called as each run ends, before `ts` is cleared. */
+  /** Called as each run ends, before `ts` is cleared; also for a run whose start was not announced. */
   onRunEnd(fn: () => void): void;
   /**
    * Called once a round's stats row is written, with the finished score page

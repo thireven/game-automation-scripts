@@ -169,8 +169,8 @@ interface GapDirectEvent {
 const TakeoverBody = 'Paused where it was. Press Continue to hand it back.';
 /** The same, when the script was stopped. */
 const TakeoverStoppedBody = 'The script was stopped. It stops again when you press Continue.';
-/** How long a Take over armed on a stopped script waits for the phone's `start`. */
-const TakeoverArmedMs = 60 * 1000;
+/** How long a Take over armed on a stopped script waits for the phone's `start` (it sends it at once). */
+const TakeoverArmedMs = 15 * 1000;
 
 /** Set by the phone's Take over until the run thread opens the request (`takeoverPoint`). */
 let gTakeoverAsked = false;
@@ -304,10 +304,15 @@ function takeoverPoint(): boolean {
   run.boardHeld = run.roundStartedAt !== 0;
   logInfo(Log.Direct.Takeover, 'Taken over from GAP Companion', { inRound: run.roundStartedAt !== 0 });
   gDirectTakeover = true;
+  let outcome: GapAddonDirectOutcome | 'unavailable' = 'unavailable';
   try {
-    requestUserDirection({ body: gTakeoverOnlyRun ? TakeoverStoppedBody : TakeoverBody });
+    outcome = requestUserDirection({ body: gTakeoverOnlyRun ? TakeoverStoppedBody : TakeoverBody });
   } finally {
     gDirectTakeover = false;
+  }
+  // The phone is waiting for a request that never opened: say so instead of leaving it to time out.
+  if (outcome === 'unavailable') {
+    gapNotify({ title: 'Take over failed', body: 'No add-on takes direction on this device.', category: 'alert' });
   }
   // A run started for it alone stops with it.
   if (gTakeoverOnlyRun) {
