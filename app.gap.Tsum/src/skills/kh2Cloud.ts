@@ -7,17 +7,25 @@
 // The button, read as a ring of patches between its rim and Cloud's head:
 //   filling      navy, with a cyan pie filling clockwise from 12 o'clock
 //   1st charge   a short white/pastel flash, then gold (pulsing yellow to
-//                brown) with a pearlescent pie filling clockwise over it
+//                brown) with a pearlescent pie filling clockwise over it.
+//                The pie's last slice, 340-360 deg, can stay gold for seconds:
+//                a notch at the top rim (`CloudGaugeTop`). It is not full yet.
 //   2nd charge   pearlescent all round (pastel pink, green, lavender, cyan),
 //                pulsing white now and then; stays until tapped
 //   activation   the cut-in darkens the button ~1.8s, a white flash, then navy
 //
-// A full pearl ring is not enough on its own: the 1st charge's flash and
-// one-frame white flashes while the gauge fills read the same, colours
-// included. Time tells them apart. A full ring counts once gold was first
-// seen `goldMs` ago, or, if no read caught the gold, once full pearl has held
-// over `fallbackReads` reads and `fallbackMs`. Every flash is gone well inside
-// either. An empty or dark ring, a tap, or a new round starts over.
+// Full means the ring pearl and the top slice neither gold nor warm peach (a
+// Cloud head flying into the gauge covers the notch with its face).
+//
+// A full ring is not enough on its own: the 1st charge's flash and one-frame
+// white flashes while the gauge fills read the same, colours included. Time
+// tells them apart. A full ring counts once gold was first seen `goldMs` ago
+// and it still reads full `confirmMs` later, or, if no read caught the gold,
+// once it has held over `fallbackReads` reads in a row and `fallbackMs`. Every
+// flash is gone well inside either. An empty or dark ring, a tap, or a new
+// round starts over. One wash is not gone: the last seconds' cyan edge wash
+// (`EdgeWash`) paints gold pale too, so with ~5-6s left gold can read full
+// and fire. That is when the clock rule below fires it anyway.
 //
 // Near the round's end the 1st charge is fired after all, rather than wasted:
 // while gold is up the round clock is read (`cloudReadClock`), and two reads
@@ -25,11 +33,12 @@
 // one misread cannot spend a charge mid-round. At 0 the round is over (TIME UP
 // dims the HUD) and nothing fires.
 //
-// Measured on an 11-minute recording (20 second charges): replayed at read
-// gaps of 0.1-1.2s, no first charge or flash the script could meet read Active.
-// The clock read: every frame of that recording (no misreads; the +5s fever
-// bonus is the only jump) and all 21 corpus GamePlaying captures (540, 1080
-// and 360 wide).
+// Measured on an 11-minute recording (20 second charges), replayed at read
+// gaps of 0.1-1.2s: a 2nd charge only ever fired once the notch had closed,
+// and a 1st charge only with 1-6s left. The clock read: every frame of that
+// recording (no misreads; the +5s fever bonus is the only jump) and all 21
+// corpus GamePlaying captures (540, 1080 and 360 wide). A digit must sit in
+// its slot, so a tens digit hidden under a tsum reads unknown, not low.
 
 // ---------------------------------------------------------------------------
 // Tuning data
@@ -37,8 +46,9 @@
 
 /**
  * 22 points between the button's rim and Cloud's head, clockwise from 15 deg
- * past 12 o'clock (logical px). 0 and 345 deg are left out: his hair covers
- * them. The same band as `VillainsGaugeRing`, on an even ellipse.
+ * past 12 o'clock to 330 (logical px). The same band as `VillainsGaugeRing`,
+ * on an even ellipse. Checked on the corpus's device captures, 540 and 1080
+ * wide: every point lands on the gauge face, and still does shifted 8px.
  */
 const CloudGaugeRing: Coord[] = [
   {x: 184, y: 1558},  //  15 deg
@@ -65,6 +75,19 @@ const CloudGaugeRing: Coord[] = [
   {x: 120, y: 1566}   // 330
 ];
 
+/**
+ * The top of the same ellipse, 340-360 deg: the 2nd charge's last slice. Read
+ * gold there for up to 2s+ while the rest of the ring is pearl, before every
+ * 2nd charge in the recording; never hair (navy while the gauge fills).
+ */
+const CloudGaugeTop: Coord[] = [
+  {x: 133, y: 1559},  // 340 deg
+  {x: 140, y: 1557},  // 345
+  {x: 147, y: 1556},  // 350
+  {x: 154, y: 1555},  // 355
+  {x: 162, y: 1555}   // 360
+];
+
 const CloudGauge = {
   /** Navy + cyan points: the gauge is still filling. */
   emptyMin: 6,
@@ -79,11 +102,21 @@ const CloudGauge = {
   /** Pearl points over gold that read Almost: the pie nearly closed. */
   almostMin: 14,
   /**
+   * Gold points of `CloudGaugeTop` that make an otherwise full ring the 1st
+   * charge still (the notch spans all five); any gold there blocks a full read.
+   */
+  topGoldMin: 3,
+  /**
    * How long gold must have been seen before a full ring counts. The 1st
    * charge's flash ends within 0.5s of its first gold frame; the quickest
-   * 2nd charge came 1.2s after it.
+   * 2nd charge came 1.4s after it.
    */
   goldMs: 800,
+  /**
+   * A full ring is looked at again this much later, once per charge: a Cloud
+   * head flying into the gauge covered the notch for ~0.1s in the recording.
+   */
+  confirmMs: 150,
   /** With no gold seen: full reads in a row, and how long they must span. */
   fallbackReads: 3,
   fallbackMs: 1500
@@ -105,6 +138,11 @@ const CloudClock = {
   goldLastSeconds: 5,
   /** A clock read is reused this long, so `useSkill`'s two gauge reads cost one. */
   reuseMs: 150,
+  /**
+   * Where each digit's centre sits (logical x). Measured: one digit 156-162,
+   * two digits 135-140 and 178-184.
+   */
+  oneX: [148, 172], tensX: [125, 150], unitsX: [168, 195],
   /** A low read is confirmed by a second this much later. */
   confirmMs: 50
 };
@@ -152,6 +190,7 @@ var gCloudGauge = {
   fullAt: 0,       // first of the current run of full reads (fallback)
   fullReads: 0,
   logged: false,   // the firing was logged
+  confirmed: false, // the full ring held on a second look `confirmMs` later
   clockAt: 0,      // last clock read
   outOfTime: false, // the clock was read low twice: fire the 1st charge
   firedAt: 0,      // `ts.skillFiredAt` and `ts.roundStartedAt` at the last read
@@ -163,6 +202,7 @@ function cloudGaugeReset() {
   gCloudGauge.fullAt = 0;
   gCloudGauge.fullReads = 0;
   gCloudGauge.logged = false;
+  gCloudGauge.confirmed = false;
   gCloudGauge.clockAt = 0;
   gCloudGauge.outOfTime = false;
 }
@@ -269,17 +309,24 @@ function cloudReadClock(ts: Tsum): number {
     fill.push(col);
   }
   // Each run of columns with 2+ fill samples is one digit.
-  let secs = 0, digits = 0, i = 0;
+  const digits: number[] = [], centres: number[] = [];
+  let i = 0;
   while (i < cols) {
     if (cloudColumnFill(fill[i]) < 2) { i++; continue; }
     const a = i;
     while (i < cols && cloudColumnFill(fill[i]) >= 2) { i++; }
     const d = cloudReadDigit(fill, a, i - 1);
     if (d === -2) { continue; }
-    if (d < 0 || ++digits > 2) { return -1; }
-    secs = secs * 10 + d;
+    if (d < 0 || digits.length === 2) { return -1; }
+    digits.push(d);
+    centres.push(c.x0 + (a + i - 1) / 2 * c.step);
   }
-  return digits > 0 ? secs : -1;
+  // The number is centred, so each digit has its slot: a units digit alone
+  // is a tens digit hidden under something, not a single-digit clock.
+  const slots = digits.length === 1 ? [c.oneX] : [c.tensX, c.unitsX];
+  if (digits.length === 0
+      || centres.some((x, k) => x < slots[k][0] || x > slots[k][1])) { return -1; }
+  return digits.length === 1 ? digits[0] : digits[0] * 10 + digits[1];
 }
 
 function cloudLowSeconds(secs: number): boolean {
@@ -306,6 +353,46 @@ function cloudOutOfTime(ts: Tsum, now: number): boolean {
   return g.outOfTime;
 }
 
+interface CloudGaugeLook {
+  empty: number;    // navy + cyan, of the ring
+  gold: number;
+  pearl: number;
+  dark: number;
+  topGold: number;  // gold of `CloudGaugeTop`
+  topWarm: number;  // ...gold or warm peach: not provably closed
+}
+
+/**
+ * Warm peach to pale gold: the notch's bright pulse, or the face of a Cloud
+ * head flying into the gauge over it (~(251,204,156)). Real pearl reads this
+ * at the top on 16% of looks, which only delays a read.
+ */
+function cloudWarm(c: Color): boolean {
+  return c.r >= 180 && c.r - c.b >= 70 && c.r >= c.g && c.g >= c.b;
+}
+
+/** Tone counts of one read: the ring's colours first, then `CloudGaugeTop`'s. */
+function cloudGaugeLook(colors: Color[]): CloudGaugeLook {
+  const look = {empty: 0, gold: 0, pearl: 0, dark: 0, topGold: 0, topWarm: 0};
+  for (let i = 0; i < colors.length; i++) {
+    const t = cloudGaugeTone(colors[i]);
+    if (i >= CloudGaugeRing.length) {
+      if (t === 'gold') { look.topGold++; }
+      if (t === 'gold' || cloudWarm(colors[i])) { look.topWarm++; }
+    } else if (t === 'navy' || t === 'cyan') { look.empty++; }
+    else if (t === 'gold') { look.gold++; }
+    else if (t === 'pearl') { look.pearl++; }
+    else if (t === 'dark') { look.dark++; }
+  }
+  return look;
+}
+
+/** A full pearl ring, its top slice closed. */
+function cloudLookFull(look: CloudGaugeLook): boolean {
+  return look.pearl >= CloudGauge.fullMin && look.gold <= CloudGauge.fullGoldMax
+    && look.empty === 0 && look.topWarm === 0;
+}
+
 function cloudGaugeClassify(colors: Color[], ts: Tsum): SkillReadiness {
   const g = gCloudGauge;
   // A tap or a new round since the last read: what was seen is stale.
@@ -314,20 +401,15 @@ function cloudGaugeClassify(colors: Color[], ts: Tsum): SkillReadiness {
     g.firedAt = ts.skillFiredAt;
     g.roundAt = ts.roundStartedAt;
   }
-  let empty = 0, gold = 0, pearl = 0, dark = 0;
-  for (const c of colors) {
-    const t = cloudGaugeTone(c);
-    if (t === 'navy' || t === 'cyan') { empty++; }
-    else if (t === 'gold') { gold++; }
-    else if (t === 'pearl') { pearl++; }
-    else if (t === 'dark') { dark++; }
-  }
+  const look = cloudGaugeLook(colors);
+  const {empty, gold, pearl, dark, topGold} = look;
   const now = Date.now();
   if (empty >= CloudGauge.emptyMin || dark >= CloudGauge.darkMin) {
     cloudGaugeReset();
     return SkillReadiness.Far;
   }
-  if (gold >= CloudGauge.goldMin) {
+  // Gold, or the pearl pie's last slice (the gold notch at the top) still open.
+  if (gold >= CloudGauge.goldMin || (topGold >= CloudGauge.topGoldMin && empty === 0)) {
     if (g.goldAt === 0) {
       g.goldAt = now;
       logInfo(Log.Skill.CloudFirstCharge, { pearl: pearl });
@@ -343,12 +425,21 @@ function cloudGaugeClassify(colors: Color[], ts: Tsum): SkillReadiness {
     }
     return pearl >= CloudGauge.almostMin ? SkillReadiness.Almost : SkillReadiness.Far;
   }
-  if (pearl < CloudGauge.fullMin || gold > CloudGauge.fullGoldMax || empty > 0) {
+  if (!cloudLookFull(look)) {
+    // Not full: the held-full fallback counts full reads in a row only.
+    g.fullAt = 0;
+    g.fullReads = 0;
     return SkillReadiness.Far;
   }
   // A full ring.
   let via = '';
   if (g.goldAt > 0 && now - g.goldAt >= CloudGauge.goldMs) {
+    // Once per charge: a tsum flying into the gauge can cover the notch.
+    if (!g.confirmed) {
+      ts.sleep(CloudGauge.confirmMs);
+      g.confirmed = cloudLookFull(cloudGaugeLook(skillGaugeMeansCrop(ts, CloudGaugeRead)));
+      if (!g.confirmed) { return SkillReadiness.Almost; }
+    }
     via = 'gold';
   } else {
     if (g.fullAt === 0) {
@@ -369,8 +460,13 @@ function cloudGaugeClassify(colors: Color[], ts: Tsum): SkillReadiness {
   return SkillReadiness.Active;
 }
 
+const CloudGaugeRead: SkillGaugeRead = {
+  points: CloudGaugeRing.concat(CloudGaugeTop),
+  classify: cloudGaugeClassify
+};
+
 registerSkill({
   types: [SkillType.KH2Cloud],
   bareTapActivates: true,
-  gauge: {points: CloudGaugeRing, classify: cloudGaugeClassify}
+  gauge: CloudGaugeRead
 });

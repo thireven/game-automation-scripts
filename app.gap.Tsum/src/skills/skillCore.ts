@@ -550,8 +550,8 @@ function skillGaugeSamples(gauge: SkillGaugeRead): Coord[] {
   return out;
 }
 
-// Classifies the samples' patch means.
-function skillGaugeClassify(gauge: SkillGaugeRead, samples: Color[], ts: Tsum): SkillReadiness {
+// The samples' patch means, one per gauge point.
+function skillGaugeMeans(samples: Color[]): Color[] {
   const means: Color[] = [];
   for (let i = 0; i + 9 <= samples.length; i += 9) {
     let r = 0, g = 0, b = 0;
@@ -560,7 +560,12 @@ function skillGaugeClassify(gauge: SkillGaugeRead, samples: Color[], ts: Tsum): 
     }
     means.push({r: r / 9, g: g / 9, b: b / 9});
   }
-  return gauge.classify(means, ts);
+  return means;
+}
+
+// Classifies the samples' patch means.
+function skillGaugeClassify(gauge: SkillGaugeRead, samples: Color[], ts: Tsum): SkillReadiness {
+  return gauge.classify(skillGaugeMeans(samples), ts);
 }
 
 Tsum.prototype.checkSkillReadiness = function(img, skillButton) {
@@ -610,9 +615,9 @@ Tsum.prototype.checkSkillReadinessFast = function() {
   }
 };
 
-// A skill's own gauge read off one crop spanning its samples, at native
-// resolution like the stock crop above.
-function skillGaugeReadCrop(ts: Tsum, gauge: SkillGaugeRead): SkillReadiness {
+// A skill's own gauge points as patch means, off one crop spanning them at
+// native resolution like the stock crop above.
+function skillGaugeMeansCrop(ts: Tsum, gauge: SkillGaugeRead): Color[] {
   const real = skillGaugeSamples(gauge).map(p => ts.toRealXY(p.x, p.y));
   let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
   for (const p of real) {
@@ -623,11 +628,17 @@ function skillGaugeReadCrop(ts: Tsum, gauge: SkillGaugeRead): SkillReadiness {
   minY = Math.max(0, minY);
   const img = getScreenshotModify(minX, minY, maxX - minX + 1, maxY - minY + 1, 0, 0, 100);
   try {
-    return skillGaugeClassify(gauge, getImageColors(img,
-      real.map(p => ({x: Math.max(0, p.x - minX), y: Math.max(0, p.y - minY)}))), ts);
+    return skillGaugeMeans(getImageColors(img,
+      real.map(p => ({x: Math.max(0, p.x - minX), y: Math.max(0, p.y - minY)}))));
   } finally {
     releaseImage(img);
   }
+}
+
+// A skill's own gauge read off one crop. The crop is released before
+// `classify` runs, so a read that captures again (KH2 Cloud) holds no image.
+function skillGaugeReadCrop(ts: Tsum, gauge: SkillGaugeRead): SkillReadiness {
+  return gauge.classify(skillGaugeMeansCrop(ts, gauge), ts);
 }
 
 // Whether firing the fan now would be a waste: the tsums it shuffles are about
