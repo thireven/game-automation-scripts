@@ -791,7 +791,8 @@ Tsum.prototype.taskPlayGameQuick = function() {
   // Opens this round's correlation scope: every record until the next round
   // starts carries the same roundId, injected by the logger.
   logBeginRound();
-  logInfo(Log.Play.GameStart);
+  // Versions again on every round: a long run's log rotates past its run.start.
+  logInfo(Log.Play.GameStart, this.versions);
   // This walk is a round starting, which is what lets the pre-round screen open
   // it in front of the bonus items -- see `openRound`.
   this.openingRound = true;

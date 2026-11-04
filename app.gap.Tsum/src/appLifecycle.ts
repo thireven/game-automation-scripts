@@ -111,6 +111,40 @@ function focusedPackageInDump(dump: string): string | null {
 /** GAP's own package: its panel or Quick Bar holding focus leaves the game in front. */
 const HostPackage = 'com.generalautomation.platform';
 
+/** The versions a run plays on, for the logs. A build that is not installed is left out of `game`. */
+interface RunVersions {
+  script: string;
+  gap: string;
+  game: { [build: string]: string };
+}
+
+/** A package's installed `versionName` (the first in `dumpsys package`); '' when absent or unreadable. */
+function packageVersion(pkg: string): string {
+  try {
+    const m = /versionName=(\S+)/.exec(execute('dumpsys package ' + pkg));
+    return m !== null ? m[1] : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+/**
+ * The script's, GAP's and each installed game's version. Read once per run by
+ * `buildRun`; logged at run start and again at every round start, so a rotated
+ * log file still says what it came from.
+ */
+function readRunVersions(): RunVersions {
+  const game: { [build: string]: string } = {};
+  const builds: GameBuild[] = [GameBuild.Global, GameBuild.Japan];
+  for (let i = 0; i < builds.length; i++) {
+    const v = packageVersion(GamePackages[builds[i]]);
+    if (v !== '') {
+      game[builds[i]] = v;
+    }
+  }
+  return { script: ScriptVersion, gap: packageVersion(HostPackage), game: game };
+}
+
 /**
  * Whether the game has focus, read now and whatever Auto launch says. The play
  * loop asks this when the board stops showing, to tell a lost focus from an

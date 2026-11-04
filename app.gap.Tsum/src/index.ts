@@ -586,7 +586,11 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // function gets to finish -- `start()` tears it down in its `finally`.
   gRunActive = true;
   ts.settings = settings
-  logInfo(Log.Run.Start, { language: settings.locale || Locale.English });
+  ts.versions = readRunVersions();
+  logInfo(Log.Run.Start, {
+    language: settings.locale || Locale.English,
+    script: ts.versions.script, gap: ts.versions.gap, game: ts.versions.game,
+  });
   ts.debug = settings.debugGame;
   ts.collectUnknownScreens = settings.collectUnknownScreens;
   ts.bonus5to4 = settings.bonus5to4;

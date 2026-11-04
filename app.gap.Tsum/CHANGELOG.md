@@ -83,6 +83,9 @@ release note; they fold back in here when she ships.
   phone's start runs that request alone (`takeoverOnly`): no jobs, no add-on
   run start, no game launch, events with `endsRun: true`, stopped when it ends.
   The Debug tab's Direct run skips add-on run starts too.
+- **Versions in the log**: `run.start` and every `play.gameStart` carry
+  `script`, `gap` and `game` (each installed build's `versionName`, from
+  `dumpsys package`), so a rotated log says what it ran on.
 
 ## [6.0b12]
 
