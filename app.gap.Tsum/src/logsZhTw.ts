@@ -8,6 +8,7 @@
 var LogsZhTw: LogCataloguePartial = {
   [Log.Run.Start]: '[TsumTsum] 啟動',
   [Log.Run.StartBusy]: '[TsumTsum] 上次執行尚未停止，不重複啟動',
+  [Log.Run.StartSuperseded]: '[TsumTsum] 已收到較新的啟動，此次不啟動',
   [Log.Run.Stop]: '[TsumTsum] 停止',
   [Log.Run.StopSlow]: '[TsumTsum] 任務迴圈尚未結束，等待中',
   [Log.Task.LoopStopped]: 'TaskController 停止',

@@ -26,6 +26,8 @@ namespace Log {
     RemoteSettingNotSaved = 'run.remoteSettingNotSaved',
     Start            = 'run.start',
     StartBusy        = 'run.startBusy',
+    /** A newer `start()` arrived while this one waited for the old run; it steps aside. */
+    StartSuperseded  = 'run.startSuperseded',
     Stop             = 'run.stop',
     StopSlow         = 'run.stopSlow',
   }

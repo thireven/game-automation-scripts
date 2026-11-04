@@ -50,6 +50,15 @@ let gWalkthroughRun = false;
 let gStopRequested = false;
 
 /**
+ * Counts `start()` calls. A start that waited for the old run to end checks it
+ * afterwards: if a newer start came in meanwhile, that one goes on instead.
+ */
+let gStartSeq = 0;
+
+/** Bumped by each run that claims `gRunActive`, so `stop()` waits for its own run only. */
+let gRunSeq = 0;
+
+/**
  * How long `stop()` waits for the task loop to hand back.
  *
  * Tasks are cooperative and only notice `ts.isRunning` at their own loop
@@ -67,30 +76,42 @@ function start(settings: Settings) {
   const logs = logStringsFor(settings.locale);
   logSetMessages(logs);
 
+  const seq = ++gStartSeq;
   // A run still on the stack owns everything `buildRun` is about to replace.
   // Wind it down first, and refuse rather than double up if it will not go.
   if (gRunActive) {
     stop();
+    // Play pressed twice: both starts waited for the same run to end. Only the
+    // newest goes on; otherwise each builds a run and two loops drag over the
+    // same board, so no chain registers.
+    if (seq !== gStartSeq) {
+      logWarn(Log.Run.StartSuperseded);
+      return;
+    }
     if (gRunActive) {
       logWarn(Log.Run.StartBusy);
       return;
     }
   }
+  // Claimed here, before any native call. Natives hand the interpreter lock to
+  // other threads, and a start() let in before this line would see no run and
+  // build a second one beside this one.
+  gRunActive = true;
+  gRunSeq++;
   gStopRequested = false;
-  // Opened before anything can log, so every line from here to endRun() carries
-  // the same runId -- including the ones buildRun writes on its way up.
-  logBeginRun();
-  // Before buildRun, so a recorder is already following when the first round
-  // starts. `ts` does not exist yet, hence the free function rather than
-  // `ts.emit` -- see emitScriptEvent in tsum.ts.
-  emitScriptEvent(Emit.Run.Started, {
-    version: ScriptVersion,
-    skill: statsSkillName(settings.skillType),
-    locale: settings.locale,
-  });
-
   gRunErrored = false;
   try {
+    // Opened before anything can log, so every line from here to endRun() carries
+    // the same runId -- including the ones buildRun writes on its way up.
+    logBeginRun();
+    // Before buildRun, so a recorder is already following when the first round
+    // starts. `ts` does not exist yet, hence the free function rather than
+    // `ts.emit` -- see emitScriptEvent in tsum.ts.
+    emitScriptEvent(Emit.Run.Started, {
+      version: ScriptVersion,
+      skill: statsSkillName(settings.skillType),
+      locale: settings.locale,
+    });
     buildRun(settings, logs);
     const controller = gTaskController;
     if (controller === undefined) {
@@ -608,10 +629,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   const takeoverOnly = gTakeoverOnlyRun;
   // Any run that starts makes an armed Take over stale (a local Start never takes it).
   gTakeoverArmedAt = 0;
+  // `start()` already holds `gRunActive`, and tears this down in its `finally`
+  // whether or not the rest of this function gets to finish.
   ts = new Tsum(logs);
-  // From here on there is a world to dismantle, whether or not the rest of this
-  // function gets to finish -- `start()` tears it down in its `finally`.
-  gRunActive = true;
   ts.settings = settings
   ts.versions = readRunVersions();
   logInfo(Log.Run.Start, {
@@ -955,16 +975,19 @@ function requestStop(): void {
  */
 function stop() {
   const run = ts;
+  const runSeq = gRunSeq;
   requestStop();
   if (!gRunActive) {
     return;
   }
 
+  // Ends when this run hands back, or when a newer run has claimed the slot
+  // (a start() that was waiting too): that one is not ours to wait for.
   const deadline = Date.now() + StopWaitMs;
-  while (gRunActive && Date.now() < deadline) {
+  while (gRunActive && gRunSeq === runSeq && Date.now() < deadline) {
     sleep(100);
   }
-  if (gRunActive && run !== undefined) {
+  if (gRunActive && gRunSeq === runSeq && run !== undefined) {
     // Left alone deliberately: the run is wedged somewhere that is not checking
     // its flag, and clearing `ts` out from under it is exactly the bug this
     // handshake exists to prevent. `start()` refuses to build a second world
