@@ -8,6 +8,7 @@
 var LogsJa: LogCataloguePartial = {
   [Log.Run.Start]: '[TsumTsum] 開始',
   [Log.Run.StartBusy]: '[TsumTsum] 前回の実行が停止中のため、開始しません',
+  [Log.Run.StartSuperseded]: '[TsumTsum] より新しい開始が届いたため、こちらは開始しません',
   [Log.Run.Stop]: '[TsumTsum] 停止',
   [Log.Run.StopSlow]: '[TsumTsum] タスクループの終了待ち',
   [Log.Task.LoopStopped]: 'TaskController 停止',

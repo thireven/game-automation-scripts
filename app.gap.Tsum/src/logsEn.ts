@@ -10,6 +10,7 @@
 var LogsEn = {
   [Log.Run.Start]: '[TsumTsum] Start',
   [Log.Run.StartBusy]: '[TsumTsum] Previous run still stopping; not starting',
+  [Log.Run.StartSuperseded]: '[TsumTsum] A newer start arrived; this one is not starting',
   [Log.Run.Stop]: '[TsumTsum] Stop',
   [Log.Run.StopSlow]: '[TsumTsum] Task loop still running; letting it finish',
   [Log.Task.LoopStopped]: 'TaskController Stop',
