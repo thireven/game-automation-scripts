@@ -11,10 +11,11 @@ This document is what Tsum does with it.
 | Part | File | Does |
 |:--|:--|:--|
 | Runner library | `src/gapWorkflow.ts` | Generic and vendored verbatim by other scripts: the catalog, the last sync, `gapWorkflowCheck`, the cursor `{loop, index}`, per-loop values (they cycle), `loop` / `stop`, `restartDevice` / `restartIfSlow`, resuming at a saved cursor, retries, state and events. References nothing else in this tree (the engine's `gapRestartDevice` / `gapPerf` only through `globalThis`, when present); `npm run typecheck:workflow` compiles it alone |
-| Tsum's half | `src/workflow.ts` | The node catalog and lists, each node's implementation, the Tsum List check, the run mode, the presets mirror |
+| Preset store | `src/gapPresets.ts` | Generic and vendored the same way: the device's own preset list, synced both ways with GAP Companion (below). `npm run typecheck:presets` compiles it alone |
+| Tsum's half | `src/workflow.ts` | The node catalog and lists, each node's implementation, the Tsum List check, the run mode, the preset store's setup |
 | Run mode | `src/index.ts` (`buildRun`), `src/runPlan.ts` (`workflowTaskTable`) | A workflow run registers the Workflow job instead of the chore table |
 | Add-ons | not in this tree | GAP Companion may send private add-ons to the accounts that have them; they register through `src/addons.ts`, so their nodes come after the base's |
-| Checks | `tools/workflowCheck/` | `npm run workflow:check` |
+| Checks | `tools/workflowCheck/`, `tools/presetsCheck/` | `npm run workflow:check`, `npm run presets:check` |
 
 ## A workflow run
 
@@ -136,16 +137,54 @@ A node param on the `tsums` list needs this device's list, where each tsum's
   workflow can pick a different Tsum on each device from that device's own list. The server sends
   each device only its own value; nothing here sees the others.
 
-## The presets mirror
+## Presets
 
-The presets live in each page's WebView localStorage, out of the engine's reach.
-On every save (`presetsStore`) and as each page opens, the page calls
-`presetsMirror(json)` (through `runScriptCallback`: a `runScript` would count as
-a run on the host), which writes `<script folder>/presets-<device id>.json`.
-`gapPresetsLocal()` reads it back for GAP Companion's Import from device.
+One list per account and script: each device's own Presets (Settings page and
+Quick Bar) is the account's list, and a save, rename or delete on any device or
+the phone reaches the others. The server merges (the first change to reach it
+wins; the other is kept as `<Name> (<device>)`); the device only tracks what
+changed and takes what the server sends. The contract is GAP Companion's
+`docs/WORKFLOWS.md`.
+
+**The store** (`src/gapPresets.ts`) belongs to the engine world:
+`<device folder>/presets-app.gap.Tsum.json` and its `.bak.json` twin, written in
+turn so a kill mid-write leaves the other whole (`writeFile` truncates first). A
+load takes the valid one with the higher `ver`; text in a file that neither
+parses makes every global answer `store-unreadable`, and nothing is written over
+it. `{instance, ver, scope, hash, presets: [{lid, name, values, id?, rev?,
+prevRev?, dirty?, held?}], deleted: [{id, rev, name}]}`. A new store starts from
+the old one-way mirror (`<script folder>/presets-<device id>.json`), entries
+without ids. Names follow the contract's rule (whitespace collapsed, trimmed,
+≤ 40, compared without case) and are unique.
+
+**Pages** keep a localStorage cache and send ops (`src/presets.ts`), through
+`runScriptCallback`:
+
+| Global | Does |
+|:--|:--|
+| `gapPresetsRead(json)` | The list as pages show it, `{ok, instance, ver, presets}`; `{instance, ver}` still current answers `same: true` |
+| `gapPresetsApply(json)` | `{ops}`, in order: `put {name, values, base}`, `rename {lid, name, base}`, `delete {lid, base}`, `seed {presets}`. `base` (`{lid, rev}` the page saw) lets an edit of an older copy reach the server as a conflict, and `prevRev` keeps our own adopted write from making the next edit one. A batch that changed anything bumps `ver`, is saved and emits `gap.presets {script}`; the answer adds one `{ok, lid?, error?}` per op (`full` past 32, held included; `name-taken`; `gone`), or is `{ok: false}` and the page says it was not saved |
+
+A rename keeps the id, so workflow steps naming `preset:<id>` survive; so does a
+delete followed by a save under the same name. The cache's marker
+(`tsumtsumpresetsmark`, kept out of `gap-backup.json`) says which store it came
+from: a list it does not match (a cache from before sync, a GAP Restore of an old
+backup, a 5.0 session, which shares localStorage and the script id) is merged in
+once by name as a `seed`. That can bring back a preset deleted since, or add a
+`<Name> (<device>)` copy; nothing is lost. The old list is copied once to
+`tsumtsumpresetslegacy`.
+
+**GAP Companion's adapter** calls the standard globals: `gapPresetsStore()` (the
+whole store), `gapPresetsAdopt(json)` (the account's merged list; refused as
+`wrong-script` or `stale` when the store moved since it was read; lids the
+server did not map are dropped only when named in `drop`, else kept as held) and
+`gapPresetsLocal()` (`[{name, values}]`, for the one-way Import). Adopt emits
+nothing. Held entries (the account had no room, or one too large to send) apply
+like any other and stay on this device until the server takes them.
 
 ## Checks
 
-`npm run workflow:check`; `npm run dispatch:eval` (preset `workflow.json`: only the Workflow
+`npm run workflow:check`; `npm run presets:check` (the store, its ops and adopt, the
+pages' cache); `npm run dispatch:eval` (preset `workflow.json`: only the Workflow
 job and the one-shots, Stop after this round first);
-`npm run events:docs:check` for the `workflow.*` events.
+`npm run events:docs:check` for the `workflow.*` and `gap.presets` events.

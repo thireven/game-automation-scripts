@@ -165,6 +165,9 @@
     // scripts, so it references nothing above. Before workflow.ts, which
     // registers Tsum's nodes into it at load.
     "src/gapWorkflow.ts",
+    // The GAP Companion preset store, generic and vendored the same way; set up
+    // by workflow.ts at load.
+    "src/gapPresets.ts",
     "src/index.ts",
     // GAP Companion's screens (gapScreens): data only, read by the adapter.
     "src/companionScreens.ts",

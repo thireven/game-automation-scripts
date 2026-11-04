@@ -87,10 +87,11 @@ declare const enum PageMessage {
    */
   LiveSettings = 'liveSettings',
   /**
-   * A preset was saved, deleted, or applied.
+   * A preset was saved, renamed, deleted or applied, or the list came back
+   * changed from the engine (a sync with GAP Companion; `presetsRefresh`).
    *
    * Both halves matter, and which one it was is left to the reader: the *list*
-   * changes when the settings page saves or deletes one, and the *stored
+   * changes when either page writes the cache, and the *stored
    * settings* are rewritten wholesale when either page applies one. So the
    * settings page re-reads the store as well as the run -- a preset carries
    * settings no run can take live, and those exist nowhere but the store -- and
@@ -126,7 +127,7 @@ declare const enum PageSize {
 /**
  * The localStorage keys the pages share.
  *
- * Two pages read and write the same two entries -- the settings page owns them,
+ * Two pages read and write the same entries -- the settings page owns them,
  * and the Quick Bar patches the settings one so a value changed mid-run is
  * still there at the next start. Written once here so they cannot drift; a
  * `const enum`, so nothing exists at runtime but the string. `gap-backup.json`
@@ -135,8 +136,19 @@ declare const enum PageSize {
 declare const enum StorageKey {
   Language = 'tsumtsumlanguage',
   Settings = 'tsumtsumsettings2',
-  /** The named configurations both pages switch between -- see src/presets.ts. */
+  /**
+   * The named configurations both pages switch between: a cache of the
+   * engine's preset store -- see src/presets.ts.
+   */
   Presets = 'tsumtsumpresets',
+  /**
+   * `{instance, ver, sum}`: which engine store the cache above came from, and a
+   * sum of what was written. A list it does not match is merged into the engine
+   * once. Not in `gap-backup.json`, so a restored list is merged too.
+   */
+  PresetsMark = 'tsumtsumpresetsmark',
+  /** The list as it stood before two-way sync, copied once. Not backed up. */
+  PresetsLegacy = 'tsumtsumpresetslegacy',
   /** 'dark' or 'light' once the user picks one; absent follows the device. */
   Theme = 'tsumtsumtheme',
   /** A `PageStyle`; absent is Accessible. */
@@ -165,6 +177,13 @@ type SettingValues = { [key: string]: SettingValue };
 interface Preset {
   name: string;
   values: SettingValues;
+  /** The engine store's local id (src/gapPresets.ts); absent only in a cache from before sync. */
+  lid?: string;
+  /** The account's id and rev, once GAP Companion has it. */
+  id?: string;
+  rev?: number;
+  /** Kept on this device only (the account had no room, or it could not be sent); applies as any other. */
+  held?: { why: string };
 }
 
 /**

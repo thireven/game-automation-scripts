@@ -92,7 +92,7 @@ repository beside this one — `DEVELOPMENT.md` § The development toolkit.
 | Which tooling is not here, and what the commands comments cite refer to | `DEVELOPMENT.md` § Development tooling outside this repo |
 | When something changed, and why | `CHANGELOG.md` — 1.0 on; `CHANGELOG_0.x.md` before that; `CHANGELOG_ELSA.md` for Coronation Day Elsa while she is off the production build |
 | How a release is cut, what it publishes, and where | `DEVELOPMENT.md` § Releasing, then `tools/release/` |
-| How Tsum runs each GAP Companion workflow node, and the Tsum List file the `tsums` list reads | `WORKFLOWS.md`; the contract itself is the host's `../general-automation-app/docs/WORKFLOWS.md` |
+| How Tsum runs each GAP Companion workflow node, the Tsum List file the `tsums` list reads, and how presets sync both ways with GAP Companion | `WORKFLOWS.md`; the contract itself is GAP Companion's own WORKFLOWS.md, in that repository's docs folder |
 | Known bugs, wanted features | `BACKLOG.md` |
 | Settings, skills and fields added for work in progress, and which are still used — the cleanup list | `ADDITIONS.md` |
 | What a host native actually does | `../general-automation-app/CODEMAP.md`, then its `../general-automation-app/docs/API.md` and `app/src/main/cpp/` |
@@ -119,7 +119,8 @@ enforces every row below, so these are true rather than approximate.
 | `*LiveSettings`, `onLiveSettingsApplied`, `LIVE_POLL_MS` — the settings page and the running world, kept in step | `src/index.ts` (`applyLiveSettings`, the engine's end), `src/settings.ts` (`pushLiveSettings`, `pullLiveSettings`, `onLiveSettings`, and `onLiveSettingsApplied` — the engine confirming a push, which is where the nudge to the other page goes out) |
 | `lastRunSettings`, `saveLastRunSettings`, `lastSettingsPath`, `deviceSettingsPath`, `LastSettingsOneShot` — the last-settings and remote-settings files in the device folder (README § Getting logs) | `src/index.ts` |
 | `StorageKey`, `PageMessage` | `src/settings.d.ts` |
-| `preset*`, `Preset*`, `PRESET_*` — the named-configuration store and the page halves that drive it | `src/presets.ts` (the store, and `presetsSendMirror`), `src/settings.ts` (the app bar's dropdown, the save panel, the export row, the import from the Code box), `src/settings.d.ts` (`interface Preset`), `src/workflow.ts` (`presetsMirror`, `gapPresetsLocal`: the engine's per-device copy for GAP Companion) — the Quick Bar's own half is `qb*`, in `src/quickbarPage.ts` |
+| `preset*`, `Preset*`, `PRESET_*` — named configurations: the pages' cache of the engine's preset store and the page halves that drive it | `src/presets.ts` (the cache, `presetsRefresh`, `presetsSubmit` and the migration marker), `src/settings.ts` (the app bar's dropdown, the save panel with Rename, the export row, the import from the Code box), `src/settings.d.ts` (`interface Preset`), `src/workflow.ts` (`presetsMirror`, `presetsMirrorPath`: the store's Tsum setup) — the Quick Bar's own half is `qb*`, in `src/quickbarPage.ts` |
+| `gapPresets*`, `GapPresets*`, `GAP_PRESETS_*` — the preset store library: the device's own list, synced both ways with GAP Companion (page ops, `gapPresetsStore`, `gapPresetsAdopt`, `gapPresetsLocal`) | `src/gapPresets.ts` |
 | `onGapMessage` — the page-to-page nudge's handler, one per page | `src/settings.ts`, `src/quickbarPage.ts` |
 | `tiara*`, `Tiara*` | `src/skills/tiaraMinniePlus.ts` (tables included), `src/globals.d.ts` |
 | `formalBeast*`, `FormalBeast*` | `src/skills/formalBeast.ts` (tables included), `src/globals.d.ts` |
@@ -253,7 +254,7 @@ Run from `app.gap.Tsum/`.
 
 | Command | Does |
 |:--|:--|
-| `npm run typecheck` | All three compilations, plus `src/gapWorkflow.ts` on its own. `npm run typecheck:game`, `npm run typecheck:settings`, `npm run typecheck:quickbar` or `npm run typecheck:workflow` for one |
+| `npm run typecheck` | All three compilations, plus `src/gapWorkflow.ts` and `src/gapPresets.ts` each on its own. `npm run typecheck:game`, `npm run typecheck:settings`, `npm run typecheck:quickbar`, `npm run typecheck:workflow` or `npm run typecheck:presets` for one |
 | `npm run build` | `tsc` both halves, regenerate `PAGE_DISPATCH.md`, inline the settings page → `dist/` (substituting `$BUILD_DATE`, `$VERSION` and `$SKILL_STATUS` — the channel's skill floor, `src/skillOptions.ts` — into it, and `$VERSION` into the game bundle on its way to `dist/`), then the channel's archive and its `.sha256` beside it (the bare digest, as a string). The archive is named from `config.json` (channel) and `package.json` (version), so `-c Beta` / `-Channel Beta` picks which. `npm run build:ps` is the PowerShell equivalent |
 | `npm run buildAndAdb` | Build, then push to every connected emulator (`--device SERIAL` picks one). `npm run buildAndAdb:beta` does the same as a Beta build, hiding Alpha skills and settings. `npm run adb` pushes an existing `dist/` |
 | `npm run pages:docs` | Regenerate `PAGE_DISPATCH.md` (also run by the build); `npm run pages:docs:check` is the gate that fails |

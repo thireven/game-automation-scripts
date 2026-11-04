@@ -53,6 +53,10 @@ release note; they fold back in here when she ships.
 
 *GAP Companion*
 - Take over also works while the script is stopped.
+- Presets sync both ways with GAP Companion: a preset saved, renamed or deleted on any device or on the phone reaches every device. Restoring an old backup or switching from 5.0 can bring back a deleted preset or add a "(device)" copy; nothing is lost.
+
+*Presets*
+- Rename a preset from the Save panel; workflows that use it keep working.
 
 **Fixes**
 - MyTsum detection names look-alike tsums it used to leave unidentified, such as Anniversary Mickey and Steamboat Mickey.
@@ -86,6 +90,19 @@ release note; they fold back in here when she ships.
 - **Versions in the log**: `run.start` and every `play.gameStart` carry
   `script`, `gap` and `game` (each installed build's `versionName`, from
   `dumpsys package`), so a rotated log says what it ran on.
+- **Two-way preset sync**: the device's list moved from the pages'
+  localStorage into the engine (`src/gapPresets.ts`, generic like
+  `gapWorkflow.ts`): `<device folder>/presets-app.gap.Tsum.json` plus a
+  `.bak.json` twin written in turn (no rename native), unreadable never read as
+  empty. Pages cache it and send ops (`gapPresetsRead` / `gapPresetsApply`:
+  put, rename, delete, seed, each with the `base` it saw); the adapter calls
+  `gapPresetsStore` / `gapPresetsAdopt` / `gapPresetsLocal`; a changing batch
+  emits `gap.presets`. A new store seeds from the old mirror; a cache its marker
+  does not match (pre-sync, a Restore, 5.0) is merged once by name.
+  `npm run presets:check`, `npm run typecheck:presets`.
+- **Rename** in the preset Save panel: keeps the preset's id, so `preset:<id>`
+  steps survive (it used to be save-as plus delete). `presetMatchName` skips
+  keys the form lacks.
 
 ## [6.0b12]
 

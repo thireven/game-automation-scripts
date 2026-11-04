@@ -1401,6 +1401,8 @@ function pullLiveSettings(force?: boolean): void {
     if (document.hidden && force !== true) {
         return;
     }
+    // The preset list: a sync with GAP Companion changes it in the engine.
+    presetsRefresh();
     // First, so a phone change saved for the next start is in the store before
     // `takeStoredSettings` reads it.
     iface.runScriptCallback(
@@ -2904,10 +2906,11 @@ function applySettingsCodeText(text: string): void {
     // `Name: code` lines are a preset export: save them, and only apply one when
     // it is the only line, so pasting a whole export does not load its first preset.
     var named = presetsFromText(text);
-    var imported = named.length > 0 ? importPresets(named) : '';
     if (named.length > 1) {
         showShareText(text, false);
-        setShareStatus(imported, imported === i18nText(UiText.PresetStoreFailed));
+        importPresets(named, function (message, failed) {
+            setShareStatus(message, failed);
+        });
         return;
     }
     var shared = parseSettingsCode(text);
@@ -2923,9 +2926,16 @@ function applySettingsCodeText(text: string): void {
     // Two sentences rather than one with an optional tail: a language that puts
     // the skipped count somewhere else in the sentence has nowhere to put it
     // when the tail is glued on here.
-    setShareStatus((imported !== '' ? imported + ' ' : '') + i18nFormat(
+    var applied = i18nFormat(
         result.skipped > 0 ? UiText.ShareAppliedSkipped : UiText.ShareApplied,
-        {applied: result.applied, from: from, skipped: result.skipped}), false);
+        {applied: result.applied, from: from, skipped: result.skipped});
+    setShareStatus(applied, false);
+    if (named.length === 1) {
+        // One `Name: code` line is applied and saved; the save's answer joins the status.
+        importPresets(named, function (message, failed) {
+            setShareStatus((message !== '' ? message + ' ' : '') + applied, failed);
+        });
+    }
 }
 
 /** localStorage key for the Copy with settings list switch. A page preference, so not a setting. */
@@ -3209,7 +3219,9 @@ function refreshPresetPanel(): void {
         return;
     }
     var name = presetCleanName(field.value);
-    var exists = presetIndexOf(presetsLoad(), name) >= 0;
+    var list = presetsLoad();
+    var exists = presetIndexOf(list, name) >= 0;
+    var from = presetRenameSource(list);
     var setEnabled = function (id: string, enabled: boolean) {
         var button = document.getElementById(id) as HTMLButtonElement | null;
         if (button !== null) {
@@ -3218,7 +3230,16 @@ function refreshPresetPanel(): void {
     };
     setEnabled('presetSaveNew', name !== '' && !exists);
     setEnabled('presetUpdate', exists);
+    // Rename gives the loaded preset the typed name: a new one, or its own in another case.
+    setEnabled('presetRename', from !== undefined && name !== '' && name !== from.name
+        && (!exists || name.toLowerCase() === from.name.toLowerCase()));
     setEnabled('presetDelete', exists);
+}
+
+/** What Rename renames: the preset the form currently is. */
+function presetRenameSource(list: Preset[]): Preset | undefined {
+    var loaded = presetMatchName(list, presetFormValues());
+    return loaded === '' ? undefined : presetByName(list, loaded);
 }
 
 /** Says what just happened, inside the save panel. */
@@ -3249,7 +3270,8 @@ function savePreset(overwrite: boolean): void {
         return;
     }
     var list = presetsLoad();
-    var exists = presetIndexOf(list, name) >= 0;
+    var existing = presetByName(list, name);
+    var exists = existing !== undefined;
     if (overwrite && !exists) {
         setPresetStatus(i18nFormat(UiText.PresetUnknownName, {name: name}), true);
         return;
@@ -3262,18 +3284,101 @@ function savePreset(overwrite: boolean): void {
         setPresetStatus(i18nFormat(UiText.PresetFull, {max: PRESET_MAX}), true);
         return;
     }
-    if (!presetsStore(presetsPut(list, name, presetFormValues()))) {
+    // `base` is the copy this page saw, so the engine can tell an edit of an older one.
+    presetsSubmit([{op: 'put', name: name, values: presetFormValues(), base: presetBase(existing)}],
+        function (reply) {
+            var result = presetResult(reply, 0);
+            if (result === null || !result.ok) {
+                presetRefused(result, name);
+                return;
+            }
+            field!.value = name;
+            setPresetStatus(i18nFormat(exists ? UiText.PresetUpdated : UiText.PresetSaved,
+                {name: name}), false);
+            logInfo(Log.Settings.PresetSaved, 'Saved the form as a preset',
+                {preset: name, replaced: exists});
+            presetsChanged();
+        });
+}
+
+/**
+ * Says why the engine did not take a change. `result` null is a batch that was
+ * not saved at all (no engine, or the store could not be written).
+ */
+function presetRefused(result: PresetOpResult | null, name: string): void {
+    var error = result === null ? '' : result.error;
+    if (error === 'full') {
+        setPresetStatus(i18nFormat(UiText.PresetFull, {max: PRESET_MAX}), true);
+    } else if (error === 'name-taken') {
+        setPresetStatus(i18nFormat(UiText.PresetNameTaken, {name: name}), true);
+    } else if (error === 'gone') {
+        setPresetStatus(i18nFormat(UiText.PresetUnknownName, {name: name}), true);
+    } else {
         setPresetStatus(i18nText(UiText.PresetStoreFailed), true);
         logError(Log.Settings.PresetStoreFailed, 'The presets could not be stored',
-            {preset: name});
+            {preset: name, error: error || 'not saved'});
+    }
+    presetsChanged();
+}
+
+/**
+ * Gives the loaded preset the name in the field. A rename keeps the preset's
+ * id, so GAP Companion workflows that use it still find it.
+ */
+function renamePreset(): void {
+    var field = presetNameField();
+    if (field === null) {
         return;
     }
-    field.value = name;
-    setPresetStatus(i18nFormat(exists ? UiText.PresetUpdated : UiText.PresetSaved,
-        {name: name}), false);
-    logInfo(Log.Settings.PresetSaved, 'Saved the form as a preset',
-        {preset: name, replaced: exists});
-    presetsChanged();
+    var name = presetCleanName(field.value);
+    if (name === '') {
+        setPresetStatus(i18nText(UiText.PresetNeedsName), true);
+        return;
+    }
+    presetWithLid(presetRenameSource(presetsLoad()), function () {
+        return presetRenameSource(presetsLoad());
+    }, function (from) {
+        renamePresetTo(field!, from, name);
+    });
+}
+
+/**
+ * Runs `act` on `preset` once it has its engine id: a cache from before sync
+ * has none until the engine has merged it, so that is read first (`again`).
+ */
+function presetWithLid(preset: Preset | undefined, again: () => Preset | undefined,
+                       act: (preset: Preset) => void): void {
+    if (preset === undefined) {
+        presetsChanged();
+        return;
+    }
+    if (preset.lid !== undefined) {
+        act(preset);
+        return;
+    }
+    presetsRefresh(function () {
+        var found = again();
+        if (found !== undefined && found.lid !== undefined) {
+            act(found);
+        } else {
+            presetRefused(null, preset.name);
+        }
+    });
+}
+
+function renamePresetTo(field: HTMLInputElement, from: Preset, name: string): void {
+    var old = from.name;
+    presetsSubmit([{op: 'rename', lid: from.lid, name: name, base: presetBase(from)}], function (reply) {
+        var result = presetResult(reply, 0);
+        if (result === null || !result.ok) {
+            presetRefused(result, result !== null && result.error === 'gone' ? old : name);
+            return;
+        }
+        field.value = name;
+        setPresetStatus(i18nFormat(UiText.PresetRenamed, {from: old, name: name}), false);
+        logInfo(Log.Settings.PresetRenamed, 'Renamed a preset', {from: old, preset: name});
+        presetsChanged();
+    });
 }
 
 /** Removes the preset named in the field. */
@@ -3283,36 +3388,36 @@ function deletePreset(): void {
         return;
     }
     var name = presetCleanName(field.value);
-    var list = presetsLoad();
-    if (presetIndexOf(list, name) < 0) {
+    var preset = presetByName(presetsLoad(), name);
+    if (preset === undefined) {
         setPresetStatus(i18nFormat(UiText.PresetUnknownName, {name: name}), true);
         return;
     }
-    if (!presetsStore(presetsWithout(list, name))) {
-        setPresetStatus(i18nText(UiText.PresetStoreFailed), true);
-        logError(Log.Settings.PresetStoreFailed, 'The presets could not be stored',
-            {preset: name});
-        return;
-    }
-    setPresetStatus(i18nFormat(UiText.PresetDeleted, {name: name}), false);
-    logInfo(Log.Settings.PresetDeleted, 'Deleted a preset', {preset: name});
-    presetsChanged();
+    presetWithLid(preset, function () {
+        return presetByName(presetsLoad(), name);
+    }, function (found) {
+        presetsSubmit([{op: 'delete', lid: found.lid, base: presetBase(found)}], function (reply) {
+            var result = presetResult(reply, 0);
+            if (result === null || !result.ok) {
+                presetRefused(result, name);
+                return;
+            }
+            setPresetStatus(i18nFormat(UiText.PresetDeleted, {name: name}), false);
+            logInfo(Log.Settings.PresetDeleted, 'Deleted a preset', {preset: name});
+            presetsChanged();
+        });
+    });
 }
 
 /**
- * The list has moved: redraw here, and tell the strip.
+ * The list has moved: redraw the dropdown and the panel.
  *
- * The Quick Bar draws its own dropdown from the same store, and it is read once
- * per render rather than held, so the nudge is the whole message -- see
- * `PageMessage.Presets`.
+ * The cache write itself tells the strip (`presetsTake`, src/presets.ts), which
+ * draws its own dropdown from the same cache -- see `PageMessage.Presets`.
  */
 function presetsChanged(): void {
     refreshPresetLabel();
     refreshPresetPanel();
-    var iface = bridge();
-    if (iface !== undefined && iface.broadcast !== undefined) {
-        iface.broadcast(PageMessage.Presets);
-    }
 }
 
 /** What the file export is called, under the engine's storage path. */
@@ -3370,36 +3475,62 @@ function presetsFromText(text: string): Preset[] {
 
 /**
  * Saves `found` into the store, replacing presets of the same name, and says
- * what happened. New names past `PRESET_MAX` are left out and reported.
+ * what happened through `done`. New names past `PRESET_MAX` are left out and
+ * reported. `failed` is a batch that was not saved at all.
  */
-function importPresets(found: Preset[]): string {
+function importPresets(found: Preset[], done: (message: string, failed: boolean) => void): void {
     var list = presetsLoad();
+    var ops: PresetOp[] = [];
     var names: string[] = [];
+    var seen: {[key: string]: boolean} = {};
+    var count = list.length;
     var left = 0;
     for (var i = 0; i < found.length; i++) {
-        if (presetIndexOf(list, found[i].name) < 0 && list.length >= PRESET_MAX) {
+        var existing = presetByName(list, found[i].name);
+        var key = found[i].name.toLowerCase();
+        if (existing === undefined && !seen.hasOwnProperty(key) && count >= PRESET_MAX) {
             left++;
             continue;
         }
-        list = presetsPut(list, found[i].name, found[i].values);
+        if (existing === undefined && !seen.hasOwnProperty(key)) {
+            count++;
+        }
+        seen[key] = true;
+        ops.push({op: 'put', name: found[i].name, values: found[i].values, base: presetBase(existing)});
         names.push(found[i].name);
     }
-    if (names.length > 0 && !presetsStore(list)) {
-        logError(Log.Settings.PresetStoreFailed, 'The presets could not be stored',
-            {presets: names.length});
-        return i18nText(UiText.PresetStoreFailed);
+    if (ops.length === 0) {
+        done(left > 0 ? i18nFormat(UiText.PresetFull, {max: PRESET_MAX}) : '', false);
+        return;
     }
-    if (names.length > 0) {
-        logInfo(Log.Settings.PresetImported, 'Saved presets pasted into the share box',
-            {presets: names.length, left: left});
+    presetsSubmit(ops, function (reply) {
+        if (reply === null) {
+            logError(Log.Settings.PresetStoreFailed, 'The presets could not be stored',
+                {presets: names.length});
+            done(i18nText(UiText.PresetStoreFailed), true);
+            return;
+        }
+        var saved: string[] = [];
+        for (var j = 0; j < names.length; j++) {
+            var result = presetResult(reply, j);
+            if (result !== null && result.ok) {
+                saved.push(names[j]);
+            } else {
+                left++;
+            }
+        }
+        if (saved.length > 0) {
+            logInfo(Log.Settings.PresetImported, 'Saved presets pasted into the share box',
+                {presets: saved.length, left: left});
+        }
         presetsChanged();
-    }
-    var message = names.length > 0 ?
-        i18nFormat(UiText.PresetImported, {names: names.join(', ')}) : '';
-    if (left > 0) {
-        message += (message !== '' ? ' ' : '') + i18nFormat(UiText.PresetFull, {max: PRESET_MAX});
-    }
-    return message;
+        var message = saved.length > 0 ?
+            i18nFormat(UiText.PresetImported, {names: saved.join(', ')}) : '';
+        if (left > 0) {
+            message += (message !== '' ? ' ' : '') + i18nFormat(UiText.PresetFull, {max: PRESET_MAX});
+        }
+        done(message, false);
+    });
 }
 
 /** The panel under the Export presets row, built the first time it is used. */
@@ -3563,6 +3694,7 @@ function bindPresets(): void {
     };
     wire('presetSaveNew', function () { savePreset(false); });
     wire('presetUpdate', function () { savePreset(true); });
+    wire('presetRename', renamePreset);
     wire('presetDelete', deletePreset);
     wire('presetClose', closePresetPanel);
 }
@@ -5059,6 +5191,7 @@ function localisePresets(): void {
     titled('copyCodeText', UiText.ChromeCopyCode);
     titled('presetSaveNew', UiText.PresetSaveNew);
     titled('presetUpdate', UiText.PresetUpdate);
+    titled('presetRename', UiText.PresetRename);
     titled('presetDelete', UiText.PresetDelete);
     titled('presetClose', UiText.ButtonClose);
     var field = presetNameField();
@@ -5114,9 +5247,10 @@ function bootstrap(): void {
     // Wired once: the app bar and the panel under it are not re-rendered, and
     // their labels are `localiseChrome`'s, which every render calls.
     bindPresets();
-    // The engine's copy for GAP Companion's Import from device, current even
-    // before the first save on this device.
-    presetsSendMirror(presetsLoad());
+    // The list is the engine's (src/presets.ts); redraw when the cache moves.
+    // Read now, and again on every `pullLiveSettings`.
+    presetsOnChange = presetsChanged;
+    presetsRefresh();
     bindTabOverflow();
 
     checkShareSlots();

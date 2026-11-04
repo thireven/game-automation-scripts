@@ -367,6 +367,8 @@ declare const enum UiText {
   PresetNameHint = 'preset.name.hint',
   PresetSaveNew = 'preset.saveNew',
   PresetUpdate = 'preset.update',
+  /** Gives the loaded preset the typed name. */
+  PresetRename = 'preset.rename',
   PresetDelete = 'preset.delete',
   /** `{name}` saved for the first time. */
   PresetSaved = 'preset.saved',
@@ -374,6 +376,8 @@ declare const enum UiText {
   PresetUpdated = 'preset.updated',
   /** `{name}` removed. */
   PresetDeleted = 'preset.deleted',
+  /** `{from}` is now called `{name}`. */
+  PresetRenamed = 'preset.renamed',
   // Loading one says so by putting its name in the dropdown, which is where the
   // reader is already looking -- so there is no string for it here.
   PresetNeedsName = 'preset.needsName',

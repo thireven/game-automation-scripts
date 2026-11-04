@@ -160,7 +160,12 @@ function qbLogInfo(event: string, message: string, fields?: object): void {
  */
 function qbRequestState(): void {
     var bridge = qbBridge();
-    if (bridge === undefined || qbInFlight > 0 || Object.keys(qbPending).length > 0) {
+    if (bridge === undefined) {
+        return;
+    }
+    // The preset list too: a sync with GAP Companion changes it in the engine.
+    presetsRefresh();
+    if (qbInFlight > 0 || Object.keys(qbPending).length > 0) {
         return;
     }
     // Stopped: the store is what the next Play reads, so it is the world.
@@ -359,7 +364,7 @@ function onGapMessage(topic: string): void {
     }
     if (topic === PageMessage.Presets) {
         // The list this chip draws its names from has changed -- one saved,
-        // deleted, or applied on the other page. It is read from localStorage on
+        // deleted, synced or applied on the other page. It is read from the cache on
         // every render, so redrawing is the whole of it, and it is worth doing
         // whether or not the strip is showing: one read, and the strip can come
         // back without another word being sent.
@@ -1231,8 +1236,27 @@ function qbShowSheet(fill: (list: Element) => void): void {
     }
 }
 
-/** The saved presets, by name. Picking one loads the whole configuration. */
+/** How long the preset chip waits for the engine's list before opening on the cached one. */
+var QB_PRESET_WAIT_MS = 400;
+
+/**
+ * The preset chip: reads the engine's list first, so a preset just synced from
+ * GAP Companion is in the sheet, and opens on the cache if the engine is slow.
+ */
 function qbOpenPresetSheet(): void {
+    var opened = false;
+    var open = function () {
+        if (!opened) {
+            opened = true;
+            qbShowPresetSheet();
+        }
+    };
+    presetsRefresh(open);
+    setTimeout(open, QB_PRESET_WAIT_MS);
+}
+
+/** The saved presets, by name. Picking one loads the whole configuration. */
+function qbShowPresetSheet(): void {
     var option = document.getElementById('tpl-option') as HTMLTemplateElement;
     var list = presetsLoad();
     if (option === null || list.length === 0) {
@@ -1463,8 +1487,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // localStorage, so it has its name to draw with no engine behind it at all.
     // After the labels are in, so the hotspot it names is measured on them.
     qbRenderPreset();
-    // The engine's copy for GAP Companion's Import from device (the strip only
-    // opens with a run, so the bundle is there to take it).
-    presetsSendMirror(presetsLoad());
+    // The list is the engine's; the chip redraws when the cache moves.
+    // `qbRequestState` reads it.
+    presetsOnChange = qbRenderPreset;
     qbRequestState();
 });

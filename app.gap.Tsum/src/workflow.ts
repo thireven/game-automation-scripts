@@ -514,9 +514,13 @@ gapWorkflowSetHooks({
   check: workflowTsumCheck,
 });
 
-// --- Presets mirror (for GAP Companion's Import from device) --------------------
+// --- Presets (the store is src/gapPresets.ts) ------------------------------------
+//
+// The device's presets live in `<device folder>/presets-<script id>.json` (and
+// its `.bak.json` twin), synced both ways with GAP Companion. The pages keep a
+// cache and send ops (src/presets.ts).
 
-/** `<script folder>/presets-<device id>.json`, or '' without the natives. */
+/** The old one-way mirror, `<script folder>/presets-<device id>.json`: a new store starts from it. */
 function presetsMirrorPath(): string {
   if (typeof getScriptPath !== 'function' || typeof getDeviceId !== 'function') {
     return '';
@@ -524,56 +528,25 @@ function presetsMirrorPath(): string {
   return getScriptPath() + '/presets-' + getDeviceId() + '.json';
 }
 
-/** `[{name, values}]` with scalar values only; null when `raw` is not a list. */
-function presetsMirrorParse(raw: unknown): { name: string; values: { [key: string]: GapWorkflowScalar } }[] | null {
-  if (!Array.isArray(raw)) {
-    return null;
-  }
-  const out: { name: string; values: { [key: string]: GapWorkflowScalar } }[] = [];
-  for (let i = 0; i < raw.length; i++) {
-    const p = raw[i];
-    if (p === null || typeof p !== 'object' || typeof p.name !== 'string'
-        || p.values === null || typeof p.values !== 'object') {
-      continue;
-    }
-    const values: { [key: string]: GapWorkflowScalar } = {};
-    for (const key in p.values) {
-      if (gapWorkflowIsScalar(p.values[key])) {
-        values[key] = p.values[key];
-      }
-    }
-    out.push({ name: p.name, values: values });
-  }
-  return out;
-}
+gapPresetsSetup({
+  script: GAP_SCRIPT_ID,
+  path: function() { return deviceSettingsPath('presets-' + GAP_SCRIPT_ID); },
+  legacyPath: presetsMirrorPath,
+  emit: emitScriptEvent,
+  warn: function(message: string, data: { [key: string]: unknown }) {
+    logWarn(Log.Workflow.PresetsNotSaved, message, data);
+  },
+});
 
 /**
- * The settings and Quick Bar pages call this on every presets save with the
- * store's `[{name, values}]`, so the engine can export them. Never throws.
+ * What a page from before two-way sync calls with its whole list (one left
+ * open across an update): merged in as a seed. Never throws.
  */
 // noinspection JSUnusedGlobalSymbols
 function presetsMirror(json: string): void {
   try {
-    const path = presetsMirrorPath();
-    const list = presetsMirrorParse(JSON.parse(json));
-    if (path !== '' && list !== null) {
-      writeFile(path, JSON.stringify(list));
-    }
+    gapPresetsApply(JSON.stringify({ ops: [{ op: 'seed', presets: JSON.parse(json) }] }));
   } catch (e) {
-    logWarn(Log.Workflow.PresetsNotSaved, 'Could not save the presets for GAP Companion',
-      { errorText: '' + e });
-  }
-}
-
-/** The mirrored presets as JSON `[{name, values}]`; `"[]"` when missing or unreadable. */
-// noinspection JSUnusedGlobalSymbols
-function gapPresetsLocal(): string {
-  try {
-    const path = presetsMirrorPath();
-    const text = path === '' ? '' : readFile(path);
-    const list = text === '' ? null : presetsMirrorParse(JSON.parse(text));
-    return JSON.stringify(list === null ? [] : list);
-  } catch (e) {
-    return '[]';
+    // Not a list: nothing to merge.
   }
 }

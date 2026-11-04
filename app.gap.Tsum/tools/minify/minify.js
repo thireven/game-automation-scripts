@@ -113,9 +113,11 @@ function checkBundle(file) {
                   // The Debug tab's Copy debug info button.
                   'debugDeviceInfo',
                   // GAP Companion's adapter calls these by name (src/companion.ts,
-                  // docs/WORKFLOWS.md § 6); the pages call presetsMirror.
+                  // docs/WORKFLOWS.md § 6), the preset store's included; the pages
+                  // call gapPresetsRead / gapPresetsApply (and old ones presetsMirror).
                   'gapWorkflowCatalog', 'gapWorkflowReceive', 'gapWorkflowState',
                   'gapWorkflowCheck', 'startWorkflow', 'presetsMirror', 'gapPresetsLocal',
+                  'gapPresetsStore', 'gapPresetsAdopt', 'gapPresetsRead', 'gapPresetsApply',
                   'gapScreens', 'gapSettingsSchema', 'gapSettingsAction', 'gapCompanion',
                   'gapRemoteState', 'gapRemoteSet', 'gapRemoteAction', 'gapRemoteStartPrepare',
                   'gapRemoteStartRun',

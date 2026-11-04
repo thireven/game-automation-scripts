@@ -11,8 +11,8 @@
 //
 // Cases: per-loop values cycle; `loop {times}`; `stop`; running off the end
 // (implicit stop) and the empty workflow; retries then skip; `terminate`; the
-// check's refusals in its documented order; Tsum's Tsum List check; the presets
-// mirror round trip; the add-on hooks (src/addons.ts) with a test add-on, the
+// check's refusals in its documented order; Tsum's Tsum List check; the preset
+// store's Tsum setup (old pages' presetsMirror, the device folder); the add-on hooks (src/addons.ts) with a test add-on, the
 // director and user direction (gapDirect, requestUserDirection, the unknown
 // screen, the stall guard starting over); the
 // restart nodes (`restartDevice`, `restartIfSlow`) against the host shim's
@@ -510,18 +510,20 @@ fs.rmSync(listFile, { force: true });
 built = buildWorkflowRun();
 check('mode: a refused workflow registers nothing and stops', built.tasks === '' && built.stopping === true, built);
 
-// --- presets mirror ----------------------------------------------------------------------
+// --- presets (the store itself is tools/presetsCheck) ----------------------------------
 ctx.getScriptPath = () => storage;
+check('presets: a new store is empty', ctx.gapPresetsLocal() === '[]', ctx.gapPresetsLocal());
 ctx.presetsMirror(JSON.stringify([{ name: 'A', values: { skillLevel: 3, bad: { x: 1 } } }, { nope: 1 }]));
-check('presets mirror: round trip keeps scalar values only',
+check('presets: an old page\'s list is merged in, scalar values only',
   ctx.gapPresetsLocal() === JSON.stringify([{ name: 'A', values: { skillLevel: 3 } }]), ctx.gapPresetsLocal());
-fs.rmSync(path.join(storage, 'presets-' + ctx.getDeviceId() + '.json'), { force: true });
-check('presets mirror: missing file is []', ctx.gapPresetsLocal() === '[]');
+check('presets: kept in the device folder, not the script folder',
+  fs.existsSync(path.join(ctx.getDevicePath(), 'presets-app.gap.Tsum.json'))
+  && !fs.existsSync(path.join(storage, 'presets-' + ctx.getDeviceId() + '.json')));
 
 // --- Script add-ons (src/addons.ts), with a test add-on -------------------------------
 let companion = JSON.parse(ctx.gapCompanion());
 check('addons: none loaded, only the base actions',
-  companion.actions.map((a) => a.name).join() === 'wrapUp,cancelWrapUp,lastSettings', companion.actions);
+  companion.actions.map((a) => a.name).join() === 'wrapUp,cancelWrapUp,timeOut,lastSettings', companion.actions);
 let screens = JSON.parse(ctx.gapScreens());
 check('addons: none loaded, My Tsum card has the base fact only',
   JSON.stringify(screens.tabs[0].items[0].items) === JSON.stringify([{ facts: [
@@ -551,7 +553,7 @@ check('addons: onRunStart replayed for a run already going',
 run('ts = undefined; gTaskController = realController');
 companion = JSON.parse(ctx.gapCompanion());
 check('addons: actions listed after the base actions',
-  companion.actions.map((a) => a.name).join() === 'wrapUp,cancelWrapUp,lastSettings,test.echo,test.boom', companion.actions);
+  companion.actions.map((a) => a.name).join() === 'wrapUp,cancelWrapUp,timeOut,lastSettings,test.echo,test.boom', companion.actions);
 screens = JSON.parse(ctx.gapScreens());
 check('addons: My Tsum card has the add-on fact and button',
   JSON.stringify(screens.tabs[0].items[0].items) === JSON.stringify([{ facts: [

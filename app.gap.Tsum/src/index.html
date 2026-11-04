@@ -125,7 +125,7 @@
 
     <!--
       The Save panel behind the app bar's save button: one name field and what
-      can be done with it. Static markup rather than a template, because
+      can be done with it (Rename gives the loaded preset the typed name). Static markup rather than a template, because
       renderPage() clears the tab bar and the panels and this is neither -- it is
       chrome, like the footer, and survives a language change with its labels
       rewritten by localiseChrome().
@@ -139,6 +139,7 @@
       <div class="preset-actions">
         <button id="presetSaveNew" class="row-button preset-primary" type="button"></button>
         <button id="presetUpdate" class="row-button" type="button"></button>
+        <button id="presetRename" class="row-button" type="button"></button>
         <button id="presetDelete" class="row-button preset-danger" type="button"></button>
         <button id="presetClose" class="row-button preset-quiet" type="button"></button>
       </div>

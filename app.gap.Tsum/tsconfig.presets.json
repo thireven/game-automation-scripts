@@ -1,0 +1,18 @@
+{
+  // Proves src/gapPresets.ts compiles on its own: the preset store is vendored
+  // verbatim into other scripts, as src/gapWorkflow.ts is, so it may reference
+  // nothing else in this tree. Type check only; the bundle ships it.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "none",
+    "rootDir": "./src",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "ignoreDeprecations": "6.0"
+  },
+  "files": [
+    "src/gapPresets.ts"
+  ]
+}

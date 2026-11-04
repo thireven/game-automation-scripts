@@ -445,7 +445,7 @@ namespace Log {
     NodeFailed      = 'workflow.nodeFailed',
     /** A restart step restarted the device, skipped it, or found the script not slow. */
     Restart         = 'workflow.restart',
-    /** `presetsMirror` could not write the presets file. */
+    /** The preset store (src/gapPresets.ts) could not write its file. */
     PresetsNotSaved = 'workflow.presetsNotSaved',
     /** A setting the workflow owns (`stopAfterGames`) was refused. */
     SettingRefused  = 'workflow.settingRefused',
@@ -563,6 +563,7 @@ namespace Log {
     PresetDeleted              = 'settings.presetDeleted',
     PresetExported             = 'settings.presetExported',
     PresetImported             = 'settings.presetImported',
+    PresetRenamed              = 'settings.presetRenamed',
     PresetSaved                = 'settings.presetSaved',
     PresetStoreFailed          = 'settings.presetStoreFailed',
     ReportAsked                = 'settings.reportAsked',

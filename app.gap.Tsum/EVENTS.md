@@ -14,22 +14,23 @@ format are the host's document --
 Names are declared once, in `src/scriptEvents.ts`, and reached through
 `ts.emit()`, which is silent on a host too old to have `emitEvent`.
 
-`14` event(s) from `15` call site(s).
+`15` event(s) from `16` call site(s).
 
 | event | emitted from | payload |
 |---|---|---|
 | `task.start` | `src/taskController.ts:93` | `task` |
 | `round.over` | `src/play.ts:540` | `id`, `round`, `seconds` |
 | `round.start` | `src/play.ts:735` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `settings` |
-| `round.end` | `src/play.ts:1152` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
+| `round.end` | `src/play.ts:1153` | `id`, `round`, `myTsum`, `myTsumName`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
 | `workflow.end` | `src/gapWorkflow.ts:669` | `id`, `rev`, `status`, `reason`, `loop`, `index` |
 | `workflow.start` | `src/gapWorkflow.ts:733` | `id`, `rev`, `name`, `total`, `resumed` |
 | `workflow.node` | `src/gapWorkflow.ts:777` | `id`, `loop`, `index`, `nodeId`, `node` |
 | `workflow.loop` | `src/gapWorkflow.ts:793` | `id`, `loop` |
 | `workflow.nodeFailed` | `src/gapWorkflow.ts:842`<br>`src/gapWorkflow.ts:944` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
 | `workflow.restart` | `src/gapWorkflow.ts:933` | `id`, `nodeId`, `index`, `loop`, `outcome`, `error`, `why`, `fps`, `captureMs` |
+| `gap.presets` | `src/gapPresets.ts:690` | `script` |
 | `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:881` | `rounds` |
+| `run.stopped` | `src/index.ts:888` | `rounds` |
 | `gap.notify` | `src/companion.ts:69` | _none_ |
 | `gap.direct` | `src/companion.ts:199` | _none_ |
 
@@ -100,7 +101,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:1152` — `this.emit(Emit.Round.End, …)`
+- `src/play.ts:1153` — `this.emit(Emit.Round.End, …)`
 
 ### `workflow.end`
 
@@ -203,6 +204,18 @@ Emitted from:
 
 - `src/gapWorkflow.ts:933` — `gapWorkflowHooksOf().emit('workflow.restart', …)`
 
+### `gap.presets`
+
+`Emit.Companion.Presets` — A page saved, renamed or deleted a preset on this device: the server runs a preset sync round. `script` is the script id (the event's own `script` is the folder).
+
+| field | type |
+|---|---|
+| `script` | `string` |
+
+Emitted from:
+
+- `src/gapPresets.ts:690` — `conf.emit('gap.presets', …)`
+
 ### `run.started`
 
 `Emit.Run.Started` — A run has been asked for and its world is about to be built.
@@ -227,7 +240,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:881` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:888` — `emitScriptEvent(Emit.Run.Stopped, …)`
 
 ### `gap.notify`
 

@@ -412,8 +412,8 @@ Three things about it are deliberate:
   feature-detected.
 
 There is a second topic, and it exists because one of the three copies can move
-without the run. `PageMessage.Presets` means *a preset was saved, deleted or
-loaded* — and a preset is a whole form, most of which no run can take live, so
+without the run. `PageMessage.Presets` means *a preset was saved, renamed,
+deleted, synced or loaded* — and a preset is a whole form, most of which no run can take live, so
 what it moved is the **store**. The settings page therefore answers it with
 `takeStoredSettings()` before `pullLiveSettings(true)`: the store for everything,
 then the run for the rows it clamps. `LiveSettings` alone would have the panel
@@ -449,13 +449,18 @@ So `LiveWhen.NextRound` is what a setting gets unless it argues otherwise:
 the pre-round screen. `LiveWhen.Now` is earned by being **read fresh, during
 play, by the pass that wants it** — so a board already dealt is not being
 reinterpreted, it is simply played differently from the next scan on. Of the
-twenty-five rows a preset carries:
+twenty-four rows a preset carries (`SHARE_SLOTS`):
 
 | | Rows | Why |
 |:--|:--|:--|
-| `Now` (13) | `maxChain`, `maxChainsPerScan`, `linkReachPercent`, `prioritizeMyTsum`, `useFan`, `bubbleStrategy`, `holdBubblesLastFeverSec`, `skillWaitingTime`, `skillSettleMs`, `skillAutoTap`, `noSkillLastFeverSec`, `skillLevel`, `roundDelayMinutes` | each has a read site inside the play loop, per scan, per pop or per activation. `LiveSettings` names them one by one. `roundDelayMinutes` is the odd one — it governs the gap, so there is no round to be halfway through, and `quickBarSetRoundDelay` deliberately re-bases a rest already running |
-| `NextRound` (10) | `skillType`, `lorcanaCard`, `bonus5to4`, the five other bonus items, `trackRoundStats` | the round committed to all of them before it began. The items are read only by `openRound`'s item screen, which is the next round's; `skillType` and `lorcanaCard` are the tsum on the board; `bonus5to4` is an item *and* `uniqueTsumCount`; and a stats row is opened at the whistle, so flipping the flag mid-round writes a partial row or drops a begun one |
-| `Restart` (2) | `autoPlayGame`, `clickAssist` | they decide which tasks a run registers |
+| `Now` (14) | `maxChain`, `maxChainsPerScan`, `linkReachPercent`, `prioritizeMyTsum`, `useFan`, `bubbleStrategy`, `holdBubblesLastFeverSec`, `skillWaitingTime`, `skillSettleMs`, `skillReactivationTenths`, `skillAutoTap`, `noSkillLastFeverSec`, `skillLevel`, `autoSkillLevel` | each has a read site inside the play loop, per scan, per pop or per activation. `LiveSettings` names them one by one |
+| `NextRound` (9) | `skillType`, `lorcanaCard`, `bonus5to4`, the six other bonus items | the round committed to all of them before it began. The items are read only by `openRound`'s item screen, which is the next round's; `skillType` and `lorcanaCard` are the tsum on the board; `bonus5to4` is an item *and* `uniqueTsumCount` |
+| `Restart` (1) | `clickAssist` | it decides which tasks a run registers |
+
+The run-shaping rows beside them (`autoPlayGame`, `roundDelayMinutes`,
+`trackRoundStats`, the Max Round Duration and Stop after games pairs) are
+`neverShared`, so no preset carries them; `LiveSettings` still says when each
+reaches a run.
 
 The three Box Buying rows are `Now` and are not preset rows: the sweep re-reads
 them when it runs, which is between rounds by definition.
@@ -647,8 +652,8 @@ That is also why its answer broadcasts **`PageMessage.Presets`** and not
 `LiveSettings`. `LiveSettings` means "re-read the run", and a settings page that
 only did that would take back every row the run never saw at its next save. The
 `Presets` topic means "re-read the store as well" — and it doubles as "the list
-of presets has changed", which is what the settings page sends when one is saved
-or deleted.
+of presets has changed", which is what either page sends when it writes the
+preset cache (`presetsTake`, `src/presets.ts`).
 
 A preset is **how a round is played and nothing else** — the same set
 `SHARE_SLOTS` names, so the export is one settings code per preset and a line of
@@ -662,6 +667,16 @@ strip and the panel each compare the stored form against every preset when they
 redraw, and the answer stops being a name the moment a value differs. The store
 rather than `quickBarState()`, on both pages, because a preset is the whole form
 and that reply carries only the live rows.
+
+**The list itself is the engine's** (`src/gapPresets.ts`), one file per device,
+synced both ways with GAP Companion. Both pages draw from a localStorage cache of
+it and change it only by sending ops (`presetsSubmit`: put, rename, delete), each
+carrying the copy the page saw so the engine can tell an edit of an older one.
+`presetsRefresh` reads it back as each page opens and on each page's poll, so a
+change made on the phone shows within one. A cache the engine did not write (one
+from before sync, a GAP Restore, a 5.0 session on the same device) is merged in
+by name once. `src/presets.ts`'s header and `WORKFLOWS.md` § Presets are the
+long form.
 
 #### Seeing it without a device
 
