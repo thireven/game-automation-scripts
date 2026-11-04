@@ -59,6 +59,9 @@ release note; they fold back in here when she ships.
   breaks the digits. A last retry reads past art at `bandLo` 54, under the
   whole band, which then runs off the crop and is dropped. 50-56 read all 8
   unread-base shots alike.
+- **Take over answered by the script's own request**: `requestUserDirection`
+  took a pending Take over but sent no `takeover: true`, so the server alerted
+  the person who had just pressed it. It now marks that request a takeover.
 
 ## [6.0b15]
 

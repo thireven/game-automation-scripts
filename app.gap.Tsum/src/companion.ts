@@ -353,7 +353,12 @@ function requestUserDirection(opts?: GapAddonDirectOptions): GapAddonDirectOutco
   logInfo(Log.Direct.Asked, 'Asking for direction on the phone', { addon: d.id, body: ask.body ?? null });
   // A throw or a bad answer is a timeout, so the caller's old path runs.
   let outcome: GapAddonDirectOutcome = 'timeout';
-  // Any open request answers a pending Take over.
+  // Any open request answers a pending Take over, and then is one: whoever pressed it is looking,
+  // so the server doesn't push it.
+  const wasTakeover = gDirectTakeover;
+  if (gTakeoverAsked) {
+    gDirectTakeover = true;
+  }
   gTakeoverAsked = false;
   gDirecting = true;
   try {
@@ -367,6 +372,7 @@ function requestUserDirection(opts?: GapAddonDirectOptions): GapAddonDirectOutco
     logError(Log.Addon.Failed, 'Add-on hook failed', { addon: d.id, hook: 'request', errorText: String(e) });
   } finally {
     gDirecting = false;
+    gDirectTakeover = wasTakeover;
   }
   run.stallResets++;
   logInfo(Log.Direct.Ended, 'Direction request ended', { outcome: outcome, ms: Date.now() - startedAt });
