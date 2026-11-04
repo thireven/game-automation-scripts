@@ -19,8 +19,17 @@
 // over `fallbackReads` reads and `fallbackMs`. Every flash is gone well inside
 // either. An empty or dark ring, a tap, or a new round starts over.
 //
+// Near the round's end the 1st charge is fired after all, rather than wasted:
+// while gold is up the round clock is read (`cloudReadClock`), and two reads
+// `confirmMs` apart at `CloudClock.goldLastSeconds` or less fire it. Two, so
+// one misread cannot spend a charge mid-round. At 0 the round is over (TIME UP
+// dims the HUD) and nothing fires.
+//
 // Measured on an 11-minute recording (20 second charges): replayed at read
 // gaps of 0.1-1.2s, no first charge or flash the script could meet read Active.
+// The clock read: every frame of that recording (no misreads; the +5s fever
+// bonus is the only jump) and all 21 corpus GamePlaying captures (540, 1080
+// and 360 wide).
 
 // ---------------------------------------------------------------------------
 // Tuning data
@@ -80,6 +89,46 @@ const CloudGauge = {
   fallbackMs: 1500
 };
 
+/** The round clock, top left: white digits on the clock face. */
+const CloudClock = {
+  /** The box both digits sit in (logical px), sampled every `step`. */
+  x0: 104, x1: 224, y0: 226, y1: 306, step: 2,
+  /** A digit's fill: bright and unsaturated. White, or pale cyan under the last seconds' wash. */
+  fillMin: 170, fillSpread: 90,
+  /** A digit's size (logical px). Anything bigger over the clock makes the read unknown. */
+  hMin: 40, hMax: 64, wMin: 8, wMax: 46,
+  /** Width / height may differ from the template's by this much ("1": 0.2-0.6). */
+  aspectTol: 0.18,
+  /** A match: mean cell difference at most `scoreMax`, beating the next digit by `marginMin`. */
+  scoreMax: 0.22, marginMin: 0.04,
+  /** Fire the 1st charge with this many seconds left or fewer. 0 is time up: too late. */
+  goldLastSeconds: 5,
+  /** A clock read is reused this long, so `useSkill`'s two gauge reads cost one. */
+  reuseMs: 150,
+  /** A low read is confirmed by a second this much later. */
+  confirmMs: 50
+};
+
+/**
+ * The clock's digits 0-9: the game's `game_num_36_white_comma` glyphs (the
+ * clock's font), each glyph's white fill cut to its box and averaged onto an
+ * 8x12 grid, row by row, 0-9 per cell. `aspect` is the box's width / height.
+ */
+const CloudClockDigits: {cells: string, aspect: number}[] = [
+  {cells: '003883000397696029700593696003967930029799300098993000976940019759600396298006930694388100478510', aspect: 0.78},
+  {cells: '000299970369999949449999000099990000999900009999000099990000999900009999000099990000999900003694', aspect: 0.45},
+  {cells: '028999601994389549600399492001990200049900003895000499800069961004994000298300006960000079999999', aspect: 0.80},
+  {cells: '004894200896698139400696040006960000079200299810000448920000049745000399892004963983389302698620', aspect: 0.75},
+  {cells: '000069200002995000089930003949300085393004803930094039304800393098668986699999990000393000002920', aspect: 0.75},
+  {cells: '299999943983333239600000596233003999996039834894392004960000039934000398790006954960299205999720', aspect: 0.80},
+  {cells: '003694200696689129700194696000006956662089833893693004966930039959600398396004960792189200578620', aspect: 0.75},
+  {cells: '799999984999999900000398000007930000299000008950000399200007970000299300005990000099400000880000', aspect: 0.73},
+  {cells: '026998200894498139800693397006930990099203977930398338938940039899300399894003994981179503699740', aspect: 0.77},
+  {cells: '029998202982288169400694893004969930039679400498398348960399849600000596280008934941498004798510', aspect: 0.77}
+];
+const CloudClockGridW = 8;
+const CloudClockGridH = 12;
+
 type CloudGaugeTone = 'navy' | 'cyan' | 'gold' | 'pearl' | 'dark' | 'other';
 
 function cloudGaugeTone(c: Color): CloudGaugeTone {
@@ -102,7 +151,9 @@ var gCloudGauge = {
   goldAt: 0,       // first gold read
   fullAt: 0,       // first of the current run of full reads (fallback)
   fullReads: 0,
-  logged: false,   // the 2nd charge was logged
+  logged: false,   // the firing was logged
+  clockAt: 0,      // last clock read
+  outOfTime: false, // the clock was read low twice: fire the 1st charge
   firedAt: 0,      // `ts.skillFiredAt` and `ts.roundStartedAt` at the last read
   roundAt: 0
 };
@@ -112,6 +163,147 @@ function cloudGaugeReset() {
   gCloudGauge.fullAt = 0;
   gCloudGauge.fullReads = 0;
   gCloudGauge.logged = false;
+  gCloudGauge.clockAt = 0;
+  gCloudGauge.outOfTime = false;
+}
+
+/** How many samples in one column of the clock read are digit fill. */
+function cloudColumnFill(col: boolean[]): number {
+  let n = 0;
+  for (const on of col) { if (on) { n++; } }
+  return n;
+}
+
+/**
+ * One digit: columns `a`..`b` of the fill mask. The digit, -1 if it cannot
+ * be read, or -2 for a speck too small to matter.
+ */
+function cloudReadDigit(fill: boolean[][], a: number, b: number): number {
+  const c = CloudClock;
+  let top = Infinity, bottom = -1, count = 0;
+  for (let i = a; i <= b; i++) {
+    for (let j = 0; j < fill[i].length; j++) {
+      if (!fill[i][j]) { continue; }
+      count++;
+      top = Math.min(top, j);
+      bottom = Math.max(bottom, j);
+    }
+  }
+  const bw = b - a + 1, bh = bottom - top + 1;
+  if (bh * c.step < c.hMin || bh * c.step > c.hMax
+      || bw * c.step < c.wMin || bw * c.step > c.wMax) {
+    return count >= 6 ? -1 : -2;
+  }
+  // The box's fill averaged onto the template grid.
+  const cells: number[] = [];
+  for (let gy = 0; gy < CloudClockGridH; gy++) {
+    const y0 = Math.floor(gy * bh / CloudClockGridH);
+    const y1 = Math.max(y0 + 1, Math.floor((gy + 1) * bh / CloudClockGridH));
+    for (let gx = 0; gx < CloudClockGridW; gx++) {
+      const x0 = Math.floor(gx * bw / CloudClockGridW);
+      const x1 = Math.max(x0 + 1, Math.floor((gx + 1) * bw / CloudClockGridW));
+      let n = 0, on = 0;
+      for (let x = x0; x < x1; x++) {
+        for (let y = y0; y < y1; y++) {
+          n++;
+          if (fill[a + x][top + y]) { on++; }
+        }
+      }
+      cells.push(on / n);
+    }
+  }
+  const aspect = bw / bh;
+  let best = Infinity, next = Infinity, digit = -1;
+  for (let d = 0; d < CloudClockDigits.length; d++) {
+    const t = CloudClockDigits[d];
+    const fits = Math.abs(aspect - t.aspect) <= c.aspectTol
+      || (d === 1 && aspect >= 0.2 && aspect <= 0.6);
+    if (!fits) { continue; }
+    let diff = 0;
+    for (let k = 0; k < cells.length; k++) {
+      diff += Math.abs(cells[k] - (t.cells.charCodeAt(k) - 48) / 9);
+    }
+    diff /= cells.length;
+    if (diff < best) { next = best; best = diff; digit = d; }
+    else if (diff < next) { next = diff; }
+  }
+  if (digit < 0 || best > c.scoreMax || next - best < c.marginMin) { return -1; }
+  return digit;
+}
+
+/**
+ * The round clock's seconds left, or -1 when it cannot be read (a popup or
+ * flash over it, three digits, a poor match). One crop at native resolution.
+ */
+function cloudReadClock(ts: Tsum): number {
+  const c = CloudClock;
+  const cols = Math.floor((c.x1 - c.x0) / c.step);
+  const rows = Math.floor((c.y1 - c.y0) / c.step);
+  const tl = ts.toRealXY(c.x0, c.y0);
+  const br = ts.toRealXY(c.x1, c.y1);
+  const ox = Math.max(0, tl.x), oy = Math.max(0, tl.y);
+  const w = Math.max(1, br.x - ox), h = Math.max(1, br.y - oy);
+  const pts: Point[] = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const p = ts.toRealXY(c.x0 + i * c.step, c.y0 + j * c.step);
+      pts.push({x: Math.min(w - 1, Math.max(0, p.x - ox)),
+        y: Math.min(h - 1, Math.max(0, p.y - oy))});
+    }
+  }
+  const img = getScreenshotModify(ox, oy, w, h, 0, 0, 100);
+  let colors: Color[];
+  try {
+    colors = getImageColors(img, pts);
+  } finally {
+    releaseImage(img);
+  }
+  const fill: boolean[][] = [];
+  for (let i = 0; i < cols; i++) {
+    const col: boolean[] = [];
+    for (let j = 0; j < rows; j++) {
+      const k = colors[i * rows + j];
+      const max = Math.max(k.r, k.g, k.b), min = Math.min(k.r, k.g, k.b);
+      col.push(min >= c.fillMin && max - min <= c.fillSpread);
+    }
+    fill.push(col);
+  }
+  // Each run of columns with 2+ fill samples is one digit.
+  let secs = 0, digits = 0, i = 0;
+  while (i < cols) {
+    if (cloudColumnFill(fill[i]) < 2) { i++; continue; }
+    const a = i;
+    while (i < cols && cloudColumnFill(fill[i]) >= 2) { i++; }
+    const d = cloudReadDigit(fill, a, i - 1);
+    if (d === -2) { continue; }
+    if (d < 0 || ++digits > 2) { return -1; }
+    secs = secs * 10 + d;
+  }
+  return digits > 0 ? secs : -1;
+}
+
+function cloudLowSeconds(secs: number): boolean {
+  return secs >= 1 && secs <= CloudClock.goldLastSeconds;
+}
+
+/**
+ * Whether the round is nearly over. A low read is confirmed by a second one
+ * `confirmMs` later, not on the next turn: gold can arrive with a second
+ * left. Reads at most every `reuseMs`; once confirmed, it stays so until the
+ * gauge read starts over.
+ */
+function cloudOutOfTime(ts: Tsum, now: number): boolean {
+  const g = gCloudGauge;
+  const c = CloudClock;
+  if (g.outOfTime) { return true; }
+  if (now - g.clockAt < c.reuseMs) { return false; }
+  g.clockAt = now;
+  const first = cloudReadClock(ts);
+  if (!cloudLowSeconds(first)) { return false; }
+  ts.sleep(c.confirmMs);
+  const second = cloudReadClock(ts);
+  g.outOfTime = cloudLowSeconds(second) && second <= first;
+  return g.outOfTime;
 }
 
 function cloudGaugeClassify(colors: Color[], ts: Tsum): SkillReadiness {
@@ -142,6 +334,13 @@ function cloudGaugeClassify(colors: Color[], ts: Tsum): SkillReadiness {
     }
     g.fullAt = 0;
     g.fullReads = 0;
+    if (cloudOutOfTime(ts, now)) {
+      if (!g.logged) {
+        g.logged = true;
+        logInfo(Log.Skill.CloudOutOfTime, { pearl: pearl });
+      }
+      return SkillReadiness.Active;
+    }
     return pearl >= CloudGauge.almostMin ? SkillReadiness.Almost : SkillReadiness.Far;
   }
   if (pearl < CloudGauge.fullMin || gold > CloudGauge.fullGoldMax || empty > 0) {

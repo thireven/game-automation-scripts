@@ -61,6 +61,7 @@ var LogsEn = {
   [Log.Skill.MagicWandHeart]: '[Magic Wand Change] Heart bubble tapped',
   [Log.Skill.CloudFirstCharge]: '[KH2 Cloud] First charge, waiting for the second',
   [Log.Skill.CloudSecondCharge]: '[KH2 Cloud] Second charge ready',
+  [Log.Skill.CloudOutOfTime]: '[KH2 Cloud] Round nearly over, firing the first charge',
   [Log.Skill.NbcDice]: '[NBC Set] Dice read',
   [Log.Skill.NbcDiceUnread]: '[NBC Set] Dice not read',
   [Log.Play.GameStart]: 'Game Start',

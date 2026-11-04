@@ -52,7 +52,7 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- KH2 Cloud skill added: waits for the stronger second charge of his gauge before tapping.
+- KH2 Cloud skill added: waits for the stronger second charge of his gauge before tapping, and uses the first charge if the round is about to end.
 
 ### Added
 
@@ -63,6 +63,10 @@ release note; they fold back in here when she ships.
   white flashes read as pearl too. A tap, new round, empty or dark ring
   resets it. Tuned on an 11-minute recording. `SkillGaugeRead.classify` now
   also gets `ts`.
+- **KH2 Cloud: round clock read** (`cloudReadClock`): while gold is up, the
+  clock's digits are matched against templates cut from the game's own font;
+  1-5s left on two reads 50ms apart fires the 1st charge. Read every frame of
+  the recording without a misread, and all 21 corpus captures.
 
 ## [6.0b17]
 

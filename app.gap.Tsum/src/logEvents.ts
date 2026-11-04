@@ -237,6 +237,8 @@ namespace Log {
     CloudFirstCharge      = 'skill.cloud.firstCharge',
     /** KH2 Cloud: the 2nd charge was confirmed (`via` gold seen first, or `held`). */
     CloudSecondCharge     = 'skill.cloud.secondCharge',
+    /** KH2 Cloud: the round clock is nearly out, so the 1st charge is fired. */
+    CloudOutOfTime        = 'skill.cloud.outOfTime',
     FeverHoldOff          = 'skill.feverHoldOff',
     FormalBeastModeEnd    = 'skill.formalBeast.modeEnd',
     FormalBeastModeStart  = 'skill.formalBeast.modeStart',
