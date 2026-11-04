@@ -59,6 +59,8 @@ var LogsEn = {
   [Log.Skill.ColorfulMickeyReach]: '[Colorful Mickey Set] Long reach changed',
   [Log.Skill.MagicWandLocket]: '[Magic Wand Change] Locket tapped',
   [Log.Skill.MagicWandHeart]: '[Magic Wand Change] Heart bubble tapped',
+  [Log.Skill.CloudFirstCharge]: '[KH2 Cloud] First charge, waiting for the second',
+  [Log.Skill.CloudSecondCharge]: '[KH2 Cloud] Second charge ready',
   [Log.Skill.NbcDice]: '[NBC Set] Dice read',
   [Log.Skill.NbcDiceUnread]: '[NBC Set] Dice not read',
   [Log.Play.GameStart]: 'Game Start',

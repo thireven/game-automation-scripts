@@ -115,6 +115,12 @@ declare const enum SkillType {
    * `src/skills/magicWandChange.ts`.
    */
   MagicWandChange = 'magic_wand_change',
+  /**
+   * KH2 Cloud (Cloud KH2ver.). His gauge charges twice and the second charge
+   * is much stronger, so his own gauge read waits for it -- see
+   * `src/skills/kh2Cloud.ts`.
+   */
+  KH2Cloud = 'cloud',
   PairTsum = 'pair_tsum',
   /** Offered in the dropdown; short-circuited in useSkill, so it has no handler. */
   NoSkill = 'nokill',

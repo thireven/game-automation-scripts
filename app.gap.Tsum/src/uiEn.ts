@@ -257,6 +257,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SkillMagicWandChange]: 'Magic Wand Change',
     [UiText.SkillFormalBeast]: 'Formal Beast',
     [UiText.SkillGaston]: 'Gaston',
+    [UiText.SkillKH2Cloud]: 'KH2 Cloud',
     [UiText.SkillTiaraMinniePlus]: 'Tiara Minnie+',
     [UiText.SkillCoronationElsa]: 'Coronation Day Elsa',
     [UiText.SkillRapunzelPlus]: 'Rapunzel+',

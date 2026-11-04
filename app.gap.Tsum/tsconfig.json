@@ -129,6 +129,7 @@
     "src/skills/villainsSet.ts",
     "src/skills/colorfulMickeySet.ts",
     "src/skills/magicWandChange.ts",
+    "src/skills/kh2Cloud.ts",
     "src/skills/formalBeast.ts",
     "src/skills/tiaraMinniePlus.ts",
     "src/skills/coronationElsa.ts",

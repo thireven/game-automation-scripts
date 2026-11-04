@@ -286,6 +286,7 @@ declare const enum UiText {
   SkillMagicWandChange = 'skill.magicWandChange',
   SkillFormalBeast = 'skill.formalBeast',
   SkillGaston = 'skill.gaston',
+  SkillKH2Cloud = 'skill.kh2Cloud',
   SkillTiaraMinniePlus = 'skill.tiaraMinniePlus',
   SkillCoronationElsa = 'skill.coronationElsa',
   SkillRapunzelPlus = 'skill.rapunzelPlus',

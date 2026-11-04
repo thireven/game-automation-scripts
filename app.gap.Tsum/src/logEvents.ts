@@ -233,6 +233,10 @@ namespace Log {
     MagicWandLocket       = 'skill.magicWand.locket',
     /** Magic Wand Change: the heart bubble an activation leaves was found and tapped. */
     MagicWandHeart        = 'skill.magicWand.heart',
+    /** KH2 Cloud: the gauge turned gold (1st charge); waiting for the 2nd. */
+    CloudFirstCharge      = 'skill.cloud.firstCharge',
+    /** KH2 Cloud: the 2nd charge was confirmed (`via` gold seen first, or `held`). */
+    CloudSecondCharge     = 'skill.cloud.secondCharge',
     FeverHoldOff          = 'skill.feverHoldOff',
     FormalBeastModeEnd    = 'skill.formalBeast.modeEnd',
     FormalBeastModeStart  = 'skill.formalBeast.modeStart',

@@ -147,6 +147,8 @@ var SkillsDeclared: SkillOption[] = [
      status: ReleaseStatus.Production, group: UiText.SkillGroupUnique},
     {key: SkillType.Gaston, share: 'G', title: UiText.SkillGaston,
      status: ReleaseStatus.Production, group: UiText.SkillGroupUnique},
+    {key: SkillType.KH2Cloud, share: 'C', title: UiText.SkillKH2Cloud,
+     status: ReleaseStatus.Alpha, group: UiText.SkillGroupUnique},
     // The one entry with `enables`: her second skill only exists once the card
     // has been tapped, and tapping it is that switch's job, not hers.
     {key: SkillType.LorcanaAurora, share: 'a', title: UiText.SkillLorcanaAurora,

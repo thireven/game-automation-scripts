@@ -13,11 +13,12 @@
 /**
  * A skill's own gauge read. See `SkillHandler.gauge`. Each point (logical px)
  * is read as the mean of a 3x3 patch `SkillGaugePatchPx` apart, so a textured
- * button face reads as its colour, and `classify` gets the means in order.
+ * button face reads as its colour, and `classify` gets the means in order,
+ * plus `ts` for a read that keeps state across reads (KH2 Cloud).
  */
 interface SkillGaugeRead {
   points: Coord[];
-  classify: (colors: Color[]) => SkillReadiness;
+  classify: (colors: Color[], ts: Tsum) => SkillReadiness;
 }
 
 /** The play loop's chain limits for one skill. See `SkillHandler.chainLimits`. */
@@ -550,7 +551,7 @@ function skillGaugeSamples(gauge: SkillGaugeRead): Coord[] {
 }
 
 // Classifies the samples' patch means.
-function skillGaugeClassify(gauge: SkillGaugeRead, samples: Color[]): SkillReadiness {
+function skillGaugeClassify(gauge: SkillGaugeRead, samples: Color[], ts: Tsum): SkillReadiness {
   const means: Color[] = [];
   for (let i = 0; i + 9 <= samples.length; i += 9) {
     let r = 0, g = 0, b = 0;
@@ -559,13 +560,13 @@ function skillGaugeClassify(gauge: SkillGaugeRead, samples: Color[]): SkillReadi
     }
     means.push({r: r / 9, g: g / 9, b: b / 9});
   }
-  return gauge.classify(means);
+  return gauge.classify(means, ts);
 }
 
 Tsum.prototype.checkSkillReadiness = function(img, skillButton) {
   const gauge = skillButton === Button.gameSkill1 ? skillGaugeRead(this) : undefined;
   if (gauge) {
-    return skillGaugeClassify(gauge, this.getColors(img, skillGaugeSamples(gauge)));
+    return skillGaugeClassify(gauge, this.getColors(img, skillGaugeSamples(gauge)), this);
   }
   const smoke = this.getColors(img, SkillSmokeProbes);
   if ((isSkillSmoke(smoke[0]) && isSkillSmoke(smoke[1]))
@@ -623,7 +624,7 @@ function skillGaugeReadCrop(ts: Tsum, gauge: SkillGaugeRead): SkillReadiness {
   const img = getScreenshotModify(minX, minY, maxX - minX + 1, maxY - minY + 1, 0, 0, 100);
   try {
     return skillGaugeClassify(gauge, getImageColors(img,
-      real.map(p => ({x: Math.max(0, p.x - minX), y: Math.max(0, p.y - minY)}))));
+      real.map(p => ({x: Math.max(0, p.x - minX), y: Math.max(0, p.y - minY)}))), ts);
   } finally {
     releaseImage(img);
   }
