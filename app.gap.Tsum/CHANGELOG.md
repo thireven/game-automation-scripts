@@ -45,6 +45,22 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b15]
+
+### Summary
+
+**Fixes**
+- Pressing Play twice no longer starts the script twice, which had two copies tapping the board at once so no chains were made (merged up from 5.8).
+
+### Fixed
+
+- **Double start**, merged up from 5.8 (details under [5.8] on 5.0): `start()`
+  claims `gRunActive` before any native call, a start superseded while it
+  waited steps aside (`run.startSuperseded`), and `stop()` stops waiting once
+  a newer run holds the slot. Seen on a phone: a double Play while the resume
+  hook spent 6 s on the pause menu built two runs, and an earlier run with
+  three loops on one board made ~2,000 coins a round instead of ~5,000.
+
 ## [6.0b14]
 
 ### Summary
