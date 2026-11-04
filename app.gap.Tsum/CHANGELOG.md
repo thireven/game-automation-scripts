@@ -45,14 +45,13 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0b13]
+## [6.0b14]
 
 ### Summary
 
 **Additions**
 
 *GAP Companion*
-- Take over also works while the script is stopped.
 - Presets sync both ways with GAP Companion: a preset saved, renamed or deleted on any device or on the phone reaches every device. Restoring an old backup or switching from 5.0 can bring back a deleted preset or add a "(device)" copy; nothing is lost.
 
 *Presets*
@@ -61,8 +60,6 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Applying a preset now sets every preset setting, using defaults for the ones it leaves out.
-- MyTsum detection names look-alike tsums it used to leave unidentified, such as Anniversary Mickey and Steamboat Mickey.
-- Rapunzel+'s chain is no longer cut to a few tsums after a stall, and the script now says when the game stops taking her drags.
 
 ### Fixed
 
@@ -73,6 +70,45 @@ release note; they fold back in here when she ships.
   engine's `use` answer; `gapSettingsSchema` controls carry `default` for the
   adapter, left out when it does not fit, e.g. an enum option this channel
   lacks).
+
+### Added
+
+- **Two-way preset sync**: the device's list moved from the pages'
+  localStorage into the engine (`src/gapPresets.ts`, generic like
+  `gapWorkflow.ts`): `<device folder>/presets-app.gap.Tsum.json` plus a
+  `.bak.json` twin written in turn (no rename native), unreadable never read as
+  empty. Pages cache it and send ops (`gapPresetsRead` / `gapPresetsApply`:
+  put, rename, delete, seed, each with the `base` it saw); the adapter calls
+  `gapPresetsStore` / `gapPresetsAdopt` / `gapPresetsLocal`; a changing batch
+  emits `gap.presets`. A new store seeds from the old mirror; a cache its marker
+  does not match (pre-sync, a Restore, 5.0) is merged once by name.
+  `npm run presets:check`, `npm run typecheck:presets`.
+- **Rename** in the preset Save panel: keeps the preset's id, so `preset:<id>`
+  steps survive (it used to be save-as plus delete).
+- **No preset, and the preset in use remembered**: the store keeps `active`
+  and `own` (device-local; no `ver` bump or `gap.presets`, carried over an
+  adopt; `seq` picks the later of two files at one `ver`). Page ops `use`,
+  `none`, `edited`, `put` with `use`; adapter global `gapPresetUse`. Both
+  labels read it (`presetActive`) instead of matching values
+  (`presetMatchName`, removed: a partial phone preset matched almost anything).
+  Both sheets list No preset first; a hand edit of a preset row (controls,
+  Quick Bar taps, a pasted code, Reset) sends `edited`, remote takes never do.
+
+## [6.0b13]
+
+### Summary
+
+**Additions**
+
+*GAP Companion*
+- Take over also works while the script is stopped.
+
+**Fixes**
+- MyTsum detection names look-alike tsums it used to leave unidentified, such as Anniversary Mickey and Steamboat Mickey.
+- Rapunzel+'s chain is no longer cut to a few tsums after a stall, and the script now says when the game stops taking her drags.
+
+### Fixed
+
 - **Rapunzel+ drags the game ignores**: on a player's run, 36 rounds of
   activations linked only the head (the game took DOWN and UP, not the moves,
   so it linked the head-to-release line) until a script restart; coins halved.
@@ -99,26 +135,6 @@ release note; they fold back in here when she ships.
 - **Versions in the log**: `run.start` and every `play.gameStart` carry
   `script`, `gap` and `game` (each installed build's `versionName`, from
   `dumpsys package`), so a rotated log says what it ran on.
-- **Two-way preset sync**: the device's list moved from the pages'
-  localStorage into the engine (`src/gapPresets.ts`, generic like
-  `gapWorkflow.ts`): `<device folder>/presets-app.gap.Tsum.json` plus a
-  `.bak.json` twin written in turn (no rename native), unreadable never read as
-  empty. Pages cache it and send ops (`gapPresetsRead` / `gapPresetsApply`:
-  put, rename, delete, seed, each with the `base` it saw); the adapter calls
-  `gapPresetsStore` / `gapPresetsAdopt` / `gapPresetsLocal`; a changing batch
-  emits `gap.presets`. A new store seeds from the old mirror; a cache its marker
-  does not match (pre-sync, a Restore, 5.0) is merged once by name.
-  `npm run presets:check`, `npm run typecheck:presets`.
-- **Rename** in the preset Save panel: keeps the preset's id, so `preset:<id>`
-  steps survive (it used to be save-as plus delete).
-- **No preset, and the preset in use remembered**: the store keeps `active`
-  and `own` (device-local; no `ver` bump or `gap.presets`, carried over an
-  adopt; `seq` picks the later of two files at one `ver`). Page ops `use`,
-  `none`, `edited`, `put` with `use`; adapter global `gapPresetUse`. Both
-  labels read it (`presetActive`) instead of matching values
-  (`presetMatchName`, removed: a partial phone preset matched almost anything).
-  Both sheets list No preset first; a hand edit of a preset row (controls,
-  Quick Bar taps, a pasted code, Reset) sends `edited`, remote takes never do.
 
 ## [6.0b12]
 
