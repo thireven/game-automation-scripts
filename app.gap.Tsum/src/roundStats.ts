@@ -410,11 +410,20 @@ const StatsRegions: {
   // Some themes draw art the digits' own grey (Hero Style Stitch's flowers)
   // that runs off this crop and fails both floors as a clipped glyph; the
   // last retries read past it (`statsReadFields`' `pastArt`).
+  //
+  // `bandLo` is for a band no floor can split from the digits. Magic Wand
+  // Clarice's mint band is low in red, and RGB565 steps red by ~8: the band
+  // reads (57|66,73,74) and the digits' edges (66,69,66), so 67 also cuts the
+  // digits ('9' falls in two). Under the band's darkest, 57, the whole band
+  // masks as one blob that runs off the crop and past-art drops it, while the
+  // pill's dark inside keeps the digits apart; its rim (40-49) joins them at
+  // 49 and below. 50-56 read all 8 of her frames alike; 54 is mid-window.
   baseCounters: {
     name: 'base counters',
     x: 368, y: 286, w: 432, h: 78,
     lo: [40, 40, 40], hi: [255, 255, 255],
-    themedLo: [67, 67, 67]
+    themedLo: [67, 67, 67],
+    bandLo: [54, 54, 54]
   }
 };
 
@@ -944,11 +953,14 @@ Tsum.prototype.readStatsNumbers = function(region) {
       return fields;
     }
     // A themed HUD: retry the same crop at the stricter floor, then past art
-    // running off the crop at either floor.
+    // running off the crop at either floor, then under the band's colour.
     const themed = Object.assign({}, region, {name: region.name + ' (themed)', lo: region.themedLo});
     return statsReadFields(img, themed)
       ?? statsReadFields(img, Object.assign({}, themed, {lo: region.lo}), true)
-      ?? statsReadFields(img, themed, true);
+      ?? statsReadFields(img, themed, true)
+      ?? (region.bandLo !== undefined
+        ? statsReadFields(img, Object.assign({}, themed, {lo: region.bandLo}), true)
+        : null);
   } finally {
     releaseImage(img);
   }

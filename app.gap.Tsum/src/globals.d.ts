@@ -840,6 +840,8 @@ interface StatsRegion {
   hi: [number, number, number];
   /** A stricter `lo`, tried on the same crop when `lo` reads nothing (see `baseCounters`). */
   themedLo?: [number, number, number];
+  /** A floor under a themed band's own colour, for the last past-art retry (see `baseCounters`). */
+  bandLo?: [number, number, number];
   /** A '/' ends one number and starts the next ("5/10" reads [5, 10]). */
   slash?: boolean;
   /** Read the crop this many times the 540-wide template space, for small text. */

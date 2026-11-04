@@ -52,6 +52,14 @@ release note; they fold back in here when she ships.
 **Fixes**
 - Round stats record base coins for Magic Wand Clarice, which came back blank.
 
+### Fixed
+
+- **Base coins on Magic Wand Clarice**: RGB565 steps red by ~8, so her mint
+  band (57|66,73,74) and the digits' edges (66,69,66) share a red step and 67
+  breaks the digits. A last retry reads past art at `bandLo` 54, under the
+  whole band, which then runs off the crop and is dropped. 50-56 read all 8
+  unread-base shots alike.
+
 ## [6.0b15]
 
 ### Summary
