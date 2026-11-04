@@ -882,7 +882,7 @@ gPages.subscribe({
   order: 30,
   what: 'Escape from a screen nothing fingerprinted. With a director add-on, ask the '
       + 'user to direct the device first (`directUnknownPage`); Continue or a stop ends it '
-      + 'there. Never while the game starts up, and only once the screen has stayed '
+      + 'there. Never during the boot phase, and only once the screen has stayed '
       + 'unknown 10s and holds still: until then it looks again without tapping. '
       + 'Otherwise, blind: look for a native dialog first, then work through the '
       + 'cancel and close buttons the game reuses.',

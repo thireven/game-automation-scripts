@@ -1079,8 +1079,10 @@ Tsum.prototype.directUnknownPage = function() {
     return false;
   }
   // The game coming up: its screens move on by themselves or by the old taps.
-  if (this.isStartupPhase || this.inBoot()) {
-    logDebug(Log.Direct.Skipped, { reason: 'startup', boot: this.inBoot() });
+  // Only the boot phase: `isStartupPhase` lasts until the friend page, so a
+  // screen in the way after the hub kept it on and nobody was ever asked.
+  if (this.inBoot()) {
+    logDebug(Log.Direct.Skipped, { reason: 'boot' });
     return false;
   }
   // True skips the escape: look again rather than tap.

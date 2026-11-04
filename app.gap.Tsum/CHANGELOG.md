@@ -60,8 +60,15 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Applying a preset now sets every preset setting, using defaults for the ones it leaves out.
+- Stuck on an unfamiliar screen after restarting the game, the script now asks for help in GAP Companion; it used to never ask.
 
 ### Fixed
+
+- **Direction asked after a game restart** (`directUnknownPage`): it skipped
+  while `isStartupPhase` was on, which lasts until the friend page. A screen
+  in the way after the hub (a JP dice event) kept it on, so a stuck run only
+  escaped blind and never asked. Now it skips during the boot phase alone;
+  `direct.skipped` reason `startup` became `boot`.
 
 - **A preset overwrites, never merges**: the Quick Bar, a Skill step
   (`preset:<id>`) and the phone sent only the preset's own keys, and phone
