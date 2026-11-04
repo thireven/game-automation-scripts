@@ -45,6 +45,25 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b18]
+
+### Summary
+
+**Additions**
+
+*Skills*
+- KH2 Cloud skill added: waits for the stronger second charge of his gauge before tapping.
+
+### Added
+
+- **KH2 Cloud** (`src/skills/kh2Cloud.ts`, Alpha, Unique group, share `C`): a
+  burst that reads its own gauge ring (navy/cyan filling, gold 1st charge,
+  pearl 2nd). A full pearl ring counts only once gold was first seen 0.8s
+  earlier, or after 3 full reads over 1.5s: the 1st charge's flash and stray
+  white flashes read as pearl too. A tap, new round, empty or dark ring
+  resets it. Tuned on an 11-minute recording. `SkillGaugeRead.classify` now
+  also gets `ts`.
+
 ## [6.0b17]
 
 ### Summary
