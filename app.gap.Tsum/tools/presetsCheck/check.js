@@ -14,9 +14,11 @@
 // from the legacy mirror; put / rename / delete / seed and their `base` rules;
 // prevRev (own adopt, then an edit is plain); adopt refusals (wrong-script,
 // stale), adopt keeping lids it was not told about as held, `drop`; the
-// `gap.presets` event once per changing batch and never on adopt; Tsum's setup
-// (device folder, emitEvent, old pages' presetsMirror); the pages' migration,
-// marker and refresh.
+// `gap.presets` event once per changing batch and never on adopt; what is in
+// use (`use` / `none` / `edited`, put with `use`, `gapPresetUse`, no `ver` bump
+// or event, the `seq` tiebreak, carried over an adopt); Tsum's setup (device
+// folder, emitEvent, old pages' presetsMirror, the full set, the schema's
+// defaults); the pages' migration, marker, refresh and in-use cache.
 
 const fs = require('fs');
 const os = require('os');
@@ -444,6 +446,182 @@ const beforeReload = store();
 setup();
 check('adopt: survives a reload', same(store(), beforeReload) && entry('Alpha').id === 'ps_alpha');
 
+// --- In use: active and own ---------------------------------------------------------------
+// A script's hooks: `current` is the settings now, `full` the two preset fields a and b.
+let currentNow = { a: 1, b: true, x: 9 };
+function setupUse() {
+  ctx.gapPresetsSetup({
+    script: 'app.gap.Tsum',
+    path: () => path.join(dir, 'presets.json'),
+    emit: (name, data) => { events.push({ name, data }); },
+    current: () => currentNow,
+    full: (values) => ({ a: typeof values.a === 'number' ? values.a : 0, b: typeof values.b === 'boolean' ? values.b : false }),
+  });
+}
+const useGlobal = (o) => JSON.parse(ctx.gapPresetUse(typeof o === 'string' ? o : JSON.stringify(o)));
+fresh();
+setupUse();
+put('P', { a: 5 });
+put('Q', { b: true });
+syncAll();
+events = [];
+v0 = store().ver;
+s = store();
+check('use: a new store has nothing in use', s.active === null && s.own === null && typeof s.seq === 'number', s);
+r = apply({ op: 'use', lid: entry('P').lid, current: { a: 2, b: true, other: 'x' } });
+check('use: answers the entry\'s full set (defaults for what it leaves out)', r.results[0].ok === true
+  && r.results[0].lid === entry('P').lid && same(r.results[0].values, { a: 5, b: false }), r.results);
+check('use: in use, own = the page\'s current through full', store().active === entry('P').lid
+  && same(store().own, { a: 2, b: true }), store());
+check('use: the view carries active, hasOwn and seq', r.active === entry('P').lid && r.hasOwn === true
+  && r.seq === store().seq, r);
+check('use: no ver bump, no event', store().ver === v0 && events.length === 0);
+apply({ op: 'use', lid: entry('Q').lid, current: { a: 7 } });
+check('use: a second preset keeps the first own', store().active === entry('Q').lid && same(store().own, { a: 2, b: true }));
+r = apply({ op: 'use', lid: 'nosuchentry0' });
+check('use: an unknown lid -> gone, nothing changes', r.results[0].error === 'gone' && store().active === entry('Q').lid);
+check('read: a current copy\'s `same` carries what is in use', (() => {
+  const x = JSON.parse(ctx.gapPresetsRead(JSON.stringify({ instance: s.instance, ver: v0 })));
+  return x.same === true && x.active === entry('Q').lid && x.hasOwn === true && x.seq === store().seq;
+})());
+r = apply({ op: 'none' });
+check('none: answers own, then nothing in use', same(r.results[0].values, { a: 2, b: true })
+  && store().active === null && store().own === null && r.active === null && r.hasOwn === false, r.results);
+r = apply({ op: 'none' });
+check('none: with nothing kept -> values null', r.results[0].ok === true && r.results[0].values === null);
+apply({ op: 'use', lid: entry('P').lid });
+check('use: no current -> setup\'s current() through full', same(store().own, { a: 1, b: true }), store().own);
+apply({ op: 'edited', keys: ['x'] });
+check('edited: keys that are not preset fields leave it in use', store().active === entry('P').lid);
+apply({ op: 'edited', keys: ['x', 'b'] });
+check('edited: a preset field -> nothing in use, own dropped', store().active === null && store().own === null);
+apply({ op: 'use', lid: entry('P').lid, current: { a: 3 } });
+apply({ op: 'edited' });
+check('edited: no keys -> nothing in use, own dropped', store().active === null && store().own === null);
+let seq0 = store().seq;
+r = apply({ op: 'edited' });
+check('edited: with nothing in use, a no-op (nothing written)', r.results[0].ok === true && store().seq === seq0);
+check('use / none / edited: ver never moved, nothing emitted', store().ver === v0 && events.length === 0, events);
+
+// The two files at one ver: the later write (seq) wins a reload.
+apply({ op: 'use', lid: entry('P').lid, current: { a: 4 } });
+let files = [readFile(false), readFile(true)];
+check('files: an in-use write is the other file at the same ver, seq higher',
+  files[0].ver === files[1].ver && files[0].seq !== files[1].seq, files.map((f) => [f.ver, f.seq, f.active]));
+setupUse();
+check('files: a reload takes the later of two files at one ver', store().active === entry('P').lid
+  && same(store().own, { a: 4, b: false }), store());
+
+// put with use; delete; rename.
+fresh();
+setupUse();
+put('A', { a: 1 });
+events = [];
+v0 = store().ver;
+r = apply({ op: 'put', name: 'B', values: { a: 9 }, base: null, use: true });
+check('put use: the saved entry is in use, own = its values through full', r.results[0].ok === true
+  && store().active === entry('B').lid && same(store().own, { a: 9, b: false }), store());
+check('put use: still a list change (ver, event)', store().ver === v0 + 1 && events.length === 1);
+apply({ op: 'put', name: 'A', values: { a: 2 }, base: baseOf(entry('A')), use: true, current: { a: 50 } });
+check('put use: over another in use, own kept', store().active === entry('A').lid && same(store().own, { a: 9, b: false }));
+apply({ op: 'rename', lid: entry('A').lid, name: 'A renamed', base: baseOf(entry('A')) });
+check('rename: keeps it in use', store().active === entry('A renamed').lid);
+apply({ op: 'put', name: 'A renamed', values: { a: 3 }, base: baseOf(entry('A renamed')) });
+check('put: an update keeps it in use', store().active === entry('A renamed').lid);
+apply({ op: 'delete', lid: entry('A renamed').lid, base: baseOf(entry('A renamed')) });
+check('delete: the entry in use -> nothing in use, own kept', store().active === null && same(store().own, { a: 9, b: false }));
+apply({ op: 'edited' });
+check('edited: own kept with nothing in use is dropped too', store().own === null);
+
+// Adopt: carried over from the store as it is at adopt time.
+fresh();
+setupUse();
+put('P', { a: 5 });
+put('Q', { a: 6 });
+syncAll();
+apply({ op: 'use', lid: entry('P').lid, current: { a: 1 } });
+s = store();                               // what the server read
+apply({ op: 'use', lid: entry('Q').lid }); // changed after the read: no ver bump, so not stale
+const account = () => store().presets.map((x) => ({ id: x.id, rev: x.rev, name: x.name, values: x.values }));
+const mapAll = () => Object.fromEntries(store().presets.map((x) => [x.lid, { id: x.id, mine: false }]));
+r = adopt(account(), { map: mapAll(), extra: { instance: s.instance, ver: s.ver } });
+check('adopt: an in-use change since the read is not stale', r.ok === true, r);
+check('adopt: active and own from the store at adopt time', store().active === entry('Q').lid
+  && same(store().own, { a: 1, b: false }), store());
+const qLid = entry('Q').lid;
+r = adopt(account().filter((x) => x.name !== 'Q'), { map: mapAll() });
+check('adopt: a lid kept as held stays in use', r.ok === true && store().active === qLid && entry('Q').held !== undefined);
+r = adopt(account().filter((x) => x.name !== 'Q'), { map: mapAll(), drop: [qLid] });
+check('adopt: the lid in use dropped -> nothing in use, own kept', r.ok === true && entry('Q') === undefined
+  && store().active === null && same(store().own, { a: 1, b: false }), store());
+
+// gapPresetUse: the adapter's side.
+fresh();
+setupUse();
+put('P', { a: 5 });
+put('Local', { a: 6 });
+syncAll();
+events = [];
+v0 = store().ver;
+currentNow = { a: 8, b: false, zz: 1 };
+check('gapPresetUse: an unknown id -> no-preset', useGlobal({ id: 'ps_nope' }).error === 'no-preset' && store().active === null);
+check('gapPresetUse: id -> in use, own = current() through full', same(useGlobal({ id: entry('P').id }), { ok: true })
+  && store().active === entry('P').lid && same(store().own, { a: 8, b: false }), store());
+currentNow = { a: 99 };
+useGlobal({ id: entry('Local').id });
+check('gapPresetUse: a second id keeps own', store().active === entry('Local').lid && same(store().own, { a: 8, b: false }));
+check('gapPresetUse: none answers own, then nothing in use', same(useGlobal({ none: true }), { ok: true, values: { a: 8, b: false } })
+  && store().active === null && store().own === null);
+check('gapPresetUse: none with nothing kept -> values null', same(useGlobal({ none: true }), { ok: true, values: null }));
+useGlobal({ id: entry('P').id });
+check('gapPresetUse: edited -> nothing in use, own dropped', same(useGlobal({ edited: true }), { ok: true })
+  && store().active === null && store().own === null);
+check('gapPresetUse: not one -> bad-use', useGlobal({}).error === 'bad-use' && useGlobal('{').error === 'bad-use'
+  && useGlobal({ id: 3 }).error === 'bad-use');
+check('gapPresetUse: never bumps ver or emits', store().ver === v0 && events.length === 0, events);
+fs.writeFileSync(file(false), 'not json');
+fs.writeFileSync(file(true), 'x');
+setupUse();
+check('gapPresetUse: unreadable -> store-unreadable', useGlobal({ none: true }).error === 'store-unreadable');
+fresh();
+ctx.gapPresetsSetup({ script: 'app.gap.Tsum', path: () => path.join(dir, 'presets.json'), emit: () => {} });
+put('P', { a: 5, b: 1 });
+r = apply({ op: 'use', lid: entry('P').lid });
+check('no hooks: use answers the values as they are, own null', same(r.results[0].values, { a: 5, b: 1 })
+  && store().active === entry('P').lid && store().own === null, store());
+
+// --- Tsum's half: the full set and the schema's defaults ---------------------------------
+const run = (code) => vm.runInContext(code, ctx);
+const tsumFull = run('presetsFull({ skillLevel: 2, skillType: 3, useFan: true, junk: 1 })');
+const defaults = run('SettingDefaults');
+const fields = run('WorkflowPresetKeys');
+check('tsum full: every preset field, its value else the default; wrong type -> default; others dropped',
+  same(Object.keys(tsumFull).sort(), fields.slice().sort()) && tsumFull.skillLevel === 2 && tsumFull.useFan === true
+  && tsumFull.skillType === defaults.skillType && tsumFull.maxChain === defaults.maxChain && !('junk' in tsumFull), tsumFull);
+let pageSchema = null;
+try {
+  pageSchema = require('../companion/settings').generate(0);
+} catch (err) {
+  pageSchema = null;
+}
+check('tsum full: the fields are the phone\'s presetFields (settings.ts SHARE_SLOTS), every channel offered',
+  pageSchema !== null && same(pageSchema.presetFields.slice().sort(), fields.slice().sort()),
+  pageSchema === null ? 'run npm run build first' : pageSchema.presetFields);
+if (pageSchema !== null) {
+  // A Beta-like enum: an option list without the default, so it is left out.
+  const skill = pageSchema.controls.filter((c) => c.key === 'skillType')[0];
+  skill.options = skill.options.filter((o) => o.value !== defaults.skillType);
+  fs.writeFileSync(path.join(scriptDir, 'companionSettings.json'), JSON.stringify(pageSchema));
+  run('gCompanionSchema = undefined;');
+  const controls = JSON.parse(ctx.gapSettingsSchema()).controls;
+  const byKey = Object.fromEntries(controls.map((c) => [c.key, c]));
+  check('schema: controls carry their SettingDefaults default', byKey.maxChain.default === defaults.maxChain
+    && byKey.useFan.default === defaults.useFan && byKey.bubbleStrategy.default === defaults.bubbleStrategy, byKey.maxChain);
+  check('schema: every default fits its control', controls.every((c) => c.default === undefined || c.default === defaults[c.key]));
+  check('schema: an enum default not offered is left out', byKey.skillType.default === undefined);
+  run('gCompanionSchema = undefined;');
+}
+
 // --- The pages' cache (build/presets.js) -----------------------------------------------
 function page() {
   const local = {};
@@ -516,16 +694,48 @@ pg.p.presetsSubmit([{ op: 'put', name: 'New', values: { v: 1 }, base: null }], (
 vm.runInContext('gapPresetsApply = keptApply;', ctx);
 check('page: no engine -> null (not saved), cache untouched', reply === null && pg.local.tsumtsumpresets === before
   && pg.local.tsumtsumpresetsmark === beforeMark && ctx.gapPresetsApply === realApply);
-// presetsLoad keeps the sync fields and is not capped; presetMatchName skips keys the form lacks.
+// presetsLoad keeps the sync fields and is not capped.
 const big = [];
 for (let i = 0; i < 34; i++) big.push({ lid: 'l' + i, id: 'ps_' + i, rev: i, name: 'N' + i, values: { a: i }, held: i > 31 ? { why: 'full' } : undefined });
 pg.local.tsumtsumpresets = JSON.stringify(big);
 const loadedBig = pg.p.presetsLoad();
 check('page: presetsLoad keeps lid, id, rev and held, uncapped', loadedBig.length === 34
   && loadedBig.filter((x) => x.name === 'N33')[0].held.why === 'full' && loadedBig[0].lid === 'l0' && loadedBig[0].rev === 0);
-check('page: presetMatchName skips keys the form lacks',
-  pg.p.presetMatchName([{ name: 'P', values: { a: 1, autoSkillLevel: true } }], { a: 1 }) === 'P'
-  && pg.p.presetMatchName([{ name: 'P', values: { a: 1 } }], { a: 2 }) === '');
+
+// The pages' in-use cache (`tsumtsumpresetsuse`).
+fresh();
+setupUse();
+const pu = page();
+pu.p.presetsRefresh();
+put('Farm', { a: 3 });
+pu.p.presetsRefresh();
+check('page use: nothing in use at first', pu.p.presetsInUse().active === null && pu.p.presetActive(pu.p.presetsLoad()) === undefined);
+let got = 'unset';
+const farm = pu.p.presetsLoad()[0];
+pu.p.presetsSendUse({ op: 'use', lid: farm.lid, current: { a: 1, b: true } }, (x) => { got = x; });
+check('page use: use answers the full set and caches what is in use', got !== null && same(got.values, { a: 3, b: false })
+  && pu.p.presetActive(pu.p.presetsLoad()).name === 'Farm' && pu.p.presetsInUse().hasOwn === true, got);
+check('page use: the other page told, this one redrawn', pu.broadcasts[pu.broadcasts.length - 1] === 'presets' && pu.changes.length >= 1);
+check('page use: the list marker untouched (no ver bump)', JSON.parse(pu.local.tsumtsumpresetsmark).ver === store().ver);
+useGlobal({ edited: true });
+pu.p.presetsRefresh();
+check('page use: the phone\'s change is picked up from a `same` read', pu.p.presetsInUse().active === null
+  && pu.p.presetsInUse().hasOwn === false && pu.p.presetsEditMatters() === false);
+pu.p.presetsSendUse({ op: 'use', lid: farm.lid, current: { a: 2 } }, () => {});
+const held = pu.p.presetsInUse();
+check('page use: an older reply (lower seq) is not taken', pu.p.presetsTake({ ok: true, instance: held.instance,
+  ver: store().ver, same: true, active: null, hasOwn: false, seq: held.seq - 1 }, false) === false
+  && pu.p.presetsInUse().active === farm.lid);
+got = 'unset';
+pu.p.presetsSendUse({ op: 'none' }, (x) => { got = x; });
+check('page use: none answers own and clears', got !== null && same(got.values, { a: 2, b: false })
+  && pu.p.presetsInUse().active === null, got);
+got = 'unset';
+pu.p.presetsSendUse({ op: 'use' }, (x) => { got = x; });
+check('page use: use with no lid is null (applied without bookkeeping)', got === null);
+got = 'unset';
+pu.p.presetsSendUse({ op: 'use', lid: 'nosuchentry0' }, (x) => { got = x; });
+check('page use: a refused use is null', got === null);
 
 fs.rmSync(storage, { recursive: true, force: true });
 console.log('presets:check: ' + passed + ' passed, ' + failures + ' failed');

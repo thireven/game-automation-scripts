@@ -71,7 +71,7 @@ so the scheduler's five-throws restart can never loop.
 | `restartApp` | Force-stops the build this device plays, launches it (`startTsumTsumApp`), waits for a known screen (`awaitAppUp`), then walks the startup screens to the friend list (`navigate(FriendPage)`) before the next node. Not `taskTsumAppRestart`, which needs Auto launch and ignores a live round. Fails with `app-not-up` |
 | `tsum.receiveHearts` | `mode` `claimAll`: `taskReceiveAllItems`; `oneByOne`: `taskReceiveOneItem`. `skipRuby` / `skipMedals` set `keepRuby` / `skipMedals` for the call |
 | `tsum.sendHearts` | `taskSendHearts` once. `toZeroScore` sets `sentToZero`; `maxRuntime` (minutes) sets `sendHeartMaxDuring` |
-| `tsum.skill` | `preset:<id>`: the synced preset's round keys (`WorkflowPresetKeys`, the adapter's `presets.fields`) through `applyLiveSettings`; `skill:<id>`: `skillType`. Next-round keys land at the next whistle, as from the Quick Bar |
+| `tsum.skill` | `preset:<id>`: the synced preset's full set of round keys (`WorkflowPresetKeys` minus `WorkflowPresetSkip`; `SettingDefaults` for the ones it leaves out) through `applyLiveSettings`, nothing marked in use; `skill:<id>`: `skillType`. Next-round keys land at the next whistle, as from the Quick Bar |
 | `tsum.playRounds` | `taskPlayGameQuick` until `rounds` more rounds finished, counted by the change in `ts.runClock.rounds` (not the return value). Answers `wait` during the round delay or while a Now sweep waits, unless a round is already on the board. Detail: `N/M rounds`, or `playing round N of M` while one plays |
 | `restartDevice`, `restartIfSlow` | The library, listed only when the engine has `gapRestartDevice` (below) |
 | `loop`, `stop` | The library: `loop {times}` (0 = forever) restarts at the first node; `stop` ends the workflow. Running off the end is an implicit stop |
@@ -149,10 +149,11 @@ changed and takes what the server sends. The contract is GAP Companion's
 **The store** (`src/gapPresets.ts`) belongs to the engine world:
 `<device folder>/presets-app.gap.Tsum.json` and its `.bak.json` twin, written in
 turn so a kill mid-write leaves the other whole (`writeFile` truncates first). A
-load takes the valid one with the higher `ver`; text in a file that neither
+load takes the valid one with the higher `ver`, then `seq` (bumped on every
+write); text in a file that neither
 parses makes every global answer `store-unreadable`, and nothing is written over
 it. `{instance, ver, scope, hash, presets: [{lid, name, values, id?, rev?,
-prevRev?, dirty?, held?}], deleted: [{id, rev, name}]}`. A new store starts from
+prevRev?, dirty?, held?}], deleted: [{id, rev, name}], active, own, seq}`. A new store starts from
 the old one-way mirror (`<script folder>/presets-<device id>.json`), entries
 without ids. Names follow the contract's rule (whitespace collapsed, trimmed,
 ≤ 40, compared without case) and are unique.
@@ -162,8 +163,36 @@ without ids. Names follow the contract's rule (whitespace collapsed, trimmed,
 
 | Global | Does |
 |:--|:--|
-| `gapPresetsRead(json)` | The list as pages show it, `{ok, instance, ver, presets}`; `{instance, ver}` still current answers `same: true` |
-| `gapPresetsApply(json)` | `{ops}`, in order: `put {name, values, base}`, `rename {lid, name, base}`, `delete {lid, base}`, `seed {presets}`. `base` (`{lid, rev}` the page saw) lets an edit of an older copy reach the server as a conflict, and `prevRev` keeps our own adopted write from making the next edit one. A batch that changed anything bumps `ver`, is saved and emits `gap.presets {script}`; the answer adds one `{ok, lid?, error?}` per op (`full` past 32, held included; `name-taken`; `gone`), or is `{ok: false}` and the page says it was not saved |
+| `gapPresetsRead(json)` | The list as pages show it, `{ok, instance, ver, active, hasOwn, seq, presets}`; `{instance, ver}` still current answers `same: true` (with `active`, `hasOwn`, `seq`) |
+| `gapPresetsApply(json)` | `{ops}`, in order: `put {name, values, base, use?}`, `rename {lid, name, base}`, `delete {lid, base}`, `seed {presets}`, and the in-use ops below. `base` (`{lid, rev}` the page saw) lets an edit of an older copy reach the server as a conflict, and `prevRev` keeps our own adopted write from making the next edit one. A batch that changed the list bumps `ver`, is saved and emits `gap.presets {script}`; the answer adds one `{ok, lid?, error?, values?}` per op (`full` past 32, held included; `name-taken`; `gone`), or is `{ok: false}` and the page says it was not saved |
+
+**A preset is a full set** of the preset fields (`WorkflowPresetKeys`, the
+phone's `presetFields`): its own value, else the field's `SettingDefaults`
+(`presetsFull`, the store's `full` hook). Applying one overwrites every field,
+on the settings page, the Quick Bar, a Skill step and the phone (whose controls
+carry that `default` in `gapSettingsSchema`).
+
+**In use** is remembered, not matched: the store's `active` (a lid) and `own`
+(the fields as they were before a preset was put in use), device-local, never
+in `presets.state`. Changing them saves the store without a `ver` bump or
+`gap.presets` (a pending adopt stays good); an adopt carries both over from the
+store as it is then, `active` only while its lid is still listed (mapped or
+held). Deleting the entry in use clears `active` and keeps `own`.
+
+| Op / global | Does |
+|:--|:--|
+| `use {lid, current?}` | That entry is in use; when none was, `current` (the page's fields, else the `current` hook: `remoteSettingsValues()`) is kept as `own`, through `full`. Result `values`: the entry's full set; an unknown lid is `gone` |
+| `none` | Result `values`: `own` or null; then nothing is in use and `own` is cleared |
+| `edited {keys?}` | A preset field changed by hand: nothing in use, `own` cleared (no write when both are already empty). With `keys` (the Quick Bar, which cannot tell the fields apart) only when one is a preset field |
+| `put … use: true` | Saving the form as a preset makes it the one in use (`own` from the form when nothing was) |
+| `gapPresetUse(json)` | The adapter's: `{"id"}` (account id; `own` from `current`), `{"none": true}` (`values`), `{"edited": true}`. Answers `{ok: true}`, or `{ok: false, error: no-preset \| store-unreadable \| bad-use \| not-saved}`; the adapter sets the fields itself through `gapRemoteSet` |
+
+Pages cache `{instance, seq, active, hasOwn}` (`tsumtsumpresetsuse`, not backed
+up) from every reply and draw the label from it: the entry's name, else No
+preset. The sheets' first row is No preset, which sends `none` and writes `own`
+back like a preset. Only the controls' own handlers (settings page form,
+Quick Bar taps, a pasted code, Reset) send `edited`; values taken from the run,
+the store or remote-settings.json never do.
 
 A rename keeps the id, so workflow steps naming `preset:<id>` survive; so does a
 delete followed by a save under the same name. The cache's marker
@@ -178,13 +207,14 @@ once by name as a `seed`. That can bring back a preset deleted since, or add a
 whole store), `gapPresetsAdopt(json)` (the account's merged list; refused as
 `wrong-script` or `stale` when the store moved since it was read; lids the
 server did not map are dropped only when named in `drop`, else kept as held) and
-`gapPresetsLocal()` (`[{name, values}]`, for the one-way Import). Adopt emits
-nothing. Held entries (the account had no room, or one too large to send) apply
+`gapPresetsLocal()` (`[{name, values}]`, for the one-way Import), plus
+`gapPresetUse` above. Adopt emits nothing. Held entries (the account had no room, or one too large to send) apply
 like any other and stay on this device until the server takes them.
 
 ## Checks
 
-`npm run workflow:check`; `npm run presets:check` (the store, its ops and adopt, the
-pages' cache); `npm run dispatch:eval` (preset `workflow.json`: only the Workflow
+`npm run workflow:check`; `npm run presets:check` (the store, its ops and adopt,
+what is in use, Tsum's full set and the schema's defaults, the pages' cache);
+`npm run dispatch:eval` (preset `workflow.json`: only the Workflow
 job and the one-shots, Stop after this round first);
 `npm run events:docs:check` for the `workflow.*` and `gap.presets` events.

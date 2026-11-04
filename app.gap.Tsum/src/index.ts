@@ -446,6 +446,11 @@ function remoteSettingsTake(): string {
 // Contract (UI 2): "Settings from the script" in the companion repo's
 // cloud/adapters/README.md.
 
+/** One `controls` item, as tools/companion/settings.js writes it (the fields read here). */
+interface CompanionControl {
+  key: string; type?: string; applies?: string; default?: unknown;
+  min?: number; max?: number; step?: number; options?: { value: string }[];
+}
 /** One `layout` item: a setting, a button, or a note. */
 interface CompanionItem { control?: string; button?: string; note?: string }
 interface CompanionGroup { items: CompanionItem[] }
@@ -466,12 +471,30 @@ function companionApplies(key: string): string {
   return when === LiveWhen.Now ? 'now' : when === LiveWhen.NextRound ? 'nextRound' : 'nextStart';
 }
 
+/** The adapter's value check (`checkValue`): a default that fails it is left out. */
+function companionDefaultFits(c: CompanionControl, value: unknown): boolean {
+  if (c.type === 'bool') {
+    return typeof value === 'boolean';
+  }
+  if (c.type === 'enum') {
+    // An option this channel does not offer is not one the phone can show.
+    return typeof value === 'string' && (c.options || []).some((o) => o.value === value);
+  }
+  if (c.type === 'int') {
+    const min = c.min === undefined ? 0 : c.min;
+    return typeof value === 'number' && Number.isInteger(value) && value >= min
+      && (c.max === undefined || value <= c.max) && (value - min) % (c.step || 1) === 0;
+  }
+  return typeof value === 'string' && value.length <= 200;
+}
+
 let gCompanionSchema: string | undefined;
 
 /**
  * The phone's settings schema as JSON, or 'null' when the file is missing.
- * Keeps only settings in `RemoteSettingKinds` and buttons in `CompanionActions`.
- * A standard global the companion adapter library looks for.
+ * Keeps only settings in `RemoteSettingKinds` and buttons in `CompanionActions`;
+ * each control gains `default` (`SettingDefaults`), which a preset that leaves
+ * the setting out sets. A standard global the companion adapter library looks for.
  */
 // noinspection JSUnusedGlobalSymbols
 function gapSettingsSchema(): string {
@@ -483,10 +506,14 @@ function gapSettingsSchema(): string {
   if (!Array.isArray(raw.controls)) {
     return 'null';
   }
-  const controls = (raw.controls as { key: string; applies?: string }[])
+  const controls = (raw.controls as CompanionControl[])
     .filter((c) => RemoteSettingKinds.hasOwnProperty(c.key));
+  const defaults = SettingDefaults as unknown as { [key: string]: unknown };
   for (const c of controls) {
     c.applies = companionApplies(c.key);
+    if (companionDefaultFits(c, defaults[c.key])) {
+      c.default = defaults[c.key];
+    }
   }
   const keys = controls.map((c) => c.key);
   const buttons = (Array.isArray(raw.buttons) ? raw.buttons as { name: string }[] : [])

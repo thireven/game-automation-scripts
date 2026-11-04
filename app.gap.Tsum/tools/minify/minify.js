@@ -117,7 +117,7 @@ function checkBundle(file) {
                   // call gapPresetsRead / gapPresetsApply (and old ones presetsMirror).
                   'gapWorkflowCatalog', 'gapWorkflowReceive', 'gapWorkflowState',
                   'gapWorkflowCheck', 'startWorkflow', 'presetsMirror', 'gapPresetsLocal',
-                  'gapPresetsStore', 'gapPresetsAdopt', 'gapPresetsRead', 'gapPresetsApply',
+                  'gapPresetsStore', 'gapPresetsAdopt', 'gapPresetsRead', 'gapPresetsApply', 'gapPresetUse',
                   'gapScreens', 'gapSettingsSchema', 'gapSettingsAction', 'gapCompanion',
                   'gapRemoteState', 'gapRemoteSet', 'gapRemoteAction', 'gapRemoteStartPrepare',
                   'gapRemoteStartRun',

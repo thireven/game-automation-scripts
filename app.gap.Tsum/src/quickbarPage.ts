@@ -654,13 +654,8 @@ function qbRenderWorkflow(): void {
 }
 
 /**
- * The preset chip: which saved configuration the settings currently are.
- *
- * Matched against the *store* rather than against `qbState`, because a preset is
- * a whole form and `quickBarState()` reports only the rows a run can take live.
- * The store is the copy both pages keep current -- this page patches it at every
- * flush (`qbRemember`), the settings page rewrites it at every save -- so it is
- * the only place the whole configuration exists on this side of the bridge.
+ * The preset chip: the preset in use, else No preset -- what the engine's store
+ * says (`presetActive`, src/presets.ts), not a match against the settings.
  */
 function qbRenderPreset(): void {
     var value = document.querySelector('.qb-preset-value');
@@ -669,13 +664,13 @@ function qbRenderPreset(): void {
         return;
     }
     var list = presetsLoad();
-    var name = presetMatchName(list, qbStoredSettings());
-    value.textContent = name !== '' ? name : '—';
-    value.setAttribute('data-empty', name === '' ? 'true' : 'false');
+    var active = presetActive(list);
+    value.textContent = active !== undefined ? active.name : i18nText(UiText.PresetNone);
+    value.setAttribute('data-empty', active === undefined ? 'true' : 'false');
     if (chip !== null) {
         // Drawn dead rather than taken away: the strip is read at a glance, and
         // a control that comes and goes is one you stop looking for.
-        chip.disabled = !qbLive || list.length === 0;
+        chip.disabled = !qbLive || (list.length === 0 && !presetsInUse().hasOwn);
         // `both`, because a preset is not one setting: it moves the rows a round
         // can take now *and* the ones the whistle has to apply. The cell rather
         // than the chip, so the CSS reads it the same way it reads every other
@@ -801,6 +796,7 @@ function qbFlushApplies(): void {
     }
     var sending = qbPending;
     qbPending = {};
+    qbPresetEdited(keys);
     // Stopped: nothing to send to, so the store alone, and the settings page
     // is told to re-read it.
     if (qbIdle) {
@@ -820,7 +816,47 @@ function qbFlushApplies(): void {
 }
 
 /**
- * Loads a preset: the whole configuration, onto the store and onto the run.
+ * Loads a preset: the whole configuration, onto the store and onto the run,
+ * and marks it in use. The engine's `use` answers with the full set -- every
+ * preset row, defaults for the ones the preset leaves out -- which this page
+ * cannot work out itself, having no schema. Without an answer (no lid yet, a
+ * refusal) the preset's own values go, as before.
+ */
+function qbApplyPreset(preset: Preset): void {
+    if (!qbLive || qbBridge() === undefined) {
+        return;
+    }
+    // Ahead of the preset, so a value tapped and then overruled by it is not put
+    // back afterwards by a send the debounce was still holding.
+    qbFlushApplies();
+    presetsSendUse({op: 'use', lid: preset.lid, current: qbStoredSettings()}, function (result) {
+        qbTakeValues(result !== null && result.values ? result.values : preset.values);
+        // The logger is the engine's: only when it answered, or a run is up.
+        if (result !== null || !qbIdle) {
+            qbLogInfo(Log.QuickBar.PresetApplied, 'A preset was loaded from the Quick Bar',
+                {preset: preset.name, inUse: result !== null});
+        }
+    });
+}
+
+/** No preset: the settings from before the first preset back, when any were kept. */
+function qbNoPreset(): void {
+    if (!qbLive || qbBridge() === undefined) {
+        return;
+    }
+    qbFlushApplies();
+    presetsSendUse({op: 'none'}, function (result) {
+        if (result !== null && result.values) {
+            qbTakeValues(result.values);
+            qbLogInfo(Log.QuickBar.PresetOwnRestored, 'The settings from before the preset were put back');
+        } else {
+            qbRenderPreset();
+        }
+    });
+}
+
+/**
+ * Writes a whole set of preset rows onto the store and onto the run.
  *
  * `applyLiveSettings` rather than one `quickBarApply` per key, because a preset
  * is a form and that is the entry point that takes one -- the same one the
@@ -830,31 +866,19 @@ function qbFlushApplies(): void {
  * round (`LiveSettings`, src/quickbar.ts), and `clickAssist` waits
  * for the next `start()` because it chooses the task set.
  * All three cases go to the store as well, which is what the next start reads.
- *
- * One difference from the settings page's own load, and it is a limit rather
- * than a choice: that page writes every shareable row, putting the ones the
- * preset does not name back to their defaults, and this page has no schema to
- * know what those are. It only matters for a preset saved before a setting
- * existed, where the strip leaves that setting alone and the panel would reset
- * it. The name the chip draws agrees either way -- a preset is matched on the
- * keys it names.
  */
-function qbApplyPreset(preset: Preset): void {
+function qbTakeValues(values: SettingValues): void {
     var bridge = qbBridge();
-    if (!qbLive || bridge === undefined) {
+    if (bridge === undefined) {
         return;
     }
-    // Ahead of the preset, so a value tapped and then overruled by it is not put
-    // back afterwards by a send the debounce was still holding.
-    qbFlushApplies();
-    // The store first: it is where the rows no run can take live have to land,
-    // and where the chip below reads the name it is about to draw from.
-    qbRemember(preset.values);
-    // Drawn from the preset rather than from the reply, as `qbApply` is -- and
+    // The store first: it is where the rows no run can take live have to land.
+    qbRemember(values);
+    // Drawn from the values rather than from the reply, as `qbApply` is -- and
     // held in `qbSent` for the same reason, so a state read already on its way
     // cannot land the old values over these.
-    qbOverlay(qbState, preset.values);
-    qbOverlay(qbSent, preset.values);
+    qbOverlay(qbState, values);
+    qbOverlay(qbSent, values);
     qbRender();
     if (qbIdle) {
         // No run to take it; the store is all of it. `Presets` so the settings
@@ -864,13 +888,24 @@ function qbApplyPreset(preset: Preset): void {
         }
         return;
     }
-    qbLogInfo(Log.QuickBar.PresetApplied, 'A preset was loaded from the Quick Bar',
-        {preset: preset.name});
     qbInFlight++;
     // Guarded, as everything this page evaluates is: with no script started the
     // bare name is a ReferenceError in the engine's log rather than here.
     bridge.runScriptCallback('typeof applyLiveSettings === "function" ? applyLiveSettings('
-        + JSON.stringify(preset.values) + ') : "no run"', 'onQuickBarPresetApplied');
+        + JSON.stringify(values) + ') : "no run"', 'onQuickBarPresetApplied');
+}
+
+/**
+ * Settings tapped here, sent: when a preset is in use, `edited` with their keys,
+ * and the engine (which knows the preset rows; this page does not) decides
+ * whether that ends it. Only taps reach here, never values taken from elsewhere.
+ */
+function qbPresetEdited(keys: string[]): void {
+    if (!presetsEditMatters()) {
+        return;
+    }
+    // The reply redraws the chip (`presetsTake`).
+    presetsSendUse({op: 'edited', keys: keys}, function () { /* nothing more */ });
 }
 
 /**
@@ -1255,22 +1290,30 @@ function qbOpenPresetSheet(): void {
     setTimeout(open, QB_PRESET_WAIT_MS);
 }
 
-/** The saved presets, by name. Picking one loads the whole configuration. */
+/** No preset, then the saved presets by name. Picking one loads the whole configuration. */
 function qbShowPresetSheet(): void {
     var option = document.getElementById('tpl-option') as HTMLTemplateElement;
     var list = presetsLoad();
-    if (option === null || list.length === 0) {
+    if (option === null || (list.length === 0 && !presetsInUse().hasOwn)) {
         return;
     }
-    var current = presetMatchName(list, qbStoredSettings());
+    var active = presetActive(list);
     qbShowSheet(function (box) {
+        var none = option.content.firstElementChild!.cloneNode(true) as HTMLElement;
+        none.textContent = i18nText(UiText.PresetNone);
+        none.setAttribute('aria-selected', active === undefined ? 'true' : 'false');
+        none.addEventListener('click', function () {
+            qbNoPreset();
+            qbCloseSheet();
+        });
+        box.appendChild(none);
         for (var i = 0; i < list.length; i++) {
             (function (preset: Preset) {
                 var button = option.content.firstElementChild!.cloneNode(true) as HTMLElement;
                 // The user's own text, so it is set as text and never looked up
                 // as a `UiText` key the way an option's name usually is.
                 button.textContent = preset.name;
-                button.setAttribute('aria-selected', preset.name === current ? 'true' : 'false');
+                button.setAttribute('aria-selected', preset === active ? 'true' : 'false');
                 button.addEventListener('click', function () {
                     qbApplyPreset(preset);
                     qbCloseSheet();

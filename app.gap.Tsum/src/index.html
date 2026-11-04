@@ -71,9 +71,9 @@
         switching between configurations is something you do *to* the settings,
         not one of them -- the same reason the theme toggle sits here.
 
-        The dropdown's label is not stored anywhere: settings.ts matches the form
-        against every preset on each save, so a value changed by hand afterwards
-        drops it back to "No preset" with nothing to invalidate.
+        The dropdown's label is the preset in use, as the engine's store keeps it
+        (src/presets.ts): a value changed by hand afterwards drops it back to
+        "No preset", and picking No preset brings back the settings from before.
       -->
       <button id="presetSelect" class="preset-select" type="button"
               aria-haspopup="listbox" aria-expanded="false">

@@ -57,13 +57,22 @@ release note; they fold back in here when she ships.
 
 *Presets*
 - Rename a preset from the Save panel; workflows that use it keep working.
+- New No preset in the preset list brings back your own settings.
 
 **Fixes**
+- Applying a preset now sets every preset setting, using defaults for the ones it leaves out.
 - MyTsum detection names look-alike tsums it used to leave unidentified, such as Anniversary Mickey and Steamboat Mickey.
 - Rapunzel+'s chain is no longer cut to a few tsums after a stall, and the script now says when the game stops taking her drags.
 
 ### Fixed
 
+- **A preset overwrites, never merges**: the Quick Bar, a Skill step
+  (`preset:<id>`) and the phone sent only the preset's own keys, and phone
+  presets can leave keys out. All now set every preset field, `SettingDefaults`
+  for the missing ones (`presetsFull`; the Quick Bar takes the set from the
+  engine's `use` answer; `gapSettingsSchema` controls carry `default` for the
+  adapter, left out when it does not fit, e.g. an enum option this channel
+  lacks).
 - **Rapunzel+ drags the game ignores**: on a player's run, 36 rounds of
   activations linked only the head (the game took DOWN and UP, not the moves,
   so it linked the head-to-release line) until a script restart; coins halved.
@@ -101,8 +110,15 @@ release note; they fold back in here when she ships.
   does not match (pre-sync, a Restore, 5.0) is merged once by name.
   `npm run presets:check`, `npm run typecheck:presets`.
 - **Rename** in the preset Save panel: keeps the preset's id, so `preset:<id>`
-  steps survive (it used to be save-as plus delete). `presetMatchName` skips
-  keys the form lacks.
+  steps survive (it used to be save-as plus delete).
+- **No preset, and the preset in use remembered**: the store keeps `active`
+  and `own` (device-local; no `ver` bump or `gap.presets`, carried over an
+  adopt; `seq` picks the later of two files at one `ver`). Page ops `use`,
+  `none`, `edited`, `put` with `use`; adapter global `gapPresetUse`. Both
+  labels read it (`presetActive`) instead of matching values
+  (`presetMatchName`, removed: a partial phone preset matched almost anything).
+  Both sheets list No preset first; a hand edit of a preset row (controls,
+  Quick Bar taps, a pasted code, Reset) sends `edited`, remote takes never do.
 
 ## [6.0b12]
 

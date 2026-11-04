@@ -563,6 +563,8 @@ namespace Log {
     PresetDeleted              = 'settings.presetDeleted',
     PresetExported             = 'settings.presetExported',
     PresetImported             = 'settings.presetImported',
+    /** No preset: the settings from before the first preset were put back. */
+    PresetOwnRestored          = 'settings.presetOwnRestored',
     PresetRenamed              = 'settings.presetRenamed',
     PresetSaved                = 'settings.presetSaved',
     PresetStoreFailed          = 'settings.presetStoreFailed',
@@ -606,6 +608,8 @@ namespace Log {
     /** The whistle: what a round in progress could not take is on now. */
     PendingApplied = 'quickBar.pendingApplied',
     PresetApplied  = 'quickBar.presetApplied',
+    /** No preset from the strip: the settings from before the first preset were put back. */
+    PresetOwnRestored = 'quickBar.presetOwnRestored',
     UnlockNowAsked = 'quickBar.unlockNowAsked',
     WrapUpAsked    = 'quickBar.wrapUpAsked',
     CoastAsked     = 'quickBar.coastAsked',

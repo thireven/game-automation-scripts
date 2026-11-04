@@ -176,9 +176,10 @@ const WorkflowPresetSkip: string[] = [
 ];
 
 /**
- * The only preset keys the Skill node applies: how a round is played. Mirrors
- * gapSettingsSchema's `presetFields` (settings.ts's SHARE_SLOTS minus clickAssist,
- * which is a chore). A hand-made preset cannot push run-level keys this way.
+ * The preset fields, and the only keys the Skill node applies: how a round is
+ * played. Mirrors gapSettingsSchema's `presetFields` (settings.ts's SHARE_SLOTS
+ * minus clickAssist, which has no row); `presets:check` holds the two together.
+ * A hand-made preset cannot push run-level keys this way.
  */
 const WorkflowPresetKeys: string[] = [
   SettingKey.UseFan, SettingKey.MaxChainsPerScan, SettingKey.MaxChain,
@@ -190,6 +191,21 @@ const WorkflowPresetKeys: string[] = [
   SettingKey.BubbleStrategy, SettingKey.HoldBubblesLastFeverSec,
   SettingKey.SkillSettleMs, SettingKey.SkillReactivationTenths,
 ];
+
+/**
+ * A preset's full set: each preset field's (`WorkflowPresetKeys`) value, else
+ * its default (`SettingDefaults`), so applying one overwrites rather than
+ * merges. A value of the wrong type counts as missing; other keys are dropped.
+ */
+function presetsFull(values: { [key: string]: GapPresetsScalar }): { [key: string]: GapPresetsScalar } {
+  const defaults = SettingDefaults as unknown as { [key: string]: GapPresetsScalar };
+  const out: { [key: string]: GapPresetsScalar } = {};
+  for (const key of WorkflowPresetKeys) {
+    const value = Object.prototype.hasOwnProperty.call(values, key) ? values[key] : undefined;
+    out[key] = typeof value === typeof defaults[key] ? value! : defaults[key];
+  }
+  return out;
+}
 
 /** Tsum's nodes, in catalog order (docs/WORKFLOWS.md § 5). */
 const WorkflowTsumNodes: GapWorkflowNodeDef[] = [
@@ -277,9 +293,12 @@ const WorkflowTsumNodes: GapWorkflowNodeDef[] = [
         if (preset === null) {
           return { fail: 'no-preset' };
         }
-        for (const key in preset.values) {
-          if (WorkflowPresetKeys.indexOf(key) >= 0 && WorkflowPresetSkip.indexOf(key) < 0) {
-            values[key] = preset.values[key];
+        // The full set (defaults for what the preset leaves out). Nothing is marked
+        // in use: a workflow run's settings are its own.
+        const full = presetsFull(preset.values);
+        for (const key of WorkflowPresetKeys) {
+          if (WorkflowPresetSkip.indexOf(key) < 0) {
+            values[key] = full[key];
           }
         }
         ctx.setDetail(preset.name);
@@ -536,6 +555,9 @@ gapPresetsSetup({
   warn: function(message: string, data: { [key: string]: unknown }) {
     logWarn(Log.Workflow.PresetsNotSaved, message, data);
   },
+  // What the phone's Apply keeps as own: the run's settings, else the next start's (src/index.ts).
+  current: function() { return remoteSettingsValues(); },
+  full: presetsFull,
 });
 
 /**

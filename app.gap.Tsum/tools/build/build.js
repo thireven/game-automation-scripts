@@ -91,7 +91,7 @@ const PAGE_SCRIPTS = [
   { file: 'build/runPlan.js' },
   { file: 'build/settingDefaults.js' },
   { file: 'build/qrCode.js', verify: 'names:qrMatrix' },
-  { file: 'build/presets.js', verify: 'names:presetsLoad,presetMatchName' },
+  { file: 'build/presets.js', verify: 'names:presetsLoad,presetActive' },
   { file: 'build/pageStyle.js', verify: 'names:pageStyle,applyPageStyle' },
 ].map((job) => ({ in: job.file, out: job.file, ecma: 5, verify: job.verify }));
 

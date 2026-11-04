@@ -134,9 +134,9 @@ coins rather than final, so two runs compare on the play and not on which items
 were bought; the per-second rates are over time spent *in* rounds, so the rest
 between them does not count against them.
 
-**Preset** shows the name of the preset your settings currently are, or *No
-preset* when they are not any of them, and tapping it lists the ones you have
-saved. Picking one loads a whole how-a-round-is-played configuration — see
+**Preset** shows the name of the preset in use, or *No preset*, and tapping it
+lists *No preset* and the ones you have saved. Picking one loads a whole
+how-a-round-is-played configuration — see
 [Presets](#presets) — so this is the one control here that changes more than the
 row it sits on.
 
@@ -221,9 +221,11 @@ have to re-set them to try a different setup.
 
 The controls are at the top of the settings page, next to the light/dark button:
 
-- **The dropdown** names the preset your settings currently are, or *No preset*
-  when they are not any of them — change one setting after loading a preset and
-  it says so at once. Tapping it lists what you have saved; picking one loads it.
+- **The dropdown** names the preset in use, or *No preset* — change one of its
+  settings by hand after loading a preset and it says *No preset* at once: those
+  are your own settings now. Tapping it lists *No preset* and what you have
+  saved; picking a preset loads it. Picking *No preset* brings back the settings
+  you had before you loaded the first one.
 - **The save button** beside it opens a box with the preset's name in it and
   three things to do with that name. **Save as new** stores your current settings
   under a name nothing else is using. **Update** writes them over the preset that
@@ -232,9 +234,10 @@ The controls are at the top of the settings page, next to the light/dark button:
   do before you press them.
 
 Loading a preset changes **everything it carries**, not just the part you were
-last looking at: a row it carries but does not mention goes back to its default,
-exactly as pasting someone's settings code does. That is what makes switching
-presets a switch rather than a merge.
+last looking at: a row it carries but does not mention (one made on the phone
+can leave some out) goes back to its default, exactly as pasting someone's
+settings code does. That is what makes switching presets a switch rather than a
+merge, from the settings page, the Quick Bar, GAP Companion or a workflow step.
 
 The same dropdown is on the [Quick Bar](#the-quick-bar), which is the point of
 the whole feature: a preset can be swapped between two rounds, from the strip,

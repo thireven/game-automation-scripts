@@ -28,9 +28,9 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `workflow.loop` | `src/gapWorkflow.ts:793` | `id`, `loop` |
 | `workflow.nodeFailed` | `src/gapWorkflow.ts:842`<br>`src/gapWorkflow.ts:944` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
 | `workflow.restart` | `src/gapWorkflow.ts:933` | `id`, `nodeId`, `index`, `loop`, `outcome`, `error`, `why`, `fps`, `captureMs` |
-| `gap.presets` | `src/gapPresets.ts:690` | `script` |
+| `gap.presets` | `src/gapPresets.ts:852` | `script` |
 | `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:888` | `rounds` |
+| `run.stopped` | `src/index.ts:915` | `rounds` |
 | `gap.notify` | `src/companion.ts:69` | _none_ |
 | `gap.direct` | `src/companion.ts:199` | _none_ |
 
@@ -214,7 +214,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/gapPresets.ts:690` — `conf.emit('gap.presets', …)`
+- `src/gapPresets.ts:852` — `conf.emit('gap.presets', …)`
 
 ### `run.started`
 
@@ -240,7 +240,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:888` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:915` — `emitScriptEvent(Emit.Run.Stopped, …)`
 
 ### `gap.notify`
 

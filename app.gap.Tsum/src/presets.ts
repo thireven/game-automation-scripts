@@ -9,7 +9,19 @@
 // should not touch any of it.
 //
 // Saving one takes a copy of those rows as the form has them; loading one writes
-// that copy back, so switching presets is switching rather than merging.
+// every one of them back -- its value, else the row's default -- so switching
+// presets is switching rather than merging. A preset made on the phone can leave
+// rows out; they still go back to their defaults.
+//
+// ## Which preset is in use
+//
+// Remembered by the engine's store, not matched: `active` (the entry in use)
+// and `own` (the rows as they were before one was put in use). Loading a preset
+// sends `use`, the sheets' No preset sends `none` and writes `own` back, and a
+// preset row changed by hand sends `edited`, which makes the form the user's
+// own again. Each reply carries `active` and `hasOwn`, cached in
+// `StorageKey.PresetsUse` for both pages' labels. Values taken from elsewhere
+// (the run, the store, the phone) are never edits.
 //
 // ## Why the values are stored and not the code
 //
@@ -140,6 +152,11 @@ interface PresetsReply {
     presets?: Preset[];
     /** One per op sent, in order. */
     results?: PresetOpResult[];
+    /** The entry in use (lid), or null; whether No preset has settings to bring back. */
+    active?: string | null;
+    hasOwn?: boolean;
+    /** Grows with every write, so an older reply cannot undo a newer one. */
+    seq?: number;
 }
 
 /** One op's answer: `error` is `full`, `name-taken`, `gone` or `bad-op`. */
@@ -147,6 +164,8 @@ interface PresetOpResult {
     ok: boolean;
     lid?: string;
     error?: string;
+    /** `use`: the preset's full set; `none`: the user's own settings, or null. */
+    values?: SettingValues | null;
 }
 
 /** The entry a change was made to, as the page saw it: lets the engine catch an edit of an older copy. */
@@ -155,7 +174,7 @@ interface PresetBase {
     rev: number | null;
 }
 
-/** One change for the engine: `put`, `rename`, `delete` or `seed`. */
+/** One change for the engine: `put`, `rename`, `delete`, `seed`, or `use`, `none`, `edited`. */
 interface PresetOp {
     op: string;
     name?: string;
@@ -163,6 +182,20 @@ interface PresetOp {
     lid?: string;
     base?: PresetBase | null;
     presets?: {name: string; values: SettingValues}[];
+    /** `use` (and `put` with `use`): the settings now, kept for No preset when nothing was in use. */
+    current?: SettingValues;
+    /** `put`: the saved entry becomes the one in use. */
+    use?: boolean;
+    /** `edited`: the keys changed, when the page cannot tell preset rows from others. */
+    keys?: string[];
+}
+
+/** What the engine last said is in use (`StorageKey.PresetsUse`). */
+interface PresetsUse {
+    instance: string;
+    seq: number;
+    active: string | null;
+    hasOwn: boolean;
 }
 
 interface PresetsMark {
@@ -228,13 +261,81 @@ function presetsSeedOp(): PresetOp {
     return {op: 'seed', presets: seed};
 }
 
+/** What is in use, as last cached; nothing before the first reply. */
+function presetsInUse(): PresetsUse {
+    try {
+        var use = JSON.parse(localStorage.getItem(StorageKey.PresetsUse) || 'null');
+        if (use !== null && typeof use === 'object' && typeof use.instance === 'string'
+            && typeof use.seq === 'number' && (use.active === null || typeof use.active === 'string')) {
+            return {instance: use.instance, seq: use.seq, active: use.active, hasOwn: use.hasOwn === true};
+        }
+    } catch (e) {
+        // Treated as nothing in use.
+    }
+    return {instance: '', seq: -1, active: null, hasOwn: false};
+}
+
+/** The entry in use, or undefined (none, or not in this list). */
+function presetActive(list: Preset[]): Preset | undefined {
+    var active = presetsInUse().active;
+    for (var i = 0; active !== null && i < list.length; i++) {
+        if (list[i].lid === active) {
+            return list[i];
+        }
+    }
+    return undefined;
+}
+
+/** Caches a reply's in-use state unless an older write's. True when what is in use moved. */
+function presetsTakeUse(reply: PresetsReply): boolean {
+    if (typeof reply.instance !== 'string' || typeof reply.seq !== 'number' || !('active' in reply)) {
+        return false;
+    }
+    var held = presetsInUse();
+    if (held.instance === reply.instance && reply.seq < held.seq) {
+        return false;
+    }
+    var next: PresetsUse = {instance: reply.instance, seq: reply.seq,
+        active: typeof reply.active === 'string' ? reply.active : null, hasOwn: reply.hasOwn === true};
+    try {
+        localStorage.setItem(StorageKey.PresetsUse, JSON.stringify(next));
+    } catch (e) {
+        return false;
+    }
+    return held.active !== next.active || held.hasOwn !== next.hasOwn;
+}
+
 /**
- * Writes an engine reply into the cache and its marker. Not when the reply is
- * older than the cache (same store, lower `ver`), nor when the cache changed
- * under a plain read. True when the list moved, which tells the other page.
+ * Writes an engine reply into the cache, its marker and what is in use. True
+ * when either moved, which redraws this page and tells the other.
  */
 function presetsTake(reply: PresetsReply | null, seeded: boolean): boolean {
-    if (reply === null || reply.ok !== true || reply.same === true || typeof reply.instance !== 'string'
+    if (reply === null || reply.ok !== true) {
+        return false;
+    }
+    var moved = presetsTakeUse(reply);
+    if (presetsTakeList(reply, seeded)) {
+        moved = true;
+    }
+    if (!moved) {
+        return false;
+    }
+    if (presetsOnChange !== null) {
+        presetsOnChange();
+    }
+    if (typeof JavaScriptInterface !== 'undefined' && JavaScriptInterface.broadcast !== undefined) {
+        JavaScriptInterface.broadcast(PageMessage.Presets);
+    }
+    return true;
+}
+
+/**
+ * The list half of `presetsTake`. Not when the reply is older than the cache
+ * (same store, lower `ver`), nor when the cache changed under a plain read.
+ * True when the list moved.
+ */
+function presetsTakeList(reply: PresetsReply, seeded: boolean): boolean {
+    if (reply.same === true || typeof reply.instance !== 'string'
         || typeof reply.ver !== 'number' || Object.prototype.toString.call(reply.presets) !== '[object Array]') {
         return false;
     }
@@ -254,16 +355,7 @@ function presetsTake(reply: PresetsReply | null, seeded: boolean): boolean {
     } catch (e) {
         return false;
     }
-    if (text === before) {
-        return false;
-    }
-    if (presetsOnChange !== null) {
-        presetsOnChange();
-    }
-    if (typeof JavaScriptInterface !== 'undefined' && JavaScriptInterface.broadcast !== undefined) {
-        JavaScriptInterface.broadcast(PageMessage.Presets);
-    }
-    return true;
+    return text !== before;
 }
 
 /** Callers waiting on `onPresetsReply`, oldest first: the host answers in order. */
@@ -390,6 +482,29 @@ function presetResult(reply: PresetsReply | null, at: number): PresetOpResult | 
 }
 
 /**
+ * Sends one op about what is in use (`use`, `none`, `edited`, or a `put` with
+ * `use`). `done` gets its result, or null when the engine did not take it (no
+ * bridge, an entry with no lid yet, a refusal); the page then applies what it
+ * can without the bookkeeping.
+ */
+function presetsSendUse(op: PresetOp, done: (result: PresetOpResult | null) => void): void {
+    if (op.op === 'use' && typeof op.lid !== 'string') {
+        done(null);
+        return;
+    }
+    presetsSubmit([op], function (reply) {
+        var result = presetResult(reply, 0);
+        done(result !== null && result.ok ? result : null);
+    });
+}
+
+/** True when a hand edit has bookkeeping to undo: a preset in use, or own settings kept. */
+function presetsEditMatters(): boolean {
+    var use = presetsInUse();
+    return use.active !== null || use.hasOwn;
+}
+
+/**
  * By name, case-insensitively, so a list read on either page is in the same
  * order and a new preset lands where the user will look for it.
  */
@@ -416,37 +531,6 @@ function presetIndexOf(list: Preset[], name: string): number {
 function presetByName(list: Preset[], name: string): Preset | undefined {
     var at = presetIndexOf(list, name);
     return at < 0 ? undefined : list[at];
-}
-
-/**
- * Which preset `values` currently *is*, or '' for none.
- *
- * Matching rather than remembering what was last applied: a setting changed by
- * hand afterwards has to stop the label claiming that preset, and there is no
- * one place either page could hook to notice that. Every value the preset names
- * has to agree; a key the preset does not name is not looked at, so a preset
- * saved before a setting existed still matches once that setting is at whatever
- * the form has. A key the *form* does not have (a row this build or channel does
- * not offer, synced from another device) is skipped the same way.
- */
-function presetMatchName(list: Preset[], values: SettingValues): string {
-    for (var i = 0; i < list.length; i++) {
-        var preset = list[i];
-        var same = true;
-        for (var key in preset.values) {
-            if (!Object.prototype.hasOwnProperty.call(values, key)) {
-                continue;
-            }
-            if (preset.values[key] !== values[key]) {
-                same = false;
-                break;
-            }
-        }
-        if (same) {
-            return preset.name;
-        }
-    }
-    return '';
 }
 
 // Exporting is `presetsExportText` in `src/settings.ts` rather than here: it

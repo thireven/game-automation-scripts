@@ -1160,9 +1160,9 @@ function recordSettings(from: SettingSpec[][]): { [key: string]: SettingValue } 
         logInfo(Log.Settings.Saved, i18nText(UiText.LogSaveSettings));
     }
     // Every control change lands here, which makes this the one place the Run
-    // order card has to be told that what it is describing has changed -- and
-    // the one place the preset dropdown can learn that the form is no longer the
-    // preset it is claiming.
+    // order card has to be told that what it is describing has changed. The
+    // preset label is redrawn with it; whether a preset is still in use is the
+    // engine's (`presetEdited`).
     refreshRunOrder();
     refreshPresetLabel();
     return values;
@@ -1176,6 +1176,8 @@ function resetSettings() {
     }
     savePending = undefined;
     localStorage.removeItem(SETTINGS_KEY);
+    // Every row goes back to its default at the next load, so no preset is in use.
+    presetEdited();
     var note = document.getElementById('restartNowText');
     if (note !== null) {
         note.textContent = i18nText(UiText.ChromeRestartNow);
@@ -2921,6 +2923,8 @@ function applySettingsCodeText(text: string): void {
         return;
     }
     var result = applySharedSettings(shared);
+    // A pasted code is a hand edit of every preset row.
+    presetEdited();
     var from = shared.v ? ' (v' + shared.v + ')' : '';
     showShareText(text, false);
     // Two sentences rather than one with an optional tail: a language that puts
@@ -2934,7 +2938,7 @@ function applySettingsCodeText(text: string): void {
         // One `Name: code` line is applied and saved; the save's answer joins the status.
         importPresets(named, function (message, failed) {
             setShareStatus((message !== '' ? message + ' ' : '') + applied, failed);
-        });
+        }, true);
     }
 }
 
@@ -3061,11 +3065,12 @@ function pasteSettingsCode(): void {
 //
 // Two things are worth knowing before editing any of it.
 //
-// **Nothing remembers which preset is loaded.** The dropdown's label is worked
-// out by matching the form against every preset on each save (`presetMatchName`),
-// so a value changed by hand afterwards drops it back to "No preset" with nothing
-// to invalidate -- and a change made on the Quick Bar's strip does the same, for
-// free, because that change reaches this form and this form is what is matched.
+// **Which preset is loaded is the engine's to remember** (`active`, see
+// src/presets.ts). Loading one sends `use`; the sheet's No preset sends `none`
+// and writes back the settings from before the first preset; a preset row
+// changed by hand sends `edited` (`presetEdited`, from the controls' own
+// handlers only), which makes the form the user's own. Values taken from the
+// run, the store or the phone go through `applySettingValue` and are never edits.
 //
 // **Applying one is applying a whole round configuration**, exactly as
 // pasting a share code is: every row a slot names is written, the ones the
@@ -3079,18 +3084,17 @@ function presetFormValues(): SettingValues {
     return collectSettingValues(settings, isUnsharedSetting);
 }
 
-/** Which saved preset the form currently is, or '' for none. */
+/** The name of the preset in use, or '' for none. */
 function presetLoadedName(): string {
-    return presetMatchName(presetsLoad(), presetFormValues());
+    var active = presetActive(presetsLoad());
+    return active !== undefined ? active.name : '';
 }
 
 /**
- * Redraws the app bar's dropdown.
+ * Redraws the app bar's dropdown: the preset in use, else No preset.
  *
- * Called from `recordSettings`, which is the one place every save funnels
- * through -- a change made here, a change taken off the running world, a change
- * the strip made and pushed back -- so the label cannot go stale without the
- * settings themselves going stale with it.
+ * Called from `recordSettings`, which every save funnels through, and from
+ * `presetsChanged` when the engine's reply moved the list or what is in use.
  */
 function refreshPresetLabel(): void {
     var select = document.getElementById('presetSelect') as HTMLButtonElement | null;
@@ -3099,35 +3103,44 @@ function refreshPresetLabel(): void {
         return;
     }
     var list = presetsLoad();
-    var name = presetMatchName(list, presetFormValues());
-    label.textContent = name !== '' ? name : i18nText(UiText.PresetNone);
-    // An empty list has nothing to open; the save button beside it is the way in.
-    select.disabled = list.length === 0;
+    var active = presetActive(list);
+    label.textContent = active !== undefined ? active.name : i18nText(UiText.PresetNone);
+    // Nothing to open with no presets and no own settings to bring back; the
+    // save button beside it is the way in.
+    select.disabled = list.length === 0 && !presetsInUse().hasOwn;
 }
 
-/** The list of saved presets; picking one loads it. */
+/** The sheet: No preset first, then the saved presets; picking one loads it. */
 function openPresetSheet(): void {
     var owner = document.getElementById('presetSelect');
     var list = presetsLoad();
-    if (owner === null || list.length === 0) {
+    if (owner === null || (list.length === 0 && !presetsInUse().hasOwn)) {
         return;
     }
-    var current = presetLoadedName();
+    var active = presetActive(list);
     openListSheet(owner, function (box, close) {
-        var chosen: HTMLElement | null = null;
+        var none = fromTemplate('tpl-select-option');
+        none.textContent = i18nText(UiText.PresetNone);
+        none.setAttribute('aria-selected', active === undefined ? 'true' : 'false');
+        none.addEventListener('click', function () {
+            close();
+            applyNoPreset();
+        });
+        box.appendChild(none);
+        var chosen: HTMLElement | null = active === undefined ? none : null;
         for (var i = 0; i < list.length; i++) {
             var option = fromTemplate('tpl-select-option');
             // The user's own text, so it is set as text and never as a key --
             // `getTitle` is for a `UiText`, and a preset name is not one.
             option.textContent = list[i].name;
-            option.setAttribute('aria-selected', list[i].name === current ? 'true' : 'false');
+            option.setAttribute('aria-selected', list[i] === active ? 'true' : 'false');
             option.addEventListener('click', (function (preset: Preset) {
                 return function () {
                     close();
                     applyPreset(preset);
                 };
             })(list[i]));
-            if (list[i].name === current) {
+            if (list[i] === active) {
                 chosen = option;
             }
             box.appendChild(option);
@@ -3137,35 +3150,88 @@ function openPresetSheet(): void {
 }
 
 /**
- * Loads a preset onto the form, and onto the run in progress.
+ * Loads a preset onto the form, and onto the run in progress, and marks it in
+ * use. The engine answers with its full set (`use`); without an answer (no
+ * engine, an entry with no lid yet) this page's own defaults fill it in.
+ */
+function applyPreset(preset: Preset): void {
+    presetsSendUse({op: 'use', lid: preset.lid, current: presetFormValues()}, function (result) {
+        var values = result !== null && result.values ? result.values : presetFullValues(preset.values);
+        var applied = presetWriteForm(values);
+        var field = presetNameField();
+        if (field !== null) {
+            // So the panel opens on the preset that is loaded and Update is one tap.
+            field.value = preset.name;
+        }
+        presetsChanged();
+        logInfo(Log.Settings.PresetApplied, 'Loaded a preset onto the form',
+            {preset: preset.name, settings: applied, inUse: result !== null});
+    });
+}
+
+/** The sheet's No preset: the settings from before the first preset back, when any were kept. */
+function applyNoPreset(): void {
+    presetsSendUse({op: 'none'}, function (result) {
+        var own = result !== null ? result.values : null;
+        if (own) {
+            var applied = presetWriteForm(own);
+            logInfo(Log.Settings.PresetOwnRestored, 'Put the settings from before the preset back',
+                {settings: applied});
+        }
+        var field = presetNameField();
+        if (field !== null) {
+            field.value = '';
+        }
+        presetsChanged();
+    });
+}
+
+/** A preset's full set as this page has it: its values, else each row's default. */
+function presetFullValues(values: SettingValues): SettingValues {
+    var byKey = sharedSettingsByKey();
+    var full: SettingValues = {};
+    for (var key in byKey) {
+        var value = values.hasOwnProperty(key) ? values[key] : SHARE_DEFAULTS[key];
+        if (value !== undefined) {
+            full[key] = value;
+        }
+    }
+    return full;
+}
+
+/**
+ * Writes the preset rows `values` names onto the form, and onto the run.
  *
  * Written now rather than on the debounce: this is a deliberate act like Play or
  * a Now button, and half of what it is worth is that the strip and the run move
  * with it. `flushSettings` is what carries it to both -- the store the next
  * `start()` reads, and `applyLiveSettings` for the rows a run can take live.
  */
-function applyPreset(preset: Preset): void {
+function presetWriteForm(values: SettingValues): number {
     var byKey = sharedSettingsByKey();
     var applied = 0;
     for (var key in byKey) {
-        var value = preset.values.hasOwnProperty(key) ? preset.values[key] : SHARE_DEFAULTS[key];
-        if (value === undefined) {
-            continue;
-        }
-        if (applySettingValue(byKey[key], value)) {
+        if (values.hasOwnProperty(key) && applySettingValue(byKey[key], values[key])) {
             applied++;
         }
     }
     saveSettings(settings);
     flushSettings();
-    var field = document.getElementById('presetNameInput') as HTMLInputElement | null;
-    if (field !== null) {
-        // So the panel opens on the preset that is loaded and Update is one tap.
-        field.value = preset.name;
+    return applied;
+}
+
+/**
+ * A preset row changed by hand: the form is the user's own now, so nothing is
+ * in use (`edited`). Only the controls' handlers call this, never
+ * `applySettingValue`. No `setting` is a change to every preset row (a pasted
+ * code, a reset).
+ */
+function presetEdited(setting?: SettingSpec): void {
+    if ((setting !== undefined && isUnsharedSetting(setting)) || !presetsEditMatters()) {
+        return;
     }
-    refreshPresetPanel();
-    logInfo(Log.Settings.PresetApplied, 'Loaded a preset onto the form',
-        {preset: preset.name, settings: applied});
+    // The reply redraws the label (`presetsTake`).
+    presetsSendUse({op: 'edited'}, function () { /* nothing more */ });
 }
 
 /** The save panel, and the field inside it. */
@@ -3236,10 +3302,9 @@ function refreshPresetPanel(): void {
     setEnabled('presetDelete', exists);
 }
 
-/** What Rename renames: the preset the form currently is. */
+/** What Rename renames: the preset in use. */
 function presetRenameSource(list: Preset[]): Preset | undefined {
-    var loaded = presetMatchName(list, presetFormValues());
-    return loaded === '' ? undefined : presetByName(list, loaded);
+    return presetActive(list);
 }
 
 /** Says what just happened, inside the save panel. */
@@ -3285,7 +3350,8 @@ function savePreset(overwrite: boolean): void {
         return;
     }
     // `base` is the copy this page saw, so the engine can tell an edit of an older one.
-    presetsSubmit([{op: 'put', name: name, values: presetFormValues(), base: presetBase(existing)}],
+    // `use`: the form it was saved from is that preset now, so it is the one in use.
+    presetsSubmit([{op: 'put', name: name, values: presetFormValues(), base: presetBase(existing), use: true}],
         function (reply) {
             var result = presetResult(reply, 0);
             if (result === null || !result.ok) {
@@ -3443,8 +3509,8 @@ function presetsExportText(list: Preset[]): string {
 
 /**
  * The presets in a pasted export: each `Name: code` line whose code decodes.
- * Values are complete -- every shared row, defaults filled in -- so the preset
- * matches the form once applied, as one saved from the form would.
+ * Values are complete -- every shared row, defaults filled in -- as one saved
+ * from the form is.
  */
 function presetsFromText(text: string): Preset[] {
     var found: Preset[] = [];
@@ -3476,9 +3542,10 @@ function presetsFromText(text: string): Preset[] {
 /**
  * Saves `found` into the store, replacing presets of the same name, and says
  * what happened through `done`. New names past `PRESET_MAX` are left out and
- * reported. `failed` is a batch that was not saved at all.
+ * reported. `failed` is a batch that was not saved at all. `use`: the (one)
+ * preset was just applied to the form, so it is the one in use.
  */
-function importPresets(found: Preset[], done: (message: string, failed: boolean) => void): void {
+function importPresets(found: Preset[], done: (message: string, failed: boolean) => void, use?: boolean): void {
     var list = presetsLoad();
     var ops: PresetOp[] = [];
     var names: string[] = [];
@@ -3496,7 +3563,8 @@ function importPresets(found: Preset[], done: (message: string, failed: boolean)
             count++;
         }
         seen[key] = true;
-        ops.push({op: 'put', name: found[i].name, values: found[i].values, base: presetBase(existing)});
+        ops.push({op: 'put', name: found[i].name, values: found[i].values, base: presetBase(existing),
+            use: use === true && found.length === 1});
         names.push(found[i].name);
     }
     if (ops.length === 0) {
@@ -4326,6 +4394,7 @@ function buildSwitch(setting: SettingSpec): HTMLElement {
     input.addEventListener('change', function () {
         setting.default = input.checked;
         saveSettings(settings);
+        presetEdited(setting);
     });
     return input;
 }
@@ -4381,6 +4450,7 @@ function buildSelect(setting: SettingSpec): HTMLElement {
             setting.default = key;
             applyDropdownEnables(items, key);
             saveSettings(settings);
+            presetEdited(setting);
         });
     });
     return button;
@@ -4638,6 +4708,7 @@ function setNumberValue(setting: SettingSpec, input: HTMLInputElement, value: nu
         syncStepLimits(input.parentNode as HTMLElement, setting);
     }
     saveSettings(settings);
+    presetEdited(setting);
 }
 
 /**
@@ -4690,6 +4761,7 @@ function buildText(setting: SettingSpec): HTMLElement {
     input.addEventListener('change', function () {
         setting.default = input.value;
         saveSettings(settings);
+        presetEdited(setting);
     });
     return input;
 }

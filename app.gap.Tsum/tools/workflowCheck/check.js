@@ -734,8 +734,15 @@ const realApply = run('applyLiveSettings');
 ctx.applyLiveSettings = (values) => { applied = values; return 'applied'; };
 const skillAnswer = nodeRun('tsum.skill')(nodeCtx({ use: 'preset:ps_x' }));
 ctx.applyLiveSettings = realApply;
-check('skill node: preset limited to round keys', skillAnswer === 'done'
-  && JSON.stringify(applied) === '{"skillLevel":4}', applied);
+// The full set: every round key, defaults for the ones the preset leaves out.
+const roundKeys = run('WorkflowPresetKeys.filter((k) => WorkflowPresetSkip.indexOf(k) < 0)');
+const settingDefaults = run('SettingDefaults');
+check('skill node: a preset is the full set of round keys, defaults filled in', skillAnswer === 'done'
+  && applied !== null && JSON.stringify(Object.keys(applied).sort()) === JSON.stringify(roundKeys.slice().sort())
+  && applied.skillLevel === 4 && applied.skillType === settingDefaults.skillType
+  && applied.maxChain === settingDefaults.maxChain && applied.trackRoundStats === undefined
+  && applied.stopAfterGames === undefined, applied);
+check('skill node: nothing marked in use', JSON.parse(ctx.gapPresetsStore()).active === null);
 ctx.gapWorkflowAbort('stopped');
 
 // A chore node with a round on the board and a Now sweep queued finishes the

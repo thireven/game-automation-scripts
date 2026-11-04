@@ -661,16 +661,19 @@ it pasted into the share box is the way back in. It is stored as values rather
 than as that code only because decoding one needs the settings schema, which the
 strip's compilation does not have.
 
-Which preset is loaded is **matched, not remembered** (`presetMatchName`,
-`src/presets.ts`). Nothing has to invalidate a label when a stepper moves: the
-strip and the panel each compare the stored form against every preset when they
-redraw, and the answer stops being a name the moment a value differs. The store
-rather than `quickBarState()`, on both pages, because a preset is the whole form
-and that reply carries only the live rows.
+Which preset is loaded is **remembered by the engine's store** (`active`, with
+`own`: the rows as they were before it). It used to be matched against the
+form, which a phone preset that leaves rows out matched almost always. Loading
+one sends `use` and writes its full set (every preset row, defaults for the ones
+it leaves out: the strip cannot work those out, so the engine answers with
+them); the sheets' **No preset** sends `none` and writes `own` back; a preset
+row changed by hand sends `edited` — only from the controls' handlers
+(`presetEdited`, `qbPresetEdited`), never from a value taken off the run, the
+store or the phone. Both labels draw from the cached reply (`presetActive`).
 
 **The list itself is the engine's** (`src/gapPresets.ts`), one file per device,
 synced both ways with GAP Companion. Both pages draw from a localStorage cache of
-it and change it only by sending ops (`presetsSubmit`: put, rename, delete), each
+it and change it only by sending ops (`presetsSubmit`: put, rename, delete, and use / none / edited), each
 carrying the copy the page saw so the engine can tell an edit of an older one.
 `presetsRefresh` reads it back as each page opens and on each page's poll, so a
 change made on the phone shows within one. A cache the engine did not write (one

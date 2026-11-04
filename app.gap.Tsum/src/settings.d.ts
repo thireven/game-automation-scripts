@@ -149,6 +149,11 @@ declare const enum StorageKey {
   PresetsMark = 'tsumtsumpresetsmark',
   /** The list as it stood before two-way sync, copied once. Not backed up. */
   PresetsLegacy = 'tsumtsumpresetslegacy',
+  /**
+   * `{instance, seq, active, hasOwn}`: which preset the engine's store says is
+   * in use, for the labels. A cache like the marker, so not backed up either.
+   */
+  PresetsUse = 'tsumtsumpresetsuse',
   /** 'dark' or 'light' once the user picks one; absent follows the device. */
   Theme = 'tsumtsumtheme',
   /** A `PageStyle`; absent is Accessible. */
