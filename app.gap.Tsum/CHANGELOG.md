@@ -45,6 +45,24 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.8]
+
+### Summary
+
+**Fixes**
+- Pressing Play twice no longer starts the script twice, which had two copies tapping the board at once so no chains were made.
+
+### Fixed
+
+- **Double start** (`start()`, `stop()` in `src/index.ts`): two start commands
+  close together both waited out the old run, and the first made native calls
+  in `new Tsum()` (which hand over the interpreter lock) before `buildRun` set
+  `gRunActive`. The second got in, and both runs built and played. The extra
+  loop also survived Stop. `start()` now claims `gRunActive` right after the
+  busy check. A start that finds a newer one arrived while it waited steps
+  aside (`run.startSuperseded`), and `stop()` stops waiting once a newer run
+  holds the slot (`gRunSeq`).
+
 ## [5.7]
 
 ### Summary
