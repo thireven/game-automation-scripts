@@ -45,6 +45,19 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b17]
+
+### Summary
+
+**Fixes**
+- Take over in GAP Companion no longer sends a notification when the script asks for direction at the same moment.
+
+### Fixed
+
+- **Take over answered by the script's own request**: `requestUserDirection`
+  took a pending Take over but sent no `takeover: true`, so the server alerted
+  the person who had just pressed it. It now marks that request a takeover.
+
 ## [6.0b16]
 
 ### Summary
@@ -59,9 +72,6 @@ release note; they fold back in here when she ships.
   breaks the digits. A last retry reads past art at `bandLo` 54, under the
   whole band, which then runs off the crop and is dropped. 50-56 read all 8
   unread-base shots alike.
-- **Take over answered by the script's own request**: `requestUserDirection`
-  took a pending Take over but sent no `takeover: true`, so the server alerted
-  the person who had just pressed it. It now marks that request a takeover.
 
 ## [6.0b15]
 
