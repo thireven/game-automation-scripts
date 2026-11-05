@@ -827,11 +827,19 @@ var FeverBar = {
 // dimming itself -- white comes through it at ~74 a channel, 222 summed -- so
 // the threshold is 250: anything the overlay dims passes, and the hub's 372+
 // still fails.
+//
+// The fifth probe rejects a lit Pause button. A dark skill backdrop
+// (Chernabog's night sky) passes the four above and the single-tsum pill probes
+// while the HUD stays bright; GamePlaying's entries have fewer probes, so the
+// level-up won the ranking and one look ended the round mid-play. The overlay
+// dims Pause on every level-up frame in the corpus (466+ from lit, themed HUDs
+// included); the board reads 0-157.
 var LevelUpDimmedChrome: PageColor[] = [
   {x: 300, y:  250, r: 0, g: 0, b: 0, match: true, threshold: 250},  // left of the score capsule, hub reads 416+
   {x: 800, y:  250, r: 0, g: 0, b: 0, match: true, threshold: 250},  // right of the score capsule, hub reads 392+
   {x: 540, y: 1600, r: 0, g: 0, b: 0, match: true, threshold: 250},  // the fever bar, hub reads 408+
-  {x: 150, y: 1750, r: 0, g: 0, b: 0, match: true, threshold: 250}   // below the skill button, hub reads 646+
+  {x: 150, y: 1750, r: 0, g: 0, b: 0, match: true, threshold: 250},  // below the skill button, hub reads 646+
+  {x: 901, y:  197, r: 255, g: 219, b: 0, match: false, threshold: 300}  // Pause not lit (GamePlaying's probe), level-up 466+, board 0-157
 ];
 
 // `satisfies` rather than a plain annotation: every entry is still checked

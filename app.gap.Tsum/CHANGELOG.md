@@ -56,6 +56,7 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - When the game shows an error and returns to its title screen, the script closes the error and taps through the title instead of asking for direction.
+- Chernabog's skill no longer makes the script think the round is over and stop playing.
 
 ### Fixed
 
@@ -68,6 +69,10 @@ release note; they fold back in here when she ships.
   `ErrorToTitle` entry, closed by `dismiss.errorToTitle`, and it starts the boot
   phase since no new process does. It read `FriendInfo`, which nothing closes
   mid-round.
+- **False game over during Chernabog's skill**: its dark night-sky backdrop
+  passed `TsumLevelUpSingleTsum` while the HUD stayed lit, and it outranked the
+  GamePlaying entries on probe count, so one look ended the round. The
+  level-up entries now also require Pause to be dimmed (`LevelUpDimmedChrome`).
 
 ### Added
 
