@@ -29,8 +29,8 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `workflow.nodeFailed` | `src/gapWorkflow.ts:842`<br>`src/gapWorkflow.ts:944` | `id`, `loop`, `index`, `nodeId`, `node`, `error`, `tries` |
 | `workflow.restart` | `src/gapWorkflow.ts:933` | `id`, `nodeId`, `index`, `loop`, `outcome`, `error`, `why`, `fps`, `captureMs` |
 | `gap.presets` | `src/gapPresets.ts:852` | `script` |
-| `run.started` | `src/index.ts:86` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:915` | `rounds` |
+| `run.started` | `src/index.ts:110` | `version`, `skill`, `locale` |
+| `run.stopped` | `src/index.ts:935` | `rounds` |
 | `gap.notify` | `src/companion.ts:69` | _none_ |
 | `gap.direct` | `src/companion.ts:199` | _none_ |
 
@@ -228,7 +228,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:86` — `emitScriptEvent(Emit.Run.Started, …)`
+- `src/index.ts:110` — `emitScriptEvent(Emit.Run.Started, …)`
 
 ### `run.stopped`
 
@@ -240,7 +240,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:915` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:935` — `emitScriptEvent(Emit.Run.Stopped, …)`
 
 ### `gap.notify`
 
