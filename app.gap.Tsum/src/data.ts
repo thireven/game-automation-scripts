@@ -618,6 +618,8 @@ const enum PageName {
   RootDetection = 'RootDetection',
   NetworkDisable = 'NetworkDisable',
   NetworkTimeout = 'NetworkTimeout',
+  // "ERROR CODE: n ... Returning to Title Screen." with one Close.
+  ErrorToTitle = 'ErrorToTitle',
   ExtraUpdate = 'ExtraUpdate',
   // Not a screen: what findPage() reports when nothing fingerprinted. No `Page`
   // entry carries it.
@@ -1673,13 +1675,18 @@ var Page = {
   // and below its lettering. The loading text ("Retrieving game data...") sits
   // in the pill's row (y 1570-1620), so nothing probes there. Measured on the
   // October 2026 INTL and JP startup recordings.
+  //
+  // The bottom probes sit at y 1700, not lower: when the game drops back to the
+  // title by itself (an error, or a restart in the same process) it draws the
+  // title letterboxed, black above y ~164 and below y ~1732, and probes at
+  // y 1850 read black there.
   TitleStart: {
     name: PageName.TitleStart,
     colors: [
       {x:   80, y:  300, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, top left
       {x: 1000, y:  300, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, top right
-      {x:   80, y: 1850, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom left
-      {x: 1000, y: 1850, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom right
+      {x:   80, y: 1700, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom left
+      {x: 1000, y: 1700, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom right
       {x:  440, y: 1540, r: 245, g: 184, b:   8, match: true, threshold: 60}, // pill, above the lettering
       {x:  660, y: 1540, r: 245, g: 184, b:   8, match: true, threshold: 60}, // pill, above the lettering
       {x:  560, y: 1630, r: 234, g: 152, b:   3, match: true, threshold: 60}  // pill, below the lettering
@@ -1694,8 +1701,8 @@ var Page = {
     colors: [
       {x:   80, y:  300, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, top left
       {x: 1000, y:  300, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, top right
-      {x:   80, y: 1850, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom left
-      {x: 1000, y: 1850, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom right
+      {x:   80, y: 1700, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom left
+      {x: 1000, y: 1700, r: 253, g: 253, b: 253, match: true, threshold: 30}, // white frame, bottom right
       {x:  440, y: 1540, r: 254, g: 251, b: 253, match: true, threshold: 30}, // where the pill would be
       {x:  660, y: 1540, r: 254, g: 251, b: 253, match: true, threshold: 30}, // where the pill would be
       {x:  560, y: 1630, r: 254, g: 251, b: 253, match: true, threshold: 30}  // where the pill would be
@@ -1900,6 +1907,31 @@ var Page = {
     ],
     back: {x: 885, y: 1084},
     next: {x: 885, y: 1084}
+  },
+  // The game's error dialog ("ERROR CODE: 601 / Unable to retrieve Ruby count.
+  // Returning to Title Screen.") with one Close. Close sends the game back to its
+  // title in the same process. Without this entry it read as `FriendInfo`, nothing
+  // closed it, and the title that followed read `unknown`.
+  //
+  // Same chrome as the GET! dialog (`EventGift`); the error text changes per code,
+  // so only the frame, the body's navy edges and Close are probed. The last probe
+  // tells it from GET!: the GET! title is yellow there (within 82 on every corpus
+  // frame), the error title is not (266). Measured on one INTL frame, 2026-11.
+  ErrorToTitle: {
+    name: PageName.ErrorToTitle,
+    colors: [
+      {x:  200, y:  550, r:  30, g: 197, b: 235, match: true,  threshold: 50},  // header band
+      {x:  880, y:  550, r:  30, g: 197, b: 235, match: true,  threshold: 50},  // header band
+      {x:  120, y: 1040, r:  35, g:  66, b: 110, match: true,  threshold: 40},  // body, left edge
+      {x:  960, y: 1040, r:  35, g:  66, b: 110, match: true,  threshold: 40},  // body, right edge
+      {x:  540, y: 1200, r:  30, g: 197, b: 235, match: true,  threshold: 50},  // footer band
+      {x:  380, y: 1344, r: 247, g: 195, b:   8, match: true,  threshold: 40},  // Close, above the text
+      {x:  700, y: 1344, r: 247, g: 195, b:   8, match: true,  threshold: 40},  // Close, above the text
+      {x:  540, y: 1344, r: 247, g: 180, b:   8, match: true,  threshold: 40},  // Close, above the text
+      {x:  460, y:  662, r: 255, g: 251, b: 115, match: false, threshold: 120}  // not the GET! title
+    ],
+    back: {x: 540, y: 1400},
+    next: {x: 540, y: 1400}
   },
   FriendInfo: { // FriendInfo of Friend Page, SocailAccount of Setting Page
     name: PageName.FriendInfo,
@@ -2632,6 +2664,13 @@ var PageProfiles: PageProfileMap = {
   },
   NetworkDisable: {kind: PageKind.Permanent, roles: [PageRole.Interrupt], note: 'OK button.'},
   NetworkTimeout: {kind: PageKind.Permanent, roles: [PageRole.Interrupt], note: 'OK button.'},
+  ErrorToTitle: {
+    kind: PageKind.Permanent,
+    roles: [PageRole.Interrupt],
+    note: 'The game\'s error dialog that ends "Returning to Title Screen". Close '
+        + 'sends the game back to its title without a new process, so seeing it '
+        + 'starts the boot phase.'
+  },
   ExtraUpdate: {kind: PageKind.Permanent, note: 'OK / Cancel.'},
 
   // --- Not a screen ---
@@ -3715,5 +3754,9 @@ var PageRoutes: PageRouteMap = {
   ],
   NetworkTimeout: [
     { via: PageAnchor.Back, source: RouteSource.Declared }
+  ],
+  // dismiss.errorToTitle: Close, onto the title screen.
+  ErrorToTitle: [
+    { via: PageAnchor.Back, to: PageName.TitleWait, source: RouteSource.Handler }
   ],
 };

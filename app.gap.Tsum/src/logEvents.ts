@@ -85,6 +85,7 @@ namespace Log {
     Current               = 'page.current',
     DispatchReentered     = 'page.dispatchReentered',
     DispatchStopped       = 'page.dispatchStopped',
+    ErrorToTitleClosing   = 'page.errorToTitle.closing',
     EventCardRevealClosing = 'page.eventCardReveal.closing',
     EventGiftClosing      = 'page.eventGift.closing',
     EventMainClosing      = 'page.eventMain.closing',

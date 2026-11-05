@@ -54,6 +54,21 @@ release note; they fold back in here when she ships.
 *Skills*
 - KH2 Cloud skill added: waits for the stronger second charge of his gauge before tapping, and uses the first charge if the round is about to end.
 
+**Fixes**
+- When the game shows an error and returns to its title screen, the script closes the error and taps through the title instead of asking for direction.
+
+### Fixed
+
+- **Title screen after the game returns to it by itself**: an error or an
+  in-process restart draws the title letterboxed (black below y ~1732), so the
+  `TitleStart`/`TitleWait` bottom probes at y 1850 read black and the title read
+  `unknown` until the user-direction ask. Moved to y 1700; full-frame titles
+  still match.
+- **Game error dialog** ("ERROR CODE: 601 ... Returning to Title Screen"): new
+  `ErrorToTitle` entry, closed by `dismiss.errorToTitle`, and it starts the boot
+  phase since no new process does. It read `FriendInfo`, which nothing closes
+  mid-round.
+
 ### Added
 
 - **KH2 Cloud** (`src/skills/kh2Cloud.ts`, Beta, Unique group, share `C`): a

@@ -89,7 +89,9 @@ gPages.subscribe({
       + 'phase starts if no launch started it.',
   // ExtraUpdate: an update restarts the game in its own process, so no launch
   // and no process age says it is booting; the download after it is startup too.
-  pages: [PageName.RootDetection, PageName.ExtraUpdate].concat(pagesWithRole(PageRole.Boot)),
+  // ErrorToTitle: the same, the game goes back to its title in the same process.
+  pages: [PageName.RootDetection, PageName.ExtraUpdate, PageName.ErrorToTitle]
+    .concat(pagesWithRole(PageRole.Boot)),
   every: true,
   steps: [
     { do: 'call', name: 'enterStartupPhase', run: function() {
@@ -434,6 +436,21 @@ gPages.subscribe({
   every: true,
   steps: [
     { do: 'log', event: Log.Page.EventTipClosing, message: 'Event mission tip, pressing Close' },
+    { do: 'tap', anchor: PageAnchor.Back },
+    { do: 'settle', ms: PanelGoneSettleMs }
+  ]
+});
+
+gPages.subscribe({
+  id: 'dismiss.errorToTitle',
+  category: PageCategory.Dismiss,
+  what: 'Press Close on the game\'s error dialog ("Returning to Title Screen"). It is '
+      + 'the only way on; observe.startupPhase has already started the boot phase, so '
+      + 'the title that follows is tapped through instead of asking the user.',
+  pages: [PageName.ErrorToTitle],
+  every: true,
+  steps: [
+    { do: 'log', event: Log.Page.ErrorToTitleClosing, message: 'Game error, returning to title; pressing Close' },
     { do: 'tap', anchor: PageAnchor.Back },
     { do: 'settle', ms: PanelGoneSettleMs }
   ]
