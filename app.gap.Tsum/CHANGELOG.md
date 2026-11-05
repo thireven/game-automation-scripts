@@ -73,6 +73,11 @@ release note; they fold back in here when she ships.
   full read is looked at again 150ms later; the held-full fallback counts
   reads in a row; a clock digit must sit in its slot. `skillGaugeMeansCrop`
   split out of `skillGaugeReadCrop`, which now classifies after releasing.
+- **KH2 Cloud: the pearl's saturated band**: mint/teal/lime count as pearl,
+  and a full ring may hold one cyan-looking point. Lossless captures show that
+  band over ~100 deg (the recording's compression hid it), enough to keep a
+  full 2nd charge from ever reading full. Checked on a render of the game's
+  own gauge art (`GameUI_multiple_ff.xml`), matched to device screenshots.
 
 ## [6.0b17]
 

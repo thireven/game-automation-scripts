@@ -39,6 +39,12 @@
 // recording (no misreads; the +5s fever bonus is the only jump) and all 21
 // corpus GamePlaying captures (540, 1080 and 360 wide). A digit must sit in
 // its slot, so a tens digit hidden under a tsum reads unknown, not low.
+//
+// The pearl is the game's colour wheel spinning ~1 turn/s under a white flash
+// pulsing every 0.5s (`game/GameUI_multiple_ff.xml`, lv3). Rendered from that
+// art (matched to lossless screenshots within ~5/255): a full 2nd charge reads
+// full on 77% of frames, a read and its second look both on 56%, so it fires
+// within 3 reads 99% of the time. No pie short of ~358 deg reads full.
 
 // ---------------------------------------------------------------------------
 // Tuning data
@@ -99,6 +105,8 @@ const CloudGauge = {
   fullMin: 20,
   /** ...with at most this many gold: the pearl's own yellow band. */
   fullGoldMax: 1,
+  /** ...and navy/cyan: the pearl's teal can come close to the gauge's cyan. */
+  fullEmptyMax: 1,
   /** Pearl points over gold that read Almost: the pie nearly closed. */
   almostMin: 14,
   /**
@@ -178,6 +186,9 @@ function cloudGaugeTone(c: Color): CloudGaugeTone {
   // Yellow ~(238,226,46) to brown ~(144,90,39). The pearl rarely has r - b > 80.
   if (c.r >= 120 && c.r - c.b >= 90 && c.b <= 110) { return 'gold'; }
   if (min >= 100 && max >= 170) { return 'pearl'; }  // pastel or white
+  // The pearl's saturated band, mint/teal/lime ~(90,209,215), (127,224,97):
+  // spans ~100 deg in lossless captures; the recording's compression hid it.
+  if (max >= 195 && min >= 70 && c.g >= 190) { return 'pearl'; }
   if (max < 90) { return 'dark'; }
   return 'other';
 }
@@ -390,7 +401,7 @@ function cloudGaugeLook(colors: Color[]): CloudGaugeLook {
 /** A full pearl ring, its top slice closed. */
 function cloudLookFull(look: CloudGaugeLook): boolean {
   return look.pearl >= CloudGauge.fullMin && look.gold <= CloudGauge.fullGoldMax
-    && look.empty === 0 && look.topWarm === 0;
+    && look.empty <= CloudGauge.fullEmptyMax && look.topWarm === 0;
 }
 
 function cloudGaugeClassify(colors: Color[], ts: Tsum): SkillReadiness {
