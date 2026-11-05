@@ -56,7 +56,7 @@ release note; they fold back in here when she ships.
 
 ### Added
 
-- **KH2 Cloud** (`src/skills/kh2Cloud.ts`, Alpha, Unique group, share `C`): a
+- **KH2 Cloud** (`src/skills/kh2Cloud.ts`, Beta, Unique group, share `C`): a
   burst that reads its own gauge ring (navy/cyan filling, gold 1st charge,
   pearl 2nd). A full pearl ring counts only once gold was first seen 0.8s
   earlier, or after 3 full reads over 1.5s: the 1st charge's flash and stray
