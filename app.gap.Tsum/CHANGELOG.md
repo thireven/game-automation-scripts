@@ -45,14 +45,9 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0b18]
+## [6.0b19]
 
 ### Summary
-
-**Additions**
-
-*Skills*
-- KH2 Cloud skill added: waits for the stronger second charge of his gauge before tapping, and uses the first charge if the round is about to end.
 
 **Fixes**
 - When the game shows an error and returns to its title screen, the script closes the error and taps through the title instead of asking for direction.
@@ -73,6 +68,15 @@ release note; they fold back in here when she ships.
   passed `TsumLevelUpSingleTsum` while the HUD stayed lit, and it outranked the
   GamePlaying entries on probe count, so one look ended the round. The
   level-up entries now also require Pause to be dimmed (`LevelUpDimmedChrome`).
+
+## [6.0b18]
+
+### Summary
+
+**Additions**
+
+*Skills*
+- KH2 Cloud skill added: waits for the stronger second charge of his gauge before tapping, and uses the first charge if the round is about to end.
 
 ### Added
 
