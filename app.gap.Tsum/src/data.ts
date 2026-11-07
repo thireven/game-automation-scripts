@@ -408,6 +408,12 @@ var Button = {
     {x: 288, y: 1032}, {x: 510, y: 1032}, {x: 733, y: 1032}, {x: 955, y: 1032},
     {x: 288, y: 1304}, {x: 510, y: 1304}, {x: 733, y: 1304}
   ] as GameItemToggles,
+  // The badge's top band, mid-pill: solid pink above the text. INTL's longer
+  // "1 time free" puts a letter under the right-end probe above.
+  outGameItemBadgeTops: [
+    {x: 202, y: 1016}, {x: 424, y: 1016}, {x: 647, y: 1016}, {x: 869, y: 1016},
+    {x: 202, y: 1288}, {x: 424, y: 1288}, {x: 647, y: 1288}
+  ] as GameItemToggles,
   // A tap here is harmless on the pre-round screen (the caption box), and
   // dismisses the free-item popup if one is up.
   outGameItemsCaption: {x: 540, y: 680},

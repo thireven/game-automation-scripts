@@ -52,8 +52,14 @@ release note; they fold back in here when she ships.
 **Fixes**
 - When the game shows an error and returns to its title screen, the script closes the error and taps through the title instead of asking for direction.
 - Chernabog's skill no longer makes the script think the round is over and stop playing.
+- An event's free bonus item ("Make a wish upon a star!") no longer has the script tapping it and raising its popup on every round (INTL).
 
 ### Fixed
+
+- **Event-forced free item on INTL**: the pink "1 time free" badge's text
+  covers the right-end probe that reads JP's "1回無料", so the item read as
+  unlocked and was tapped. `isBonusItemLocked` also reads the badge's solid
+  top band (`outGameItemBadgeTops`).
 
 - **Title screen after the game returns to it by itself**: an error or an
   in-process restart draws the title letterboxed (black below y ~1732), so the

@@ -85,8 +85,9 @@ Tsum.prototype.checkGameItem = function() {
 
 /** The toggle's cost pill has become the pink free-item badge. */
 Tsum.prototype.isBonusItemLocked = function(img, index) {
-  const c = this.getColor(img, Button.outGameItemBadges[index]);
-  return c.r > 170 && c.g < 110;
+  const isPink = (c: Color) => c.r > 170 && c.g < 110;
+  return isPink(this.getColor(img, Button.outGameItemBadges[index]))
+    || isPink(this.getColor(img, Button.outGameItemBadgeTops[index]));
 }
 
 /**
