@@ -218,6 +218,8 @@ Tsum.prototype.awaitRoundStart = function() {
 // out-of-game page (the score tally lands on ScorePage). Poll until the HUD
 // comes back (still playing), a known page shows up (game over), or the
 // grace window runs out (assume over — the old behavior, just later).
+// Dapper Hat Mickey's cutscene can outlast the grace window, so it is read as
+// the board itself (`Page.GamePlayingFanDisabled`) and never reaches here.
 // The screens a round can actually end on.
 //
 // A round that really finished lands on the score tally, by way of the

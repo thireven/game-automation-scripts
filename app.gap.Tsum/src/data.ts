@@ -1683,6 +1683,29 @@ var Page = {
     back: {x: 986, y: 273},
     next: {x: 986, y: 273}
   },
+  // The board while a skill cutscene has the Fan greyed out blue.
+  //
+  // Dapper Hat Mickey's skill replaces the board with a 15-40s dance (timer
+  // frozen) and turns the Fan into a flat blue disabled button. Pause stays lit,
+  // but the three Fan probes in `GamePlayingHudProbes` read 370-460 away, so no
+  // entry matched, `confirmGameOver`'s 20s grace ran out and the round was
+  // ended mid-play. This keeps the three Pause probes and reads the Fan's blue
+  // body instead. Measured on 16 skill frames of a 6.0b21 recording
+  // (debug/dapperhatmickey): stability <= 10, 400+ from the lit Fan.
+  GamePlayingFanDisabled: {
+    name: PageName.GamePlaying,
+    variant: 'fan-disabled',
+    colors: [
+      GamePlayingHudProbes[0],  // Pause
+      GamePlayingHudProbes[2],  // Pause
+      GamePlayingHudProbes[3],  // Pause
+      {x: 866, y: 1580, r: 73, g: 104, b: 158, match: true, threshold: 80},  // disabled Fan, upper left
+      {x: 956, y: 1592, r: 65, g:  96, b: 148, match: true, threshold: 80},  // disabled Fan, right
+      {x: 860, y: 1670, r: 46, g:  82, b: 138, match: true, threshold: 80}   // disabled Fan, lower left
+    ],
+    back: {x: 986, y: 273},
+    next: {x: 986, y: 273}
+  },
   // The startup screens: the title screen and the white logo screens before it.
   // The title art changes every month and differs between builds, so these probe
   // only what stays put: the white frame and the TAP TO START pill's bands above
