@@ -45,6 +45,20 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b22]
+
+### Summary
+
+**Fixes**
+- Dapper Hat Mickey's skill no longer ends the round early; the script keeps playing through its dance.
+
+### Fixed
+
+- **Fan greyed out by a skill cutscene**: Dapper Hat Mickey's 15-40s skill
+  turns the Fan blue, so no `GamePlaying` entry matched and `confirmGameOver`'s
+  20s grace ended the round. New `GamePlayingFanDisabled` reads Pause plus the
+  blue Fan.
+
 ## [6.0b21]
 
 ### Summary
