@@ -45,6 +45,19 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b21]
+
+### Summary
+
+**Fixes**
+- Auto Unlock MyTsum Level now sees a capped MyTsum on JP and raises its level cap.
+
+### Fixed
+
+- **MyTsum padlock on JP**: JP's level-up pill text is longer, so its padlock
+  sits at x 472-488, not INTL's 496-514; the read never saw it. Read per build
+  (`LevelUpMyTsumCard.lockXJapan`).
+
 ## [6.0b20]
 
 ### Summary
