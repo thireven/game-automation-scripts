@@ -45,13 +45,11 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
-## [6.0b19]
+## [6.0b20]
 
 ### Summary
 
 **Fixes**
-- When the game shows an error and returns to its title screen, the script closes the error and taps through the title instead of asking for direction.
-- Chernabog's skill no longer makes the script think the round is over and stop playing.
 - An event's free bonus item ("Make a wish upon a star!") no longer has the script tapping it and raising its popup on every round (INTL).
 
 ### Fixed
@@ -60,6 +58,16 @@ release note; they fold back in here when she ships.
   covers the right-end probe that reads JP's "1回無料", so the item read as
   unlocked and was tapped. `isBonusItemLocked` also reads the badge's solid
   top band (`outGameItemBadgeTops`).
+
+## [6.0b19]
+
+### Summary
+
+**Fixes**
+- When the game shows an error and returns to its title screen, the script closes the error and taps through the title instead of asking for direction.
+- Chernabog's skill no longer makes the script think the round is over and stop playing.
+
+### Fixed
 
 - **Title screen after the game returns to it by itself**: an error or an
   in-process restart draws the title letterboxed (black below y ~1732), so the
