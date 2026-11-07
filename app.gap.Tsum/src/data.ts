@@ -3011,6 +3011,11 @@ var LevelUpMyTsumCard = {
   singleBarFromTopY: 104,
   /** The padlock body (x 496-514), about the bar row: two columns, two rows, all four required. */
   lockX: [500, 511],
+  /**
+   * JP's pill text is longer, so its padlock sits further left (x 472-488, same
+   * rows). The INTL columns land on its first glyph there and never read white.
+   */
+  lockXJapan: [474, 486],
   lockDy: [0, 6],
   lockColor: {r: 255, g: 255, b: 255},
   lockDiff: 40

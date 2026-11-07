@@ -874,10 +874,11 @@ Tsum.prototype.readLevelUpMyTsumCap = function() {
       }
     }
     if (barY > 0) {
+      const lockX = this.gameBuild() === GameBuild.Japan ? t.lockXJapan : t.lockX;
       const points: Coord[] = [];
-      for (let i = 0; i < t.lockX.length; i++) {
+      for (let i = 0; i < lockX.length; i++) {
         for (let j = 0; j < t.lockDy.length; j++) {
-          points.push({x: t.lockX[i], y: barY + t.lockDy[j]});
+          points.push({x: lockX[i], y: barY + t.lockDy[j]});
         }
       }
       const glyph = this.getColors(img, points);
