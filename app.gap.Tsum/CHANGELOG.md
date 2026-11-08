@@ -45,6 +45,19 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b23]
+
+### Summary
+
+**Fixes**
+- The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank (merged up from 5.8).
+
+### Fixed
+
+- **Tsum List libraries**, merged up from 5.8: `tsumsCollection.dat` and
+  `tsumNames.dat` rebuilt with the five JP tsums (807 portraits, 1458 name
+  rows), the English names given since, and three redrawn JP name strips.
+
 ## [6.0b22]
 
 ### Summary
