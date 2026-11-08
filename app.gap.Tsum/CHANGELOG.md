@@ -49,6 +49,11 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*Companion*
+- On the JP game, the companion app shows each tsum's English name too and finds tsums by it.
+
 **Fixes**
 - The skill (or another setting) no longer switches back on its own after a Quick Bar, preset or phone change, and Play no longer starts on an old skill until GAP is restarted.
 
@@ -69,11 +74,6 @@ release note; they fold back in here when she ships.
 ## [6.0b23]
 
 ### Summary
-
-**Additions**
-
-*Companion*
-- On the JP game, the companion app shows each tsum's English name too and finds tsums by it.
 
 **Fixes**
 - The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank (merged up from 5.8).
