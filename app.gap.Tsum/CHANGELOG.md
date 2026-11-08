@@ -45,6 +45,23 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b25]
+
+### Summary
+
+**Additions**
+
+*Companion*
+- Presets can be assigned to tsums in the companion app, for add-ons that use them.
+
+### Added
+
+- **Preset links** (workflow library, `src/gapWorkflow.ts`): `gapWorkflowLinkPresets(list, label)`
+  names a catalog list whose items presets may be assigned to (catalog `presetLinks`); synced
+  presets keep their `links` (`gapWorkflowParseLinks`), read with `gapWorkflowSyncedPresets()`.
+  An add-on's registration is undone on a failed install (`src/addons.ts`). Needs the companion
+  server's preset links (UI 5); without them nothing changes.
+
 ## [6.0b24]
 
 ### Summary
