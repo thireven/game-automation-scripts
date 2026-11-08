@@ -51,8 +51,14 @@ release note; they fold back in here when she ships.
 
 **Fixes**
 - Pressing Play twice no longer starts the script twice, which had two copies tapping the board at once so no chains were made.
+- The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank.
 
 ### Fixed
+
+- **Tsum List libraries**: `tsumsCollection.dat` and `tsumNames.dat` were not
+  rebuilt when the five JP tsums reached `tsums.dat`. Rebuilt: 807 portraits,
+  1458 name rows, now with the English names given since and three redrawn JP
+  name strips (`idiamd`, `ursular`, `woodyd100`).
 
 - **Double start** (`start()`, `stop()` in `src/index.ts`): two start commands
   close together both waited out the old run, and the first made native calls
