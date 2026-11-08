@@ -219,6 +219,14 @@ r = runToEnd();
 check('begin: a refused workflow is terminated with the code, before any node',
   r.refused === 'workflow-unsupported:zz.nope' && r.state.status === 'terminated'
   && r.names.join() === 'workflow.end', r);
+// Preset links (docs/WORKFLOWS.md § 4): kept on synced presets, flags only.
+receive(null, [{ id: 'ps_l', name: 'L', values: {}, links: { skills: { 'skill:burst': true, bad: 1 }, 'bad list': { x: true }, empty: {} } },
+  { id: 'ps_n', name: 'N', values: {} }]);
+check('receive: links kept with boolean flags only',
+  JSON.stringify(ctx.gapWorkflowSyncedPresets()[0].links) === JSON.stringify({ skills: { 'skill:burst': true } }),
+  ctx.gapWorkflowSyncedPresets());
+check('receive: a preset without links has none', !('links' in ctx.gapWorkflowSyncedPresets()[1]));
+check('synced presets: a copy', ctx.gapWorkflowSyncedPresets() !== ctx.gapWorkflowSyncedPresets());
 check('receive: bad payload is bad-sync', JSON.parse(ctx.gapWorkflowReceive('{"presets":[]}')).error === 'bad-sync');
 
 // --- the catalog's shape --------------------------------------------------------------
@@ -591,11 +599,14 @@ check('addons: a throwing install is refused',
     host.addStatsCard({ card: 'Half card', items: [] });
     host.onRoundStats(() => { halfStarted = true; });
     ctx.gapWorkflowDefineNode({ type: 'test.halfNode', label: 'Half', params: [], run: () => 'done' });
+    ctx.gapWorkflowLinkPresets('skills', 'Half links');
     throw new Error('half');
   }) === false);
 check('addons: a failed install adds no action',
   JSON.parse(ctx.gapCompanion()).actions.every((a) => a.name !== 'test.half'));
 check('addons: a failed install adds no state info', JSON.parse(ctx.gapRemoteState()).info.halfInfo === undefined);
+check('addons: a failed install adds no preset links',
+  JSON.parse(ctx.gapWorkflowCatalog()).presetLinks === undefined, JSON.parse(ctx.gapWorkflowCatalog()).presetLinks);
 check('addons: a failed install adds no workflow node',
   JSON.parse(ctx.gapWorkflowCatalog()).nodes.length === nodeCount);
 check('addons: a failed install adds no stats card',
@@ -767,6 +778,16 @@ choreAnswer = chore(nodeCtx({ mode: 'claimAll' }));
 check('chore: a stopping run waits, even mid-round', choreAnswer === 'wait' && played === 1, choreAnswer);
 ctx.ts = undefined;
 ctx.roundInProgress = realBoard;
+
+// Preset links registered: in the catalog, once per list, a bad list refused.
+ctx.gapWorkflowLinkPresets('skills', 'Skills');
+ctx.gapWorkflowLinkPresets('skills', 'Skill list');
+let linkThrew = false;
+try { ctx.gapWorkflowLinkPresets('presets', 'x'); } catch (e) { linkThrew = true; }
+check('preset links: in the catalog, the label replaced',
+  JSON.stringify(JSON.parse(ctx.gapWorkflowCatalog()).presetLinks) === JSON.stringify([{ list: 'skills', label: 'Skill list' }]),
+  JSON.parse(ctx.gapWorkflowCatalog()).presetLinks);
+check('preset links: the reserved presets list is refused', linkThrew);
 
 fs.rmSync(storage, { recursive: true, force: true });
 console.log('workflow:check: ' + passed + ' passed, ' + failures + ' failed');

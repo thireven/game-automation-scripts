@@ -152,18 +152,20 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
       directors.push(d);
     },
   };
-  // Workflow nodes and lists go straight into the runner: snapshot to undo them.
+  // Workflow nodes, lists and preset links go straight into the runner: snapshot to undo them.
   const nodeOrder = gapWorkflowNodeOrder.slice();
   const nodes = Object.assign({}, gapWorkflowNodes);
   const listOrder = gapWorkflowListOrder.slice();
   const lists = Object.assign({}, gapWorkflowLists);
   const listInfos = Object.assign({}, gapWorkflowListInfos);
+  const presetLinks = gapWorkflowPresetLinks;
   const undoNodes = function() {
     gapWorkflowNodeOrder = nodeOrder;
     gapWorkflowNodes = nodes;
     gapWorkflowListOrder = listOrder;
     gapWorkflowLists = lists;
     gapWorkflowListInfos = listInfos;
+    gapWorkflowPresetLinks = presetLinks;
   };
   try {
     install(host);

@@ -131,6 +131,8 @@ interface GapWorkflowPreset {
   id: string;
   name: string;
   values: { [key: string]: GapWorkflowScalar };
+  /** The account's links (docs/WORKFLOWS.md § 4): list -> item value -> flag. Absent when none. */
+  links?: { [list: string]: { [value: string]: boolean } };
 }
 
 interface GapWorkflowHooks {
@@ -176,6 +178,8 @@ let gapWorkflowNodes: { [type: string]: GapWorkflowNodeDef } = {};
 let gapWorkflowListOrder: string[] = [];
 let gapWorkflowLists: { [name: string]: () => GapWorkflowListItem[] | null } = {};
 let gapWorkflowListInfos: { [name: string]: GapWorkflowListInfo } = {};
+/** Lists whose items presets may be linked to, in order (`presetLinks` in the catalog). */
+let gapWorkflowPresetLinks: { list: string; label: string }[] = [];
 let gapWorkflowHooks: GapWorkflowHooks | null = null;
 /** The last sync accepted, or null before the first. */
 let gapWorkflowSynced: { hash: string; presets: GapWorkflowPreset[]; workflow: GapWorkflow | null } | null = null;
@@ -211,6 +215,22 @@ function gapWorkflowDefineList(name: string, provider: () => GapWorkflowListItem
   if (info !== undefined) {
     gapWorkflowListInfos[name] = info;
   }
+}
+
+/**
+ * Lets the phone link presets to the items of list `list` (registered with
+ * gapWorkflowDefineList); `label` names the items there. Again for the same list
+ * replaces its label.
+ */
+function gapWorkflowLinkPresets(list: string, label: string): void {
+  if (!GAP_WORKFLOW_NAME.test(list) || list === 'presets') {
+    throw new Error('gapWorkflowLinkPresets: bad list ' + list);
+  }
+  const entry = { list: list, label: label };
+  const at = gapWorkflowPresetLinks.map((l) => l.list).indexOf(list);
+  // A new array, so a snapshot of the old one stays as it was.
+  gapWorkflowPresetLinks = at < 0 ? gapWorkflowPresetLinks.concat([entry])
+    : gapWorkflowPresetLinks.map((l, i) => (i === at ? entry : l));
 }
 
 function gapWorkflowSetHooks(hooks: GapWorkflowHooks): void {
@@ -345,6 +365,9 @@ function gapWorkflowCatalog(): string {
   if (Object.keys(gapWorkflowListInfos).length > 0) {
     catalog.listInfo = gapWorkflowListInfos;
   }
+  if (gapWorkflowPresetLinks.length > 0) {
+    catalog.presetLinks = gapWorkflowPresetLinks;
+  }
   return JSON.stringify(catalog);
 }
 
@@ -390,9 +413,42 @@ function gapWorkflowParsePresets(raw: unknown[]): GapWorkflowPreset[] {
         values[key] = v;
       }
     }
-    out.push({ id: p.id, name: typeof p.name === 'string' ? p.name : p.id, values: values });
+    const preset: GapWorkflowPreset = { id: p.id, name: typeof p.name === 'string' ? p.name : p.id, values: values };
+    const links = gapWorkflowParseLinks(p.links);
+    if (links !== null) {
+      preset.links = links;
+    }
+    out.push(preset);
   }
   return out;
+}
+
+/** A preset's `links` with boolean flags only; null when none are left. */
+function gapWorkflowParseLinks(raw: unknown): { [list: string]: { [value: string]: boolean } } | null {
+  if (!gapWorkflowIsObject(raw)) {
+    return null;
+  }
+  const out: { [list: string]: { [value: string]: boolean } } = {};
+  let any = false;
+  for (const list in raw) {
+    const items = raw[list];
+    if (!GAP_WORKFLOW_NAME.test(list) || !gapWorkflowIsObject(items)) {
+      continue;
+    }
+    const m: { [value: string]: boolean } = {};
+    let some = false;
+    for (const value in items) {
+      if (typeof items[value] === 'boolean') {
+        m[value] = items[value] as boolean;
+        some = true;
+      }
+    }
+    if (some) {
+      out[list] = m;
+      any = true;
+    }
+  }
+  return any ? out : null;
 }
 
 /**
@@ -426,6 +482,11 @@ function gapWorkflowReceive(json: string): string {
 /** JSON WorkflowState of the current or last workflow, or `"null"`. */
 function gapWorkflowState(): string {
   return gapWorkflowRun === null ? 'null' : JSON.stringify(gapWorkflowRun.state);
+}
+
+/** The presets of the last sync (not a running workflow's snapshot); empty before one. */
+function gapWorkflowSyncedPresets(): GapWorkflowPreset[] {
+  return gapWorkflowSynced !== null ? gapWorkflowSynced.presets.slice() : [];
 }
 
 /** A preset of the running snapshot (else of the last sync) by id, or null. */
