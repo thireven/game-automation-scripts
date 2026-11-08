@@ -1106,8 +1106,8 @@ function cancelStopAfterThisRound(): string {
  *
  * A global for the same reason `start`, `stop` and `roundDelaySkip` are: the
  * settings page reaches it by evaluating its name through
- * `JavaScriptInterface.runScript`. It is sent the *whole* form on every save
- * and keeps no list of what is live -- `quickBarApplyOne` (src/quickbar.ts) is
+ * `JavaScriptInterface.runScript`. It is sent the rows changed at each save (a whole
+ * preset or share code at once) and keeps no list of what is live -- `quickBarApplyOne` (src/quickbar.ts) is
  * that list, and it is the same one the Quick Bar's own changes go through, so
  * a value edited on either side means the same thing. Everything else is
  * ignored in silence: most of a run's configuration is read once by `buildRun`

@@ -551,7 +551,7 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
       break;
     // Not a live setting -- most of the form is not. The caller decides whether
     // that is worth a word: from the strip it is a wiring bug, and from the
-    // settings page, which sends the whole form, it is the ordinary case.
+    // settings page, which sends every row it changed, it is the ordinary case.
     default:
       return undefined;
   }
@@ -795,8 +795,8 @@ function quickBarHoldsBack(key: SettingKey): boolean {
  * pages were already shown.
  *
  * Recorded onto `tsum.settings` now even though the world has not moved, and
- * both directions need it. The settings page pushes its whole form at every
- * save and skips a row already at the run's value, so without this it would
+ * both directions need it. The settings page pushes the rows it changed at
+ * every save and skips a row already at the run's value, so without this it would
  * re-send the same change forever; and a user who sets the value back before
  * the round starts would be skipped there and left with the first change still
  * pending. The round in progress reads `roundSettings`, its own copy, so the

@@ -424,8 +424,26 @@ There is no socket and no port in any of this. Everything it needs was already
 there — two WebViews in one process, a bridge object each — so the host side is
 a fan-out that skips the sender (`broadcastToPages`, `FloatingWindowService`).
 
+**The settings page writes only what it changed, and catches up before it
+starts anything.** Its form can be behind the other two copies, so a save never
+sends or stores it whole:
+
+- `saveSettings(settings, keys)` names the rows that changed (`saveDirty`); the
+  flush pushes only those to the run, and `recordSettings` merges only those
+  (plus rows the store lacks) into the store. A preset or share code names all
+  its rows, so it still lands whole.
+- An incoming value skips a row only while that row is a number or text field
+  being typed in (`isBeingTyped`). Skipping any focused control left a tapped
+  dropdown or switch stale until GAP restarted, and the next save wrote it back
+  (6.0b23 reports: the skill chip showing KH2 Cloud mid-run, and Play starting on
+  Burst). The page blurs on hide, and the take logs say what they skipped.
+- Play, the Now buttons and Detect build their command through
+  `syncFormForStart`: flush, then the phone's edits, the store, and the run (if
+  one is going) onto the form, then the command. 1.5 s without an answer goes on
+  the store.
+
 **The engine owns the list of what is live.** `applyLiveSettings` is handed the
-whole form and takes only the keys `quickBarApplyOne` (`src/quickbar.ts`) knows
+rows a save changed and takes only the keys `quickBarApplyOne` (`src/quickbar.ts`) knows
 — the same switch the strip's own changes go through — ignoring the rest in
 silence, which is most of the form: a run reads it once in `buildRun` and only a
 fresh `start()` can change it. Nothing on the page keeps a second list to fall
@@ -473,7 +491,7 @@ Two consequences worth knowing:
   banners *"Applies at the next round"*, because otherwise a round carrying on
   under the old skill looks like the pick having been dropped.
 - **The value is recorded on `ts.settings` when it is set aside**, not when it
-  lands. Both directions need that: the settings page pushes its whole form at
+  lands. Both directions need that: the settings page pushes the rows it changed at
   every save and skips a row already at the run's value, so without it the same
   change would be re-sent forever — and setting the value *back* before the
   round starts would be skipped there too, leaving the first change pending.

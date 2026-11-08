@@ -1110,14 +1110,23 @@ var SAVE_MAX_WAIT_MS = 2000;
 var saveTimer: number | undefined;
 var savePending: SettingSpec[][] | undefined;
 var saveDueBy = 0;
+/**
+ * The rows changed on this page since the last write. Only these go to the store
+ * and the run: the rest of the form may be behind the strip, the phone or a
+ * preset, and writing it whole put those old values back.
+ */
+var saveDirty: { [key: string]: true } = {};
 
-/** Records a change, once the changes stop coming. */
-function saveSettings(settings: SettingSpec[][]) {
+/** Records a change to `keys`, once the changes stop coming. */
+function saveSettings(settings: SettingSpec[][], keys: string[]) {
     var now = Date.now();
     if (saveTimer === undefined) {
         saveDueBy = now + SAVE_MAX_WAIT_MS;
     } else {
         clearTimeout(saveTimer);
+    }
+    for (var i = 0; i < keys.length; i++) {
+        saveDirty[keys[i]] = true;
     }
     savePending = settings;
     saveTimer = setTimeout(flushSettings, Math.max(0, Math.min(SAVE_DEBOUNCE_MS, saveDueBy - now)));
@@ -1135,27 +1144,56 @@ function flushSettings() {
         saveTimer = undefined;
     }
     var pending = savePending;
+    var dirty = Object.keys(saveDirty);
     savePending = undefined;
+    saveDirty = {};
     if (pending === undefined) {
         return;
     }
     // And onto a run in progress, for the rows one can take mid-run -- so a
     // change made here shows on the Quick Bar's strip, and takes effect, without
-    // either side waiting for the next start().
-    pushLiveSettings(recordSettings(pending));
+    // either side waiting for the next start(). Only the changed rows: the run
+    // is the authority on the rest.
+    var values = recordSettings(pending, dirty);
+    var changed: { [key: string]: SettingValue } = {};
+    for (var i = 0; i < dirty.length; i++) {
+        if (values.hasOwnProperty(dirty[i])) {
+            changed[dirty[i]] = values[dirty[i]];
+        }
+    }
+    pushLiveSettings(changed);
 }
 
 /**
- * Writes the form to the store and rebuilds the Run order card.
+ * Writes `keys` from the form into the store and rebuilds the Run order card.
+ *
+ * A merge, not a rewrite: the store is also patched by the strip (`qbRemember`)
+ * and the phone, and a row this form has not caught up on must not be written
+ * back over them. A form key the store lacks yet is added (a fresh device, a
+ * build that added a row). Answers with the whole form's values.
  *
  * The half of a save that is only about this page. `flushSettings` pushes the
- * result at the run as well; `takeSettingValues` does not, because what it just
- * wrote onto the form came from the run in the first place.
+ * changed rows at the run as well; `takeSettingValues` does not, because what it
+ * just wrote onto the form came from the run in the first place.
  */
-function recordSettings(from: SettingSpec[][]): { [key: string]: SettingValue } {
+function recordSettings(from: SettingSpec[][], keys: string[]): { [key: string]: SettingValue } {
     var values = collectSettingValues(from);
     if (localStorage !== undefined) {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(values));
+        var stored = storedSettings();
+        for (var key in values) {
+            if (!(key in stored)) {
+                stored[key] = values[key];
+            }
+        }
+        for (var i = 0; i < keys.length; i++) {
+            if (values.hasOwnProperty(keys[i])) {
+                stored[keys[i]] = values[keys[i]];
+            }
+        }
+        // Read once by the carry* migrations; the old whole-form write dropped them.
+        delete stored[RETIRED_BUY_BOX_TEN_TIMES];
+        delete stored[RETIRED_RESTART_HOURS];
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(stored));
 
         logInfo(Log.Settings.Saved, i18nText(UiText.LogSaveSettings));
     }
@@ -1175,6 +1213,7 @@ function resetSettings() {
         saveTimer = undefined;
     }
     savePending = undefined;
+    saveDirty = {};
     localStorage.removeItem(SETTINGS_KEY);
     // Every row goes back to its default at the next load, so no preset is in use.
     presetEdited();
@@ -1234,7 +1273,9 @@ var LIVE_POLL_MS = 3000;
 /**
  * Hands what was just saved to a run in progress.
  *
- * The whole form goes. `applyLiveSettings` in the engine holds the one list of
+ * Only the rows this page changed go (`saveDirty`): the rest of the form may be
+ * behind the strip, the phone or a preset, and sending it put those values
+ * back. `applyLiveSettings` in the engine holds the one list of
  * what can be changed mid-run -- the same list the strip's own changes go
  * through -- and ignores the rest in silence, so there is no second list here
  * to fall behind it. With nothing running it answers 'no run' and nothing
@@ -1264,7 +1305,12 @@ function pushLiveSettings(values: { [key: string]: SettingValue }): void {
 }
 
 /**
- * The engine has taken the save; tell the other page to read it.
+ * The engine has taken the save; tell the other page to read it, and read it
+ * back here too.
+ *
+ * The read makes up for a nudge this page dropped while the save was pending
+ * (`pullLiveSettings` refuses then), which would otherwise leave the form behind
+ * until the next on-screen poll.
  *
  * Named by `pushLiveSettings` above, so the host can find it. The result is
  * discarded -- the completion is the whole message.
@@ -1275,6 +1321,7 @@ function onLiveSettingsApplied(): void {
     if (iface !== undefined && iface.broadcast !== undefined) {
         iface.broadcast(PageMessage.LiveSettings);
     }
+    pullLiveSettings(true);
 }
 
 /**
@@ -1429,10 +1476,9 @@ function onRemoteSettings(json: string): void {
     if (values === null || typeof values !== 'object') {
         return;
     }
-    var moved = takeSettingValues(values);
-    if (moved.length > 0) {
-        logInfo(Log.Settings.RemoteRead, 'Took settings changed from GAP Companion onto the form',
-            {settings: moved.join(' ')});
+    var taken = takeSettingValues(values);
+    logTaken(Log.Settings.RemoteRead, 'Took settings changed from GAP Companion onto the form', taken);
+    if (taken.moved.length > 0) {
         // The strip draws from the store while no run is going.
         var iface = bridge();
         if (iface !== undefined && iface.broadcast !== undefined) {
@@ -1472,11 +1518,8 @@ function onLiveSettings(json: string): void {
         takeStoredSettings();
         return;
     }
-    var moved = takeSettingValues(state);
-    if (moved.length > 0) {
-        logInfo(Log.Settings.LiveRead, 'Took a change made to the running run onto the form',
-            {settings: moved.join(' ')});
-    }
+    logTaken(Log.Settings.LiveRead, 'Took a change made to the running run onto the form',
+        takeSettingValues(state));
 }
 
 /**
@@ -1489,15 +1532,12 @@ function onLiveSettings(json: string): void {
  * away: Play builds its command from the controls, and they never heard.
  */
 function takeStoredSettings(): void {
-    var moved = takeSettingValues(storedSettings());
-    if (moved.length > 0) {
-        logInfo(Log.Settings.StoreRead, 'Took a change made to the stored settings onto the form',
-            {settings: moved.join(' ')});
-    }
+    logTaken(Log.Settings.StoreRead, 'Took a change made to the stored settings onto the form',
+        takeSettingValues(storedSettings()));
 }
 
 /**
- * Writes the whole form to the store when the store is missing any row of it.
+ * Adds to the store any row of the form it is missing (and only those).
  *
  * A fresh device, or a build that added a setting, leaves the store without
  * those rows, and nothing writes them until a control is changed. The Quick Bar
@@ -1512,7 +1552,7 @@ function completeStoredSettings(): void {
     var form = collectSettingValues(settings);
     for (var key in form) {
         if (!(key in stored)) {
-            recordSettings(settings);
+            recordSettings(settings, []);
             var iface = bridge();
             if (iface !== undefined && iface.broadcast !== undefined) {
                 iface.broadcast(PageMessage.Presets);
@@ -1542,9 +1582,10 @@ function storedSettings(): { [key: string]: SettingValue } {
  * about which rows may move or when the write happens. Answers with the keys
  * that moved, so a caller says nothing when nothing did.
  */
-function takeSettingValues(values: { [key: string]: SettingValue }): string[] {
+function takeSettingValues(values: { [key: string]: SettingValue }): TakenSettings {
     var byKey = settingsByKey();
     var moved: string[] = [];
+    var skipped: string[] = [];
     for (var key in values) {
         var setting = byKey[key];
         // The reply carries the run's coin averages beside its settings; a key
@@ -1552,8 +1593,9 @@ function takeSettingValues(values: { [key: string]: SettingValue }): string[] {
         if (setting === undefined || readSettingValue(setting) === values[key]) {
             continue;
         }
-        // Never a row the user has hold of -- that is a field being typed into.
-        if (controlFor(setting.key) === document.activeElement) {
+        // Never a field being typed into.
+        if (isBeingTyped(controlFor(setting.key))) {
+            skipped.push(key);
             continue;
         }
         if (applySettingValue(setting, values[key])) {
@@ -1564,11 +1606,42 @@ function takeSettingValues(values: { [key: string]: SettingValue }): string[] {
         // Written now, and not pushed back. These values came from the other two
         // copies, so there is nothing to debounce and nothing to tell the run --
         // and a save left pending is what `pullLiveSettings` refuses to read
-        // over, so scheduling one here would drop the next nudge on the floor
-        // and then write this stale form over the store the strip had patched.
-        recordSettings(settings);
+        // over, so scheduling one here would drop the next nudge on the floor.
+        // Only the moved rows: the rest of the form may be the stale part.
+        recordSettings(settings, moved);
     }
-    return moved;
+    return {moved: moved, skipped: skipped};
+}
+
+/** What `takeSettingValues` moved, and what it left because it was being typed into. */
+interface TakenSettings {
+    moved: string[];
+    skipped: string[];
+}
+
+/**
+ * Whether `control` is a number or text field with focus. Only those are held
+ * back from an incoming value: a button or switch keeps focus after a tap too,
+ * and holding those left the row stale for the rest of the session.
+ */
+function isBeingTyped(control: HTMLElement | null): boolean {
+    if (control === null || control !== document.activeElement || control.tagName !== 'INPUT') {
+        return false;
+    }
+    var type = (control as HTMLInputElement).type;
+    return type === 'text' || type === 'number';
+}
+
+/** Logs what a take moved, and anything it held back. Silent when neither. */
+function logTaken(event: Log.Settings, message: string, taken: TakenSettings): void {
+    if (taken.moved.length === 0 && taken.skipped.length === 0) {
+        return;
+    }
+    var data: { settings: string; skipped?: string } = {settings: taken.moved.join(' ')};
+    if (taken.skipped.length > 0) {
+        data.skipped = taken.skipped.join(' ');
+    }
+    logInfo(event, message, data);
 }
 
 // --- Sharing settings ------------------------------------------------------
@@ -2193,7 +2266,8 @@ function applySharedSettings(shared: SharedSettings): { applied: number; skipped
                 'Ignoring a key from a share code that this version does not know', {key: key});
         }
     }
-    saveSettings(settings);
+    // A code is a whole configuration, so every row it covers is written.
+    saveSettings(settings, Object.keys(byKey));
     return {applied: applied, skipped: skipped};
 }
 
@@ -2248,8 +2322,11 @@ function askUnlockLevelsNow(): void {
     flushSettings();
     iface.hideMenu();
     iface.showMenu();
-    iface.runScript('typeof unlockLevelsNow === "function" && unlockLevelsNow('
-        + JSON.stringify(startSettings(settings)) + ');');
+    // Built once the form has caught up (`syncFormForStart`).
+    syncFormForStart(function () {
+        iface!.runScript('typeof unlockLevelsNow === "function" && unlockLevelsNow('
+            + JSON.stringify(startSettings(settings)) + ');');
+    });
     logInfo(Log.Settings.UnlockLevelsNowAsked, 'Asked the run to raise level caps now');
 }
 
@@ -2273,8 +2350,11 @@ function askBuyBoxesNow(): void {
     flushSettings();
     iface.hideMenu();
     iface.showMenu();
-    iface.runScript('typeof buyBoxesNow === "function" && buyBoxesNow('
-        + JSON.stringify(startSettings(settings)) + ');');
+    // Built once the form has caught up (`syncFormForStart`).
+    syncFormForStart(function () {
+        iface!.runScript('typeof buyBoxesNow === "function" && buyBoxesNow('
+            + JSON.stringify(startSettings(settings)) + ');');
+    });
     logInfo(Log.Settings.BuyBoxesNowAsked, 'Asked the run to buy boxes now');
 }
 
@@ -2291,8 +2371,11 @@ function askBuyOpenCapsuleNow(): void {
     flushSettings();
     iface.hideMenu();
     iface.showMenu();
-    iface.runScript('typeof buyOpenCapsuleNow === "function" && buyOpenCapsuleNow('
-        + JSON.stringify(startSettings(settings)) + ');');
+    // Built once the form has caught up (`syncFormForStart`).
+    syncFormForStart(function () {
+        iface!.runScript('typeof buyOpenCapsuleNow === "function" && buyOpenCapsuleNow('
+            + JSON.stringify(startSettings(settings)) + ');');
+    });
     logInfo(Log.Settings.BuyOpenCapsuleNowAsked, 'Asked the run to buy the open capsule until sold out');
 }
 
@@ -2309,8 +2392,11 @@ function askExportTsumListNow(): void {
     flushSettings();
     iface.hideMenu();
     iface.showMenu();
-    iface.runScript('typeof exportTsumListNow === "function" && exportTsumListNow('
-        + JSON.stringify(startSettings(settings)) + ');');
+    // Built once the form has caught up (`syncFormForStart`).
+    syncFormForStart(function () {
+        iface!.runScript('typeof exportTsumListNow === "function" && exportTsumListNow('
+            + JSON.stringify(startSettings(settings)) + ');');
+    });
     logInfo(Log.Settings.ExportTsumListAsked, 'Asked the run to export the Tsum list');
 }
 
@@ -2328,8 +2414,11 @@ function askDirectNow(): void {
     flushSettings();
     iface.hideMenu();
     iface.showMenu();
-    iface.runScript('typeof directNow === "function" && directNow('
-        + JSON.stringify(startSettings(settings)) + ');');
+    // Built once the form has caught up (`syncFormForStart`).
+    syncFormForStart(function () {
+        iface!.runScript('typeof directNow === "function" && directNow('
+            + JSON.stringify(startSettings(settings)) + ');');
+    });
     logInfo(Log.Settings.DirectNowAsked, 'Asked the run for user direction');
 }
 
@@ -2613,9 +2702,12 @@ function askDetectMyTsum(): void {
     iface.hideMenu();
     iface.showMenu();
     logInfo(Log.Settings.DetectMyTsumAsked, 'Asked the engine to read the selected tsum');
-    iface.runScriptCallback('typeof detectMyTsum === "function" ? detectMyTsum('
-        + JSON.stringify(startSettings(settings)) + ') : "no script"',
-        'onMyTsumDetected');
+    // Built once the form has caught up (`syncFormForStart`).
+    syncFormForStart(function () {
+        iface!.runScriptCallback('typeof detectMyTsum === "function" ? detectMyTsum('
+            + JSON.stringify(startSettings(settings)) + ') : "no script"',
+            'onMyTsumDetected');
+    });
 }
 
 /**
@@ -3084,6 +3176,23 @@ function presetFormValues(): SettingValues {
     return collectSettingValues(settings, isUnsharedSetting);
 }
 
+/**
+ * What is set now, for a preset's `own` values (what No preset puts back): the
+ * store, which the strip and the phone also write, with this page's own
+ * changes flushed into it first. The form fills a row the store lacks.
+ */
+function presetCurrentValues(): SettingValues {
+    flushSettings();
+    var stored = storedSettings();
+    var values = presetFormValues();
+    for (var key in values) {
+        if (stored.hasOwnProperty(key)) {
+            values[key] = stored[key];
+        }
+    }
+    return values;
+}
+
 /** The name of the preset in use, or '' for none. */
 function presetLoadedName(): string {
     var active = presetActive(presetsLoad());
@@ -3155,7 +3264,7 @@ function openPresetSheet(): void {
  * engine, an entry with no lid yet) this page's own defaults fill it in.
  */
 function applyPreset(preset: Preset): void {
-    presetsSendUse({op: 'use', lid: preset.lid, current: presetFormValues()}, function (result) {
+    presetsSendUse({op: 'use', lid: preset.lid, current: presetCurrentValues()}, function (result) {
         var values = result !== null && result.values ? result.values : presetFullValues(preset.values);
         var applied = presetWriteForm(values);
         var field = presetNameField();
@@ -3215,7 +3324,8 @@ function presetWriteForm(values: SettingValues): number {
             applied++;
         }
     }
-    saveSettings(settings);
+    // A preset is a full set: every row it names is written, moved or not.
+    saveSettings(settings, Object.keys(values).filter(function (k) { return byKey.hasOwnProperty(k); }));
     flushSettings();
     return applied;
 }
@@ -3789,8 +3899,11 @@ function startSettings(settings: SettingSpec[][]): Partial<Settings> {
 }
 
 function genStartCommand(settings: SettingSpec[][]): string {
-    var command = "start(" + JSON.stringify(startSettings(settings)) + ");";
-    logInfo(Log.Settings.StartCommand, i18nText(UiText.LogStartCommand), {command: command});
+    var values = startSettings(settings);
+    var command = "start(" + JSON.stringify(values) + ");";
+    // The skill on its own too: the command is cut short in the log.
+    logInfo(Log.Settings.StartCommand, i18nText(UiText.LogStartCommand),
+        {skill: values.skillType, command: command});
     return command;
 }
 
@@ -4393,7 +4506,7 @@ function buildSwitch(setting: SettingSpec): HTMLElement {
     input.checked = setting.default === true;
     input.addEventListener('change', function () {
         setting.default = input.checked;
-        saveSettings(settings);
+        saveSettings(settings, [setting.key!]);
         presetEdited(setting);
     });
     return input;
@@ -4448,8 +4561,8 @@ function buildSelect(setting: SettingSpec): HTMLElement {
         openSelectSheet(button, items, current, function (key) {
             show(key);
             setting.default = key;
-            applyDropdownEnables(items, key);
-            saveSettings(settings);
+            var enabled = applyDropdownEnables(items, key);
+            saveSettings(settings, ([setting.key!] as string[]).concat(enabled));
             presetEdited(setting);
         });
     });
@@ -4463,8 +4576,12 @@ function buildSelect(setting: SettingSpec): HTMLElement {
  * same `applySettingValue` a share code goes through, so a switch turned on
  * here is indistinguishable from one the user tapped -- it is saved by the
  * caller's `saveSettings` and travels in a share code like any other.
+ *
+ * Answers with every switch the pick needs, already on or not, so the caller's
+ * save sends them all: a form showing one on is no proof the run has it.
  */
-function applyDropdownEnables(items: SettingSpec[], picked: string): void {
+function applyDropdownEnables(items: SettingSpec[], picked: string): string[] {
+    var needed: string[] = [];
     var byKey: { [key: string]: SettingSpec } | null = null;
     for (var i = 0; i < items.length; i++) {
         if (items[i].key !== picked || items[i].enables === undefined) {
@@ -4484,6 +4601,7 @@ function applyDropdownEnables(items: SettingSpec[], picked: string): void {
                     {option: picked, setting: wanted[j]});
                 continue;
             }
+            needed.push(wanted[j]);
             if (row.default === true) {
                 continue;
             }
@@ -4492,6 +4610,7 @@ function applyDropdownEnables(items: SettingSpec[], picked: string): void {
                 {option: picked, setting: wanted[j]});
         }
     }
+    return needed;
 }
 
 /** Every row of the schema that holds a value, by key. */
@@ -4707,7 +4826,7 @@ function setNumberValue(setting: SettingSpec, input: HTMLInputElement, value: nu
     if (input.parentNode !== null) {
         syncStepLimits(input.parentNode as HTMLElement, setting);
     }
-    saveSettings(settings);
+    saveSettings(settings, [setting.key!]);
     presetEdited(setting);
 }
 
@@ -4760,7 +4879,7 @@ function buildText(setting: SettingSpec): HTMLElement {
     input.value = setting.default as string;
     input.addEventListener('change', function () {
         setting.default = input.value;
-        saveSettings(settings);
+        saveSettings(settings, [setting.key!]);
         presetEdited(setting);
     });
     return input;
@@ -5000,7 +5119,94 @@ function rememberedTab(): string {
     return tabs[0].id;
 }
 
-/** Closes the panel and starts the run from the form. */
+/** Longest a start waits for the form to catch up before going on what it has. */
+var START_SYNC_WAIT_MS = 1500;
+
+/** The start waiting on `syncFormForStart`, if one is. */
+var startSync: { then: () => void; timer: number } | undefined;
+
+/**
+ * Brings the form up to date, then calls `then`.
+ *
+ * Every start and Now button builds its command from the form, and the form can
+ * be behind: the strip, the phone and a preset all change settings with this
+ * page closed. So before building: this page's own changes go to the store,
+ * then the phone's edits, the store and (with a run going) the run are taken
+ * onto the form -- the run last, as it is the authority on what it plays.
+ *
+ * Asynchronous because the engine answers by callback; a press while one sync
+ * is waiting is dropped. No bridge (a desktop browser): the store, then `then`.
+ */
+function syncFormForStart(then: () => void): void {
+    flushSettings();
+    var iface = bridge();
+    if (iface === undefined || typeof iface.runScriptCallback !== 'function') {
+        takeStoredSettings();
+        then();
+        return;
+    }
+    if (startSync !== undefined) {
+        return;
+    }
+    // No answer in time: the store is still there to read, synchronously.
+    startSync = {then: then, timer: setTimeout(function () {
+        if (startSync !== undefined) {
+            takeStoredSettings();
+            finishStartSync();
+        }
+    }, START_SYNC_WAIT_MS)};
+    iface.runScriptCallback(
+        'typeof remoteSettingsTake === "function" ? remoteSettingsTake() : ""', 'onStartSyncRemote');
+}
+
+/** Phone edits for a start (`syncFormForStart`); then asks the run. */
+// noinspection JSUnusedGlobalSymbols
+function onStartSyncRemote(json: string): void {
+    if (startSync === undefined) {
+        return;
+    }
+    onRemoteSettings(json);
+    var iface = bridge();
+    if (iface === undefined) {
+        finishStartSync();
+        return;
+    }
+    iface.runScriptCallback(
+        'typeof quickBarState === "function" ? quickBarState() : ""', 'onStartSyncState');
+}
+
+/** The run's answer for a start: the store, then the run on top, then the start. */
+// noinspection JSUnusedGlobalSymbols
+function onStartSyncState(json: string): void {
+    if (startSync === undefined) {
+        return;
+    }
+    takeStoredSettings();
+    var state: { [key: string]: SettingValue } | null = null;
+    try {
+        state = JSON.parse(json);
+    } catch (e) {
+        state = null;
+    }
+    if (state !== null && state.active === true) {
+        logTaken(Log.Settings.LiveRead, 'Took a change made to the running run onto the form',
+            takeSettingValues(state));
+    }
+    finishStartSync();
+}
+
+/** Runs the waiting start once, whether the sync answered or timed out. */
+function finishStartSync(): void {
+    var waiting = startSync;
+    if (waiting === undefined) {
+        return;
+    }
+    startSync = undefined;
+    clearTimeout(waiting.timer);
+    waiting.then();
+}
+
+/** Closes the panel and starts the run from the form. Call through `syncFormForStart`. */
 function startRun(): void {
     // close settings by hiding and showing menu
     JavaScriptInterface.hideMenu();
@@ -5099,7 +5305,8 @@ function bindAutoSkillPanel(): void {
     });
     on('autoSkillAnyway', function () {
         closeAutoSkillPanel();
-        startRun();
+        // The prompt may have been up for minutes; catch up first.
+        syncFormForStart(startRun);
     });
     on('autoSkillCancel', closeAutoSkillPanel);
 }
@@ -5108,16 +5315,16 @@ function bindAutoSkillPanel(): void {
 // noinspection JSUnusedGlobalSymbols
 function onEvent(eventType: string): void {
     if (eventType === 'OnPlayClick') {
-        // The panel is closing, so a write the debounce is still holding goes
-        // down first. The command below reads the controls, not the store, so
-        // this is about what the page comes back to rather than what starts.
-        flushSettings();
-        // Auto Set Skill Level needs a current Tsum List; ask the engine
-        // first. With the page closed, the answer opens it (`onAutoSkillStatus`).
-        if (startSettings(settings).autoSkillLevel === true && askAutoSkillLevel()) {
-            return;
-        }
-        startRun();
+        // The command reads the controls, so they catch up with the store, the
+        // phone and the run first (`syncFormForStart`); it flushes too.
+        syncFormForStart(function () {
+            // Auto Set Skill Level needs a current Tsum List; ask the engine
+            // first. With the page closed, the answer opens it (`onAutoSkillStatus`).
+            if (startSettings(settings).autoSkillLevel === true && askAutoSkillLevel()) {
+                return;
+            }
+            startRun();
+        });
     } else if (eventType === 'OnPauseClick') {
         JavaScriptInterface.runScript('stop();');
     } else if (eventType === 'OnSettingClick') {
@@ -5337,6 +5544,13 @@ function bootstrap(): void {
     // was away is only on the running world until this asks for it.
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
+            // A hidden page holds no focus: a focused field is skipped by every
+            // read (`isBeingTyped`). Blurring first commits a typed value
+            // (`change`), which the flush then writes.
+            var focused = document.activeElement as HTMLElement | null;
+            if (focused !== null && focused !== document.body && typeof focused.blur === 'function') {
+                focused.blur();
+            }
             flushSettings();
         } else {
             pullLiveSettings();

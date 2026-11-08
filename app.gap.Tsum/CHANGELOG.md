@@ -45,6 +45,27 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b24]
+
+### Summary
+
+**Fixes**
+- The skill (or another setting) no longer switches back on its own after a Quick Bar, preset or phone change, and Play no longer starts on an old skill until GAP is restarted.
+
+### Fixed
+
+- **Settings page stale form.** Incoming values skipped any focused control, so
+  a tapped dropdown or switch never caught up until GAP restarted; every save
+  then pushed the whole form, queueing the old skill for the next round (Quick
+  Bar showed KH2 Cloud over Magic Wand Change), and Play built its command from
+  it (Villains started as Burst). Now only a number/text field being typed in
+  is skipped (`isBeingTyped`), and the page blurs on hide; a save sends and
+  stores only the rows it changed (`saveSettings(settings, keys)`, a merge into
+  the store); Play, the Now buttons and Detect catch up first
+  (`syncFormForStart`: phone, store, run). The take logs list `skipped` rows and
+  `settings.startCommand` carries `skill`.
+- A preset's "No preset" values are taken from the store, not the form.
+
 ## [6.0b23]
 
 ### Summary
