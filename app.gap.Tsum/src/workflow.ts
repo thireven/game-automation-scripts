@@ -371,6 +371,11 @@ function workflowTsumsList(): GapWorkflowListItem[] | null {
     }
     seen[row.tsum] = true;
     const item: GapWorkflowListItem = { value: row.tsum, label: row.name !== '' ? row.name : row.tsum };
+    // A JP build's name: the phone shows (and searches) the English one too.
+    const en = tsumListEnglish(row.tsum, item.label);
+    if (en !== null) {
+      item.en = en;
+    }
     if (row.favorite) {
       item.favorite = true;
     }

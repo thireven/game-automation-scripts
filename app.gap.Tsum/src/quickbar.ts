@@ -188,6 +188,8 @@ function quickBarState(): string {
     // identified it ('' until then, or when the match was unsure). The
     // companion app shows it.
     state.myTsum = ts.myTsumName;
+    // Its English name on a JP build ('' when the same), for the phone's Names setting.
+    state.myTsumEn = tsumListEnglish(ts.myTsum, ts.myTsumName) || '';
 
     const coins = ts.runCoins;
     state.rounds = coins.rounds;

@@ -49,8 +49,20 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*Companion*
+- On the JP game, the companion app shows each tsum's English name too and finds tsums by it.
+
 **Fixes**
 - The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank (merged up from 5.8).
+
+### Added
+
+- **English names for the companion** on a JP build: the `tsums` workflow list
+  gives each item `en`, `round.start` / `round.end` carry `myTsumNameEn` and the
+  state `info.myTsumEn` (null when the same as the shown name), and the screens
+  bind them with the `name:` format, so the phone's Names setting applies.
 
 ### Fixed
 

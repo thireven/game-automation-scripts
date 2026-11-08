@@ -43,8 +43,8 @@ const CompanionMyTsumCard = { card: 'My Tsum', icon: 'tsum', items: [] as unknow
 
 const CompanionScreens = {
   ui: 3,
-  // quickBarState's myTsum is already the full name.
-  summary: { headline: { label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum', whenEmpty: 'Not identified yet' } },
+  // quickBarState's myTsum is already the full name; `name:` lets the phone show its English one.
+  summary: { headline: { label: 'My Tsum', bind: 'state.info.myTsum', format: 'name:state.info.myTsumEn', icon: 'tsum', whenEmpty: 'Not identified yet' } },
   // One Round tile; its menu opens above it. A phone older than bar menus shows the
   // stop-after-round role's tile instead.
   bar: [{ menu: 'Round', icon: 'rounds', items: [
@@ -104,8 +104,8 @@ const CompanionScreens = {
     'task.start': { title: ['{data.task|map:tasks}', 'Next task'] },
     'round.start': {
       title: ['Round {data.round} started', 'Round started'],
-      short: ['Playing {data.myTsumName} · Round {data.round}', 'Playing {data.myTsumName}', 'Playing'],
-      facts: [SKILL_FACT, { label: 'My Tsum', bind: 'data.myTsumName', icon: 'tsum' }],
+      short: ['Playing {data.myTsumName|name:data.myTsumNameEn} · Round {data.round}', 'Playing {data.myTsumName|name:data.myTsumNameEn}', 'Playing'],
+      facts: [SKILL_FACT, { label: 'My Tsum', bind: 'data.myTsumName', format: 'name:data.myTsumNameEn', icon: 'tsum' }],
       note: BONUSES,
     },
     'round.over': {
@@ -135,7 +135,7 @@ const CompanionStatsItems: unknown[] = CompanionScreens.tabs[0].items.slice();
 /** The Stats tab's My Tsum card items: the base fact, then any add-on facts and buttons. */
 function companionMyTsumCard(): unknown[] {
   return [
-    { facts: [{ label: 'My Tsum', bind: 'state.info.myTsum', icon: 'tsum' }, ...gAddonMyTsumCard.facts] },
+    { facts: [{ label: 'My Tsum', bind: 'state.info.myTsum', format: 'name:state.info.myTsumEn', icon: 'tsum' }, ...gAddonMyTsumCard.facts] },
     ...gAddonMyTsumCard.buttons,
   ];
 }

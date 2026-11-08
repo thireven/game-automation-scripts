@@ -301,6 +301,28 @@ function tsumListDisplayName(short: string, build: GameBuild): string {
   return short;
 }
 
+/** English names by id, off the pre-round library; built on first use. */
+var tsumListEnglishCache: { [short: string]: string } | null = null;
+
+/**
+ * `short`'s English name for the companion app, beside `shown` (the name the
+ * build prints). Null when it has none or it is the same, as on the global build.
+ */
+function tsumListEnglish(short: string, shown: string): string | null {
+  if (tsumListEnglishCache === null) {
+    const cache: { [short: string]: string } = {};
+    const lib = myTsumLibrary();
+    for (let i = 0; i < lib.length; i++) {
+      if (lib[i].english !== '') {
+        cache[lib[i].short] = lib[i].english;
+      }
+    }
+    tsumListEnglishCache = cache;
+  }
+  const en = short !== '' ? tsumListEnglishCache[short] : undefined;
+  return en !== undefined && en !== shown ? en : null;
+}
+
 /**
  * The panel's printed name as a signature: the text mask of the name row,
  * squashed to `TsumListName.w` x `h`, plus the row's width over height. Null

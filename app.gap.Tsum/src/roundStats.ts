@@ -1594,6 +1594,7 @@ function myTsumLoadLibrary(file: string, withBoard: boolean): MyTsumEntry[] {
     lib.push({
       short: parts[0],
       names: { [GameBuild.Global]: en, [GameBuild.Japan]: jp },
+      english: parts[1],
       vec: myTsumPrepare(sig),
       board: boardOk && parts.length >= 5 ? myTsumDecodeColor(parts[4]) : null,
     });

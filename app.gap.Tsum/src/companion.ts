@@ -441,6 +441,7 @@ function gapRemoteState(): string {
     // Add-ons add their own fields (src/addons.ts).
     info: Object.assign({
       myTsum: typeof s.myTsum === 'string' && s.myTsum !== '' ? s.myTsum : null,
+      myTsumEn: typeof s.myTsumEn === 'string' && s.myTsumEn !== '' ? s.myTsumEn : null,
     }, gapAddonStateInfo()),
   });
 }

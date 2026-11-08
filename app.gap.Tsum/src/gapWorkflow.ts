@@ -52,6 +52,7 @@ interface GapWorkflowListItem {
   value: string;
   label: string;
   favorite?: boolean; // the phone lists it first, starred
+  en?: string; // its English name when `label` is in another language
 }
 
 /** What the phone shows for a list that is `null` on this device. */
