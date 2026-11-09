@@ -106,9 +106,6 @@ hundred lines and more.
 | `src/skills/pairTsum.ts` | `SkillType.PairTsum` | Two-button activation |
 | `src/skills/donald.ts` | `SkillType.Donald`, `SkillType.HolidayDonald` | |
 | `src/skills/lukeJ.ts` | `SkillType.JediLuke` | Aimed taps — `lukeJTapTargets` |
-| `src/skills/marie.ts` | `SkillType.Marie`, `SkillType.MissBunny`, `SkillType.Rabbit` | |
-| `src/skills/moana.ts` | `SkillType.Moana` | |
-| `src/skills/mickeyH2015.ts` | `SkillType.HornHatMickey` | |
 | `src/skills/snowWhite.ts` | `SkillType.SnowWhite` | |
 | `src/skills/cinderella.ts` | `SkillType.Cinderella` | Blind strokes, not planned chains: serpentines fill the level's link-anything window (`CinderellaConfig.windowMs`), each point held a frame so the game reads it; each is the half and direction that runs longest before a tsum still clearing (`cinderellaPickStroke`, off the clearing ledger), cut there |
 | `src/skills/woody2.ts` | `SkillType.SheriffWoody` | |

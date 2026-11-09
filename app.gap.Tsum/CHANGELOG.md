@@ -57,6 +57,9 @@ release note; they fold back in here when she ships.
 **Fixes**
 - Mocha, Pudding and Souffle are no longer listed as international tsums; they are JP-only.
 
+**Changes**
+- The Marie, Miss Bunny, Rabbit, Moana and Horn Hat Mickey skills are removed; use Burst+Bubbles, which plays them the same way. Saved settings that pick one play as Burst+Bubbles.
+
 ### Added
 
 - **Preset links** (workflow library, `src/gapWorkflow.ts`): `gapWorkflowLinkPresets(list, label)`
@@ -70,6 +73,14 @@ release note; they fold back in here when she ships.
 - **JP-only tsums** (merged up from 5.8): Mocha, Pudding and Souffle lose their
   English name in `tsums.dat` and `tsumsCollection.dat` (INTL ships their art
   and name strips, but they will never be released there).
+
+### Removed
+
+- **Five bubble skills** (`marie.ts`, `moana.ts`, `mickeyH2015.ts`): each was a
+  fixed wait then `clearAllBubbles`, the same as Burst+Bubbles. Their
+  `SkillType`, `UiText` and dropdown entries are gone; the old ids are registered
+  on Burst+Bubbles (`RetiredBubbleSkills`, `src/skills/burst.ts`), and share
+  letters h, m, o, r, y stay unused.
 
 ## [6.0b24]
 

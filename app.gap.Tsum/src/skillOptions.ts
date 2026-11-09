@@ -122,20 +122,12 @@ var SkillsDeclared: SkillOption[] = [
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
 
     // --- Bubble: the skill makes bubbles, the choreography sweeps them --------
+    // Share letters h, m, o, r, y are retired (Horn Hat Mickey, Marie, Moana,
+    // Rabbit, Miss Bunny); do not reuse them, old share codes still carry them.
     {key: SkillType.BurstBubbles, share: 'B', title: UiText.SkillBurstBubbles,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},
     // Aimed by drawing over the board, but it ends on a sweep like the rest.
     {key: SkillType.Cinderella, share: 'c', title: UiText.SkillCinderella,
-     status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},
-    {key: SkillType.HornHatMickey, share: 'h', title: UiText.SkillHornHatMickey,
-     status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},
-    {key: SkillType.Marie, share: 'm', title: UiText.SkillMarie,
-     status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},
-    {key: SkillType.MissBunny, share: 'y', title: UiText.SkillMissBunny,
-     status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},
-    {key: SkillType.Moana, share: 'o', title: UiText.SkillMoana,
-     status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},
-    {key: SkillType.Rabbit, share: 'r', title: UiText.SkillRabbit,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},
     {key: SkillType.SnowWhite, share: 's', title: UiText.SkillSnowWhite,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},

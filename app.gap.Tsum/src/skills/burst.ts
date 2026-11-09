@@ -10,15 +10,16 @@ registerSkill({
 
 // Same skill, on a board that leaves bubbles behind: sweep them after the clear.
 //
-// The generic form of what Marie, Moana, Horn Hat Mickey and Snow White do, and
-// it sweeps the same full play area they do. It used to start at y=1000 -- the
-// bottom third of an area running 632..1532 -- and pause 300ms a row, so it was
-// both slower and narrower than every skill it stands in for.
+// The generic form of what Snow White does, sweeping the same full play area.
+// No startDelay: it waits out the user's "Skill Waiting time" instead.
 //
-// No startDelay, unlike those four: they know their own animation length, this
-// one waits out the user's "Skill Waiting time" above instead.
+// Also plays the retired Marie, Miss Bunny, Rabbit, Moana and Horn Hat Mickey
+// ids (6.0b25), so a form saved with one keeps sweeping instead of playing as
+// a plain burst.
+const RetiredBubbleSkills = ['marie', 'missbunny', 'rabbit', 'moana', 'mickeyh2015'] as unknown as SkillType[];
+
 registerSkill({
-  types: [SkillType.BurstBubbles],
+  types: [SkillType.BurstBubbles, ...RetiredBubbleSkills],
   bareTapActivates: true,
   sweepsBubbles: true,
   afterActivate: function(ts) {
