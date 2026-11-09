@@ -54,6 +54,9 @@ release note; they fold back in here when she ships.
 *Companion*
 - Presets can be assigned to tsums in the companion app, for add-ons that use them.
 
+**Fixes**
+- Mocha, Pudding and Souffle are no longer listed as international tsums; they are JP-only.
+
 ### Added
 
 - **Preset links** (workflow library, `src/gapWorkflow.ts`): `gapWorkflowLinkPresets(list, label)`
@@ -61,6 +64,12 @@ release note; they fold back in here when she ships.
   presets keep their `links` (`gapWorkflowParseLinks`), read with `gapWorkflowSyncedPresets()`.
   An add-on's registration is undone on a failed install (`src/addons.ts`). Needs the companion
   server's preset links (UI 5); without them nothing changes.
+
+### Fixed
+
+- **JP-only tsums** (merged up from 5.8): Mocha, Pudding and Souffle lose their
+  English name in `tsums.dat` and `tsumsCollection.dat` (INTL ships their art
+  and name strips, but they will never be released there).
 
 ## [6.0b24]
 
