@@ -52,8 +52,13 @@ release note; they fold back in here when she ships.
 **Fixes**
 - Pressing Play twice no longer starts the script twice, which had two copies tapping the board at once so no chains were made.
 - The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank.
+- Mocha, Pudding and Souffle are no longer listed as international tsums; they are JP-only.
 
 ### Fixed
+
+- **JP-only tsums**: Mocha, Pudding and Souffle lose their English name in
+  `tsums.dat` and `tsumsCollection.dat` (INTL ships their art and name strips,
+  but they will never be released there).
 
 - **Tsum List libraries**: `tsumsCollection.dat` and `tsumNames.dat` were not
   rebuilt when the five JP tsums reached `tsums.dat`. Rebuilt: 807 portraits,
