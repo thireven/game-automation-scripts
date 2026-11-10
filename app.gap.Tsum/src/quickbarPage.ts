@@ -638,32 +638,53 @@ function qbRender(): void {
     qbRenderNotice();
 }
 
-/** The notice last drawn (`noticeId`), so each is drawn once; and the timer that takes it down. */
-var qbNoticeShown = 0;
+/** A notice as the script reports it (`notices` in `quickBarState()`). */
+interface QbNotice { id: number; kicker: string; title: string; sub: string; ms: number }
+/** Ids already drawn or waiting, so each is drawn once; the ones waiting; and the one up. */
+var qbNoticeSeen: { [id: string]: boolean } = {};
+var qbNoticeQueue: QbNotice[] = [];
 var qbNoticeTimer: ReturnType<typeof setTimeout> | undefined;
 
 /**
- * A brief notice from the script (`quickBarNotice`, src/quickbar.ts), drawn over
- * the strip for `noticeMs` and then taken down; a tap takes it down sooner. Each
- * `noticeId` is drawn once, however many reads carry it.
+ * The script's brief notices (`quickBarNotice`, src/quickbar.ts): each new one is
+ * queued, and they are drawn over the strip in turn, each for its `ms`; a tap takes
+ * the one up down sooner and brings the next.
  */
 function qbRenderNotice(): void {
-    var id = typeof qbState.noticeId === 'number' ? qbState.noticeId : 0;
+    var list: QbNotice[] = [];
+    try {
+        list = typeof qbState.notices === 'string' ? JSON.parse(qbState.notices) : [];
+    } catch (e) {
+        list = [];
+    }
+    for (var i = 0; i < list.length; i++) {
+        var n = list[i];
+        if (n && typeof n.id === 'number' && !qbNoticeSeen[String(n.id)]) {
+            qbNoticeSeen[String(n.id)] = true;
+            qbNoticeQueue.push(n);
+        }
+    }
+    if (qbNoticeTimer === undefined) {
+        qbShowNextNotice();
+    }
+}
+
+function qbShowNextNotice(): void {
     var box = document.querySelector('.qb-notice') as HTMLElement | null;
-    if (box === null || id === 0 || id === qbNoticeShown) {
+    var next = qbNoticeQueue.shift();
+    if (box === null || next === undefined) {
         return;
     }
-    qbNoticeShown = id;
     var put = function(selector: string, value: unknown) {
         var element = box!.querySelector(selector);
         if (element !== null) {
             element.textContent = typeof value === 'string' ? value : '';
         }
     };
-    put('.qb-notice-kicker', qbState.noticeKicker);
-    put('.qb-notice-title', qbState.noticeTitle);
-    put('.qb-notice-sub', qbState.noticeSub);
-    var ms = typeof qbState.noticeMs === 'number' ? qbState.noticeMs : 2500;
+    put('.qb-notice-kicker', next.kicker);
+    put('.qb-notice-title', next.title);
+    put('.qb-notice-sub', next.sub);
+    var ms = typeof next.ms === 'number' && next.ms > 0 ? next.ms : 2500;
     // Restarted, so the bar under it counts down this notice from the start.
     box.hidden = false;
     box.classList.remove('qb-notice-on');
@@ -676,13 +697,18 @@ function qbRenderNotice(): void {
     qbNoticeTimer = setTimeout(qbHideNotice, ms);
 }
 
+/** Takes the notice up down (its time ran out, or a tap), then shows the next waiting. */
 function qbHideNotice(): void {
     var box = document.querySelector('.qb-notice') as HTMLElement | null;
     if (box !== null) {
         box.hidden = true;
         box.classList.remove('qb-notice-on');
     }
+    if (qbNoticeTimer !== undefined) {
+        clearTimeout(qbNoticeTimer);
+    }
     qbNoticeTimer = undefined;
+    qbShowNextNotice();
 }
 
 /**

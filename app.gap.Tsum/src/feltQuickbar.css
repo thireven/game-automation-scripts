@@ -197,3 +197,18 @@ body[data-state="running"] .qb-toggle:not(.qb-wrap-up) { outline-color: var(--ru
 }
 
 .qb-group:not(:first-child) { border-top: 2px dashed var(--rule); }
+
+/* The script's notice (quickbar.css) as a felt patch: the weave on the surface, a
+   marigold stitch just inside and the hard edge under it, the title in the display face. */
+.qb-notice {
+  --qb-notice-accent: var(--mari);
+  --qb-notice-accent-ink: var(--mari-ink);
+  border: 0;
+  background-color: var(--surface);
+  background-image: var(--weave);
+  box-shadow: 0 var(--qb-lift) 0 var(--mari-edge);
+  outline: 1.5px dashed var(--mari);
+  outline-offset: calc(-2.5 * var(--qb-u));
+}
+.qb-notice-title { font-weight: 400; }
+.qb-notice-mark { box-shadow: 0 calc(1.5 * var(--qb-u)) 0 var(--mari-edge); }

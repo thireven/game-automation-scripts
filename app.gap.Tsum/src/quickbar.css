@@ -867,6 +867,8 @@ body:not([data-state="running"]) .qb { border-top-color: var(--tap); }
 /* --- the skill sheet ---------------------------------------------------- */
 
 .qb-sheet {
+  /* Over the script's notice (z-index 5), so a tap on the band closes the sheet. */
+  z-index: 6;
   position: absolute;
   inset: 0;
   display: flex;
@@ -969,25 +971,29 @@ body:not([data-state="running"]) .qb { border-top-color: var(--tap); }
 
 /*
  * A brief notice from the script (`.qb-notice`, quickbarPage.ts), over the whole
- * strip while it shows. Opaque so the controls under it cannot be misread, and
- * outlined in the accent so it reads as a message rather than another chip. The
- * line along its bottom runs down over `--qb-notice-ms`, how long it stays.
+ * strip while it shows: layout only, like the rest of this file. Its colours are
+ * the style's (a11yQuickbar.css, feltQuickbar.css), through the two tokens below,
+ * which fall back to the strip's own palette. Opaque so the controls under it
+ * cannot be misread. The line along its bottom runs down over `--qb-notice-ms`,
+ * how long it stays; a style with no motion leaves it still.
  */
 .qb-notice {
+  --qb-notice-accent: var(--qb-accent, var(--tap));
+  --qb-notice-accent-ink: var(--qb-accent-ink, var(--qb-bg));
   position: absolute;
   left: 6px;
   right: 6px;
-  bottom: calc(var(--qb-vpad) + 0px);
+  bottom: var(--qb-vpad);
   height: calc(var(--qb-height) - 2 * var(--qb-vpad));
   z-index: 5;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 12px;
-  border-radius: 14px;
-  border: 2px dashed var(--qb-accent, #ffb454);
-  background: var(--qb-chip, #1c1b2b);
-  color: var(--qb-ink, #fff);
+  border-radius: var(--qb-radius, 14px);
+  border: 2px solid var(--qb-notice-accent);
+  background: var(--qb-chip);
+  color: var(--qb-ink);
   overflow: hidden;
 }
 .qb-notice[hidden] { display: none; }
@@ -998,28 +1004,31 @@ body:not([data-state="running"]) .qb { border-top-color: var(--tap); }
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--qb-accent, #ffb454);
-  color: var(--qb-accent-ink, #1c1b2b);
-  font: 700 15px/1 var(--font-sans);
+  background: var(--qb-notice-accent);
+  color: var(--qb-notice-accent-ink);
+  font: 700 calc(15px * var(--qb-vs))/1 var(--font-sans);
 }
-.qb-notice-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.qb-notice-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: calc(2px * var(--qb-vs)); }
 .qb-notice-kicker {
-  font: 700 10.5px/1 var(--font-sans);
+  font: 700 calc(10.5px * var(--qb-vs))/1 var(--font-sans);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--qb-accent, #ffb454);
+  color: var(--qb-notice-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .qb-notice-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qb-notice-title { font: 400 calc(18px * var(--qb-vs))/1.15 var(--font-display); }
-.qb-notice-sub { font: 600 12px/1 var(--font-sans); opacity: 0.85; }
+.qb-notice-title { font: 700 calc(17px * var(--qb-vs))/1.15 var(--font-display, var(--font-sans)); }
+.qb-notice-sub { font: 600 calc(12px * var(--qb-vs))/1 var(--font-sans); color: var(--qb-muted, var(--qb-ink)); }
 .qb-notice-timer {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: 4px;
+  bottom: 3px;
   height: 2px;
   border-radius: 2px;
-  background: var(--qb-accent, #ffb454);
+  background: var(--qb-notice-accent);
   transform-origin: left center;
 }
 .qb-notice-on .qb-notice-timer { animation: qb-notice-run var(--qb-notice-ms, 2500ms) linear forwards; }

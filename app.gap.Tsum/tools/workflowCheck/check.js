@@ -844,23 +844,32 @@ run('quickBarApplyPending(gapCheckSkillRun)');
 check('skill before round: a pick held for the next round still lands at the whistle',
   JSON.stringify(skillRun.pendingSettings) === '{}' && skillRun.skillType === 'donald', skillRun);
 
-// A brief notice over the Quick Bar strip: in quickBarState() while it lasts, a new id each time,
-// gone once it has had its showing and the strip's poll.
+// Brief notices over the Quick Bar strip: in quickBarState() while kept, oldest first, ids
+// unique and rising, kept long enough for the ones queued before them, gone at the run's end.
 run('gWorkflowArmed = null');
 ctx.buildRun(JSON.parse(JSON.stringify(settings)), ctx.logStringsFor('en-US'));
 const noticeBanners = [];
 ctx.ts.banner = (text) => noticeBanners.push(text);
+const notices = () => { const s = JSON.parse(ctx.quickBarState()); return s.notices === undefined ? [] : JSON.parse(s.notices); };
 ctx.quickBarNotice({ kicker: 'Heads up', title: 'Main line', sub: 'detail', ms: 2000 });
-const noticeState = JSON.parse(ctx.quickBarState());
-check('notice: quickBarState carries it', noticeState.noticeId > 0 && noticeState.noticeKicker === 'Heads up'
-  && noticeState.noticeTitle === 'Main line' && noticeState.noticeSub === 'detail' && noticeState.noticeMs === 2000, noticeState);
+const first = notices();
+check('notice: quickBarState carries it', first.length === 1 && first[0].kicker === 'Heads up'
+  && first[0].title === 'Main line' && first[0].sub === 'detail' && first[0].ms === 2000, first);
+check('notice: its id comes from the clock, so a new script load cannot repeat one', first[0].id >= Date.now() - 60000, first);
 check('notice: the banner says it too', JSON.stringify(noticeBanners) === JSON.stringify(['Heads up: Main line · detail']), noticeBanners);
 ctx.quickBarNotice({ kicker: 'Again', title: 'Second' });
-const secondNotice = JSON.parse(ctx.quickBarState());
-check('notice: a new one has a new id and the default length', secondNotice.noticeId === noticeState.noticeId + 1
-  && secondNotice.noticeMs === 2500 && secondNotice.noticeSub === '', secondNotice);
-run('gQuickBarNotice.keepUntil = Date.now() - 1');
-check('notice: gone once it has had its time', JSON.parse(ctx.quickBarState()).noticeId === undefined);
+const both = notices();
+check('notice: a second one queues behind the first, with a new id and the default length', both.length === 2
+  && both[1].id > both[0].id && both[1].ms === 2500 && both[1].sub === '', both);
+const kept = run('gQuickBarNotices.map(function (n) { return n.keepUntil; })');
+check('notice: the second is kept for the first\'s showing too', kept[1] - kept[0] >= 2000, kept);
+run('gQuickBarNotices[0].keepUntil = Date.now() - 1');
+check('notice: one is gone once it has had its time', notices().length === 1 && notices()[0].title === 'Second');
+ctx.endRun();
+// Posted as the run ended: not carried into the next one.
+ctx.quickBarNotice({ kicker: 'Late', title: 'x' });
+ctx.buildRun(JSON.parse(JSON.stringify(settings)), ctx.logStringsFor('en-US'));
+check('notice: a new run starts with none', notices().length === 0, notices());
 ctx.endRun();
 
 fs.rmSync(storage, { recursive: true, force: true });

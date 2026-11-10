@@ -188,3 +188,9 @@ body[data-readout="times"] .qb-readout-toggle .qb-dot:nth-child(2) { background:
 }
 
 .qb-toggle { transition: none; }
+
+/* The script's notice (quickbar.css): a solid accent edge, the device's font, and no
+   motion -- the countdown line stays still, as nothing else here moves. */
+.qb-notice { border-width: 2px; }
+.qb-notice-title { font-weight: 700; }
+.qb-notice-on .qb-notice-timer { animation: none; opacity: 0.5; }

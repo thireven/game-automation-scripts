@@ -226,14 +226,11 @@ function quickBarState(): string {
     // The copy's shortest and longest round, drawn nowhere.
     state.minRoundSec = clock.minSec;
     state.maxRoundSec = clock.maxSec;
-    // A brief notice for the strip to draw over itself (`quickBarNotice`), while it lasts.
-    const notice = gQuickBarNotice;
-    if (notice !== null && Date.now() < notice.keepUntil) {
-      state.noticeId = notice.id;
-      state.noticeKicker = notice.kicker;
-      state.noticeTitle = notice.title;
-      state.noticeSub = notice.sub;
-      state.noticeMs = notice.ms;
+    // The brief notices for the strip to draw over itself (`quickBarNotice`), oldest
+    // first, as JSON text: the state's values are scalars.
+    const notices = quickBarNoticesKept();
+    if (notices.length > 0) {
+      state.notices = JSON.stringify(notices);
     }
   }
   return JSON.stringify(state);
@@ -243,11 +240,14 @@ function quickBarState(): string {
 //
 // Something the script did by itself that the player should see (a setting it
 // changed before a round, say): the strip draws it over its own controls for a
-// moment, then goes back to them; a tap on it dismisses it. The strip learns of
-// it on its next read of `quickBarState()` (it polls every 3 s while up), so a
-// notice is kept that much longer than it is shown, and drawn once per id. The
-// strip is below everything the script reads on screen, so nothing waits for it.
-// A hidden strip draws nothing, so the banner under the floating bar says it too.
+// moment, then goes back to them. A tap on it dismisses it while the strip takes
+// taps (paused, stopped, or the column it keeps live mid-run); it is opaque, so a
+// tap never reaches a control under it. The strip learns of notices on its next
+// read of `quickBarState()` (it polls every 3 s while up) and shows each once, in
+// order, so each is kept for its own showing, those queued before it, and a poll.
+// The strip is below everything the script reads on screen, so nothing waits for
+// it. A hidden strip draws nothing, so the banner under the floating bar says it too.
+// Notices belong to the run they were posted in: a new run starts with none.
 
 /** What `quickBarNotice` takes: a small heading, the main line, and an optional detail. */
 interface QuickBarNoticeText {
@@ -262,21 +262,36 @@ interface QuickBarNoticeText {
 const QuickBarNoticeKeepMs = 4000;
 const QuickBarNoticeDefaultMs = 2500;
 
-/** The notice in force, or null. `id` counts up, so the strip draws each one once. */
-let gQuickBarNotice: { id: number; kicker: string; title: string; sub: string; ms: number; keepUntil: number } | null = null;
+/** A posted notice. `id` is unique across script loads (the strip outlives them), so it draws each once. */
+interface QuickBarNoticeKept { id: number; kicker: string; title: string; sub: string; ms: number; keepUntil: number; run: Tsum }
+/** The notices still kept, oldest first; a few at most. */
+let gQuickBarNotices: QuickBarNoticeKept[] = [];
 let gQuickBarNoticeId = 0;
+
+/** The current run's notices still kept, as the strip reads them. */
+function quickBarNoticesKept(): { id: number; kicker: string; title: string; sub: string; ms: number }[] {
+  const now = Date.now();
+  gQuickBarNotices = gQuickBarNotices.filter((n) => now < n.keepUntil && n.run === ts);
+  return gQuickBarNotices.map((n) => ({ id: n.id, kicker: n.kicker, title: n.title, sub: n.sub, ms: n.ms }));
+}
 
 /** Posts a notice over the Quick Bar strip, and the same words to the banner. Never throws. */
 function quickBarNotice(text: QuickBarNoticeText): void {
   const ms = typeof text.ms === 'number' && text.ms > 0 ? Math.min(text.ms, 8000) : QuickBarNoticeDefaultMs;
   const sub = typeof text.sub === 'string' ? text.sub : '';
-  gQuickBarNotice = {
-    id: ++gQuickBarNoticeId, kicker: String(text.kicker), title: String(text.title), sub: sub, ms: ms,
-    keepUntil: Date.now() + ms + QuickBarNoticeKeepMs,
-  };
-  if (ts !== undefined) {
-    ts.banner(String(text.kicker) + ': ' + String(text.title) + (sub === '' ? '' : ' · ' + sub), ms);
+  if (ts === undefined) {
+    return;
   }
+  // Behind the ones still kept: the strip shows them in turn.
+  const queued = quickBarNoticesKept().reduce((sum, n) => sum + n.ms, 0);
+  // From the clock, so a new script load never repeats an id the strip has drawn.
+  gQuickBarNoticeId = Math.max(gQuickBarNoticeId + 1, Date.now());
+  gQuickBarNotices.push({
+    id: gQuickBarNoticeId, kicker: String(text.kicker), title: String(text.title), sub: sub, ms: ms,
+    keepUntil: Date.now() + queued + ms + QuickBarNoticeKeepMs, run: ts,
+  });
+  gQuickBarNotices = gQuickBarNotices.slice(-3);
+  ts.banner(String(text.kicker) + ': ' + String(text.title) + (sub === '' ? '' : ' · ' + sub), ms);
 }
 
 /**
