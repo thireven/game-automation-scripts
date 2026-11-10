@@ -562,6 +562,36 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
 }
 
 /**
+ * Puts `skill` on the run from the pre-round screen, for the round about to
+ * start. Not a live change: the board is not dealt yet, so this is the skill
+ * the round is set up under, as `quickBarApplyOne` does it at the whistle.
+ * Held settings are left alone (a pick held for the next round still lands at
+ * the whistle). The Lorcana card goes on with Lorcana Aurora, as picking her
+ * does (`SkillOption.enables`); for another skill it is set to `lorcanaCard`
+ * when given, else left as it is. False for a skill this build cannot play
+ * (No skill aside), the run unchanged.
+ */
+function applySkillBeforeRound(tsum: Tsum, skill: string, lorcanaCard?: boolean): boolean {
+  if (skill !== SkillType.NoSkill && SkillHandlers[skill] === undefined) {
+    return false;
+  }
+  const card = skill === SkillType.LorcanaAurora ? true : lorcanaCard;
+  tsum.skillType = skill as SkillType;
+  // As at the whistle: a hold on "Link MyTsum first" belonged to the old skill.
+  tsum.setMyTsumPriority(true);
+  if (tsum.settings !== undefined) {
+    quickBarRecord(tsum.settings, SettingKey.SkillType, skill);
+  }
+  if (card !== undefined) {
+    tsum.lorcanaCard = card;
+    if (tsum.settings !== undefined) {
+      quickBarRecord(tsum.settings, SettingKey.LorcanaCard, card);
+    }
+  }
+  return true;
+}
+
+/**
  * Records the change on the run's settings object, beside the live field.
  *
  * `beginRoundStats` copies that object for the CSV, so it has to hold what the

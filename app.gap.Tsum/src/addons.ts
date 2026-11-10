@@ -5,7 +5,8 @@
 // to). It calls `gapAddonRegister` once, and the base reads the registries
 // below where it builds the phone's actions, state and screens
 // (src/companion.ts, src/companionScreens.ts), at a run's start and end
-// (`buildRun` / `endRun`, src/index.ts) and after each round's stats row
+// (`buildRun` / `endRun`, src/index.ts), when the pre-round screen's tsum is
+// read (`identifyMyTsum`, src/roundStats.ts) and after each round's stats row
 // (`finishRoundStats`, src/roundStats.ts). One add-on may be the director, which
 // answers user direction requests (`requestUserDirection`, `gapDirect`,
 // src/companion.ts). Workflow nodes need no hook: an add-on calls
@@ -85,6 +86,14 @@ interface GapAddonHost {
    * still on screen (not called when it never showed). `round` is what was read.
    */
   onRoundStats(fn: (run: Tsum, round: RoundOutcome) => void): void;
+  /**
+   * Called when the pre-round screen's tsum is read with confidence, with its
+   * short id and full name: once per arrival there, and again when a pause on
+   * that screen ends. Normally after the whistle and before the board is dealt;
+   * when it comes first, a setting held for the next round still lands at the
+   * whistle, after this.
+   */
+  onMyTsum(fn: (run: Tsum, short: string, name: string) => void): void;
   /** Makes this add-on the director. One per script: a second one is refused. */
   setDirector(director: GapAddonDirector): void;
 }
@@ -101,6 +110,7 @@ const gAddonStatsCards: unknown[] = [];
 const gAddonRunStart: { id: string; fn: (run: Tsum, controller: TsumTaskController) => void }[] = [];
 const gAddonRunEnd: { id: string; fn: () => void }[] = [];
 const gAddonRoundStats: { id: string; fn: (run: Tsum, round: RoundOutcome) => void }[] = [];
+const gAddonMyTsum: { id: string; fn: (run: Tsum, short: string, name: string) => void }[] = [];
 /** The one director, with its add-on's id; null without one. */
 let gAddonDirector: { id: string; director: GapAddonDirector } | null = null;
 /** True between `gapAddonsRunStart` and `gapAddonsRunEnd`, so a late add-on can catch up. */
@@ -131,6 +141,7 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
   const runEnd: (() => void)[] = [];
   const statsCards: unknown[] = [];
   const roundStats: ((run: Tsum, round: RoundOutcome) => void)[] = [];
+  const myTsum: ((run: Tsum, short: string, name: string) => void)[] = [];
   const directors: GapAddonDirector[] = [];
   const host: GapAddonHost = {
     api: GAP_ADDON_API,
@@ -145,6 +156,7 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
     onRunStart: function(fn) { runStart.push(fn); },
     onRunEnd: function(fn) { runEnd.push(fn); },
     onRoundStats: function(fn) { roundStats.push(fn); },
+    onMyTsum: function(fn) { myTsum.push(fn); },
     setDirector: function(d) {
       if (directors.length > 0) {
         throw new Error('setDirector called twice');
@@ -191,6 +203,7 @@ function gapAddonRegister(id: string, api: number, install: (host: GapAddonHost)
   gAddonStatsCards.push(...statsCards);
   runEnd.forEach(function(fn) { gAddonRunEnd.push({ id: id, fn: fn }); });
   roundStats.forEach(function(fn) { gAddonRoundStats.push({ id: id, fn: fn }); });
+  myTsum.forEach(function(fn) { gAddonMyTsum.push({ id: id, fn: fn }); });
   runStart.forEach(function(fn) {
     gAddonRunStart.push({ id: id, fn: fn });
     // Add-ons can arrive after Start; catch up with the run in progress.
@@ -268,5 +281,13 @@ function gapAddonsRoundStats(run: Tsum, round: RoundOutcome): void {
   for (let i = 0; i < gAddonRoundStats.length; i++) {
     const entry = gAddonRoundStats[i];
     gapAddonCall(entry.id, 'onRoundStats', function() { entry.fn(run, round); });
+  }
+}
+
+/** Called by `identifyMyTsum` after a confident read, on the pre-round screen. */
+function gapAddonsMyTsum(run: Tsum, short: string, name: string): void {
+  for (let i = 0; i < gAddonMyTsum.length; i++) {
+    const entry = gAddonMyTsum[i];
+    gapAddonCall(entry.id, 'onMyTsum', function() { entry.fn(run, short, name); });
   }
 }

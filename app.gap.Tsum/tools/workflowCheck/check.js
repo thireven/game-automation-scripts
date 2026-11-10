@@ -540,6 +540,7 @@ const baseStatsItems = screens.tabs[0].items.length;
 let hookRan = false;
 let started = null;
 const roundStatsSeen = [];
+const myTsumSeen = [];
 // A run already going: an add-on that loads now catches up on onRunStart.
 run('gRunActive = true; gAddonRunStarted = true; ts = { fake: 1 }; var realController = gTaskController; gTaskController = { fake: 2 }');
 check('addons: a test add-on registers',
@@ -555,6 +556,7 @@ check('addons: a test add-on registers',
     host.onRunEnd(() => { hookRan = true; });
     host.addStatsCard({ card: 'Test card', icon: 'coins', items: [{ stats: [{ label: 'T', bind: 'state.info.testInfo' }] }] });
     host.onRoundStats((r, round) => { roundStatsSeen.push({ r, round }); throw new Error('reads nothing'); });
+    host.onMyTsum((r, short, name) => { myTsumSeen.push({ r, short, name }); throw new Error('reads nothing'); });
   }) === true);
 check('addons: onRunStart replayed for a run already going',
   started !== null && started.r.fake === 1 && started.controller.fake === 2, started);
@@ -575,6 +577,17 @@ check('addons: stats card added once, however often the screens are built',
 ctx.gapAddonsRoundStats({ fake: 5 }, { seconds: 60, score: 1, baseCoins: 2, finalCoins: 3, medals: 4 });
 check('addons: onRoundStats gets the run and the round; a throw stays in the add-on',
   roundStatsSeen.length === 1 && roundStatsSeen[0].r.fake === 5 && roundStatsSeen[0].round.finalCoins === 3, roundStatsSeen);
+// The pre-round read, on a stand-in run: a confident read calls the hook, an unsure one does not.
+ctx.gapCheckMyTsumRead = (confident) => ({ confident: confident, short: 'snowwhite', full: 'Snow White',
+  build: 'intl', score: 0.9, margin: 0.2, rival: 'cinderella', rivalGap: 0.1 });
+run(`var gapCheckReadRun = { fake: 6, banner: function() {}, applyAutoSkillLevel: function() {} };
+  gapCheckReadRun.selectedTsum = function() { return gapCheckMyTsumRead(true); };
+  Tsum.prototype.identifyMyTsum.call(gapCheckReadRun);
+  gapCheckReadRun.selectedTsum = function() { return gapCheckMyTsumRead(false); };
+  Tsum.prototype.identifyMyTsum.call(gapCheckReadRun);`);
+check('addons: onMyTsum gets the run, short id and name of a confident read only; a throw stays in the add-on',
+  myTsumSeen.length === 1 && myTsumSeen[0].r.fake === 6 && myTsumSeen[0].short === 'snowwhite'
+  && myTsumSeen[0].name === 'Snow White', myTsumSeen);
 check('addons: task label merged', screens.maps.tasks.testTask === 'Testing'
   && screens.maps.tasks.buyBoxes === 'Buying boxes', screens.maps.tasks);
 check('addons: state info merged', JSON.parse(ctx.gapRemoteState()).info.testInfo === 7);
@@ -598,6 +611,7 @@ check('addons: a throwing install is refused',
     host.onRunStart(() => { halfStarted = true; });
     host.addStatsCard({ card: 'Half card', items: [] });
     host.onRoundStats(() => { halfStarted = true; });
+    host.onMyTsum(() => { halfStarted = true; });
     ctx.gapWorkflowDefineNode({ type: 'test.halfNode', label: 'Half', params: [], run: () => 'done' });
     ctx.gapWorkflowLinkPresets('skills', 'Half links');
     throw new Error('half');
@@ -613,6 +627,7 @@ check('addons: a failed install adds no stats card',
   JSON.parse(ctx.gapScreens()).tabs[0].items.every((i) => i.card !== 'Half card'));
 ctx.gapAddonsRunStart({ fake: 3 }, { fake: 4 });
 ctx.gapAddonsRoundStats({ fake: 3 }, null);
+ctx.gapAddonsMyTsum({ fake: 3 }, 'snowwhite', 'Snow White');
 check('addons: a failed install adds no run or round hook', halfStarted === false);
 ctx.gapAddonsRunEnd();
 check('addons: a failed id can register again',
@@ -788,6 +803,46 @@ check('preset links: in the catalog, the label replaced',
   JSON.stringify(JSON.parse(ctx.gapWorkflowCatalog()).presetLinks) === JSON.stringify([{ list: 'skills', label: 'Skill list' }]),
   JSON.parse(ctx.gapWorkflowCatalog()).presetLinks);
 check('preset links: the reserved presets list is refused', linkThrew);
+ctx.gapWorkflowLinkPresets('skills', 'Skill list', { auto: 'bonusCoin' });
+check('preset links: an auto field goes in the catalog',
+  JSON.stringify(JSON.parse(ctx.gapWorkflowCatalog()).presetLinks)
+    === JSON.stringify([{ list: 'skills', label: 'Skill list', auto: 'bonusCoin' }]),
+  JSON.parse(ctx.gapWorkflowCatalog()).presetLinks);
+ctx.gapWorkflowLinkPresets('skills', 'Skill list');
+check('preset links: declared again without auto, it goes',
+  JSON.parse(ctx.gapWorkflowCatalog()).presetLinks[0].auto === undefined);
+linkThrew = false;
+try { ctx.gapWorkflowLinkPresets('skills', 'x', { auto: 'bad key!' }); } catch (e) { linkThrew = true; }
+check('preset links: a bad auto field is refused', linkThrew);
+
+// A skill put on the run from the pre-round screen: the run and its settings,
+// the Lorcana card on with Aurora and otherwise only when given, held settings
+// untouched, a skill this build lacks refused with the run unchanged.
+run(`var gapCheckSkillRun = { skillType: 'burst', lorcanaCard: false, priority: null,
+  settings: { skillType: 'burst', lorcanaCard: false }, pendingSettings: { skillType: 'donald' },
+  setMyTsumPriority: function(on) { this.priority = on; } };`);
+const skillRun = run('gapCheckSkillRun');
+const tookAurora = ctx.applySkillBeforeRound(skillRun, 'auroraink');
+check('skill before round: Lorcana Aurora goes on with her card',
+  tookAurora === true && skillRun.skillType === 'auroraink' && skillRun.lorcanaCard === true
+  && skillRun.settings.skillType === 'auroraink' && skillRun.settings.lorcanaCard === true
+  && skillRun.priority === true, skillRun);
+ctx.applySkillBeforeRound(skillRun, 'snowwhite');
+check('skill before round: another skill leaves the card as it is',
+  skillRun.skillType === 'snowwhite' && skillRun.lorcanaCard === true && skillRun.settings.lorcanaCard === true, skillRun);
+ctx.applySkillBeforeRound(skillRun, 'burst', false);
+check('skill before round: the card set when given',
+  skillRun.skillType === 'burst' && skillRun.lorcanaCard === false && skillRun.settings.lorcanaCard === false, skillRun);
+check('skill before round: No skill is taken', ctx.applySkillBeforeRound(skillRun, 'nokill') === true
+  && skillRun.skillType === 'nokill');
+skillRun.priority = null;
+const beforeRefused = JSON.stringify(skillRun);
+check('skill before round: a skill this build has no handler for is refused, the run unchanged',
+  ctx.applySkillBeforeRound(skillRun, 'nosuchskill', true) === false && JSON.stringify(skillRun) === beforeRefused, skillRun);
+// The whistle after it: the held pick wins for the round it was held for.
+run('quickBarApplyPending(gapCheckSkillRun)');
+check('skill before round: a pick held for the next round still lands at the whistle',
+  JSON.stringify(skillRun.pendingSettings) === '{}' && skillRun.skillType === 'donald', skillRun);
 
 fs.rmSync(storage, { recursive: true, force: true });
 console.log('workflow:check: ' + passed + ' passed, ' + failures + ' failed');

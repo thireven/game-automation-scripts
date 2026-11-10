@@ -179,7 +179,7 @@ let gapWorkflowListOrder: string[] = [];
 let gapWorkflowLists: { [name: string]: () => GapWorkflowListItem[] | null } = {};
 let gapWorkflowListInfos: { [name: string]: GapWorkflowListInfo } = {};
 /** Lists whose items presets may be linked to, in order (`presetLinks` in the catalog). */
-let gapWorkflowPresetLinks: { list: string; label: string }[] = [];
+let gapWorkflowPresetLinks: { list: string; label: string; auto?: string }[] = [];
 let gapWorkflowHooks: GapWorkflowHooks | null = null;
 /** The last sync accepted, or null before the first. */
 let gapWorkflowSynced: { hash: string; presets: GapWorkflowPreset[]; workflow: GapWorkflow | null } | null = null;
@@ -219,14 +219,22 @@ function gapWorkflowDefineList(name: string, provider: () => GapWorkflowListItem
 
 /**
  * Lets the phone link presets to the items of list `list` (registered with
- * gapWorkflowDefineList); `label` names the items there. Again for the same list
- * replaces its label.
+ * gapWorkflowDefineList); `label` names the items there. `opts.auto` names a
+ * preset field the script applies on its own from an item's default preset, so
+ * the phone can show it beside each item. Again for the same list replaces both.
  */
-function gapWorkflowLinkPresets(list: string, label: string): void {
+function gapWorkflowLinkPresets(list: string, label: string, opts?: { auto?: string }): void {
   if (!GAP_WORKFLOW_NAME.test(list) || list === 'presets') {
     throw new Error('gapWorkflowLinkPresets: bad list ' + list);
   }
-  const entry = { list: list, label: label };
+  const auto = opts !== undefined ? opts.auto : undefined;
+  if (auto !== undefined && !GAP_WORKFLOW_NAME.test(auto)) {
+    throw new Error('gapWorkflowLinkPresets: bad auto field ' + auto);
+  }
+  const entry: { list: string; label: string; auto?: string } = { list: list, label: label };
+  if (auto !== undefined) {
+    entry.auto = auto;
+  }
   const at = gapWorkflowPresetLinks.map((l) => l.list).indexOf(list);
   // A new array, so a snapshot of the old one stays as it was.
   gapWorkflowPresetLinks = at < 0 ? gapWorkflowPresetLinks.concat([entry])

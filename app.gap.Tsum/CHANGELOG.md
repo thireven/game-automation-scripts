@@ -67,6 +67,13 @@ release note; they fold back in here when she ships.
   presets keep their `links` (`gapWorkflowParseLinks`), read with `gapWorkflowSyncedPresets()`.
   An add-on's registration is undone on a failed install (`src/addons.ts`). Needs the companion
   server's preset links (UI 5); without them nothing changes.
+- **Add-on hook `onMyTsum`** (`src/addons.ts`): called from `identifyMyTsum` when the pre-round
+  screen's tsum is read with confidence; a throw stays in the add-on. Additive, so
+  `GAP_ADDON_API` stays 1.
+- **`applySkillBeforeRound`** (`src/quickbar.ts`): sets the skill from the pre-round screen,
+  before the board is dealt; held settings are left for the whistle.
+- **Preset links take `{auto}`** (`src/gapWorkflow.ts`): a list may name one preset field that
+  is applied automatically, carried in the catalog's `presetLinks`.
 
 ### Fixed
 

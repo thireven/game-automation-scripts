@@ -1892,6 +1892,8 @@ Tsum.prototype.identifyMyTsum = function() {
     // sentence is reused so the strip is in the run's language, like the log.
     this.banner('Tsum: ' + selected.full);
     this.applyAutoSkillLevel(selected.short);
+    // Add-ons last: one may put a setting on the run for the round about to start.
+    gapAddonsMyTsum(this, selected.short, selected.full);
   } else {
     logWarn(Log.Tsums.Unidentified,
       'No tsum in the library matched the pre-round icon well enough; leaving the column empty', {
