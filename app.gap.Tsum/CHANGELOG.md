@@ -45,6 +45,42 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b26]
+
+### Summary
+
+**Additions**
+
+*Companion*
+- Add-ons can set the skill on the pre-round screen when My Tsum changes, before the round starts.
+
+*Quick Bar*
+- A brief notice over the Quick Bar says what the script or an add-on just did by itself. Tap it to dismiss it. It follows the page style and light or dark theme.
+
+**Changes**
+- The Marie, Miss Bunny, Rabbit, Moana and Horn Hat Mickey skills are removed; use Burst+Bubbles, which plays them the same way. Saved settings that pick one play as Burst+Bubbles.
+
+### Added
+
+- **Add-on hook `onMyTsum`** (`src/addons.ts`): called from `identifyMyTsum` when the pre-round
+  screen's tsum is read with confidence; a throw stays in the add-on. Additive, so
+  `GAP_ADDON_API` stays 1.
+- **`applySkillBeforeRound`** (`src/quickbar.ts`): sets the skill from the pre-round screen,
+  before the board is dealt; held settings are left for the whistle.
+- **Preset links take `{auto}`** (`src/gapWorkflow.ts`): a list may name one preset field that
+  is applied automatically, carried in the catalog's `presetLinks`.
+- **Quick Bar notices** (`quickBarNotice`, `src/quickbar.ts`): a brief message drawn over the
+  Quick Bar strip for a moment (a tap dismisses it), and said in the banner too, for
+  something the script or an add-on did by itself.
+
+### Removed
+
+- **Five bubble skills** (`marie.ts`, `moana.ts`, `mickeyH2015.ts`): each was a
+  fixed wait then `clearAllBubbles`, the same as Burst+Bubbles. Their
+  `SkillType`, `UiText` and dropdown entries are gone; the old ids are registered
+  on Burst+Bubbles (`RetiredBubbleSkills`, `src/skills/burst.ts`), and share
+  letters h, m, o, r, y stay unused.
+
 ## [6.0b25]
 
 ### Summary
@@ -57,9 +93,6 @@ release note; they fold back in here when she ships.
 **Fixes**
 - Mocha, Pudding and Souffle are no longer listed as international tsums; they are JP-only.
 
-**Changes**
-- The Marie, Miss Bunny, Rabbit, Moana and Horn Hat Mickey skills are removed; use Burst+Bubbles, which plays them the same way. Saved settings that pick one play as Burst+Bubbles.
-
 ### Added
 
 - **Preset links** (workflow library, `src/gapWorkflow.ts`): `gapWorkflowLinkPresets(list, label)`
@@ -67,30 +100,12 @@ release note; they fold back in here when she ships.
   presets keep their `links` (`gapWorkflowParseLinks`), read with `gapWorkflowSyncedPresets()`.
   An add-on's registration is undone on a failed install (`src/addons.ts`). Needs the companion
   server's preset links (UI 5); without them nothing changes.
-- **Add-on hook `onMyTsum`** (`src/addons.ts`): called from `identifyMyTsum` when the pre-round
-  screen's tsum is read with confidence; a throw stays in the add-on. Additive, so
-  `GAP_ADDON_API` stays 1.
-- **`applySkillBeforeRound`** (`src/quickbar.ts`): sets the skill from the pre-round screen,
-  before the board is dealt; held settings are left for the whistle.
-- **Preset links take `{auto}`** (`src/gapWorkflow.ts`): a list may name one preset field that
-  is applied automatically, carried in the catalog's `presetLinks`.
-- **Quick Bar notices** (`quickBarNotice`, `src/quickbar.ts`): a brief message drawn over the
-  Quick Bar strip for a moment (a tap dismisses it), and said in the banner too, for
-  something the script or an add-on did by itself.
 
 ### Fixed
 
 - **JP-only tsums** (merged up from 5.8): Mocha, Pudding and Souffle lose their
   English name in `tsums.dat` and `tsumsCollection.dat` (INTL ships their art
   and name strips, but they will never be released there).
-
-### Removed
-
-- **Five bubble skills** (`marie.ts`, `moana.ts`, `mickeyH2015.ts`): each was a
-  fixed wait then `clearAllBubbles`, the same as Burst+Bubbles. Their
-  `SkillType`, `UiText` and dropdown entries are gone; the old ids are registered
-  on Burst+Bubbles (`RetiredBubbleSkills`, `src/skills/burst.ts`), and share
-  letters h, m, o, r, y stay unused.
 
 ## [6.0b24]
 
