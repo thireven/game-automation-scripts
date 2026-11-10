@@ -74,6 +74,9 @@
           and on the times table `#avgRoundTime`, `#playedTime` and `#runTime`;
         * `.qb-readout-toggle` flips `<body data-readout>` between `coins` and
           `times`; it sits outside `.qb-controls`, so it is never disabled;
+        * `.qb-notice` is a brief notice from the script drawn over the whole
+          strip (`quickBarNotice` in src/quickbar.ts), with `.qb-notice-kicker`,
+          `.qb-notice-title` and `.qb-notice-sub`; hidden until one arrives;
         * `<body>` carries `data-state`, which is what the CSS reads;
         * every control is a `<button>` inside `.qb-controls` -- that is what
           quickbarPage.ts disables while the script is running, the page
@@ -444,6 +447,19 @@
       </table>
       </div>
       </div>
+    </div>
+
+    <!--
+      A brief notice from the script, over the whole strip while it shows (a
+      tap takes it down). `role="status"` so a screen reader says it once.
+    -->
+    <div class="qb-notice" role="status" aria-live="polite" hidden>
+      <span class="qb-notice-mark" aria-hidden="true">&#10022;</span>
+      <span class="qb-notice-text">
+        <span class="qb-notice-kicker"></span>
+        <span class="qb-notice-line"><span class="qb-notice-title"></span> <span class="qb-notice-sub"></span></span>
+      </span>
+      <span class="qb-notice-timer" aria-hidden="true"></span>
     </div>
 
     <!--

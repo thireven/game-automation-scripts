@@ -226,8 +226,57 @@ function quickBarState(): string {
     // The copy's shortest and longest round, drawn nowhere.
     state.minRoundSec = clock.minSec;
     state.maxRoundSec = clock.maxSec;
+    // A brief notice for the strip to draw over itself (`quickBarNotice`), while it lasts.
+    const notice = gQuickBarNotice;
+    if (notice !== null && Date.now() < notice.keepUntil) {
+      state.noticeId = notice.id;
+      state.noticeKicker = notice.kicker;
+      state.noticeTitle = notice.title;
+      state.noticeSub = notice.sub;
+      state.noticeMs = notice.ms;
+    }
   }
   return JSON.stringify(state);
+}
+
+// --- A brief notice over the strip ---------------------------------------------
+//
+// Something the script did by itself that the player should see (a setting it
+// changed before a round, say): the strip draws it over its own controls for a
+// moment, then goes back to them; a tap on it dismisses it. The strip learns of
+// it on its next read of `quickBarState()` (it polls every 3 s while up), so a
+// notice is kept that much longer than it is shown, and drawn once per id. The
+// strip is below everything the script reads on screen, so nothing waits for it.
+// A hidden strip draws nothing, so the banner under the floating bar says it too.
+
+/** What `quickBarNotice` takes: a small heading, the main line, and an optional detail. */
+interface QuickBarNoticeText {
+  kicker: string;
+  title: string;
+  sub?: string;
+  /** How long the strip shows it, in ms (default 2500). */
+  ms?: number;
+}
+
+/** How long a notice stays readable after it is posted, past its own showing: the strip's poll and a margin. */
+const QuickBarNoticeKeepMs = 4000;
+const QuickBarNoticeDefaultMs = 2500;
+
+/** The notice in force, or null. `id` counts up, so the strip draws each one once. */
+let gQuickBarNotice: { id: number; kicker: string; title: string; sub: string; ms: number; keepUntil: number } | null = null;
+let gQuickBarNoticeId = 0;
+
+/** Posts a notice over the Quick Bar strip, and the same words to the banner. Never throws. */
+function quickBarNotice(text: QuickBarNoticeText): void {
+  const ms = typeof text.ms === 'number' && text.ms > 0 ? Math.min(text.ms, 8000) : QuickBarNoticeDefaultMs;
+  const sub = typeof text.sub === 'string' ? text.sub : '';
+  gQuickBarNotice = {
+    id: ++gQuickBarNoticeId, kicker: String(text.kicker), title: String(text.title), sub: sub, ms: ms,
+    keepUntil: Date.now() + ms + QuickBarNoticeKeepMs,
+  };
+  if (ts !== undefined) {
+    ts.banner(String(text.kicker) + ': ' + String(text.title) + (sub === '' ? '' : ' · ' + sub), ms);
+  }
 }
 
 /**

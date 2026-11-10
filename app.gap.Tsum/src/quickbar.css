@@ -966,3 +966,64 @@ body:not([data-state="running"]) .qb { border-top-color: var(--tap); }
   border-top: 1px solid var(--divider);
   padding-top: 6px;
 }
+
+/*
+ * A brief notice from the script (`.qb-notice`, quickbarPage.ts), over the whole
+ * strip while it shows. Opaque so the controls under it cannot be misread, and
+ * outlined in the accent so it reads as a message rather than another chip. The
+ * line along its bottom runs down over `--qb-notice-ms`, how long it stays.
+ */
+.qb-notice {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: calc(var(--qb-vpad) + 0px);
+  height: calc(var(--qb-height) - 2 * var(--qb-vpad));
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 2px dashed var(--qb-accent, #ffb454);
+  background: var(--qb-chip, #1c1b2b);
+  color: var(--qb-ink, #fff);
+  overflow: hidden;
+}
+.qb-notice[hidden] { display: none; }
+.qb-notice-mark {
+  flex: none;
+  width: calc(28px * var(--qb-vs));
+  height: calc(28px * var(--qb-vs));
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--qb-accent, #ffb454);
+  color: var(--qb-accent-ink, #1c1b2b);
+  font: 700 15px/1 var(--font-sans);
+}
+.qb-notice-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.qb-notice-kicker {
+  font: 700 10.5px/1 var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--qb-accent, #ffb454);
+}
+.qb-notice-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qb-notice-title { font: 400 calc(18px * var(--qb-vs))/1.15 var(--font-display); }
+.qb-notice-sub { font: 600 12px/1 var(--font-sans); opacity: 0.85; }
+.qb-notice-timer {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--qb-accent, #ffb454);
+  transform-origin: left center;
+}
+.qb-notice-on .qb-notice-timer { animation: qb-notice-run var(--qb-notice-ms, 2500ms) linear forwards; }
+@keyframes qb-notice-run { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .qb-notice-on .qb-notice-timer { animation: none; }
+}

@@ -74,6 +74,9 @@ release note; they fold back in here when she ships.
   before the board is dealt; held settings are left for the whistle.
 - **Preset links take `{auto}`** (`src/gapWorkflow.ts`): a list may name one preset field that
   is applied automatically, carried in the catalog's `presetLinks`.
+- **Quick Bar notices** (`quickBarNotice`, `src/quickbar.ts`): a brief message drawn over the
+  Quick Bar strip for a moment (a tap dismisses it), and said in the banner too, for
+  something the script or an add-on did by itself.
 
 ### Fixed
 

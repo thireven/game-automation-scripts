@@ -635,6 +635,54 @@ function qbRender(): void {
     qbSetTime('runTime', qbState.runSec, true);
     qbRenderWorkflow();
     qbRenderPreset();
+    qbRenderNotice();
+}
+
+/** The notice last drawn (`noticeId`), so each is drawn once; and the timer that takes it down. */
+var qbNoticeShown = 0;
+var qbNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * A brief notice from the script (`quickBarNotice`, src/quickbar.ts), drawn over
+ * the strip for `noticeMs` and then taken down; a tap takes it down sooner. Each
+ * `noticeId` is drawn once, however many reads carry it.
+ */
+function qbRenderNotice(): void {
+    var id = typeof qbState.noticeId === 'number' ? qbState.noticeId : 0;
+    var box = document.querySelector('.qb-notice') as HTMLElement | null;
+    if (box === null || id === 0 || id === qbNoticeShown) {
+        return;
+    }
+    qbNoticeShown = id;
+    var put = function(selector: string, value: unknown) {
+        var element = box!.querySelector(selector);
+        if (element !== null) {
+            element.textContent = typeof value === 'string' ? value : '';
+        }
+    };
+    put('.qb-notice-kicker', qbState.noticeKicker);
+    put('.qb-notice-title', qbState.noticeTitle);
+    put('.qb-notice-sub', qbState.noticeSub);
+    var ms = typeof qbState.noticeMs === 'number' ? qbState.noticeMs : 2500;
+    // Restarted, so the bar under it counts down this notice from the start.
+    box.hidden = false;
+    box.classList.remove('qb-notice-on');
+    void box.offsetWidth;
+    box.style.setProperty('--qb-notice-ms', ms + 'ms');
+    box.classList.add('qb-notice-on');
+    if (qbNoticeTimer !== undefined) {
+        clearTimeout(qbNoticeTimer);
+    }
+    qbNoticeTimer = setTimeout(qbHideNotice, ms);
+}
+
+function qbHideNotice(): void {
+    var box = document.querySelector('.qb-notice') as HTMLElement | null;
+    if (box !== null) {
+        box.hidden = true;
+        box.classList.remove('qb-notice-on');
+    }
+    qbNoticeTimer = undefined;
 }
 
 /**
@@ -1409,6 +1457,12 @@ function qbCloseSheet(): void {
  * things it does have to keep.
  */
 function qbBind(): void {
+    // A tap on a notice takes it down; it covers the controls, so none is hit through it.
+    var notice = document.querySelector('.qb-notice');
+    if (notice !== null) {
+        notice.addEventListener('click', qbHideNotice);
+    }
+
     // The one control that is a whole configuration rather than one setting, so
     // it carries no `data-key` and has no cell to be found through.
     var preset = document.querySelector('.qb-preset');
