@@ -31,10 +31,16 @@ function generate() {
     if (!s) return null;
     const d = s.default;
     const kind = typeof d === 'boolean' ? 'bool' : typeof d === 'number' ? 'int' : s.dropdown ? 'enum' : 'string';
-    const slot = { key, kind, default: ctx.SHARE_DEFAULTS[key] };
+    // English labels, for showing a preset; the codec ignores them.
+    const slot = { key, kind, default: ctx.SHARE_DEFAULTS[key], label: ctx.i18nText(s.title) };
+    if (s.scale > 1) slot.scale = s.scale;
     if (kind === 'enum') {
       slot.ids = {};
-      for (const o of s.dropdown) if (typeof o.share === 'string') slot.ids[o.key] = o.share;
+      slot.options = {};
+      for (const o of s.dropdown) {
+        if (typeof o.share === 'string') slot.ids[o.key] = o.share;
+        slot.options[o.key] = ctx.i18nText(o.title);
+      }
     }
     return slot;
   });

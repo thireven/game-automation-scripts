@@ -73,7 +73,7 @@ release note; they fold back in here when she ships.
   Quick Bar strip for a moment (a tap dismisses it), and said in the banner too, for
   something the script or an add-on did by itself.
 - **Share-code table** (`tools/companion/shareCodes.js`, build step `build:codes`): writes
-  `build/shareCodes.json` (SHARE_SLOTS with kinds, defaults and `share` ids, plus golden codes
+  `build/shareCodes.json` (SHARE_SLOTS with kinds, defaults, `share` ids and English labels, plus golden codes
   the page made) for the Tsum Tsum Stats preset gallery. The codec stays in `src/settings.ts`.
 
 ### Removed
