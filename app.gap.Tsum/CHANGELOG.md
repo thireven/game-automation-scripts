@@ -53,6 +53,7 @@ release note; they fold back in here when she ships.
 
 *Companion*
 - Add-ons can set the skill on the pre-round screen when My Tsum changes, before the round starts.
+- Presets from the companion app can be turned into share codes for the settings page, through the Tsum Tsum Stats Presets page.
 
 *Quick Bar*
 - A brief notice over the Quick Bar says what the script or an add-on just did by itself. Tap it to dismiss it. It follows the page style and light or dark theme.
@@ -75,6 +76,9 @@ release note; they fold back in here when she ships.
 - **Share-code table** (`tools/companion/shareCodes.js`, build step `build:codes`): writes
   `build/shareCodes.json` (SHARE_SLOTS with kinds, defaults, `share` ids and English labels, plus golden codes
   the page made) for the Tsum Tsum Stats preset gallery. The codec stays in `src/settings.ts`.
+- **`gapCompanion().presetShare`** (`src/companion.ts`): GAP Companion's Export offers "Share
+  codes", opening the Tsum Tsum Stats Presets page with the picked presets, which shows their
+  share codes (adapter 2611102300 passes it on).
 
 ### Removed
 

@@ -401,11 +401,17 @@ function companionRate(total: unknown, playedSec: unknown): string | null {
     ? (total / playedSec).toFixed(2) : null;
 }
 
-/** What the phone shows for this script: readouts, stats rules and actions. */
+/**
+ * Where the phone's Export sends presets to get Tsum share codes: the Tsum Tsum Stats Presets
+ * page, which turns them into codes in the browser. `{p}` is filled by the phone; never fetched.
+ */
+const CompanionPresetShare = { label: 'Share codes', url: 'https://tsum-stats.gapscripts.app/#/presets?p={p}' };
+
+/** What the phone shows for this script: readouts, stats rules, actions and the preset share page. */
 // noinspection JSUnusedGlobalSymbols
 function gapCompanion(): string {
   return JSON.stringify({ readouts: CompanionReadouts, stats: CompanionStats,
-    actions: CompanionRemoteActions.concat(gapAddonActionList()) });
+    actions: CompanionRemoteActions.concat(gapAddonActionList()), presetShare: CompanionPresetShare });
 }
 
 /** The run as the phone sees it: `{active, values, readouts, flags, info}`. */
