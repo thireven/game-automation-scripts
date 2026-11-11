@@ -179,4 +179,4 @@ if (require.main === module) {
     + `languages: ${['en'].concat(Object.keys(schema.translations)).join(', ')}`);
 }
 
-module.exports = { generate, UI };
+module.exports = { generate, loadPage, UI };

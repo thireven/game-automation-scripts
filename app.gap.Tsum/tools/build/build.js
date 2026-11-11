@@ -342,6 +342,9 @@ const steps = [
     id: 'dist:companion', needs: ['minify:pages'],
     run: ({ log }) => node(log, 'tools/companion/settings.js', '--channel-status', String(channel.Status)),
   },
+  // The share-code table and golden codes for the Tsum Tsum Stats preset gallery.
+  // In build/, not dist/: devices never read it, so it stays out of the archive.
+  { id: 'build:codes', needs: ['minify:pages'], run: ({ log }) => node(log, 'tools/companion/shareCodes.js') },
   // The tsum portrait libraries: not compiled, but shipped, so they go into
   // dist/ under the same rule as the scripts. Each is read off getScriptPath()
   // on first use rather than out of the bundle. tsumNames.dat and
@@ -388,7 +391,7 @@ const steps = [
   // Last into dist/: it hashes every file there, so the archive and the push carry it.
   {
     id: 'sign',
-    needs: ['dist:index', 'dist:quickbar', 'dist:bundle', 'dist:library', 'dist:notices', 'dist:env', 'dist:backup', 'dist:companion'],
+    needs: ['dist:index', 'dist:quickbar', 'dist:bundle', 'dist:library', 'dist:notices', 'dist:env', 'dist:backup', 'dist:companion', 'build:codes'],
     run: ({ log }) => signDist(log),
   },
   { id: 'archive', needs: ['sign'], run: ({ log }) => writeArchive(log) },
