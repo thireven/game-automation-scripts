@@ -61,6 +61,9 @@ release note; they fold back in here when she ships.
 **Changes**
 - The Marie, Miss Bunny, Rabbit, Moana and Horn Hat Mickey skills are removed; use Burst+Bubbles, which plays them the same way. Saved settings that pick one play as Burst+Bubbles.
 
+**Fixes**
+- The Quick Bar no longer shows a preset's settings in place of the ones the run is using (such as the wrong skill level with Auto Set Skill Level on).
+
 ### Added
 
 - **Add-on hook `onMyTsum`** (`src/addons.ts`): called from `identifyMyTsum` when the pre-round
@@ -87,6 +90,13 @@ release note; they fold back in here when she ships.
   `SkillType`, `UiText` and dropdown entries are gone; the old ids are registered
   on Burst+Bubbles (`RetiredBubbleSkills`, `src/skills/burst.ts`), and share
   letters h, m, o, r, y stay unused.
+
+### Fixed
+
+- **Quick Bar drew a preset over the run** (`qbTakeValues`, `src/quickbarPage.ts`): a preset
+  picked while stopped stayed in `qbSent`, which only an apply's reply clears, so every
+  state read of the next run showed the preset's values (e.g. Lv 6 while Auto Set Skill
+  Level played 5).
 
 ## [6.0b25]
 

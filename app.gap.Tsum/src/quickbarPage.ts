@@ -948,11 +948,8 @@ function qbTakeValues(values: SettingValues): void {
     }
     // The store first: it is where the rows no run can take live have to land.
     qbRemember(values);
-    // Drawn from the values rather than from the reply, as `qbApply` is -- and
-    // held in `qbSent` for the same reason, so a state read already on its way
-    // cannot land the old values over these.
+    // Drawn from the values rather than from the reply, as `qbApply` is.
     qbOverlay(qbState, values);
-    qbOverlay(qbSent, values);
     qbRender();
     if (qbIdle) {
         // No run to take it; the store is all of it. `Presets` so the settings
@@ -962,6 +959,10 @@ function qbTakeValues(values: SettingValues): void {
         }
         return;
     }
+    // Held in `qbSent` so a state read already on its way cannot land the old
+    // values over these. Only here: stopped, no reply would ever clear it, and
+    // every read of the next run would show the preset over the live values.
+    qbOverlay(qbSent, values);
     qbInFlight++;
     // Guarded, as everything this page evaluates is: with no script started the
     // bare name is a ReferenceError in the engine's log rather than here.
