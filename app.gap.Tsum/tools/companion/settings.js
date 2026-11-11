@@ -130,7 +130,11 @@ function walk(ctx) {
     if (groups.length > 0) layout.push({ id: tab.id, label: t(tab.title), groups });
   }
   const keys = new Set(controls.map((c) => c.key));
-  const presetFields = ctx.SHARE_SLOTS.filter((k) => keys.has(k));
+  // The order the companion's preset editor shows them: the most often changed
+  // first, then the rest in SHARE_SLOTS order (which itself must not move).
+  const FIRST = ['skillType', 'bubbleStrategy'];
+  const presetFields = FIRST.concat(ctx.SHARE_SLOTS.filter((k) => FIRST.indexOf(k) < 0))
+    .filter((k) => keys.has(k));
   // Through JSON, so every `undefined` above simply drops out.
   return JSON.parse(JSON.stringify({ ui: UI, controls, layout, buttons, presetFields }));
 }
