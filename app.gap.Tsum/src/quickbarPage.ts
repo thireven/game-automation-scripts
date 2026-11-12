@@ -320,6 +320,13 @@ function onGapState(json: string): void {
     if (!live || !visible || idle !== qbIdle) {
         qbFlushApplies();
     }
+    // A run starting: nothing sent before it can still be waiting on a reply
+    // from it, so no stale overlay may draw over its values. A late reply
+    // only decrements a counter already floored at 0.
+    if (qbIdle && !idle) {
+        qbSent = {};
+        qbInFlight = 0;
+    }
     qbLive = live;
     qbIdle = idle;
     qbVisible = visible;
@@ -875,6 +882,7 @@ function qbFlushApplies(): void {
     // is told to re-read it.
     if (qbIdle) {
         qbRemember(sending);
+        qbRememberStart(sending);
         qbNudgePages();
         return;
     }
@@ -954,6 +962,7 @@ function qbTakeValues(values: SettingValues): void {
     if (qbIdle) {
         // No run to take it; the store is all of it. `Presets` so the settings
         // page reloads its form from there.
+        qbRememberStart(values);
         if (bridge.broadcast !== undefined) {
             bridge.broadcast(PageMessage.Presets);
         }
@@ -1312,6 +1321,19 @@ function qbRemember(values: { [key: string]: string | number | boolean }): void 
         qbLog(Log.QuickBar.ApplyFailed, 'The Quick Bar could not save a setting for the next run',
             {settings: Object.keys(values).join(' ')});
     }
+}
+
+/**
+ * Stopped: also hands `values` to the engine for `last-settings.json`, so a
+ * start from the phone or a workflow runs with them (`rememberStartSettings`).
+ */
+function qbRememberStart(values: { [key: string]: string | number | boolean }): void {
+    var bridge = qbBridge();
+    if (bridge === undefined) {
+        return;
+    }
+    bridge.runScript('typeof rememberStartSettings === "function" && rememberStartSettings('
+        + JSON.stringify(values) + ');');
 }
 
 // --- the sheets ------------------------------------------------------------

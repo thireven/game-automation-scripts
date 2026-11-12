@@ -378,6 +378,43 @@ function rememberRemoteSetting(key: string, value: string | number | boolean): v
 }
 
 /**
+ * A change made on the settings page or Quick Bar while stopped, written into
+ * `last-settings.json` so a remote, workflow or Take-over start runs with it
+ * rather than with the previous run's value. Unknown and one-shot keys are
+ * skipped. Never throws.
+ */
+function rememberStartSettings(values?: { [key: string]: unknown }): string {
+  if (values === undefined || values === null || typeof values !== 'object') {
+    return 'no settings';
+  }
+  try {
+    const path = lastSettingsPath();
+    if (path === '') {
+      return 'no device folder';
+    }
+    const last = remoteStartSettings() as unknown as { [key: string]: unknown };
+    const keys = Object.keys(values);
+    const saved: string[] = [];
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      if (!(key in SettingDefaults) || LastSettingsOneShot.indexOf(key as SettingKey) !== -1) {
+        continue;
+      }
+      last[key] = values[key];
+      saved.push(key);
+    }
+    if (saved.length > 0) {
+      writeFile(path, JSON.stringify(last));
+    }
+    return 'saved ' + saved.join(' ');
+  } catch (e) {
+    logWarn(Log.Run.LastSettingsNotSaved, 'Could not save the last run settings',
+      { errorText: '' + e });
+    return 'failed';
+  }
+}
+
+/**
  * Every remote setting's current value: the running world's when there is a
  * run, else the next start's (`remoteStartSettings`), with pending remote
  * changes on top. `gapRemoteState` (src/companion.ts) sends it.
@@ -1128,6 +1165,8 @@ function cancelStopAfterThisRound(): string {
 // noinspection JSUnusedGlobalSymbols
 function applyLiveSettings(values?: Partial<Settings>): string {
   if (!gRunActive || ts === undefined) {
+    // Stopped: kept for the next start that does not come from the page.
+    rememberStartSettings(values as { [key: string]: unknown } | undefined);
     return 'no run';
   }
   if (values === undefined) {
