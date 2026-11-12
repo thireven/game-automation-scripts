@@ -45,6 +45,39 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b27]
+
+### Summary
+
+**Additions**
+
+*Companion*
+- Presets from the companion app can be turned into share codes for the settings page, through the Tsum Tsum Stats Presets page.
+
+**Fixes**
+- The Quick Bar no longer shows a preset's settings in place of the ones the run is using (such as the wrong bubble strategy, or skill level with Auto Set Skill Level on).
+- Starting from the companion app, a workflow or Take-over uses the settings changed on the settings page or Quick Bar while stopped, not the previous run's.
+
+### Added
+
+- **Share-code table** (`tools/companion/shareCodes.js`, build step `build:codes`): writes
+  `build/shareCodes.json` (SHARE_SLOTS with kinds, defaults, `share` ids and English labels, plus golden codes
+  the page made) for the Tsum Tsum Stats preset gallery. The codec stays in `src/settings.ts`.
+- **`gapCompanion().presetShare`** (`src/companion.ts`): GAP Companion's Export offers "Share
+  codes", opening the Tsum Tsum Stats Presets page with the picked presets, which shows their
+  share codes (adapter 2611102300 passes it on).
+
+### Fixed
+
+- **Quick Bar drew a preset over the run** (`qbTakeValues`, `src/quickbarPage.ts`): a preset
+  picked while stopped stayed in `qbSent`, which only an apply's reply clears, so every
+  state read of the next run showed the preset's values (e.g. Lv 6 while Auto Set Skill
+  Level played 5).
+- **Start settings changed while stopped** (`rememberStartSettings`, `src/index.ts`): page saves
+  (`applyLiveSettings` with no run) and the Quick Bar's stopped taps and presets now update
+  `last-settings.json`, which remote, workflow and Take-over starts replay. The Quick Bar also
+  clears `qbSent` when a run starts.
+
 ## [6.0b26]
 
 ### Summary
@@ -53,16 +86,12 @@ release note; they fold back in here when she ships.
 
 *Companion*
 - Add-ons can set the skill on the pre-round screen when My Tsum changes, before the round starts.
-- Presets from the companion app can be turned into share codes for the settings page, through the Tsum Tsum Stats Presets page.
 
 *Quick Bar*
 - A brief notice over the Quick Bar says what the script or an add-on just did by itself. Tap it to dismiss it. It follows the page style and light or dark theme.
 
 **Changes**
 - The Marie, Miss Bunny, Rabbit, Moana and Horn Hat Mickey skills are removed; use Burst+Bubbles, which plays them the same way. Saved settings that pick one play as Burst+Bubbles.
-
-**Fixes**
-- The Quick Bar no longer shows a preset's settings in place of the ones the run is using (such as the wrong skill level with Auto Set Skill Level on).
 
 ### Added
 
@@ -76,12 +105,6 @@ release note; they fold back in here when she ships.
 - **Quick Bar notices** (`quickBarNotice`, `src/quickbar.ts`): a brief message drawn over the
   Quick Bar strip for a moment (a tap dismisses it), and said in the banner too, for
   something the script or an add-on did by itself.
-- **Share-code table** (`tools/companion/shareCodes.js`, build step `build:codes`): writes
-  `build/shareCodes.json` (SHARE_SLOTS with kinds, defaults, `share` ids and English labels, plus golden codes
-  the page made) for the Tsum Tsum Stats preset gallery. The codec stays in `src/settings.ts`.
-- **`gapCompanion().presetShare`** (`src/companion.ts`): GAP Companion's Export offers "Share
-  codes", opening the Tsum Tsum Stats Presets page with the picked presets, which shows their
-  share codes (adapter 2611102300 passes it on).
 
 ### Removed
 
@@ -90,13 +113,6 @@ release note; they fold back in here when she ships.
   `SkillType`, `UiText` and dropdown entries are gone; the old ids are registered
   on Burst+Bubbles (`RetiredBubbleSkills`, `src/skills/burst.ts`), and share
   letters h, m, o, r, y stay unused.
-
-### Fixed
-
-- **Quick Bar drew a preset over the run** (`qbTakeValues`, `src/quickbarPage.ts`): a preset
-  picked while stopped stayed in `qbSent`, which only an apply's reply clears, so every
-  state read of the next run showed the preset's values (e.g. Lv 6 while Auto Set Skill
-  Level played 5).
 
 ## [6.0b25]
 
