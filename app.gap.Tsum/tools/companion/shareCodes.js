@@ -34,6 +34,12 @@ function generate() {
     // English labels, for showing a preset; the codec ignores them.
     const slot = { key, kind, default: ctx.SHARE_DEFAULTS[key], label: ctx.i18nText(s.title) };
     if (s.scale > 1) slot.scale = s.scale;
+    // The row's range in stored units, so the site can refuse values the page would clamp.
+    if (kind === 'int' && typeof s.min === 'number' && typeof s.max === 'number') {
+      slot.min = s.min;
+      slot.max = s.max;
+      if (s.allowZero) slot.allowZero = true;
+    }
     if (kind === 'enum') {
       slot.ids = {};
       slot.options = {};
