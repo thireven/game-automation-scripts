@@ -47,6 +47,7 @@ const enum JobPriority {
   /** One add-on's one-shot task (src/addons.ts). */
   AddonNow = 13,
   BuyOpenCapsuleNow = 14,
+  BuyOpenTenNow = 14,
   /** The Debug tab's Direct (`directNow`, src/index.ts). */
   DirectNow = 15,
   AppRestart = 20,
@@ -103,9 +104,9 @@ function runTaskTable(settings: RunSettings): TaskSpec[] {
       intervalMs: 1000, dueAtStart: true });
     return jobs;
   }
-  // A run the Tsum List or Buy Open Capsule Now button started does that
-  // and nothing else; `buildRun` queues it.
-  if (on(SettingKey.TsumListOnly) || on(SettingKey.BuyOpenCapsuleOnly)) {
+  // A run the Tsum List, Buy Open Capsule or Buy Open Box 10-Time Now button
+  // started does that and nothing else; `buildRun` queues it.
+  if (on(SettingKey.TsumListOnly) || on(SettingKey.BuyOpenCapsuleOnly) || on(SettingKey.BuyOpenTenOnly)) {
     return jobs;
   }
   if (on(SettingKey.ReceiveHeartsOneByOne)) {

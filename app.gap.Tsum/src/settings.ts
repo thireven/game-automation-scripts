@@ -555,6 +555,16 @@ var tabs: TabSpec[] = [
                             {text: i18nThunk(UiText.ButtonNow), onClick: function () { askBuyOpenCapsuleNow(); },
                                 remote: 'buyOpenCapsuleNow', confirm: UiText.CompanionConfirmSpendNow, whenStopped: true}
                         ]
+                    },
+                    {
+                        // As Buy Open Capsule, 10 at a time -- see `askBuyOpenTenNow`.
+                        key: RowKey.BuyOpenTen,
+                        title: UiText.SettingBuyOpenTen,
+                        help: UiText.SettingBuyOpenTenHelp,
+                        buttons: [
+                            {text: i18nThunk(UiText.ButtonNow), onClick: function () { askBuyOpenTenNow(); },
+                                remote: 'buyOpenTenNow', confirm: UiText.CompanionConfirmSpendNow, whenStopped: true}
+                        ]
                     }
                 ]
             },
@@ -2377,6 +2387,23 @@ function askBuyOpenCapsuleNow(): void {
             + JSON.stringify(startSettings(settings)) + ');');
     });
     logInfo(Log.Settings.BuyOpenCapsuleNowAsked, 'Asked the run to buy the open capsule until sold out');
+}
+
+/** Buy Open Box 10-Time's Now button. As `askBuyOpenCapsuleNow`, through `buyOpenTenNow`. */
+// noinspection JSUnusedGlobalSymbols
+function askBuyOpenTenNow(): void {
+    var iface = bridge();
+    if (iface === undefined) {
+        return;
+    }
+    flushSettings();
+    iface.hideMenu();
+    iface.showMenu();
+    syncFormForStart(function () {
+        iface!.runScript('typeof buyOpenTenNow === "function" && buyOpenTenNow('
+            + JSON.stringify(startSettings(settings)) + ');');
+    });
+    logInfo(Log.Settings.BuyOpenTenNowAsked, 'Asked the run to buy the open box 10 at a time until sold out');
 }
 
 /**

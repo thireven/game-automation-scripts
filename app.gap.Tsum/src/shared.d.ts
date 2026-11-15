@@ -378,6 +378,7 @@ declare const enum SettingKey {
   BuyBoxesFirst = 'buyBoxesFirst',
   TsumListOnly = 'tsumListOnly',
   BuyOpenCapsuleOnly = 'buyOpenCapsuleOnly',
+  BuyOpenTenOnly = 'buyOpenTenOnly',
   ReceiveAllHearts = 'receiveAllHearts',
   ReceiveAllHeartsMinWait = 'receiveAllHeartsMinWait',
   ReceiveHeartsOneByOne = 'receiveHeartsOneByOne',
@@ -558,6 +559,8 @@ interface Settings {
    * until sold out and stops. Not a schema entry; `buyOpenCapsuleNow()` sets it.
    */
   [SettingKey.BuyOpenCapsuleOnly]?: boolean;
+  /** As `BuyOpenCapsuleOnly`, for Buy Open Box 10-Time; `buyOpenTenNow()` sets it. */
+  [SettingKey.BuyOpenTenOnly]?: boolean;
   [SettingKey.ReceiveAllHearts]: boolean;
   [SettingKey.ReceiveAllHeartsMinWait]: number;
   [SettingKey.ReceiveHeartsOneByOne]: boolean;

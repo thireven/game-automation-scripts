@@ -1701,10 +1701,10 @@ interface Tsum {
   buyBoxes(box: BoxType, size: BoxPurchaseSize, maxPurchases: number): LogFields | null;
   /** True once the sweep has run; false when it stood aside for a round in progress. */
   taskBuyBoxes(): boolean;
-  /** Buy Open Capsule's loop. The fields for `Log.Box.End`, or null when the run stopped. */
-  buyOpenCapsule(): LogFields | null;
+  /** Buy Open Capsule's loop (`tenTimes`: Buy Open Box 10-Time's). The fields for `Log.Box.End`, or null when the run stopped. */
+  buyOpenCapsule(tenTimes: boolean): LogFields | null;
   /** True once it has run; false when it stood aside for a round in progress. */
-  taskBuyOpenCapsule(): boolean;
+  taskBuyOpenCapsule(tenTimes: boolean): boolean;
 
   // --- fever.ts --------------------------------------------------------
   /**

@@ -677,40 +677,60 @@ Tsum.prototype.taskBuyBoxes = function() {
 // tab, which is how a capsule the tab table does not know is bought -- the JP
 // build's on the store's second page. Purchases and reveals are the sweep's own
 // (`buyOneBox`), so GET! and Last Prize! clear as above.
+//
+// Buy Open Box 10-Time is the same loop on a box with the 1-Time/10-Time pair
+// (300,000 coins a press): 10-Time until the store refuses it (fewer than ten
+// left), then 1-Time for the rest, until sold out.
 // ---------------------------------------------------------------------------
 
 /** Runaway guard on one run. A capsule holds 15, so this is never the real end. */
 const BuyOpenCapsuleMaxPurchases = 300;
+/** Runaway guard for 10-Time: a box that never sells out (Premium) stops here. */
+const BuyOpenTenMaxPurchases = BuyBoxMaxPurchases;
 
 /**
- * Buy the open capsule until it is sold out, out of Coins, or something else
- * stops it. Returns the fields for `Log.Box.End`, or null when the run stopped.
+ * Buy the open capsule (or, with `tenTimes`, the open box 10 at a time) until it
+ * is sold out, out of Coins, or something else stops it. Returns the fields for
+ * `Log.Box.End`, or null when the run stopped.
  *
- * A capsule draws one centred 1-Time button. A box showing the 1-Time/10-Time
- * pair is not a capsule -- the player opened the wrong one, or the store came
- * back on another box -- so the run stops rather than buying it.
+ * A capsule draws one centred 1-Time button, so the capsule mode stops on the
+ * 1-Time/10-Time pair: the player opened the wrong box. The 10-Time mode stops
+ * on the reverse, a box with no 10-Time button before any was bought.
  */
-Tsum.prototype.buyOpenCapsule = function() {
+Tsum.prototype.buyOpenCapsule = function(tenTimes) {
+  const limit = tenTimes ? BuyOpenTenMaxPurchases : BuyOpenCapsuleMaxPurchases;
+  // Turned off by the store's refusal; the rest of the box goes 1-Time.
+  let ten = tenTimes;
   let bought = 0;
   let misses = 0;
 
-  while (this.mayContinue() && bought < BuyOpenCapsuleMaxPurchases) {
-    this.banner('Buying capsule ' + (bought + 1), BuyBoxBannerMs, 1);
+  while (this.mayContinue() && bought < limit) {
+    this.banner((ten ? 'Buying 10 boxes ' : 'Buying capsule ') + (bought + 1), BuyBoxBannerMs, 1);
     if (!gPages.matches(PageName.TsumTsumStorePage)
         && !this.awaitPage(PageName.TsumTsumStorePage, BuyBoxReturnWaitMs, Log.Box.PageMissed)) {
       // No navigating back: the store would open on its first page, not the capsule.
       return {bought: bought, reason: 'store not open'};
     }
     const offer = this.awaitBoxPurchase(BuyBoxLoadWaitMs);
-    if (offer.tenTime !== null || (offer.oneTime !== null && offer.oneTime.x !== BoxStore.onlyOneX)) {
+    if (!tenTimes
+        && (offer.tenTime !== null || (offer.oneTime !== null && offer.oneTime.x !== BoxStore.onlyOneX))) {
       logWarn(Log.Box.OpenCapsuleWrongBox, 'The open box is not a capsule', {bought: bought});
       return {bought: bought, reason: 'not a capsule'};
     }
+    if (ten && bought === 0 && offer.tenTime === null && !offer.soldOut) {
+      logWarn(Log.Box.OpenTenWrongBox, 'The open box has no 10-Time purchase');
+      return {bought: bought, reason: 'no 10-time purchase'};
+    }
 
-    const outcome = this.buyOneBox(false, bought + 1, BuyOpenCapsuleMaxPurchases);
+    const outcome = this.buyOneBox(ten, bought + 1, limit);
     if (outcome === 'bought') {
       misses = 0;
       bought++;
+      continue;
+    }
+    if (outcome === 'tenRefused') {
+      // Fewer than ten left: nothing bought, nothing wrong.
+      ten = false;
       continue;
     }
     if (outcome === 'soldOut') {
@@ -735,20 +755,20 @@ Tsum.prototype.buyOpenCapsule = function() {
   if (!this.isRunning) {
     return null;
   }
-  if (bought >= BuyOpenCapsuleMaxPurchases) {
-    logInfo(Log.Box.PurchaseLimit, {bought: bought, limit: BuyOpenCapsuleMaxPurchases});
+  if (bought >= limit) {
+    logInfo(Log.Box.PurchaseLimit, {bought: bought, limit: limit});
     return {bought: bought, reason: 'purchase limit'};
   }
   return {bought: bought, reason: 'stood aside'};
 }
 
 // False only when it stood aside for a round in progress, as `taskBuyBoxes`.
-Tsum.prototype.taskBuyOpenCapsule = function() {
+Tsum.prototype.taskBuyOpenCapsule = function(tenTimes) {
   if (roundInProgress()) {
     return false;
   }
-  logInfo(Log.Box.OpenCapsuleStart);
-  const outcome = this.buyOpenCapsule();
+  logInfo(tenTimes ? Log.Box.OpenTenStart : Log.Box.OpenCapsuleStart);
+  const outcome = this.buyOpenCapsule(tenTimes);
   this.lastChore = outcome;
   if (outcome !== null) {
     logInfo(Log.Box.End, outcome);

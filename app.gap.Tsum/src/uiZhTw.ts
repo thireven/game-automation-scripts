@@ -134,6 +134,8 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.SettingBuyBoxMaxHelp]: '每次的安全上限。十連抽算一次。',
     [UiText.SettingBuyOpenCapsule]: '購買目前的扭蛋直到售完',
     [UiText.SettingBuyOpenCapsuleHelp]: '請先在商店打開扭蛋。「立即」會重複單抽直到售完或金幣不足，然後停止。不會購買其他BOX。',
+    [UiText.SettingBuyOpenTen]: '購買目前的BOX十連抽直到售完',
+    [UiText.SettingBuyOpenTenHelp]: '請先在商店打開有十連抽（300,000金幣）的BOX。「立即」會重複十連抽，剩餘不足10個時改為單抽，直到售完或金幣不足，然後停止。最多50次。',
     [UiText.SettingSkillType]: '技能類型',
     [UiText.SettingSkillTypeHelp]: '消除系適用大多數 Tsum；有名字的選項為該 Tsum 調校。',
     [UiText.SettingSkillLevel]: '技能等級',

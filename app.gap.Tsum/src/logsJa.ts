@@ -145,7 +145,10 @@ var LogsJa: LogCataloguePartial = {
   [Log.Box.End]: 'BOX購入完了',
   [Log.Box.OpenCapsuleNowQueued]: '次のループで表示中のガチャを売り切れまで購入',
   [Log.Box.OpenCapsuleStart]: '表示中のガチャを売り切れまで購入',
-  [Log.Box.OpenCapsuleWrongBox]: '表示中のBOXがガチャではないため停止'
+  [Log.Box.OpenCapsuleWrongBox]: '表示中のBOXがガチャではないため停止',
+  [Log.Box.OpenTenNowQueued]: '次のループで表示中のBOXを売り切れまで10回購入',
+  [Log.Box.OpenTenStart]: '表示中のBOXを売り切れまで10回購入',
+  [Log.Box.OpenTenWrongBox]: '表示中のBOXに10回購入がないため停止'
 }
 
 logRegisterStrings(Locale.Japanese, LogsJa);

@@ -20,6 +20,7 @@ const CompanionTasks: { [task: string]: string } = {
   buyBoxesNow: 'Buying boxes',
   exportTsumListNow: 'Exporting the Tsum list',
   buyOpenCapsuleNow: 'Buying the open capsule',
+  buyOpenTenNow: 'Buying the open box 10 at a time',
   directNow: 'Waiting for direction',
   wrapUpNow: 'Stopping after this round',
   taskWalkthrough: 'Recording a walkthrough',

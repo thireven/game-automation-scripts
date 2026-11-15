@@ -129,6 +129,8 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingBuyBoxMaxHelp]: 'Safety limit per sweep. A 10-Time purchase counts as one.',
     [UiText.SettingBuyOpenCapsule]: 'Buy open capsule box until sold out',
     [UiText.SettingBuyOpenCapsuleHelp]: 'Open the capsule in the store first. Now buys it one at a time until it is sold out or out of Coins, then stops the run. Will not buy from any other box.',
+    [UiText.SettingBuyOpenTen]: 'Buy open box 10 at a time until sold out',
+    [UiText.SettingBuyOpenTenHelp]: 'Open the box in the store first (the one with a 10-Time purchase, 300,000 Coins). Now buys it 10 at a time, then 1 at a time once fewer than 10 are left, until it is sold out or out of Coins, then stops the run. At most 50 purchases.',
     [UiText.BoxPremiumPlus]: 'Premium Box+',
     [UiText.BoxPremium]: 'Premium Box',
     [UiText.BoxSelect]: 'Select Box',

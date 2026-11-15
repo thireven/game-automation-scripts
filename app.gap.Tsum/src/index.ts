@@ -148,6 +148,7 @@ const LastSettingsOneShot: SettingKey[] = [
   SettingKey.BuyBoxesFirst,
   SettingKey.TsumListOnly,
   SettingKey.BuyOpenCapsuleOnly,
+  SettingKey.BuyOpenTenOnly,
 ];
 
 /** Cached `getDevicePath()`: GAP lists the devices folder on every call. */
@@ -338,7 +339,8 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.SendHeartsMinWait]: RemoteKind.Int,
   [SettingKey.TsumAppRestartFrequency]: RemoteKind.Int,
 } satisfies Record<Exclude<SettingKey, SettingKey.Locale | SettingKey.UnlockLevelsFirst
-  | SettingKey.BuyBoxesFirst | SettingKey.TsumListOnly | SettingKey.BuyOpenCapsuleOnly>, RemoteKind>;
+  | SettingKey.BuyBoxesFirst | SettingKey.TsumListOnly | SettingKey.BuyOpenCapsuleOnly
+  | SettingKey.BuyOpenTenOnly>, RemoteKind>;
 
 /** `<device folder>/remote-settings.json`, or '' without the natives. */
 function remoteSettingsPath(): string {
@@ -520,6 +522,7 @@ const CompanionActions: { [name: string]: () => string } = {
   buyBoxesNow: () => buyBoxesNow(),
   exportTsumListNow: () => exportTsumListNow(),
   buyOpenCapsuleNow: () => buyOpenCapsuleNow(),
+  buyOpenTenNow: () => buyOpenTenNow(),
   roundDelaySkip: () => roundDelaySkip(),
 };
 
@@ -623,6 +626,7 @@ const ChoreNowFlags: { [name: string]: SettingKey } = {
   buyBoxesNow: SettingKey.BuyBoxesFirst,
   exportTsumListNow: SettingKey.TsumListOnly,
   buyOpenCapsuleNow: SettingKey.BuyOpenCapsuleOnly,
+  buyOpenTenNow: SettingKey.BuyOpenTenOnly,
 };
 
 /** How long an armed chore waits for the phone's `start`. */
@@ -838,6 +842,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   const buyBoxesFirst = settings.buyBoxesFirst === true;
   const tsumListOnly = settings.tsumListOnly === true;
   const buyOpenCapsuleOnly = settings.buyOpenCapsuleOnly === true;
+  const buyOpenTenOnly = settings.buyOpenTenOnly === true;
 
   // The walkthrough recorder is a mode, not a task alongside the others: it is
   // watching a person play, so nothing else may touch the screen. The table
@@ -855,7 +860,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     if (tsumListOnly) {
       logWarn(Log.TsumList.NowRefused, { reason: 'walkthrough' });
     }
-    if (buyOpenCapsuleOnly) {
+    if (buyOpenCapsuleOnly || buyOpenTenOnly) {
       logWarn(Log.Box.NowRefused, { reason: 'walkthrough' });
     }
   }
@@ -898,7 +903,10 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     }
   }
   if (buyOpenCapsuleOnly) {
-    queueBuyOpenCapsule(ts, gTaskController);
+    queueBuyOpenCapsule(ts, gTaskController, false);
+  }
+  if (buyOpenTenOnly) {
+    queueBuyOpenCapsule(ts, gTaskController, true);
   }
   // Add-ons (src/addons.ts) queue their own one-shots; each checks the run's mode.
   // A run for one request starts none (e.g. a My Tsum change would tap first).
@@ -1527,24 +1535,32 @@ function directNow(settings?: Settings): string {
   return 'queued';
 }
 
-/** Name of the one-shot task `buyOpenCapsuleNow` queues. */
+/** Name of the one-shot task `buyOpenCapsuleNow` / `buyOpenTenNow` queues. */
 const BuyOpenCapsuleNowTask = 'buyOpenCapsuleNow';
+const BuyOpenTenNowTask = 'buyOpenTenNow';
 
-/** Set while a Buy Open Capsule run waits for its turn. */
+/** Set while a Buy Open Capsule / Buy Open Box 10-Time run waits for its turn. */
 let gBuyOpenCapsuleNowQueued = false;
+let gBuyOpenTenNowQueued = false;
 
 /**
- * Registers Buy Open Capsule on `controller`, the way `queueBuyBoxSweep`
- * does. It always stops the run afterwards: the player set the store up for
- * it, so nothing else the run would do is wanted.
+ * Registers Buy Open Capsule (`tenTimes`: Buy Open Box 10-Time) on
+ * `controller`, the way `queueBuyBoxSweep` does. It always stops the run
+ * afterwards: the player set the store up for it, so nothing else the run
+ * would do is wanted.
  */
-function queueBuyOpenCapsule(run: Tsum, controller: TsumTaskController): void {
-  gBuyOpenCapsuleNowQueued = true;
+function queueBuyOpenCapsule(run: Tsum, controller: TsumTaskController, tenTimes: boolean): void {
+  const task = tenTimes ? BuyOpenTenNowTask : BuyOpenCapsuleNowTask;
+  if (tenTimes) {
+    gBuyOpenTenNowQueued = true;
+  } else {
+    gBuyOpenCapsuleNowQueued = true;
+  }
   run.yieldAsked = true;
   let waited = false;
-  controller.newTask(BuyOpenCapsuleNowTask, function() {
+  controller.newTask(task, function() {
     run.yieldAsked = false;
-    if (!run.taskBuyOpenCapsule()) {
+    if (!run.taskBuyOpenCapsule(tenTimes)) {
       run.yieldAsked = true;
       if (!waited) {
         waited = true;
@@ -1552,13 +1568,17 @@ function queueBuyOpenCapsule(run: Tsum, controller: TsumTaskController): void {
       }
       return;
     }
-    gBuyOpenCapsuleNowQueued = false;
-    controller.removeTask(BuyOpenCapsuleNowTask);
+    if (tenTimes) {
+      gBuyOpenTenNowQueued = false;
+    } else {
+      gBuyOpenCapsuleNowQueued = false;
+    }
+    controller.removeTask(task);
     notifyChoreDone('boxes', run.lastChore);
     requestStop();
-  }, UnlockNowRetryMs, 0, false, JobPriority.BuyOpenCapsuleNow);
-  logInfo(Log.Box.OpenCapsuleNowQueued);
-  run.banner('Buying the capsule next', 4000);
+  }, UnlockNowRetryMs, 0, false, tenTimes ? JobPriority.BuyOpenTenNow : JobPriority.BuyOpenCapsuleNow);
+  logInfo(tenTimes ? Log.Box.OpenTenNowQueued : Log.Box.OpenCapsuleNowQueued);
+  run.banner(tenTimes ? 'Buying the box 10 at a time next' : 'Buying the capsule next', 4000);
 }
 
 /**
@@ -1570,11 +1590,25 @@ function queueBuyOpenCapsule(run: Tsum, controller: TsumTaskController): void {
  */
 // noinspection JSUnusedGlobalSymbols
 function buyOpenCapsuleNow(settings?: Settings): string {
+  return buyOpenNow(settings, false);
+}
+
+/** As `buyOpenCapsuleNow`, buying the open box 10 at a time (then 1-Time for the rest). */
+// noinspection JSUnusedGlobalSymbols
+function buyOpenTenNow(settings?: Settings): string {
+  return buyOpenNow(settings, true);
+}
+
+function buyOpenNow(settings: Settings | undefined, tenTimes: boolean): string {
   if (!gRunActive || ts === undefined || gTaskController === undefined) {
     if (settings === undefined) {
       return 'no run';
     }
-    settings.buyOpenCapsuleOnly = true;
+    if (tenTimes) {
+      settings.buyOpenTenOnly = true;
+    } else {
+      settings.buyOpenCapsuleOnly = true;
+    }
     start(settings);
     return 'started';
   }
@@ -1582,10 +1616,10 @@ function buyOpenCapsuleNow(settings?: Settings): string {
     logWarn(Log.Box.NowRefused, { reason: 'walkthrough' });
     return 'walkthrough recording';
   }
-  if (gBuyOpenCapsuleNowQueued) {
+  if (tenTimes ? gBuyOpenTenNowQueued : gBuyOpenCapsuleNowQueued) {
     return 'already queued';
   }
-  queueBuyOpenCapsule(ts, gTaskController);
+  queueBuyOpenCapsule(ts, gTaskController, tenTimes);
   return 'queued';
 }
 

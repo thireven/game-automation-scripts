@@ -220,6 +220,8 @@ declare const enum RowKey {
   ExportTsumList = 'exportTsumList',
   /** Buy Open Capsule's Now button. */
   BuyOpenCapsule = 'buyOpenCapsule',
+  /** Buy Open Box 10-Time's Now button. */
+  BuyOpenTen = 'buyOpenTen',
 }
 
 /** One row of the settings schema (a `rows` entry of a `GroupSpec`). */
