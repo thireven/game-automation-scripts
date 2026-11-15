@@ -45,6 +45,21 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b28]
+
+### Summary
+
+**Additions**
+
+*Box Buying*
+- Buy open box 10 at a time until sold out: open a box with a 10-Time purchase in the store yourself, press Now, and it is bought 10 at a time (1 at a time for the last few) until it is gone.
+
+### Added
+
+- **Buy Open Box 10-Time** (`src/boxes.ts`, `buyOpenTenNow`): Buy Open Capsule's Now-only loop with a
+  `tenTimes` flag. Taps no tab; 10-Time until refused (fewer than ten left), then 1-Time; stops on sold
+  out, no Coins, no 10-Time button on the first pass, three misses, or 50 purchases (a Premium Box never sells out).
+
 ## [6.0b27]
 
 ### Summary
@@ -53,9 +68,6 @@ release note; they fold back in here when she ships.
 
 *Companion*
 - Presets from the companion app can be turned into share codes for the settings page, through the Tsum Tsum Stats Presets page.
-
-*Box Buying*
-- Buy open box 10 at a time until sold out: open a box with a 10-Time purchase in the store yourself, press Now, and it is bought 10 at a time (1 at a time for the last few) until it is gone.
 
 **Fixes**
 - The Quick Bar no longer shows a preset's settings in place of the ones the run is using (such as the wrong bubble strategy, or skill level with Auto Set Skill Level on).
@@ -69,9 +81,6 @@ release note; they fold back in here when she ships.
 - **`gapCompanion().presetShare`** (`src/companion.ts`): GAP Companion's Export offers "Share
   codes", opening the Tsum Tsum Stats Presets page with the picked presets, which shows their
   share codes (adapter 2611102300 passes it on).
-- **Buy Open Box 10-Time** (`src/boxes.ts`, `buyOpenTenNow`): Buy Open Capsule's Now-only loop with a
-  `tenTimes` flag. Taps no tab; 10-Time until refused (fewer than ten left), then 1-Time; stops on sold
-  out, no Coins, no 10-Time button on the first pass, three misses, or 50 purchases (a Premium Box never sells out).
 
 ### Fixed
 
