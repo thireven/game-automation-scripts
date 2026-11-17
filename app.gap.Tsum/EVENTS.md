@@ -21,7 +21,7 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `task.start` | `src/taskController.ts:93` | `task` |
 | `round.over` | `src/play.ts:543` | `id`, `round`, `seconds` |
 | `round.start` | `src/play.ts:738` | `id`, `round`, `myTsum`, `myTsumName`, `myTsumNameEn`, `skill`, `build`, `settings` |
-| `round.end` | `src/play.ts:1212` | `id`, `round`, `myTsum`, `myTsumName`, `myTsumNameEn`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
+| `round.end` | `src/play.ts:1207` | `id`, `round`, `myTsum`, `myTsumName`, `myTsumNameEn`, `skill`, `build`, `seconds`, `score`, `baseCoins`, `finalCoins`, `medals`, `settings` |
 | `workflow.end` | `src/gapWorkflow.ts:739` | `id`, `rev`, `status`, `reason`, `loop`, `index` |
 | `workflow.start` | `src/gapWorkflow.ts:803` | `id`, `rev`, `name`, `total`, `resumed` |
 | `workflow.node` | `src/gapWorkflow.ts:847` | `id`, `loop`, `index`, `nodeId`, `node` |
@@ -30,7 +30,7 @@ Names are declared once, in `src/scriptEvents.ts`, and reached through
 | `workflow.restart` | `src/gapWorkflow.ts:1003` | `id`, `nodeId`, `index`, `loop`, `outcome`, `error`, `why`, `fps`, `captureMs` |
 | `gap.presets` | `src/gapPresets.ts:852` | `script` |
 | `run.started` | `src/index.ts:110` | `version`, `skill`, `locale` |
-| `run.stopped` | `src/index.ts:984` | `rounds` |
+| `run.stopped` | `src/index.ts:986` | `rounds` |
 | `gap.notify` | `src/companion.ts:69` | _none_ |
 | `gap.direct` | `src/companion.ts:199` | _none_ |
 
@@ -103,7 +103,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/play.ts:1212` — `this.emit(Emit.Round.End, …)`
+- `src/play.ts:1207` — `this.emit(Emit.Round.End, …)`
 
 ### `workflow.end`
 
@@ -242,7 +242,7 @@ Emitted from:
 
 Emitted from:
 
-- `src/index.ts:984` — `emitScriptEvent(Emit.Run.Stopped, …)`
+- `src/index.ts:986` — `emitScriptEvent(Emit.Run.Stopped, …)`
 
 ### `gap.notify`
 

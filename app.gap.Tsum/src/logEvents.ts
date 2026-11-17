@@ -478,6 +478,8 @@ namespace Log {
   export const enum Stats {
     ClippedGlyph    = 'stats.clippedGlyph',
     CoinCounter     = 'stats.coinCounter',
+    /** A round played to a Coin Target: no row written. */
+    SkippedCoinTarget = 'stats.skippedCoinTarget',
     DeviceIdUnsaved = 'stats.deviceIdUnsaved',
     JoinedGlyphsCut = 'stats.joinedGlyphsCut',
     NeverRead       = 'stats.neverRead',

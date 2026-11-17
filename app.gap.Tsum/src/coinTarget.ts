@@ -153,6 +153,8 @@ interface CoinTargetRound {
   pauses: number;
   lastStepAt: number;
   carefulLogged: boolean;
+  /** Whether the round was played with a target at any point: no stats for it. */
+  played: boolean;
 }
 
 function coinTargetFresh(): CoinTargetRound {
@@ -162,7 +164,7 @@ function coinTargetFresh(): CoinTargetRound {
     staleLogged: false, flights: [], need: Infinity, bubbleCoins: CoinTargetConfig.bubbleCoins,
     pop: null, popBase: -1, popOther: 0, popLandAt: 0, deadBubbles: [],
     skillSeenAt: 0, skillBase: -1, skillChainCoins: 0, skillDoneAt: 0, skillPayMax: 0, skillMeasured: false,
-    pauses: -1, lastStepAt: now, carefulLogged: false };
+    pauses: -1, lastStepAt: now, carefulLogged: false, played: false };
 }
 
 var gCoinTarget: CoinTargetRound = coinTargetFresh();
@@ -370,6 +372,10 @@ function coinTargetSample(ts: Tsum): void {
  */
 function coinTargetStep(ts: Tsum): CoinStep {
   const s = gCoinTarget;
+  // Set even if the counter is given up on: the round was still not normal play.
+  if (ts.coinTarget > 0) {
+    s.played = true;
+  }
   if (!coinTargetOn(ts)) {
     return CoinStep.Off;
   }
@@ -605,6 +611,14 @@ function coinTargetCarefulTurn(ts: Tsum, board: BoardPoint[]): { drawn: TsumPath
 /** Whether a coast the target started should end: the target was raised or cleared. */
 function coinTargetResumes(ts: Tsum): boolean {
   return ts.coinTarget <= 0 || ts.coinTarget > gCoinTarget.value;
+}
+
+/**
+ * Whether this round was played to a coin target, so round stats record
+ * nothing for it: its coins are a mission's figure, not the tsum's.
+ */
+function coinTargetSkipsStats(ts: Tsum): boolean {
+  return gCoinTarget.played || ts.coinTarget > 0;
 }
 
 /** Logged and bannered once the round stops earning. */

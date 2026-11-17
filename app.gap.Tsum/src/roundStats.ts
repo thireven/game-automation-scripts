@@ -2058,7 +2058,7 @@ Tsum.prototype.beginRoundStats = function() {
  * value held when the first big chain landed and refuse everything after it.
  */
 Tsum.prototype.sampleBaseCoins = function() {
-  if (!this.trackRoundStats || !this.roundStartedAt) {
+  if (!this.trackRoundStats || !this.roundStartedAt || coinTargetSkipsStats(this)) {
     return;
   }
   this.baseCoinReads++;
@@ -2300,7 +2300,12 @@ Tsum.prototype.finishRoundStats = function() {
   // Cleared on every way in: `lastRound` describes the round that just ended,
   // and the caller's `round.end` reads null as "nothing was read".
   this.lastRound = null;
-  if (!this.trackRoundStats || !startedAt || !endedAt) {
+  // A Coin Target round is a mission's figure, not normal play: no row.
+  const coinTarget = coinTargetSkipsStats(this);
+  if (coinTarget && this.trackRoundStats && startedAt && endedAt) {
+    logInfo(Log.Stats.SkippedCoinTarget, { target: this.coinTarget });
+  }
+  if (!this.trackRoundStats || coinTarget || !startedAt || !endedAt) {
     this.roundStartedAt = 0;
     this.roundEndedAt = 0;
     this.roundCoastedAt = 0;
