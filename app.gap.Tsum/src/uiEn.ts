@@ -98,7 +98,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingCoinTarget]: 'Coin target',
     [UiText.SettingCoinTargetHelp]: 'Plays each round to exactly this many coins (before the +Coin item), then stops touching the board. Skills are held near the target. For bingo missions. 0 = off.',
     [UiText.SettingCoinTargetAlwaysSkill]: 'Coin target: always use skill',
-    [UiText.SettingCoinTargetAlwaysSkillHelp]: 'Fires the skill whenever it is ready, even near the coin target. What it pays is still counted, but a big burst can pass the target.',
+    [UiText.SettingCoinTargetAlwaysSkillHelp]: 'Fires the skill whenever it is ready until the coin counter is within 100 of the target. What it pays is still counted, but a big burst can pass the target.',
     [UiText.SettingUseFan]: 'Use Fan?',
     [UiText.SettingUseFanHelp]: 'Shakes the board every few scans.',
     [UiText.SettingBonusScore]: '+Score',

@@ -986,12 +986,6 @@ Tsum.prototype.taskPlayGameQuick = function() {
     if (coinStep === CoinStep.Careful) {
       const turn = coinTargetCarefulTurn(this, board);
       coinDone = turn.done;
-      // "Always use skill": near the target too.
-      if (!coinDone && coinTargetSkillUsable(this)) {
-        while (this.useSkill(board)) {
-          coinTargetSkillRan(this);
-        }
-      }
       if (!coinDone) {
         drawnChain = turn.drawn;
         const carefulLook = this.watchRoundEnd(hud);

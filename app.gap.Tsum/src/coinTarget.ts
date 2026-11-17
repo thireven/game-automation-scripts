@@ -432,15 +432,19 @@ function coinTargetStep(ts: Tsum): CoinStep {
   return CoinStep.Careful;
 }
 
-/** Whether the skill waits: the target is close enough for a burst to pass it. */
+/**
+ * Whether the skill waits: the target is close enough for a burst to pass it.
+ * Under "always use skill" it fires until the counter is within
+ * `carefulCoins`, where careful play takes the round to the target.
+ */
 function coinTargetHoldsSkill(ts: Tsum): boolean {
-  return coinTargetOn(ts) && !ts.coinTargetAlwaysSkill
-    && gCoinTarget.need <= coinTargetSkillHold();
-}
-
-/** Whether a careful turn offers the skill a go: only under "always use skill". */
-function coinTargetSkillUsable(ts: Tsum): boolean {
-  return coinTargetOn(ts) && ts.coinTargetAlwaysSkill && ts.skillType !== SkillType.NoSkill;
+  if (!coinTargetOn(ts)) {
+    return false;
+  }
+  if (ts.coinTargetAlwaysSkill) {
+    return ts.coinTarget - gCoinTarget.value <= CoinTargetConfig.carefulCoins;
+  }
+  return gCoinTarget.need <= coinTargetSkillHold();
 }
 
 /** After a skill's activation (and its choreography) returns: it may still pay. */
