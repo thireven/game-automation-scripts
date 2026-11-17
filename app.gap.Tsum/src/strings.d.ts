@@ -116,6 +116,8 @@ declare const enum UiText {
   SettingHoldBubblesLastFeverHelp = 'setting.holdBubblesLastFever.help',
   SettingCoinTarget = 'setting.coinTarget',
   SettingCoinTargetHelp = 'setting.coinTarget.help',
+  SettingCoinTargetAlwaysSkill = 'setting.coinTargetAlwaysSkill',
+  SettingCoinTargetAlwaysSkillHelp = 'setting.coinTargetAlwaysSkill.help',
   SettingUseFan = 'setting.useFan',
   SettingUseFanHelp = 'setting.useFan.help',
   SettingBonusScore = 'setting.bonusScore',

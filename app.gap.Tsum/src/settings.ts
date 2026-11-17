@@ -400,6 +400,16 @@ var tabs: TabSpec[] = [
                         // A mission's figure, not a way of playing: kept out
                         // of share codes and presets.
                         neverShared: true
+                    },
+                    {
+                        // Coin Target's skill hold, off. Its payout is still
+                        // counted, so chains stop where they fit.
+                        key: SettingKey.CoinTargetAlwaysSkill,
+                        title: UiText.SettingCoinTargetAlwaysSkill,
+                        help: UiText.SettingCoinTargetAlwaysSkillHelp,
+                        default: SettingDefaults[SettingKey.CoinTargetAlwaysSkill],
+                        status: ReleaseStatus.Alpha,
+                        neverShared: true
                     }
                 ]
             },

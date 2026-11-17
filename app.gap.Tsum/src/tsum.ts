@@ -246,6 +246,8 @@ class Tsum {
   holdBubblesLastFeverSec: number;
   /** The Coin Target setting: base coins a round plays to; 0 is off. */
   coinTarget: number;
+  /** Coin Target: never hold the skill. */
+  coinTargetAlwaysSkill: boolean;
   noSkillLastFeverSec: number;
   /** Play a Lorcana tsum's transformation and its ink stones -- see src/lorcana.ts. */
   lorcanaCard: boolean;
@@ -526,6 +528,7 @@ class Tsum {
     this.bubbleSightings = [];
     this.holdBubblesLastFeverSec = 0;
     this.coinTarget = 0;
+    this.coinTargetAlwaysSkill = false;
     this.noSkillLastFeverSec = 0;
     this.lorcanaCard = false;
     // Nothing is held back until the Quick Bar holds something back.

@@ -347,6 +347,7 @@ declare const enum SettingKey {
   BubbleStrategy = 'bubbleStrategy',
   HoldBubblesLastFeverSec = 'holdBubblesLastFeverSec',
   CoinTarget = 'coinTarget',
+  CoinTargetAlwaysSkill = 'coinTargetAlwaysSkill',
   UseFan = 'useFan',
   MaxChainsPerScan = 'maxChainsPerScan',
   MaxChain = 'maxChain',
@@ -468,6 +469,8 @@ interface Settings {
   [SettingKey.HoldBubblesLastFeverSec]: number;
   /** Base coins a round plays to and then stops earning; 0 is off. See src/coinTarget.ts. */
   [SettingKey.CoinTarget]: number;
+  /** Coin Target: fire the skill whenever it is ready, near the target too. */
+  [SettingKey.CoinTargetAlwaysSkill]: boolean;
   [SettingKey.UseFan]: boolean;
   [SettingKey.MaxChainsPerScan]: number;
   [SettingKey.MaxChain]: number;

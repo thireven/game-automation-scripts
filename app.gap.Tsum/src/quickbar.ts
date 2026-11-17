@@ -128,6 +128,7 @@ function quickBarState(): string {
     state[SettingKey.BubbleStrategy] = ts.bubbleStrategy;
     state[SettingKey.HoldBubblesLastFeverSec] = ts.holdBubblesLastFeverSec;
     state[SettingKey.CoinTarget] = ts.coinTarget;
+    state[SettingKey.CoinTargetAlwaysSkill] = ts.coinTargetAlwaysSkill;
     state[SettingKey.LinkReachPercent] = Math.round(Config.linkReach * 100);
     // The Box Buying rows are the settings panel's, and they are reported for
     // the reason above: the panel is the only thing that changes them, and it
@@ -528,6 +529,10 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
       applied = quickBarClamp(value, 0, CoinTargetMax);
       tsum.coinTarget = applied as number;
       break;
+    case SettingKey.CoinTargetAlwaysSkill:
+      applied = !!value;
+      tsum.coinTargetAlwaysSkill = applied;
+      break;
     case SettingKey.SkillWaitingTime:
       applied = quickBarClamp(value, 0, 15);
       tsum.skillInterval = (applied as number) * 1000;
@@ -742,6 +747,7 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   //   bubbleStrategy               the bubble sweep, per scan
   //   holdBubblesLastFeverSec      bubblesHeldForFever, per pop
   //   coinTarget                   coinTargetStep, per turn of the play loop
+  //   coinTargetAlwaysSkill        coinTargetHoldsSkill, per activation
   //   skillWaitingTime             ts.skillInterval, per activation
   //   skillSettleMs                useSkill, per activation
   //   skillReactivationTenths      skillStillRunning, per activation
@@ -760,6 +766,7 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   [SettingKey.BubbleStrategy]: LiveWhen.Now,
   [SettingKey.HoldBubblesLastFeverSec]: LiveWhen.Now,
   [SettingKey.CoinTarget]: LiveWhen.Now,
+  [SettingKey.CoinTargetAlwaysSkill]: LiveWhen.Now,
   [SettingKey.SkillWaitingTime]: LiveWhen.Now,
   [SettingKey.SkillSettleMs]: LiveWhen.Now,
   [SettingKey.SkillReactivationTenths]: LiveWhen.Now,

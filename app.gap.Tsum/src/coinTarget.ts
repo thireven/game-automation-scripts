@@ -146,8 +146,9 @@ interface CoinTargetRound {
   skillChainCoins: number;
   /** When the last activation's choreography returned. */
   skillDoneAt: number;
-  /** The largest activation measured this round. */
+  /** The largest activation measured this round, and whether one has been. */
   skillPayMax: number;
+  skillMeasured: boolean;
   /** For moving flights back by a pause. */
   pauses: number;
   lastStepAt: number;
@@ -160,7 +161,7 @@ function coinTargetFresh(): CoinTargetRound {
     pending: -1, pendingCount: 0, pendingSince: 0, everRead: false, gaveUp: false,
     staleLogged: false, flights: [], need: Infinity, bubbleCoins: CoinTargetConfig.bubbleCoins,
     pop: null, popBase: -1, popOther: 0, popLandAt: 0, deadBubbles: [],
-    skillSeenAt: 0, skillBase: -1, skillChainCoins: 0, skillDoneAt: 0, skillPayMax: 0,
+    skillSeenAt: 0, skillBase: -1, skillChainCoins: 0, skillDoneAt: 0, skillPayMax: 0, skillMeasured: false,
     pauses: -1, lastStepAt: now, carefulLogged: false };
 }
 
@@ -283,8 +284,13 @@ function coinTargetInFlight(ts: Tsum): number {
     }
   }
   // An activation still paying: as much as the hold allows for.
+  // An activation still paying: as much as the hold allows for -- or, under
+  // "always use skill", 1.5x the most one has paid once one is measured, so
+  // chains are not stopped after every activation.
   if (coinTargetSkillLanding(ts)) {
-    sum += coinTargetSkillHold();
+    sum += ts.coinTargetAlwaysSkill && s.skillMeasured
+      ? Math.max(3, Math.ceil(s.skillPayMax * CoinTargetConfig.skillHoldFactor))
+      : coinTargetSkillHold();
   }
   return sum;
 }
@@ -397,6 +403,7 @@ function coinTargetStep(ts: Tsum): CoinStep {
   if (s.skillBase >= 0 && !coinTargetSkillLanding(ts) && s.valueAt > ts.skillFiredAt) {
     const paid = s.value - s.skillBase - s.skillChainCoins;
     s.skillPayMax = Math.max(s.skillPayMax, paid);
+    s.skillMeasured = true;
     s.skillBase = -1;
     logDebug(Log.Play.CoinTargetSkillPaid, { paid: paid, hold: coinTargetSkillHold() });
   }
@@ -421,7 +428,13 @@ function coinTargetStep(ts: Tsum): CoinStep {
 
 /** Whether the skill waits: the target is close enough for a burst to pass it. */
 function coinTargetHoldsSkill(ts: Tsum): boolean {
-  return coinTargetOn(ts) && gCoinTarget.need <= coinTargetSkillHold();
+  return coinTargetOn(ts) && !ts.coinTargetAlwaysSkill
+    && gCoinTarget.need <= coinTargetSkillHold();
+}
+
+/** Whether a careful turn offers the skill a go: only under "always use skill". */
+function coinTargetSkillUsable(ts: Tsum): boolean {
+  return coinTargetOn(ts) && ts.coinTargetAlwaysSkill && ts.skillType !== SkillType.NoSkill;
 }
 
 /** After a skill's activation (and its choreography) returns: it may still pay. */

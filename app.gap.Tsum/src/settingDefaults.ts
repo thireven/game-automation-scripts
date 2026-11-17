@@ -41,6 +41,7 @@ var SettingDefaults: Readonly<Settings> = {
   [SettingKey.BubbleStrategy]: BubbleStrategy.OneMidChain,
   [SettingKey.HoldBubblesLastFeverSec]: 0,
   [SettingKey.CoinTarget]: 0,
+  [SettingKey.CoinTargetAlwaysSkill]: false,
   [SettingKey.UseFan]: false,
   [SettingKey.UnlockLevelHoursWait]: 0,
   [SettingKey.AutoUnlockMyTsumLevel]: false,
