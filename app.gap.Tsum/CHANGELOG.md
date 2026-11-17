@@ -54,6 +54,9 @@ release note; they fold back in here when she ships.
 *Gameplay*
 - Coin target (Alpha): play each round to an exact number of coins for bingo missions, holding the skill near the target unless "always use skill" is on; these rounds are left out of round stats.
 
+**Fixes**
+- GAP Companion asks for direction on every unfamiliar screen, including moving ones, popups right after the game starts, and screens the script keeps getting stuck on.
+
 ### Added
 
 - **Coin Target** (`src/coinTarget.ts`, `SettingKey.CoinTarget`, Alpha, `neverShared`): reads the live HUD counter
@@ -61,6 +64,14 @@ release note; they fold back in here when she ships.
   and bubble pops not yet paid (wiki chart values, moved back by pauses), trims batches to fit, holds the skill within
   800 or 1.5x the largest measured activation (`CoinTargetAlwaysSkill`: only within 100 of the counter); its rounds
   write no round-stats row (`coinTargetSkipsStats`), once the counter is within 100 draws up to 3 cut chains a turn while they fit under counter + unpaid + bubbles, waiting on the counter only when nothing fits, then coasts.
+
+### Fixed
+
+- **Direction requests (IUD)** on every unknown screen (`directUnknownPage`): no 30-minute quiet after a timeout;
+  a screen still moving after 30s is asked about; in the boot phase a screen unknown and still for 20s is handed
+  from `nav.move.bootUnknown` to the ask; `catchUpBoot` no longer re-arms the boot for a process whose boot ended
+  (`bootDoneFor`); only a UI-tree-confirmed native dialog is dismissed before asking; the stall guard asks before
+  restarting the game; the gift loops in `mail.ts` ask before their blind escape.
 
 ## [6.0b28]
 
