@@ -662,7 +662,7 @@ namespace Log {
     Asked = 'direct.asked',
     /** It ended: `outcome` continue, timeout or stopped; `ms` how long it took. */
     Ended = 'direct.ended',
-    /** An unknown screen was not asked about: `reason` boot or moving. */
+    /** An unknown screen was not asked about: `reason` boot, moving or no-director. */
     Skipped = 'direct.skipped',
     /** The Debug tab's Direct queued a request on the run (`directNow`). */
     NowQueued = 'direct.nowQueued',

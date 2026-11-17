@@ -439,7 +439,8 @@ Tsum.prototype.catchUpBoot = function() {
   const startedAt = gameStartedAt(this.gameBuild());
   // The second's slack: the process time is truncated to whole seconds.
   if (startedAt === 0 || Date.now() - startedAt >= BootBudgetMs
-      || (this.bootStartedAt !== 0 && startedAt - 1000 <= this.bootStartedAt)) {
+      || (this.bootStartedAt !== 0 && startedAt - 1000 <= this.bootStartedAt)
+      || (this.bootDoneFor !== 0 && Math.abs(startedAt - this.bootDoneFor) <= 1000)) {
     return false;
   }
   this.bootStartedAt = startedAt;
@@ -459,6 +460,8 @@ Tsum.prototype.endBoot = function(page) {
     page: page,
     overBudget: !this.inBoot(),
   });
+  // This process has booted: a popup after the hub is not a startup screen.
+  this.bootDoneFor = gameStartedAt(this.gameBuild());
   this.bootStartedAt = 0;
   this.bootUntil = 0;
 }

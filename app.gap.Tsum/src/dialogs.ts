@@ -544,6 +544,15 @@ Tsum.prototype.checkStall = function(guard, page) {
   guard.repeats = 0;
   guard.rounds = 0;
   guard.dialogTried = false;
+  // Stuck means a screen the script can't handle (often a new one read as an
+  // old page): ask the user before restarting the game. Continue or a stop handled it.
+  if (userDirectionAvailable()) {
+    const what = page === PageName.Unknown ? 'an unfamiliar screen' : 'the ' + page + ' screen';
+    const outcome = requestUserDirection({ body: 'Stuck on ' + what + '.' });
+    if (outcome === 'continue' || outcome === 'stopped') {
+      return;
+    }
+  }
   if (guard.restarts >= StallMaxRestarts || !this.autoLaunch) {
     logError(Log.Stall.GivingUp, this.autoLaunch
       ? 'Still stuck after restarting the game; waiting before trying again'

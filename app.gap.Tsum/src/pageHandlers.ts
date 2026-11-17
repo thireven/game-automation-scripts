@@ -876,6 +876,7 @@ gPages.subscribe({
       + 'the opening video -- so tap TAP TO START\'s spot, which skips the video, '
       + 'instead of escaping blind or asking the user. A freshly started game process counts '
       + 'as booting, whoever restarted it. A native dialog is handled first. '
+      + 'With a director, a screen unknown and still for 20s is left to nav.move.unknown. '
       + 'Past the boot budget this declines and nav.move.unknown takes over.',
   pages: [PageName.Unknown],
   after: ['record.corpusUnknown'],
@@ -883,7 +884,13 @@ gPages.subscribe({
   acts: function(event) {
     // Not only a boot this script started: a game that restarted on its own
     // would otherwise ask the user about every splash screen.
-    return event.ts.catchUpBoot();
+    if (!event.ts.catchUpBoot()) {
+      return false;
+    }
+    // Unknown and still for UnknownDirectBootMs is a popup, not the splash or
+    // video: leave it to nav.move.unknown, which asks the user.
+    return !(userDirectionAvailable() && unknownForMs() >= UnknownDirectBootMs
+      && event.ts.settleScreen(1000, 0));
   },
   steps: [
     { do: 'call', name: 'tapThroughBoot', run: function() {
@@ -899,8 +906,9 @@ gPages.subscribe({
   order: 30,
   what: 'Escape from a screen nothing fingerprinted. With a director add-on, ask the '
       + 'user to direct the device first (`directUnknownPage`); Continue or a stop ends it '
-      + 'there. Never during the boot phase, and only once the screen has stayed '
-      + 'unknown 10s and holds still: until then it looks again without tapping. '
+      + 'there. In the boot phase only once unknown and still for 20s; otherwise once '
+      + 'it has stayed unknown 10s and holds still (or 30s moving): until then it looks '
+      + 'again without tapping. '
       + 'Otherwise, blind: look for a native dialog first, then work through the '
       + 'cancel and close buttons the game reuses.',
   pages: [PageName.Unknown],

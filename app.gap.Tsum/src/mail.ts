@@ -68,7 +68,9 @@ Tsum.prototype.fetchAllMails = function() {
       this.tap(jpOkButton);
     } else {
       logError(Log.Gifts.NoOkButton, 'No OK button found on the receive-all screen');
-      this.exitUnknownPage();
+      if (!this.directUnknownPage()) {
+        this.exitUnknownPage();
+      }
     }
   } finally {
     releaseImage(img);
@@ -448,12 +450,16 @@ Tsum.prototype.taskReceiveOneItem = function() {
     // we seem to be trapped, try to exit the trap
     logWarn(Log.Gifts.ReceiveOneStuck, 'Stuck on the gift screen; trying to exit',
       { timeoutCounter: timeoutCounter, maxTimeoutCount: maxTimeoutCount });
-    this.exitUnknownPage();
+    if (!this.directUnknownPage()) {
+      this.exitUnknownPage();
+    }
     this.sleep(1000);
     if (gPages.detect() === PageName.Unknown) {
       // last attempt
       logWarn(Log.Gifts.ReceiveOneStuckRetry, 'Still stuck; last attempt to exit');
-      this.exitUnknownPage();
+      if (!this.directUnknownPage()) {
+        this.exitUnknownPage();
+      }
       this.sleep(1000);
     }
   }

@@ -71,6 +71,8 @@ class Tsum {
   bootStartedAt: number;
   /** When the boot phase gives up and unknown screens are handled as usual again. */
   bootUntil: number;
+  /** The game process start whose boot phase ended; `catchUpBoot` won't restart it. */
+  bootDoneFor: number;
   runTimes: number;
   /**
    * The short name of the tsum currently selected in game, or '' when nothing
@@ -94,8 +96,8 @@ class Tsum {
   edgeWashBackoffUntil: number;
   /** Bumped after each user direction request; the stall guard starts over on it. */
   stallResets: number;
-  /** Until when an unknown screen asks for no direction, after one timed out. */
-  directQuietUntil: number;
+  /** An unknown screen found no director this run (logged once). */
+  directNoneLogged: boolean;
   devicePath: string;
   originScreenWidth: number;
   originScreenHeight: number;
@@ -411,6 +413,7 @@ class Tsum {
     this.isStartupPhase = true;
     this.bootStartedAt = 0;
     this.bootUntil = 0;
+    this.bootDoneFor = 0;
     this.runTimes = 0;
     this.myTsum = '';
     this.myTsumName = '';
@@ -474,7 +477,7 @@ class Tsum {
     this.boardScaleTrend = 0;
     this.edgeWashBackoffUntil = 0;
     this.stallResets = 0;
-    this.directQuietUntil = 0;
+    this.directNoneLogged = false;
     // Optional safety poll: fire the skill the instant it's ready, even mid-link,
     // rather than only at the end of each board-scan cycle (see maybeAutoTapSkill).
     this.skillAutoTap = false;
@@ -1061,11 +1064,11 @@ Tsum.prototype.exitUnknownPage = function() {
 // Before the blind escape: ask the user to direct the device (a director
 // add-on, `requestUserDirection` in companion.ts). Called by the navigate band's
 // `nav.move.unknown`, which never runs mid-round (a bare `detect()` in the play
-// loop does not offer that band), and by `waitForScorePage` for a screen over
-// the tally that its taps cannot move. Continue or a stop means the screen
-// was handled; a timeout or no director runs the escape. After a timeout
-// nobody is watching, so the next unknown screens skip asking for a while.
-const UnknownDirectQuietMs = 30 * 60 * 1000;
+// loop does not offer that band), by the gift loops in mail.ts, and by
+// `waitForScorePage` for a screen over the tally that its taps cannot move.
+// Continue or a stop means the screen was handled; a timeout or no director
+// runs the escape. Every unknown screen asks: there is no quiet period after a
+// timeout, so a missed request never silences the next one.
 /**
  * How long a screen stays unknown before the user is asked. Most clear
  * themselves: a connecting overlay, a data download, the game restarting
@@ -1077,33 +1080,49 @@ const UnknownDirectAfterMs = 10000;
 const UnknownDirectPollMs = 1000;
 /** Budget for the screen to hold still before asking. */
 const UnknownDirectSettleMs = 2000;
-/** A screen still moving this long is no loading screen; the escape takes it. */
+/** Past this a screen that keeps moving (looping art) is asked about anyway. */
 const UnknownDirectMovingMaxMs = 30000;
+/**
+ * In the boot phase: a screen unknown and still this long is no splash or
+ * video (those move on, or move), so `nav.move.bootUnknown` hands it over.
+ */
+const UnknownDirectBootMs = 20000;
+
+/** How long the current screen has been unknown (`gPages.since`). */
+function unknownForMs(): number {
+  return Date.now() - gPages.since;
+}
 
 Tsum.prototype.directUnknownPage = function() {
-  if (Date.now() < this.directQuietUntil || !userDirectionAvailable()) {
+  if (!userDirectionAvailable()) {
+    if (!this.directNoneLogged) {
+      this.directNoneLogged = true;
+      logInfo(Log.Direct.Skipped, 'Unknown screen, but no director add-on to ask', { reason: 'no-director' });
+    }
     return false;
   }
-  // The game coming up: its screens move on by themselves or by the old taps.
-  // Only the boot phase: `isStartupPhase` lasts until the friend page, so a
-  // screen in the way after the hub kept it on and nobody was ever asked.
-  if (this.inBoot()) {
-    logDebug(Log.Direct.Skipped, { reason: 'boot' });
+  const unknownMs = unknownForMs();
+  // The game coming up: its screens move on by themselves or by the boot taps.
+  // One that held still past UnknownDirectBootMs is asked about (bootUnknown let it through).
+  if (this.inBoot() && unknownMs < UnknownDirectBootMs) {
+    logDebug(Log.Direct.Skipped, { reason: 'boot', unknownMs: unknownMs });
     return false;
   }
   // True skips the escape: look again rather than tap.
-  const unknownMs = Date.now() - gPages.since;
   if (unknownMs < UnknownDirectAfterMs) {
     this.sleep(UnknownDirectPollMs);
     return true;
   }
-  // Still moving is the game at work (a restart, a download), not a question.
-  if (!this.settleScreen(UnknownDirectSettleMs, 0)) {
+  // Still moving is usually the game at work (a restart, a download). Past the
+  // limit it is looping art on a screen nobody knows: ask.
+  if (!this.settleScreen(UnknownDirectSettleMs, 0) && unknownMs < UnknownDirectMovingMaxMs) {
     logDebug(Log.Direct.Skipped, { reason: 'moving', unknownMs: unknownMs });
-    return unknownMs < UnknownDirectMovingMaxMs;
+    return true;
   }
   // A native dialog (the root warning) is the script's to answer, not the user's.
-  if (this.dismissSystemDialog()) {
+  // Only one the UI tree confirms: a light game popup can pass the pixel test.
+  const box = this.findSystemDialog();
+  if (box !== null && this.tapDialogButtonViaUi(box) && this.dialogChanged(box)) {
     return true;
   }
   const task = gTaskController !== undefined ? gTaskController.runningTask : '';
@@ -1111,8 +1130,5 @@ Tsum.prototype.directUnknownPage = function() {
   const outcome = requestUserDirection({
     body: 'Paused on an unfamiliar screen' + (label === '' ? '.' : ' (' + label + ').'),
   });
-  if (outcome === 'timeout') {
-    this.directQuietUntil = Date.now() + UnknownDirectQuietMs;
-  }
   return outcome === 'continue' || outcome === 'stopped';
 }

@@ -1457,8 +1457,8 @@ interface Tsum {
   edgeWashBackoffUntil: number;
   /** Bumped after each user direction request; the stall guard starts over on it. */
   stallResets: number;
-  /** Until when an unknown screen asks for no direction, after one timed out. */
-  directQuietUntil: number;
+  /** An unknown screen found no director this run (logged once). */
+  directNoneLogged: boolean;
   updateBoardScale(grayImg: NativeImage): void;
   waitOutEdgeWash(grayImg: NativeImage): boolean;
   scanBoardQuick(): BoardPoint[];
