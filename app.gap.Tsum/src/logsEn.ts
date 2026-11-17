@@ -85,6 +85,7 @@ var LogsEn = {
   [Log.Play.CoinTargetUnreadable]: 'Coin counter unreadable; coin target off this round',
   [Log.Play.CoinTargetStale]: 'Coin counter not read lately; waiting near the coin target',
   [Log.Play.CoinTargetResumed]: 'Coin target changed; playing again',
+  [Log.Play.CoinTargetSkillPaid]: 'Coin target: measured what the skill paid',
   [Log.Tsums.Detected]: 'MyTsum read from the settings page',
   [Log.Tsums.Identified]: 'MyTsum identified',
   [Log.Tsums.Unidentified]: 'Selected tsum unknown; round recorded without one',

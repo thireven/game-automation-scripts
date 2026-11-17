@@ -58,8 +58,9 @@ release note; they fold back in here when she ships.
 
 - **Coin Target** (`src/coinTarget.ts`, `SettingKey.CoinTarget`, Alpha, `neverShared`): reads the live HUD counter
   each turn (`StatsRegions.liveCounters`; two equal reads, more for a value it cannot plausibly hold), counts chains
-  and bubble pops not yet paid (wiki chart values, moved back by pauses), trims batches to fit, holds the skill within
-  800 or 1.5x the largest measured activation, once the counter is within 100 draws up to 3 cut chains a turn while they fit under counter + unpaid + bubbles, waiting on the counter only when nothing fits, then coasts.
+  and bubble pops not yet paid (wiki chart values, moved back by pauses), trims batches to fit, measures the skill's first
+  activation each run on a quiet board (`coinTargetTrialQuiet`): one paying <= 15 keeps firing, counted at 1.5x its
+  pay, else it is held within 800 or 1.5x its pay; once the counter is within 100 draws up to 3 cut chains a turn while they fit under counter + unpaid + bubbles, waiting on the counter only when nothing fits, then coasts.
 
 ## [6.0b28]
 
