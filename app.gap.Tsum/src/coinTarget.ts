@@ -27,8 +27,8 @@
 //   approach  up to the skill hold (`skillHoldCoins`, or 1.5x the largest
 //             activation measured this round): the same, with the skill held.
 //   careful   the counter within `carefulCoins`: the play loop hands each turn to
-//             `coinTargetCarefulTurn` -- wait for the counter to settle, then
-//             pop one bubble or draw one chain cut to the length that fits.
+//             `coinTargetCarefulTurn` -- pop a bubble or draw chains cut to what
+//             fits, waiting on the counter only once nothing fits.
 //   done      nothing left that fits: the round coasts (no touches) to its end,
 //             unless the target is raised or cleared from the Quick Bar.
 //
@@ -56,10 +56,12 @@ const CoinTargetConfig = {
   counterLagMs: 500,
   /** A skill's payout may still be landing this long after its activation ends. */
   skillLandMs: 5000,
-  /** The careful band acts only on a counter unchanged this long (it may roll up). */
+  /** A counter that changed this recently may still be rolling up: flights stay counted. */
   steadyMs: 350,
   /** Between looks while waiting in the careful band. */
-  waitPollMs: 120,
+  waitPollMs: 60,
+  /** Chains a careful turn may draw off one scan. */
+  carefulChainsPerTurn: 3,
   /** No confirmed read this long into the round: give up for the round. */
   giveUpMs: 10000,
   /** The careful band acts only on a confirmed read this recent. */
@@ -133,6 +135,8 @@ interface CoinTargetRound {
   /** A careful pop being measured: where, the counter before it, when it lands. */
   pop: Point | null;
   popBase: number;
+  /** Chain coins flown since that pop, taken off what it measures. */
+  popOther: number;
   popLandAt: number;
   /** Spots where a pop paid nothing: a misread bubble, not tapped again. */
   deadBubbles: Point[];
@@ -155,7 +159,7 @@ function coinTargetFresh(): CoinTargetRound {
   return { roundAt: now, value: 0, valueAt: now, steadySince: now,
     pending: -1, pendingCount: 0, pendingSince: 0, everRead: false, gaveUp: false,
     staleLogged: false, flights: [], need: Infinity, bubbleCoins: CoinTargetConfig.bubbleCoins,
-    pop: null, popBase: -1, popLandAt: 0, deadBubbles: [],
+    pop: null, popBase: -1, popOther: 0, popLandAt: 0, deadBubbles: [],
     skillSeenAt: 0, skillBase: -1, skillChainCoins: 0, skillDoneAt: 0, skillPayMax: 0,
     pauses: -1, lastStepAt: now, carefulLogged: false };
 }
@@ -241,6 +245,9 @@ function coinTargetFly(coins: number, landAt: number): void {
   if (gCoinTarget.skillBase >= 0) {
     gCoinTarget.skillChainCoins += coins;
   }
+  if (gCoinTarget.popBase >= 0) {
+    gCoinTarget.popOther += coins;
+  }
 }
 
 /** Whether a skill activation may still be paying out. */
@@ -255,12 +262,23 @@ function coinTargetSkillHold(): number {
     gCoinTarget.skillPayMax * CoinTargetConfig.skillHoldFactor);
 }
 
+/**
+ * Whether a flight may not be on the confirmed counter yet: due after the last
+ * read, or due shortly before a change the counter may still be rolling up.
+ */
+function coinTargetPending(f: CoinTargetFlight): boolean {
+  const s = gCoinTarget;
+  return f.landAt > s.valueAt
+    || (Date.now() - s.steadySince < CoinTargetConfig.steadyMs
+      && f.landAt > s.steadySince - CoinTargetConfig.counterLagMs * 4);
+}
+
 /** Coins started but not yet on the confirmed counter. */
 function coinTargetInFlight(ts: Tsum): number {
   const s = gCoinTarget;
   let sum = 0;
   for (let i = 0; i < s.flights.length; i++) {
-    if (s.flights[i].landAt > s.valueAt) {
+    if (coinTargetPending(s.flights[i])) {
       sum += s.flights[i].coins;
     }
   }
@@ -289,7 +307,7 @@ function coinTargetConfirm(v: number): void {
   // A careful pop that has landed: what it paid sets the allowance, or marks
   // the spot dead when it paid nothing.
   if (s.popBase >= 0 && now > s.popLandAt) {
-    const paid = v - s.popBase;
+    const paid = v - s.popBase - s.popOther;
     if (paid <= 0 && s.pop !== null) {
       s.deadBubbles.push(s.pop);
     }
@@ -468,10 +486,13 @@ function coinTargetFitPaths(ts: Tsum, paths: TsumPath[]): TsumPath[] {
 }
 
 /**
- * One careful turn. Waits for every flight to land on a fresh, steady read,
- * then pops one bubble (while its estimate still fits) or draws the chain
- * whose table value comes closest to what is left. `done` when nothing more
- * fits -- bubbles left on the board then pop after the timer.
+ * One careful turn: no skill, no Bubble Strategy, chains cut to what fits.
+ *
+ * Coins in flight are counted at the most they can pay, so there is no need to
+ * wait for the counter before drawing: anything that fits under target -
+ * counter - flights - bubbles is safe now. The counter is only waited on once
+ * nothing fits, to learn what chains linked short and left over. `done` when
+ * nothing fits with nothing in flight -- bubbles left then pop after the timer.
  *
  * The bubble pop is an override of the Bubble Strategy, on purpose: a bubble
  * left on the board pops after the timer and pays where it cannot be counted.
@@ -479,69 +500,93 @@ function coinTargetFitPaths(ts: Tsum, paths: TsumPath[]): TsumPath[] {
 function coinTargetCarefulTurn(ts: Tsum, board: BoardPoint[]): { drawn: TsumPath | null, done: boolean } {
   const s = gCoinTarget;
   const now = Date.now();
-  let landing = coinTargetSkillLanding(ts);
-  for (let i = 0; i < s.flights.length && !landing; i++) {
-    landing = s.flights[i].landAt > s.valueAt;
-  }
-  const stale = now - s.valueAt > CoinTargetConfig.staleMs;
-  if (stale && !s.staleLogged) {
+  if (now - s.valueAt > CoinTargetConfig.staleMs && !s.staleLogged) {
     s.staleLogged = true;
     logWarn(Log.Play.CoinTargetStale, { coins: s.value, sinceMs: now - s.valueAt });
   }
-  if (landing || stale || now - s.steadySince < CoinTargetConfig.steadyMs) {
-    ts.sleep(CoinTargetConfig.waitPollMs);
-    return { drawn: null, done: false };
-  }
-  const left = ts.coinTarget - s.value;
+  const flying = coinTargetInFlight(ts);
   const bubbles = coinTargetBubbles(ts);
-  // The bubble that pays least, if even that fits.
-  let pick: GameBubble | null = null;
-  for (let i = 0; i < bubbles.length; i++) {
-    if (pick === null || coinTargetBubblePay(bubbles[i]) < coinTargetBubblePay(pick)) {
-      pick = bubbles[i];
+  const bubblePay = bubbles.reduce(function(sum, b) { return sum + coinTargetBubblePay(b); }, 0);
+  // What may still be paid without passing the target, whatever lands.
+  let budget = ts.coinTarget - s.value - flying - bubblePay;
+  // A bubble first: its payout then shows on the counter instead of after the
+  // timer. Measured when nothing else is landing with it.
+  if (bubbles.length > 0) {
+    let pick = bubbles[0];
+    for (let i = 1; i < bubbles.length; i++) {
+      if (coinTargetBubblePay(bubbles[i]) < coinTargetBubblePay(pick)) {
+        pick = bubbles[i];
+      }
     }
-  }
-  if (pick !== null && coinTargetBubblePay(pick) <= left) {
-    s.popBase = s.value;
-    s.pop = { x: pick.x, y: pick.y };
-    s.popLandAt = coinTargetLandAt((pick.near || 8) + CoinTargetConfig.bubbleSlackTsums);
-    tapGameBubble(ts, pick);
-    ts.gameBubbles = [];
-    logDebug(Log.Play.CoinTargetPop, { coins: s.value, left: left,
-      estimate: coinTargetBubblePay(pick) });
-    return { drawn: null, done: false };
-  }
-  const budget = left - bubbles.reduce(function(sum, b) { return sum + coinTargetBubblePay(b); }, 0);
-  if (budget < 1) {
-    return { drawn: null, done: true };
+    // Its estimate is already off `budget`; it fits while the rest stays >= 0.
+    if (budget >= 0) {
+      if (flying === 0) {
+        s.popBase = s.value;
+        s.pop = { x: pick.x, y: pick.y };
+        s.popLandAt = coinTargetLandAt((pick.near || 8) + CoinTargetConfig.bubbleSlackTsums);
+      }
+      tapGameBubble(ts, pick);
+      // The pop's own flight is not "other".
+      s.popOther = 0;
+      ts.gameBubbles = [];
+      logDebug(Log.Play.CoinTargetPop, { coins: s.value, budget: budget,
+        estimate: coinTargetBubblePay(pick) });
+      return { drawn: null, done: false };
+    }
   }
   // Uncapped: "Maximum Chain Number" would hold every chain under what fits.
   // A large tsum may count as several, so its paths are not trusted here.
-  const paths = calculatePaths(board, ts.myTsumIdx, false, 0, false, skillLinkReach(ts));
-  let best: TsumPath | null = null;
-  let bestCoins = 0;
-  for (let i = 0; i < paths.length; i++) {
-    if (paths[i].some(function(p) { return p.grow !== undefined; })) {
-      continue;
+  let paths = budget >= 1
+    ? calculatePaths(board, ts.myTsumIdx, false, 0, false, skillLinkReach(ts))
+      .filter(function(p) { return !p.some(function(t) { return t.grow !== undefined; }); })
+    : [];
+  // Up to a few chains a turn, each the one that comes closest to the budget.
+  let first: TsumPath | null = null;
+  let drawnTsums = 0;
+  for (let n = 0; n < CoinTargetConfig.carefulChainsPerTurn && budget >= 1; n++) {
+    let bestAt = -1;
+    let bestLen = 0;
+    let bestCoins = 0;
+    for (let i = 0; i < paths.length; i++) {
+      const len = coinTargetFitLength(paths[i].length, budget);
+      const coins = coinTargetCoins(len);
+      if (len > 0 && (coins > bestCoins || (coins === bestCoins && len < bestLen))) {
+        bestAt = i;
+        bestLen = len;
+        bestCoins = coins;
+      }
     }
-    const len = coinTargetFitLength(paths[i].length, budget);
-    const coins = coinTargetCoins(len);
-    if (len > 0 && (coins > bestCoins || (coins === bestCoins && best !== null && len < best.length))) {
-      best = coinTargetCut(paths[i], len);
-      bestCoins = coins;
+    if (bestAt < 0) {
+      break;
+    }
+    const chain = coinTargetCut(paths[bestAt], bestLen);
+    paths = paths.slice(0, bestAt).concat(paths.slice(bestAt + 1));
+    ts.linkTsums(chain);
+    drawnTsums += chain.length;
+    // Its bubble, if it makes one, is counted by the scan that sees it.
+    coinTargetFly(bestCoins, coinTargetLandAt(drawnTsums));
+    budget -= coinTargetCost(bestLen);
+    logDebug(Log.Play.CoinTargetChain, { coins: s.value, chain: bestLen, pays: bestCoins,
+      budget: budget });
+    if (first === null) {
+      first = chain;
     }
   }
-  if (best === null) {
-    // No chain of four or more on this board: look again next turn.
+  if (first !== null) {
+    return { drawn: first, done: false };
+  }
+  // Nothing fits. With payouts still landing, wait for the counter to say what
+  // they came to; with none, the round is as close as it gets.
+  if (flying > 0) {
     ts.sleep(CoinTargetConfig.waitPollMs);
     return { drawn: null, done: false };
   }
-  ts.linkTsums(best);
-  // Its bubble, if it makes one, is counted by the scan that sees it.
-  coinTargetFly(bestCoins, coinTargetLandAt(best.length));
-  logDebug(Log.Play.CoinTargetChain, { coins: s.value, left: left, chain: best.length,
-    pays: bestCoins });
-  return { drawn: best, done: false };
+  if (ts.coinTarget - s.value - bubblePay < 1) {
+    return { drawn: null, done: true };
+  }
+  // Room left, but no chain of four or more on this board: look again.
+  ts.sleep(CoinTargetConfig.waitPollMs);
+  return { drawn: null, done: false };
 }
 
 /** Whether a coast the target started should end: the target was raised or cleared. */
