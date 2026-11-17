@@ -346,6 +346,7 @@ declare const enum SettingKey {
   StopAfterAction = 'stopAfterAction',
   BubbleStrategy = 'bubbleStrategy',
   HoldBubblesLastFeverSec = 'holdBubblesLastFeverSec',
+  CoinTarget = 'coinTarget',
   UseFan = 'useFan',
   MaxChainsPerScan = 'maxChainsPerScan',
   MaxChain = 'maxChain',
@@ -465,6 +466,8 @@ interface Settings {
    * its clear short, which is what refills the gauge fastest. 0 never holds.
    */
   [SettingKey.HoldBubblesLastFeverSec]: number;
+  /** Base coins a round plays to and then stops earning; 0 is off. See src/coinTarget.ts. */
+  [SettingKey.CoinTarget]: number;
   [SettingKey.UseFan]: boolean;
   [SettingKey.MaxChainsPerScan]: number;
   [SettingKey.MaxChain]: number;

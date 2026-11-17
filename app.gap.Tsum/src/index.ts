@@ -298,6 +298,7 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.StopAfterAction]: RemoteKind.Enum,
   [SettingKey.BubbleStrategy]: RemoteKind.Enum,
   [SettingKey.HoldBubblesLastFeverSec]: RemoteKind.Int,
+  [SettingKey.CoinTarget]: RemoteKind.Int,
   [SettingKey.UseFan]: RemoteKind.Bool,
   [SettingKey.MaxChainsPerScan]: RemoteKind.Int,
   [SettingKey.MaxChain]: RemoteKind.Int,
@@ -703,6 +704,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // before the row existed: 0 is "never hold", which is how it always played.
   ts.holdBubblesLastFeverSec = typeof settings.holdBubblesLastFeverSec === 'number'
     ? settings.holdBubblesLastFeverSec : 0;
+  // Same default: 0 is off, for a form from before the row existed.
+  ts.coinTarget = typeof settings.coinTarget === 'number' && settings.coinTarget > 0
+    ? Math.floor(settings.coinTarget) : 0;
   ts.skillInterval = settings.skillWaitingTime * 1000;
   // Same default, same reason: a stored form from before the row existed.
   ts.skillSettleMs = typeof settings.skillSettleMs === 'number' && settings.skillSettleMs > 0

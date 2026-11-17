@@ -244,6 +244,8 @@ class Tsum {
   bubbleSightings: GameBubble[];
   /** Pop no bubble while a fever has this many seconds left; 0 never holds. */
   holdBubblesLastFeverSec: number;
+  /** The Coin Target setting: base coins a round plays to; 0 is off. */
+  coinTarget: number;
   noSkillLastFeverSec: number;
   /** Play a Lorcana tsum's transformation and its ink stones -- see src/lorcana.ts. */
   lorcanaCard: boolean;
@@ -523,6 +525,7 @@ class Tsum {
     this.bubbleHoldUntil = 0;
     this.bubbleSightings = [];
     this.holdBubblesLastFeverSec = 0;
+    this.coinTarget = 0;
     this.noSkillLastFeverSec = 0;
     this.lorcanaCard = false;
     // Nothing is held back until the Quick Bar holds something back.

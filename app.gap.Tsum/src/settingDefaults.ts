@@ -40,6 +40,7 @@ var SettingDefaults: Readonly<Settings> = {
   [SettingKey.PrioritizeMyTsum]: true,
   [SettingKey.BubbleStrategy]: BubbleStrategy.OneMidChain,
   [SettingKey.HoldBubblesLastFeverSec]: 0,
+  [SettingKey.CoinTarget]: 0,
   [SettingKey.UseFan]: false,
   [SettingKey.UnlockLevelHoursWait]: 0,
   [SettingKey.AutoUnlockMyTsumLevel]: false,
@@ -66,3 +67,6 @@ var SettingDefaults: Readonly<Settings> = {
   [SettingKey.CollectUnknownScreens]: false,
   [SettingKey.PageHistoryDepth]: 20,
 };
+
+/** The Coin Target row's ceiling, shared by the page and the Quick Bar's clamp. */
+var CoinTargetMax = 99999;

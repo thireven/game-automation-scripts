@@ -390,6 +390,8 @@ function tapGameBubble(ts: Tsum, b: GameBubble): void {
   const y = Math.floor(ts.playOffsetY + b.y * ts.playHeight / ts.playResizeHeight);
   tap(x, y, GameBubbleConfig.tapDuring, TapHoldMs);
   b.popped = true;
+  // Coin Target: the pop's payout is on its way (src/coinTarget.ts).
+  coinTargetNotePop(ts, b);
   fluxCancel(Date.now());
 }
 
@@ -537,6 +539,7 @@ Tsum.prototype.link = function(paths, board) {
     // the board and chains the bubbles that burst leaves, and the two stale
     // chains drawn afterwards were clearing the board her next burst wanted.
     if (this.maybeAutoTapSkill(board)) {
+      coinTargetSkillRan(this);
       break;
     }
     if (popsLate) { popAfterChain(); }
@@ -581,6 +584,8 @@ Tsum.prototype.clearAllBubbles = function(startDelay, endDelay, fromY, delayBetw
   // Blind, so nothing knows which it took: whatever the next scan finds is
   // new, rather than a new bubble inheriting the age of one this just popped.
   this.bubbleSightings = [];
+  // Coin Target: whatever it popped is paying out (src/coinTarget.ts).
+  coinTargetNoteSweep(this);
 
   if (typeof endDelay === 'number' && endDelay > 0) {
     this.sleep(endDelay);

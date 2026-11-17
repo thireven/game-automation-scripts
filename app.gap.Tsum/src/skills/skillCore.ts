@@ -680,6 +680,8 @@ const SkillOverloadCooldownMs = 1500;
 // batch carries on, as it did when the tap was blind.
 Tsum.prototype.maybeAutoTapSkill = function(board) {
   if (!this.skillAutoTap) { return false; }
+  // Near the Coin Target a burst could pay past it (src/coinTarget.ts).
+  if (coinTargetHoldsSkill(this)) { return false; }
   // Before the interval stamp, so the first probe after the window closes is
   // not put off by one more interval.
   if (skillStillRunning(this)) { return false; }
@@ -829,6 +831,10 @@ var gSkillFullLookAt = 0;
 
 Tsum.prototype.useSkill = function(board, fast) {
   if (this.skillType === SkillType.NoSkill) {
+    return false;
+  }
+  // Near the Coin Target a burst could pay past it (src/coinTarget.ts).
+  if (coinTargetHoldsSkill(this)) {
     return false;
   }
 

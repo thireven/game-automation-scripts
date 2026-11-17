@@ -114,6 +114,8 @@ declare const enum UiText {
   SettingBubbleStrategyHelp = 'setting.bubbleStrategy.help',
   SettingHoldBubblesLastFever = 'setting.holdBubblesLastFever',
   SettingHoldBubblesLastFeverHelp = 'setting.holdBubblesLastFever.help',
+  SettingCoinTarget = 'setting.coinTarget',
+  SettingCoinTargetHelp = 'setting.coinTarget.help',
   SettingUseFan = 'setting.useFan',
   SettingUseFanHelp = 'setting.useFan.help',
   SettingBonusScore = 'setting.bonusScore',
@@ -459,6 +461,7 @@ declare const enum UiText {
   FlowTapSkill = 'flow.tapSkill',
   /** Hold every bubble in a fever's last `{sec}` seconds. */
   FlowHoldBubblesFever = 'flow.holdBubblesFever',
+  FlowCoinTarget = 'flow.coinTarget',
   FlowLinkOneBubble = 'flow.linkOneBubble',
   FlowLinkAllButOne = 'flow.linkAllButOne',
   FlowLinkAllBubbles = 'flow.linkAllBubbles',

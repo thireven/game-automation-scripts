@@ -339,6 +339,7 @@ const StatsRegions: {
   finalMedals: StatsRegion;
   finalCoinsMedals: StatsRegion;
   baseCounters: StatsRegion;
+  liveCounters: StatsRegion;
 } = {
   // ScorePage: the big orange total. One rectangle for both tally layouts --
   // the medals row is below it and the block grows downwards from here.
@@ -424,6 +425,16 @@ const StatsRegions: {
     lo: [40, 40, 40], hi: [255, 255, 255],
     themedLo: [67, 67, 67],
     bandLo: [54, 54, 54]
+  },
+  // GamePlaying: the same counter row undimmed, read mid-round by the Coin
+  // Target setting (src/coinTarget.ts). Pure white digits on the dark pill, so
+  // the tally's white floor; read right on every in-round 540 corpus frame,
+  // fever and themed HUDs included. The 360x640 MuMu frames read nothing,
+  // which the setting treats as unreadable.
+  liveCounters: {
+    name: 'live counters',
+    x: 368, y: 286, w: 432, h: 78,
+    lo: [220, 220, 220], hi: [255, 255, 255]
   }
 };
 

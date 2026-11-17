@@ -385,6 +385,21 @@ var tabs: TabSpec[] = [
                         title: UiText.SettingPrioritizeMyTsum,
                         help: UiText.SettingPrioritizeMyTsumHelp,
                         default: SettingDefaults[SettingKey.PrioritizeMyTsum]
+                    },
+                    {
+                        // Plays a round to an exact coin figure, for bingo
+                        // missions; 0 is off. See src/coinTarget.ts.
+                        key: SettingKey.CoinTarget,
+                        title: UiText.SettingCoinTarget,
+                        help: UiText.SettingCoinTargetHelp,
+                        default: SettingDefaults[SettingKey.CoinTarget],
+                        step: 100,
+                        max: CoinTargetMax,
+                        min: 0,
+                        status: ReleaseStatus.Alpha,
+                        // A mission's figure, not a way of playing: kept out
+                        // of share codes and presets.
+                        neverShared: true
                     }
                 ]
             },
@@ -4364,6 +4379,9 @@ function roundFlowChips(values: { [key: string]: SettingValue }): string[] {
     chips.push(i18nFormat(UiText.FlowKeep, {count: num(SettingKey.MaxChainsPerScan)}));
     if (on(SettingKey.SkillAutoTap)) {
         chips.push(i18nText(UiText.FlowTapSkill));
+    }
+    if (num(SettingKey.CoinTarget) > 0) {
+        chips.push(i18nFormat(UiText.FlowCoinTarget, {coins: num(SettingKey.CoinTarget)}));
     }
     if (num(SettingKey.HoldBubblesLastFeverSec) > 0) {
         chips.push(i18nFormat(UiText.FlowHoldBubblesFever,

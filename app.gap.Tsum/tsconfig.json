@@ -109,6 +109,9 @@
     // here for reading order, before the drags that read it (board.ts is the
     // play loop's, gaston.ts the window's).
     "src/chainCounter.ts",
+    // The Coin Target setting's play: plain functions and tables the play loop
+    // and skillCore.ts call at run time.
+    "src/coinTarget.ts",
     // skillCore.ts declares the registry the skill files register into at load
     // time, so it has to be concatenated ahead of them.
     "src/skills/skillCore.ts",

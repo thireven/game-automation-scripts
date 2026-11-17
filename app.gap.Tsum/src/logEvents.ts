@@ -198,6 +198,16 @@ namespace Log {
     WrapUpArmed           = 'play.wrapUpArmed',
     WrapUpCancelled       = 'play.wrapUpCancelled',
     WrapUpFired           = 'play.wrapUpFired',
+    /** Coin Target (src/coinTarget.ts): the careful band entered, a chain or pop in it, the stop, and a counter it could not read. */
+    CoinTargetCareful     = 'play.coinTargetCareful',
+    CoinTargetChain       = 'play.coinTargetChain',
+    CoinTargetPop         = 'play.coinTargetPop',
+    CoinTargetReached     = 'play.coinTargetReached',
+    CoinTargetUnreadable  = 'play.coinTargetUnreadable',
+    CoinTargetStale       = 'play.coinTargetStale',
+    CoinTargetImplausible = 'play.coinTargetImplausible',
+    CoinTargetSkillPaid   = 'play.coinTargetSkillPaid',
+    CoinTargetResumed     = 'play.coinTargetResumed',
   }
 
   /** Which tsum is selected, off the pre-round icon. */

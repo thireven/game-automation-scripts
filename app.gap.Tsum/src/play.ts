@@ -840,6 +840,8 @@ Tsum.prototype.taskPlayGameQuick = function() {
   // Same reasoning as `gFever.reset()` in buildRun: the transformation belongs
   // to a round, and the round that just ended has nothing to say about this one.
   lorcanaReset();
+  // The HUD's coin counter starts the round at 0.
+  coinTargetReset();
   // Bubbles the last scan saw, before any were popped: a pile this big is what
   // sets off All Bubbles ASAP's blind sweep below.
   let bubblesSeen = 0;
@@ -851,6 +853,8 @@ Tsum.prototype.taskPlayGameQuick = function() {
   // with `nextCoastBeatAt` pacing the heartbeat line. See the cap block above.
   let coastStartedAt = 0;
   let nextCoastBeatAt = 0;
+  // Whether the coast is the Coin Target's, which a raised or cleared target lifts.
+  let coinCoast = false;
   // The chain the last turn certainly drew, and how many scans running have
   // found it still standing afterwards -- the stalled-board check above. Null
   // means the last turn drew nothing, or churned the board by some other means,
@@ -890,6 +894,11 @@ Tsum.prototype.taskPlayGameQuick = function() {
       // other, so the tally, the stats and the next round all follow as usual.
       coastStartedAt = Date.now();
       nextCoastBeatAt = coastStartedAt + RoundCoastHeartbeatMs;
+    }
+    if (coinCoast && coinTargetResumes(this)) {
+      logInfo(Log.Play.CoinTargetResumed, { target: this.coinTarget });
+      coastStartedAt = 0;
+      coinCoast = false;
     }
     if (coastStartedAt !== 0) {
       // Watching, not playing: no scan, no chain, no skill. The liveness check
@@ -969,6 +978,36 @@ Tsum.prototype.taskPlayGameQuick = function() {
         break;
       }
     }
+    // Coin Target (src/coinTarget.ts): Off without the setting. Near the
+    // target the turn is its own -- one bubble or one cut chain, nothing else;
+    // with nothing left that fits, the round coasts like a Time out.
+    const coinStep = coinTargetStep(this);
+    let coinDone = coinStep === CoinStep.Done;
+    if (coinStep === CoinStep.Careful) {
+      const turn = coinTargetCarefulTurn(this, board);
+      coinDone = turn.done;
+      if (!coinDone) {
+        drawnChain = turn.drawn;
+        const carefulLook = this.watchRoundEnd(hud);
+        if (carefulLook === RoundLook.Over) {
+          break;
+        }
+        if (carefulLook === RoundLook.Unreadable) {
+          drawnChain = null;
+          deadScans = 0;
+        }
+        this.runTimes++;
+        continue;
+      }
+    }
+    if (coinDone) {
+      coinTargetFinish(this);
+      coinCoast = true;
+      coastStartedAt = Date.now();
+      nextCoastBeatAt = coastStartedAt + RoundCoastHeartbeatMs;
+      drawnChain = null;
+      continue;
+    }
     // All Bubbles ASAP: spend them where they are, before a chain can earn
     // them. The other two strategies leave the list for `link` to spend on the
     // first long chain of this batch -- less any overflow, popped now (Save
@@ -1007,6 +1046,8 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // covered in them -- and fan the tsums away. Gaston's cut is 1.
     const foundPaths = paths.length;
     paths = paths.splice(0, skillMaxChainsPerScan(this));
+    // Coin Target: no batch may pay past what is still wanted.
+    paths = coinTargetFitPaths(this, paths);
     // Catch a gauge that filled during the scan/calculation above before linking.
     this.maybeAutoTapSkill(board);
     const isBubble = this.link(paths, board);
@@ -1050,6 +1091,8 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // sweep (and then, for a skill whose beforeActivate swept too, a second
     // one) before its activation tap went out.
     while (this.useSkill(board)) {
+      // Coin Target: the activation may pay for a while yet.
+      coinTargetSkillRan(this);
       // An activation clears most of what it touches, so the chain drawn above
       // is not evidence about the game refusing it either way.
       drawnChain = null;
