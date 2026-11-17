@@ -26,7 +26,7 @@
 //             cannot pay more than `need`.
 //   approach  up to the skill hold (`skillHoldCoins`, or 1.5x the largest
 //             activation measured this round): the same, with the skill held.
-//   careful   up to `carefulCoins`: the play loop hands each turn to
+//   careful   the counter within `carefulCoins`: the play loop hands each turn to
 //             `coinTargetCarefulTurn` -- wait for the counter to settle, then
 //             pop one bubble or draw one chain cut to the length that fits.
 //   done      nothing left that fits: the round coasts (no touches) to its end,
@@ -44,8 +44,8 @@ const CoinTargetConfig = {
   skillHoldCoins: 800,
   /** The hold once activations are measured: this times the largest. */
   skillHoldFactor: 1.5,
-  /** One chain per turn, each waiting for the counter, while `need` is this low. */
-  carefulCoins: 60,
+  /** One chain per turn, each waiting for the counter, once the counter is this close. */
+  carefulCoins: 100,
   /** Least allowance per bubble, raised by what pops measure. */
   bubbleCoins: 40,
   /** Tsums a bubble's blast is assumed to take beyond those the scan counted. */
@@ -388,7 +388,9 @@ function coinTargetStep(ts: Tsum): CoinStep {
   const bubbles = coinTargetBubbles(ts);
   s.need = ts.coinTarget - s.value - coinTargetInFlight(ts)
     - bubbles.reduce(function(sum, b) { return sum + coinTargetBubblePay(b); }, 0);
-  if (s.need > CoinTargetConfig.carefulCoins) {
+  // Careful by the counter alone: coins in flight or on bubbles are not near
+  // until they land, and meanwhile the trim keeps chains inside `need`.
+  if (ts.coinTarget - s.value > CoinTargetConfig.carefulCoins) {
     return CoinStep.Play;
   }
   if (!s.carefulLogged) {
