@@ -983,20 +983,9 @@ Tsum.prototype.taskPlayGameQuick = function() {
     // with nothing left that fits, the round coasts like a Time out.
     const coinStep = coinTargetStep(this);
     let coinDone = coinStep === CoinStep.Done;
-    if (coinStep === CoinStep.Careful || coinStep === CoinStep.Wait) {
-      // Wait: the skill's first activation is paying, and nothing else may.
-      const turn = coinStep === CoinStep.Wait
-        ? { drawn: null, done: false } : coinTargetCarefulTurn(this, board);
-      if (coinStep === CoinStep.Wait) {
-        this.sleep(CoinTargetConfig.waitPollMs);
-      }
+    if (coinStep === CoinStep.Careful) {
+      const turn = coinTargetCarefulTurn(this, board);
       coinDone = turn.done;
-      // A skill measured to pay little still fires, counted at what it pays.
-      if (!coinDone && coinTargetSkillUsable(this)) {
-        while (this.useSkill(board)) {
-          coinTargetSkillRan(this);
-        }
-      }
       if (!coinDone) {
         drawnChain = turn.drawn;
         const carefulLook = this.watchRoundEnd(hud);

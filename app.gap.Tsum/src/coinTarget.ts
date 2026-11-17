@@ -40,16 +40,10 @@
 // --- Tuning data -------------------------------------------------------------
 
 const CoinTargetConfig = {
-  /** A skill that pays coins: no activation while `need` is this low... */
+  /** No skill activation while `need` is this low, until one is measured. */
   skillHoldCoins: 800,
-  /** ...or this times the most one has paid, if more. */
+  /** The hold once activations are measured: this times the largest. */
   skillHoldFactor: 1.5,
-  /** A skill paying at most this keeps firing near the target, counted as it pays. */
-  smallSkillCoins: 15,
-  /** The least a small skill's activation is counted as. */
-  smallSkillFloor: 3,
-  /** The first activation waits at most this long for chains to land first. */
-  trialWaitMs: 4000,
   /** One chain per turn, each waiting for the counter, once the counter is this close. */
   carefulCoins: 100,
   /** Least allowance per bubble, raised by what pops measure. */
@@ -107,8 +101,6 @@ const enum CoinStep {
   Play,
   /** Within `carefulCoins`: `coinTargetCarefulTurn` plays the turn. */
   Careful,
-  /** The skill's trial is paying: touch nothing, look again. */
-  Wait,
   /** At or past the target: coast to the round's end. */
   Done,
 }
@@ -154,10 +146,8 @@ interface CoinTargetRound {
   skillChainCoins: number;
   /** When the last activation's choreography returned. */
   skillDoneAt: number;
-  /** Whether the activation being measured is the skill's first (the trial). */
-  skillTrial: boolean;
-  /** When the trial started holding chains back for the gauge; 0 while it is not. */
-  trialHoldSince: number;
+  /** The largest activation measured this round. */
+  skillPayMax: number;
   /** For moving flights back by a pause. */
   pauses: number;
   lastStepAt: number;
@@ -170,41 +160,11 @@ function coinTargetFresh(): CoinTargetRound {
     pending: -1, pendingCount: 0, pendingSince: 0, everRead: false, gaveUp: false,
     staleLogged: false, flights: [], need: Infinity, bubbleCoins: CoinTargetConfig.bubbleCoins,
     pop: null, popBase: -1, popOther: 0, popLandAt: 0, deadBubbles: [],
-    skillSeenAt: 0, skillBase: -1, skillChainCoins: 0, skillDoneAt: 0, skillTrial: false,
-    trialHoldSince: 0,
+    skillSeenAt: 0, skillBase: -1, skillChainCoins: 0, skillDoneAt: 0, skillPayMax: 0,
     pauses: -1, lastStepAt: now, carefulLogged: false };
 }
 
 var gCoinTarget: CoinTargetRound = coinTargetFresh();
-
-/**
- * What the selected skill pays, learned for the run (a skill's payout is the
- * same from round to round) and keyed by skill and level, so changing either
- * starts again. `measured` once its first activation -- the trial -- has paid.
- */
-interface CoinTargetSkillRecord {
-  key: string;
-  measured: boolean;
-  /** The most an activation paid: exact for the trial, at least this for later ones. */
-  maxPay: number;
-}
-
-var gCoinTargetSkill: CoinTargetSkillRecord = { key: '', measured: false, maxPay: 0 };
-
-function coinTargetSkillRecord(ts: Tsum): CoinTargetSkillRecord {
-  const key = ts.skillType + ':' + ts.skillLevel;
-  if (gCoinTargetSkill.key !== key) {
-    // No skill pays nothing, so there is nothing to try.
-    gCoinTargetSkill = { key: key, measured: ts.skillType === SkillType.NoSkill, maxPay: 0 };
-  }
-  return gCoinTargetSkill;
-}
-
-/** Whether the skill pays little enough to keep firing near the target. */
-function coinTargetSkillSmall(ts: Tsum): boolean {
-  const rec = coinTargetSkillRecord(ts);
-  return rec.measured && rec.maxPay <= CoinTargetConfig.smallSkillCoins;
-}
 
 /** At each round's start: the counter is back at 0. */
 function coinTargetReset(): void {
@@ -296,45 +256,10 @@ function coinTargetSkillLanding(ts: Tsum): boolean {
   return last > 0 && Date.now() - last < CoinTargetConfig.skillLandMs;
 }
 
-/**
- * What one activation is counted as while it pays, and the `need` below which
- * it waits: a small skill's own payout, else the hold for one that bursts.
- */
-function coinTargetSkillHold(ts: Tsum): number {
-  const rec = coinTargetSkillRecord(ts);
-  if (coinTargetSkillSmall(ts)) {
-    return Math.max(CoinTargetConfig.smallSkillFloor, Math.ceil(rec.maxPay * CoinTargetConfig.skillHoldFactor));
-  }
-  return Math.max(CoinTargetConfig.skillHoldCoins, rec.maxPay * CoinTargetConfig.skillHoldFactor);
-}
-
-/** Whether any chain or pop may still be paying. */
-function coinTargetFlightsPending(): boolean {
-  return gCoinTarget.flights.some(coinTargetPending);
-}
-
-/**
- * Whether the trial wants the board quiet: its skill is unmeasured and its
- * gauge full (or it is paying), so chains wait -- for `trialWaitMs` at most --
- * and the counter then says what the activation alone paid.
- */
-function coinTargetTrialQuiet(ts: Tsum): boolean {
-  const s = gCoinTarget;
-  if (coinTargetSkillRecord(ts).measured) {
-    return false;
-  }
-  if (s.skillBase >= 0 && s.skillTrial) {
-    return true;
-  }
-  if (ts.checkSkillReadinessFast() !== SkillReadiness.Active) {
-    s.trialHoldSince = 0;
-    return false;
-  }
-  const now = Date.now();
-  if (s.trialHoldSince === 0) {
-    s.trialHoldSince = now;
-  }
-  return now - s.trialHoldSince < CoinTargetConfig.trialWaitMs;
+/** The `need` below which the skill waits. */
+function coinTargetSkillHold(): number {
+  return Math.max(CoinTargetConfig.skillHoldCoins,
+    gCoinTarget.skillPayMax * CoinTargetConfig.skillHoldFactor);
 }
 
 /**
@@ -359,7 +284,7 @@ function coinTargetInFlight(ts: Tsum): number {
   }
   // An activation still paying: as much as the hold allows for.
   if (coinTargetSkillLanding(ts)) {
-    sum += coinTargetSkillHold(ts);
+    sum += coinTargetSkillHold();
   }
   return sum;
 }
@@ -451,14 +376,10 @@ function coinTargetStep(ts: Tsum): CoinStep {
   s.pauses = ts.pauses;
   s.lastStepAt = now;
   // A new activation: measure it from the counter as it stood.
-  // Chains still paying when it fired are not taken off: they count as the
-  // skill's, which can only make it look bigger. The trial waits them out.
   if (ts.skillFiredAt > s.skillSeenAt) {
     s.skillSeenAt = ts.skillFiredAt;
     s.skillBase = s.value;
     s.skillChainCoins = 0;
-    s.skillTrial = !coinTargetSkillRecord(ts).measured;
-    s.trialHoldSince = 0;
   }
   coinTargetSample(ts);
   // A new figure is confirmed by a second read now rather than next turn.
@@ -472,25 +393,15 @@ function coinTargetStep(ts: Tsum): CoinStep {
     ts.banner('Coin counter unreadable: playing normally', 5000);
     return CoinStep.Off;
   }
-  // An activation that has stopped paying, on a read taken after: what it
-  // paid, less the most the chains drawn since could have.
-  const skillEnd = Math.max(ts.skillFiredAt, s.skillDoneAt) + CoinTargetConfig.skillLandMs;
-  if (s.skillBase >= 0 && !coinTargetSkillLanding(ts) && s.valueAt >= skillEnd) {
-    const rec = coinTargetSkillRecord(ts);
-    const paid = Math.max(0, s.value - s.skillBase - s.skillChainCoins);
-    rec.maxPay = Math.max(rec.maxPay, paid);
-    rec.measured = true;
+  // An activation that has stopped paying: what it paid, less chains drawn since.
+  if (s.skillBase >= 0 && !coinTargetSkillLanding(ts) && s.valueAt > ts.skillFiredAt) {
+    const paid = s.value - s.skillBase - s.skillChainCoins;
+    s.skillPayMax = Math.max(s.skillPayMax, paid);
     s.skillBase = -1;
-    logInfo(Log.Play.CoinTargetSkillPaid, { paid: paid, trial: s.skillTrial,
-      small: coinTargetSkillSmall(ts), hold: coinTargetSkillHold(ts) });
-    s.skillTrial = false;
+    logDebug(Log.Play.CoinTargetSkillPaid, { paid: paid, hold: coinTargetSkillHold() });
   }
   if (s.value >= ts.coinTarget) {
     return CoinStep.Done;
-  }
-  // The trial paying: nothing else may, so its payout is its own.
-  if (s.skillBase >= 0 && s.skillTrial) {
-    return CoinStep.Wait;
   }
   const bubbles = coinTargetBubbles(ts);
   s.need = ts.coinTarget - s.value - coinTargetInFlight(ts)
@@ -508,27 +419,9 @@ function coinTargetStep(ts: Tsum): CoinStep {
   return CoinStep.Careful;
 }
 
-/**
- * Whether the skill waits. Its first activation (the trial) only waits for the
- * chains before it to land; after that a small skill fires while what it pays
- * still fits, and one that bursts waits once the target is within its hold.
- */
+/** Whether the skill waits: the target is close enough for a burst to pass it. */
 function coinTargetHoldsSkill(ts: Tsum): boolean {
-  if (!coinTargetOn(ts)) {
-    return false;
-  }
-  const s = gCoinTarget;
-  if (!coinTargetSkillRecord(ts).measured) {
-    return (s.skillBase >= 0 && s.skillTrial)
-      || (coinTargetFlightsPending() && s.trialHoldSince !== 0
-        && Date.now() - s.trialHoldSince < CoinTargetConfig.trialWaitMs);
-  }
-  return coinTargetSkillSmall(ts) ? s.need < coinTargetSkillHold(ts) : s.need <= coinTargetSkillHold(ts);
-}
-
-/** Whether a careful turn should offer the skill a go: a small one, measured. */
-function coinTargetSkillUsable(ts: Tsum): boolean {
-  return coinTargetOn(ts) && ts.skillType !== SkillType.NoSkill && coinTargetSkillSmall(ts);
+  return coinTargetOn(ts) && gCoinTarget.need <= coinTargetSkillHold();
 }
 
 /** After a skill's activation (and its choreography) returns: it may still pay. */
@@ -569,9 +462,6 @@ function coinTargetFitPaths(ts: Tsum, paths: TsumPath[]): TsumPath[] {
     return paths;
   }
   const s = gCoinTarget;
-  if (coinTargetTrialQuiet(ts)) {
-    return [];
-  }
   const kept: TsumPath[] = [];
   for (let i = 0; i < paths.length; i++) {
     const path = paths[i];
@@ -682,7 +572,6 @@ function coinTargetCarefulTurn(ts: Tsum, board: BoardPoint[]): { drawn: TsumPath
       first = chain;
     }
   }
-  s.need = budget;
   if (first !== null) {
     return { drawn: first, done: false };
   }
