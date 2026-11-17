@@ -45,6 +45,22 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b29]
+
+### Summary
+
+**Additions**
+
+*Gameplay*
+- Coin target (Alpha): play each round to an exact number of coins for bingo missions, holding the skill near the target.
+
+### Added
+
+- **Coin Target** (`src/coinTarget.ts`, `SettingKey.CoinTarget`, Alpha, `neverShared`): reads the live HUD counter
+  each turn (`StatsRegions.liveCounters`; two equal reads, more for a value it cannot plausibly hold), counts chains
+  and bubble pops not yet paid (wiki chart values, moved back by pauses), trims batches to fit, holds the skill within
+  800 or 1.5x the largest measured activation, plays one cut chain or bubble per turn within 60, then coasts.
+
 ## [6.0b28]
 
 ### Summary
