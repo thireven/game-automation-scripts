@@ -77,9 +77,11 @@ var SorcererMickeyConfig = {
   stepPx: 40,
   moveMs: 20,
   dropHoldMs: 120,
-  // After a drop, before the look that checks it: the blast going off. At
-  // 200 the look landed inside it and a later scan acted on the dimmed board.
-  blastMs: 500,
+  // After a drop, the cast (`SorcererCast`) is waited out before the look
+  // that checks it; then, while fewer bubbles show than were left, the look
+  // is taken again for up to `missingWaitMs` -- the blast's score labels hide
+  // them for a moment, and the play loop would chain straight over them.
+  missingWaitMs: 500,
   // A bubble within `samePx` (play-square px) of where its drag started did
   // not move. After `dragRetries` such drags it is left alone.
   samePx: 6,
@@ -107,6 +109,24 @@ var SorcererHats = {
   // spent once every read for `spentMs` saw none.
   windowMs: 1000,
   spentMs: 700,
+};
+
+// Every hat spent (and the activation itself) plays a cast: Sorcerer Mickey
+// over the board, which the game dims. Measured off a round's recording (mean
+// light of the play square, ~110-130 between casts): an activation takes it
+// to 30-50 for ~2s, a drop to 50-80 for ~1.3s. The bubbles cannot be read
+// through it, and in the second after one a chain drawn over a waiting bubble
+// cost a hat in four windows of six. So both are waited out: until the light
+// is back to `backFrac` of what it was just before, no sooner than `minMs`.
+var SorcererCast = {
+  // The light is read off the play square scaled to `grid` x `grid`.
+  grid: 24,
+  backFrac: 0.85,
+  pollMs: 80,
+  dropMinMs: 500,
+  dropMaxMs: 1600,
+  activateMinMs: 600,
+  activateMaxMs: 2600,
 };
 
 // The magic bubble on the 200px play square, two kinds in the same near-white
@@ -397,6 +417,42 @@ function sorcererHatsShown(ts: Tsum): number {
   return best;
 }
 
+/** The play square's mean light (luma), off a small capture. */
+function sorcererBoardLight(ts: Tsum): number {
+  const n = SorcererCast.grid;
+  const img = getScreenshotModify(ts.playOffsetX, ts.playOffsetY, ts.playWidth, ts.playHeight, n, n, 100);
+  try {
+    const pts: Point[] = [];
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) { pts.push({x: x, y: y}); }
+    }
+    let sum = 0;
+    for (const c of getImageColors(img, pts)) { sum += 0.299 * c.r + 0.587 * c.g + 0.114 * c.b; }
+    return sum / pts.length;
+  } finally {
+    releaseImage(img);
+  }
+}
+
+/**
+ * Wait out a cast: until the board's light is back to `backFrac` of `before`
+ * (read just before the tap or the drop), no sooner than `minMs`, no later
+ * than `maxMs`. Returns how long it took.
+ */
+function sorcererWaitCast(ts: Tsum, before: number, minMs: number, maxMs: number): number {
+  const cfg = SorcererCast;
+  const start = Date.now();
+  ts.sleep(minMs);
+  while (Date.now() - start < maxMs && ts.isRunning) {
+    if (sorcererBoardLight(ts) >= cfg.backFrac * before) { break; }
+    ts.sleep(cfg.pollMs);
+  }
+  return Date.now() - start;
+}
+
+/** The board's light just before the activation tap (`beforeActivate`). */
+var gSorcererLightBefore = 0;
+
 /** The magic bubbles on a fresh capture. */
 function sorcererFind(ts: Tsum): SorcererBubbleSeen[] {
   const img = ts.playScreenshotSquare();
@@ -653,15 +709,23 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
       continue;
     }
     const grabMs = cfg.grabMs * (1 + st.stuck);
+    const light = sorcererBoardLight(ts);
+    const before = bubbles.length;
     sorcererDrag(ts, from, to, grabMs);
+    const castMs = sorcererWaitCast(ts, light, SorcererCast.dropMinMs, SorcererCast.dropMaxMs);
+    // The others are still there; give a look that misses them another go.
+    bubbles = sorcererUnignored(sorcererFind(ts));
+    const looked = Date.now();
+    while (bubbles.length < before - 1 && Date.now() - looked < cfg.missingWaitMs && ts.isRunning) {
+      ts.sleep(cfg.lookMs);
+      bubbles = sorcererUnignored(sorcererFind(ts));
+    }
     logDebug(Log.Skill.SorcererDrop, { from: from, to: to, grabMs: grabMs, kind: b.kind,
-      bubbles: bubbles.length, core: b.core, rim: b.rim, hats: st.hats });
-    ts.sleep(cfg.blastMs);
+      bubbles: before, after: bubbles.length, castMs: castMs, core: b.core, rim: b.rim, hats: st.hats });
 
     // Gone from where it was, and not sitting on the spot (carried there
     // without a drop): it took. A count would miss a drop whenever another
     // bubble shows up between the looks; the grab was on a bubble at rest.
-    bubbles = sorcererUnignored(sorcererFind(ts));
     const stayed = sorcererNearest(bubbles, b) <= cfg.samePx;
     const k = 1080 / ts.playResizeWidth;
     const onSpot = sorcererNearest(bubbles, {x: to.x / k, y: (to.y - PlayAreaTopY) / k}) <= cfg.samePx * 2;
@@ -692,9 +756,16 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
 registerSkill({
   types: [SkillType.SorcererMickeyPlus],
   // The activation only arms the hats; the bubbles come from the chains after
-  // it. The "Skill Waiting time" settle covers the cut-in, as for a burst.
+  // it. Its cast is waited out first: chains drawn under it are refused, or
+  // make bubbles no read can see. Then the "Skill Waiting time" settle.
+  beforeActivate: function(ts) {
+    gSorcererLightBefore = sorcererBoardLight(ts);
+  },
   afterActivate: function(ts) {
     sorcererArm(ts);
+    const castMs = sorcererWaitCast(ts, gSorcererLightBefore,
+      SorcererCast.activateMinMs, SorcererCast.activateMaxMs);
+    logDebug(Log.Skill.SorcererArmed, { cast: true, castMs: castMs });
     if (ts.skillInterval > 0) {
       ts.settleBoard(ts.skillInterval);
     }
