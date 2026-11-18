@@ -120,9 +120,6 @@ var SkillsDeclared: SkillOption[] = [
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
     {key: SkillType.SheriffWoody, share: 'w', title: UiText.SkillSheriffWoody,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
-    // Aimed drags, but each one ends in a plain blast.
-    {key: SkillType.SorcererMickeyPlus, share: 'S', title: UiText.SkillSorcererMickeyPlus,
-     status: ReleaseStatus.Alpha, group: UiText.SkillGroupBurst},
 
     // --- Bubble: the skill makes bubbles, the choreography sweeps them --------
     // Share letters h, m, o, r, y are retired (Horn Hat Mickey, Marie, Moana,
@@ -153,6 +150,9 @@ var SkillsDeclared: SkillOption[] = [
      status: ReleaseStatus.Production, group: UiText.SkillGroupUnique},
     {key: SkillType.TiaraMinniePlus, share: 't', title: UiText.SkillTiaraMinniePlus,
      status: ReleaseStatus.Production, group: UiText.SkillGroupUnique},
+     // Aimed drags, but each one ends in a plain blast.
+    {key: SkillType.SorcererMickeyPlus, share: 'S', title: UiText.SkillSorcererMickeyPlus,
+     status: ReleaseStatus.Beta, group: UiText.SkillGroupUnique},
 
     // Under no heading: not a kind of skill, but the absence of one.
     {key: SkillType.NoSkill, share: 'n', title: UiText.SkillNoSkill,
