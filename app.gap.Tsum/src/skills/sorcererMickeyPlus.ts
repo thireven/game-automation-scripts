@@ -18,16 +18,17 @@
 //     to the left and right halves, three to the bottom corners and the top
 //     middle, four to the four corners;
 //   - the Bubble Strategy pops nothing (`claimsBubbles`): a magic bubble
-//     tapped in place loses its spot;
-//   - the skill is held (`stillRunning`): an activation with hats left is not
-//     known to do anything, so the gauge waits for them to be spent.
+//     tapped in place loses its spot.
+// The skill is not held meanwhile: it fires as soon as the gauge is full. An
+// activation with hats left tops them up and carries on with the same spots.
 //
 // The bubbles are found by colour, not Hough (`sorcererFindIn`): glass-coloured
-// samples on a grid over the play square, clustered, and a cluster kept only
-// when its middle is glass with nothing dark in it (a tsum's eyes) and a bright
-// ring goes round it. On four SL6 screenshots that found every waiting bubble
-// but one washed out by the dragged bubble's ring, and nothing else; the
-// nearest miss was the pale COMBO counter at the top of the board.
+// samples on a grid over the play square, clustered, each centre moved to the
+// fullest ring near it, and kept only when its middle is a bubble's (pale glass,
+// or deep glass with the crescent of a 7+ chain's) with nothing dark in it (a
+// tsum's eyes) and a bright ring goes round it. On five screenshots, two
+// rosters, that found every waiting bubble of both kinds but one washed out by
+// the dragged bubble's ring, and nothing else.
 //
 // A drop is checked straight after: gone from where it was, and not left on
 // the spot. A bubble still where its drag started is dragged again, then
@@ -50,8 +51,8 @@ var SorcererMickeyConfig = {
   } as { [hats: number]: Point[] },
   // Disarm when no magic bubble has been seen for this long since the
   // activation or the last drop. Every chain makes one, so this is a skill
-  // level set too high or bubbles the reader misses -- and everything armed
-  // holds (one chain a scan, no pops, no skill) waits on it.
+  // level set too high or bubbles the reader misses -- and what armed holds
+  // (one chain a scan, no pops) waits on it.
   idleMs: 10000,
   // Most one scan spends on drops, in gestures (beyond the hats left) and
   // time; the rest waits for the next scan.
@@ -78,65 +79,129 @@ var SorcererMickeyConfig = {
   missShotMax: 3,
 };
 
-// The magic bubble on the 200px play square: the glass reads r 60-125,
-// g 90-150, b 140-215 (g above r); the ring is near white at radius 11-16.
+// The magic bubble on the 200px play square, two kinds in the same near-white
+// ring (radius 11-16). A 3-6 chain's ("small"): pale glass, r 60-125, g 90-150,
+// b 140-215 (g above r). A 7+ chain's ("big", a bigger blast): deep indigo
+// glass, r 0-30, g 4-50, b 100-160, with a pale yellow crescent in the middle.
 var SorcererBubble = {
   // Grid spacing over the play square, and the fewest glass samples a cluster
-  // needs. A bubble gives 9-13 at step 4.
+  // needs. A bubble gives 5-13 at step 4.
   step: 4,
   minSamples: 4,
-  // Middle: samples `coreStep` apart within `coreRadius`; `coreShare` must be
-  // glass, and none may have its brightest channel under `coreFloor` (the
-  // glass's darkest reads 123; a tsum's eyes and outline 30-50).
+  // Middle: samples `coreStep` apart within `coreRadius`. A small bubble's
+  // must be `paleShare` pale glass; a big one's `deepShare` deep glass with
+  // `crescentMin` crescent samples. None may have its brightest channel under
+  // `coreFloor` (the glass's darkest reads 99; a tsum's eyes and outline 30-50).
   coreRadius: 6,
   coreStep: 2,
-  coreShare: 0.72,
-  coreFloor: 90,
+  paleShare: 0.72,
+  deepShare: 0.3,
+  crescentMin: 1,
+  coreFloor: 70,
   // Ring: `rays` rays, each a hit when any radius `rimFrom`-`rimTo` has every
-  // channel >= `rimMin`. Bubbles hit all 16; the COMBO counter 13.
+  // channel >= `rimMin`; `rimRays` must hit. Bubbles hit all 16; the COMBO
+  // counter and the dark sky at most 13.
   rays: 16,
   rimFrom: 10,
   rimTo: 17,
   rimMin: 165,
-  rimRays: 14,
+  rimRays: 15,
+  // A cluster's centre is off the bubble's when the crescent or the highlight
+  // fills part of the middle, so a centre whose ring hits `refineFrom` rays
+  // (at radii `refineRadii`) climbs `refineStep` px at a time toward a fuller
+  // ring, at most `refineSteps` times.
+  refineRadii: [11, 13, 15, 17],
+  refineFrom: 6,
+  refineStep: 2,
+  refineSteps: 3,
 };
 
 // ---- Reader ---------------------------------------------------------------
 
-/** One magic bubble, in play-square px, with the two readings that kept it. */
+/** One magic bubble, in play-square px, with the readings that kept it. */
 interface SorcererBubbleSeen extends Point {
+  /** 'big' from a 7+ chain (bigger blast), 'small' otherwise. */
+  kind: 'small' | 'big';
   core: number;
   rim: number;
 }
 
 /**
- * The glass inside a magic bubble: a muted mid blue. Sorcerer Mickey's own hat
- * is far more saturated (red near 0) and the board's gaps far darker.
+ * A small bubble's glass: a muted mid blue. Sorcerer Mickey's own hat is far
+ * more saturated (red near 0) and the board's gaps far darker.
  */
-function sorcererGlass(c: Color): boolean {
+function sorcererPale(c: Color): boolean {
   const hi = Math.max(c.r, c.g, c.b);
   const lo = Math.min(c.r, c.g, c.b);
   return c.b >= 125 && c.r >= 45 && c.g - c.r >= 8 && c.b - c.r >= 35 && c.b - c.g >= 15
     && hi <= 230 && hi - lo <= 0.62 * hi;
 }
 
-/** The middle's and the ring's sample offsets, the same for every cluster. */
-function sorcererOffsets(): { core: Point[]; rim: Point[] } {
+/** A big bubble's glass: deep indigo. The board's sky is as deep; the ring tells them apart. */
+function sorcererDeep(c: Color): boolean {
+  return c.b >= 95 && c.b <= 185 && c.r <= 40 && c.g <= 55 && c.b - c.g >= 60;
+}
+
+/** A big bubble's crescent: pale yellow. */
+function sorcererCrescent(c: Color): boolean {
+  return c.r >= 180 && c.g >= 150 && c.b >= 130 && c.b <= 180 && c.r - c.b >= 40;
+}
+
+/** Ring offsets at `radii`, ray by ray. */
+function sorcererRing(radii: number[]): Point[] {
+  const rays = SorcererBubble.rays;
+  const out: Point[] = [];
+  for (let k = 0; k < rays; k++) {
+    const a = 2 * Math.PI * k / rays;
+    for (const r of radii) { out.push({x: r * Math.cos(a), y: r * Math.sin(a)}); }
+  }
+  return out;
+}
+
+/** The middle's sample offsets. */
+function sorcererCore(): Point[] {
   const cfg = SorcererBubble;
-  const core: Point[] = [];
+  const out: Point[] = [];
   for (let dy = -cfg.coreRadius; dy <= cfg.coreRadius; dy += cfg.coreStep) {
     for (let dx = -cfg.coreRadius; dx <= cfg.coreRadius; dx += cfg.coreStep) {
-      if (dx * dx + dy * dy <= cfg.coreRadius * cfg.coreRadius) { core.push({x: dx, y: dy}); }
+      if (dx * dx + dy * dy <= cfg.coreRadius * cfg.coreRadius) { out.push({x: dx, y: dy}); }
     }
   }
-  const rim: Point[] = [];
-  for (let k = 0; k < cfg.rays; k++) {
-    const a = 2 * Math.PI * k / cfg.rays;
-    for (let r = cfg.rimFrom; r <= cfg.rimTo; r++) {
-      rim.push({x: r * Math.cos(a), y: r * Math.sin(a)});
+  return out;
+}
+
+/** `centres` shifted by each of `offsets`, clamped to the image, centre by centre. */
+function sorcererSamples(size: { width: number; height: number }, centres: Point[], offsets: Point[]): Point[] {
+  const pts: Point[] = [];
+  for (const c of centres) {
+    for (const o of offsets) {
+      pts.push({x: Math.min(Math.max(Math.round(c.x + o.x), 0), size.width - 1),
+        y: Math.min(Math.max(Math.round(c.y + o.y), 0), size.height - 1)});
     }
   }
-  return {core: core, rim: rim};
+  return pts;
+}
+
+/** Ring rays hit round each of `centres` (`ring` from `sorcererRing`), off one read. */
+function sorcererRayHits(img: NativeImage, size: { width: number; height: number }, centres: Point[], ring: Point[]): number[] {
+  const perRay = ring.length / SorcererBubble.rays;
+  const colors = getImageColors(img, sorcererSamples(size, centres, ring));
+  const min = SorcererBubble.rimMin;
+  const out: number[] = [];
+  let at = 0;
+  for (let c = 0; c < centres.length; c++) {
+    let hits = 0;
+    for (let k = 0; k < SorcererBubble.rays; k++) {
+      let hit = false;
+      for (let r = 0; r < perRay; r++) {
+        const col = colors[at++];
+        if (Math.min(col.r, col.g, col.b) >= min) { hit = true; }
+      }
+      if (hit) { hits++; }
+    }
+    out.push(hits);
+  }
+  return out;
 }
 
 /** The magic bubbles on a play-square image (`playScreenshotSquare`). */
@@ -151,10 +216,10 @@ function sorcererFindIn(img: NativeImage): SorcererBubbleSeen[] {
       grid.push({x: 1 + gx * cfg.step, y: 1 + gy * cfg.step});
     }
   }
-  const glass = getImageColors(img, grid).map(sorcererGlass);
+  const glass = getImageColors(img, grid).map((c) => sorcererPale(c) || sorcererDeep(c));
 
   // Clusters of touching glass samples (8-connected), as centroids.
-  const centres: Point[] = [];
+  let centres: Point[] = [];
   const seen = new Uint8Array(glass.length);
   for (let i = 0; i < glass.length; i++) {
     if (!glass[i] || seen[i]) { continue; }
@@ -184,38 +249,61 @@ function sorcererFindIn(img: NativeImage): SorcererBubbleSeen[] {
   }
   if (centres.length === 0) { return []; }
 
-  // Each cluster's middle and ring, in one read.
-  const off = sorcererOffsets();
-  const clamp = (v: number, max: number) => Math.min(Math.max(Math.round(v), 0), max - 1);
-  const pts: Point[] = [];
-  for (const c of centres) {
-    for (const o of off.core) { pts.push({x: clamp(c.x + o.x, size.width), y: clamp(c.y + o.y, size.height)}); }
-    for (const o of off.rim) { pts.push({x: clamp(c.x + o.x, size.width), y: clamp(c.y + o.y, size.height)}); }
+  // Each centre climbs toward the fullest ring: all eight neighbours of every
+  // centre still moving in one read a step.
+  const coarse = sorcererRing(cfg.refineRadii);
+  let hits = sorcererRayHits(img, size, centres, coarse);
+  centres = centres.filter((_, i) => hits[i] >= cfg.refineFrom);
+  hits = hits.filter((h) => h >= cfg.refineFrom);
+  if (centres.length === 0) { return []; }
+  const s = cfg.refineStep;
+  const around: Point[] = [{x: -s, y: -s}, {x: 0, y: -s}, {x: s, y: -s}, {x: -s, y: 0},
+    {x: s, y: 0}, {x: -s, y: s}, {x: 0, y: s}, {x: s, y: s}];
+  let moving = centres.map((_, i) => i);
+  for (let step = 0; step < cfg.refineSteps && moving.length > 0; step++) {
+    const probes: Point[] = [];
+    for (const i of moving) {
+      for (const o of around) { probes.push({x: centres[i].x + o.x, y: centres[i].y + o.y}); }
+    }
+    const ph = sorcererRayHits(img, size, probes, coarse);
+    const still: number[] = [];
+    moving.forEach((i, m) => {
+      let best = -1;
+      for (let k = 0; k < around.length; k++) {
+        if (ph[m * around.length + k] > hits[i] && (best < 0 || ph[m * around.length + k] > ph[m * around.length + best])) { best = k; }
+      }
+      if (best >= 0) {
+        centres[i] = probes[m * around.length + best];
+        hits[i] = ph[m * around.length + best];
+        still.push(i);
+      }
+    });
+    moving = still;
   }
-  const colors = getImageColors(img, pts);
-  const radii = cfg.rimTo - cfg.rimFrom + 1;
+
+  // The full ring and the middle, in one read each.
+  const rim = sorcererRayHits(img, size, centres, sorcererRing(
+    Array.from({length: cfg.rimTo - cfg.rimFrom + 1}, (_, k) => cfg.rimFrom + k)));
+  const core = sorcererCore();
+  const colors = getImageColors(img, sorcererSamples(size, centres, core));
   const out: SorcererBubbleSeen[] = [];
-  let at = 0;
-  for (const c of centres) {
-    let core = 0, dark = 0;
-    for (let k = 0; k < off.core.length; k++) {
-      const col = colors[at++];
-      if (sorcererGlass(col)) { core++; }
+  for (let c = 0; c < centres.length; c++) {
+    let pale = 0, deep = 0, crescent = 0, dark = 0;
+    for (let k = 0; k < core.length; k++) {
+      const col = colors[c * core.length + k];
+      if (sorcererPale(col)) { pale++; }
+      if (sorcererDeep(col)) { deep++; }
+      if (sorcererCrescent(col)) { crescent++; }
       if (Math.max(col.r, col.g, col.b) < cfg.coreFloor) { dark++; }
     }
-    let rim = 0;
-    for (let k = 0; k < cfg.rays; k++) {
-      let hit = false;
-      for (let r = 0; r < radii; r++) {
-        const col = colors[at++];
-        if (Math.min(col.r, col.g, col.b) >= cfg.rimMin) { hit = true; }
-      }
-      if (hit) { rim++; }
-    }
-    const share = core / off.core.length;
-    if (share >= cfg.coreShare && dark === 0 && rim >= cfg.rimRays) {
-      out.push({x: c.x, y: c.y, core: Math.round(share * 100) / 100, rim: rim});
-    }
+    if (dark > 0 || rim[c] < cfg.rimRays) { continue; }
+    const paleShare = pale / core.length;
+    const deepShare = deep / core.length;
+    const kind = paleShare >= cfg.paleShare ? 'small'
+      : deepShare >= cfg.deepShare && crescent >= cfg.crescentMin ? 'big' : null;
+    if (kind === null) { continue; }
+    out.push({x: centres[c].x, y: centres[c].y, kind: kind, rim: rim[c],
+      core: Math.round((kind === 'small' ? paleShare : deepShare) * 100) / 100});
   }
   return out;
 }
@@ -313,14 +401,21 @@ function sorcererDisarm(ts: Tsum, why: string): void {
   st.hats = 0;
 }
 
-/** Arm a new activation's hats, closing what was left of the last one. */
+/**
+ * Arm a new activation's hats. With hats from this round still left, they are
+ * topped up to the level's count and the spots carry on where they were.
+ */
 function sorcererArm(ts: Tsum): void {
   const cfg = SorcererMickeyConfig;
   const st = gSorcerer;
-  if (st.round !== '') {
-    sorcererDisarm(ts, st.round === ts.roundUid ? 'reactivated' : 'roundOver');
-  }
   const level = Math.min(Math.max(Math.round(ts.skillLevel) || 1, 1), cfg.hats.length);
+  if (sorcererArmed(ts)) {
+    st.hats = Math.max(st.hats, cfg.hats[level - 1]);
+    st.activeAt = Date.now();
+    logDebug(Log.Skill.SorcererArmed, { skillLevel: level, hats: st.hats, toppedUp: true });
+    return;
+  }
+  if (st.round !== '') { sorcererDisarm(ts, 'roundOver'); }
   st.round = ts.roundUid;
   st.given = st.hats = cfg.hats[level - 1];
   st.next = st.drops = st.taps = st.stuck = 0;
@@ -419,7 +514,7 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
       sorcererDrag(ts, from, to);
     }
     logDebug(Log.Skill.SorcererDrop, { tap: tapped, from: from, to: tapped ? undefined : to,
-      bubbles: bubbles.length, core: b.core, rim: b.rim, hats: st.hats });
+      kind: b.kind, bubbles: bubbles.length, core: b.core, rim: b.rim, hats: st.hats });
     ts.sleep(cfg.blastMs);
 
     // Gone from where it was, and not sitting on the spot (carried there
@@ -468,8 +563,6 @@ registerSkill({
   watchScan: sorcererWatch,
   // A magic bubble the strategy taps would blast in place, off its spot.
   claimsBubbles: sorcererArmed,
-  // The gauge waits for the hats to be spent.
-  stillRunning: sorcererArmed,
   // While armed, one chain a scan, the longest, uncapped: its bubble is the
   // next hat's, and a longer chain makes a bigger blast.
   chainLimits: function(ts) {

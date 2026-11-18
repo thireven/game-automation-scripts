@@ -276,7 +276,7 @@ namespace Log {
     SorcererArmed         = 'skill.sorcerer.armed',
     /** Sorcerer Mickey+: one magic bubble dragged to a spot, or tapped where it sat (`tap`). */
     SorcererDrop          = 'skill.sorcerer.drop',
-    /** Sorcerer Mickey+: the hats' window closed (`why`: done, idle, roundOver, reactivated); `left` hats unused. */
+    /** Sorcerer Mickey+: the hats' window closed (`why`: done, idle, roundOver); `left` hats unused. */
     SorcererDone          = 'skill.sorcerer.done',
     /** Sorcerer Mickey+: the window closed without one magic bubble dropped. */
     SorcererNone          = 'skill.sorcerer.none',
