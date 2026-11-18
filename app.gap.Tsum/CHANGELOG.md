@@ -45,6 +45,17 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b30]
+
+### Summary
+
+**Additions**
+
+*Skills*
+- Sorcerer Mickey+ skill added (Alpha): each magic bubble is dragged apart so the blasts cover as much of the board as possible.
+
+### Added
+
 ## [6.0b29]
 
 ### Summary
