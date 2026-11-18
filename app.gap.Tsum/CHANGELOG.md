@@ -49,10 +49,23 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*Tsums*
+- JP-only tsums have English names (Outdoor Mickey, Jim Hawkins, Spider-Man and the rest), shown on the international game until it names them.
+
 **Fixes**
 - Pressing Play twice no longer starts the script twice, which had two copies tapping the board at once so no chains were made.
 - The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank.
 - Mocha, Pudding and Souffle are no longer listed as international tsums; they are JP-only.
+
+### Added
+
+- **English names for JP-only tsums**: `tsums.dat` and `tsumsCollection.dat`
+  get a sixth column, our own English name for the 86 tsums the global build
+  has not named, in its style. `myTsumLoadLibrary` uses it in place of the
+  global name; the second column still means "the global build prints this",
+  which the stats catalog reads as "INTL has it".
 
 ### Fixed
 
