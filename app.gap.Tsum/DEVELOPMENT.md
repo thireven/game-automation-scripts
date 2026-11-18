@@ -942,9 +942,20 @@ symbols, and it is reached only through `SkillHandlers[skillType]` at runtime.
 An unregistered `skillType` falls back to `skillRandomizeAndWait`; `SkillType.NoSkill`
 short-circuits before dispatch.
 
-**To add a skill:** create `src/skills/<name>.ts` with a `registerSkill` call,
-add it to the `files` list in `tsconfig.json` (after `skillCore.ts`), and add the
-matching dropdown entry in `settings.ts`.
+**To add a skill:**
+
+1. Create `src/skills/<name>.ts` with a `registerSkill` call, and add it to the
+   `files` list in `tsconfig.json` (after `skillCore.ts`).
+2. Add its id to `SkillType` (`src/shared.d.ts`). The id is what a round records.
+3. Add its dropdown entry to `src/skillOptions.ts` (group, a free `share`
+   letter, `status`), with its name as a `UiText` key (`src/strings.d.ts`,
+   `src/uiEn.ts`) and in `WorkflowSkillLabels` (`src/workflow.ts`).
+4. Add rows for the new file in `CODEMAP.md` and `SOURCEMAP.md`.
+5. On the stats sites (the sibling `tsum-stats` checkout; the global site builds
+   from the same UI), add the id's name to `SKILLS` in `ui/src/lib/util.js`, or
+   its rounds show the raw id. After a script build, run
+   `node tools/sync-share-codes.js` there, or a preset naming the skill is
+   refused at submit. Commit there; the sites get it on their next deploy.
 
 ## How the layers fit together
 
@@ -1314,7 +1325,7 @@ Two paths onto a device, and they are not the same thing:
 | A skill misfires | `src/skills/<name>.ts`, then `useSkill` in `skillCore.ts` |
 | A chore taps the wrong thing in the store, or buys nothing | `BoxStore` in `data.ts` first -- the tab row and the purchase buttons both move, and it says how each is read -- then `taskBuyBoxes` and its helpers in `boxes.ts` |
 | Bubbles are tapped too eagerly, or not at all | `Tsum.bubbleTapBudget` / `bubblePopChainLength` / `popGameBubbles` in `board.ts` and the Bubble Strategy setting; `ripeGameBubbles` with `GameBubbleConfig.minTsumsInBlast` for a bubble popped in the hole a burst left and `minAgeMs` for one popped the moment it appears (`bubble.unripe` in the log, with each bubble's `near` and `age`), `GameBubbleConfig.holdAfterSkillMs` for the hold after any activation (`bubble.heldAfterSkill`, and `skill.blindTapFired` for a blind-tapped burst); `clearAllBubbles` and `sweepsBubbles` for the skills that override it |
-| Add a new skill | `src/skills/`, `tsconfig.json`, `settings.ts` dropdown |
+| Add a new skill | the **To add a skill** steps above: `src/skills/`, `tsconfig.json`, `SkillType`, `skillOptions.ts`, and the stats sites' skill names |
 | Add a setting | `settings.ts` (`settings` array) **and** `index.ts` (`start`) |
 | Add a background job | `index.ts` → `gTaskController.newTask` in `buildRun`, task body in its own `src/` file (see `mail.ts`, `boxes.ts`) |
 | A changed setting does not take, or the script misbehaves after a stop | `index.ts` → the run lifecycle: `gRunActive`, `endRun`, the wait in `stop()` |

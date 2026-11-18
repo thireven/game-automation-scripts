@@ -127,4 +127,7 @@ machinery all go in the sections below it. Lay the Summary out as `**Additions**
 (bullets under an italic `*Area*` line each) then `**Fixes**` (flat bullets):
 the release note and the Discord post render it as written.
 For new skills and settings, a running list of things added should be kept and marked as used or not so that a cleanup step at the end can remove all things that were added that are no longer needed in the final product.
+A new skill also goes on the stats sites, or they show its raw id: its name in
+`../tsum-stats/ui/src/lib/util.js` (`SKILLS`) and a share-code sync there. The
+steps are under **To add a skill** in `app.gap.Tsum/DEVELOPMENT.md`.
 **Deployments** (local, testers, production, any repo): read `../tools/DEPLOYMENTS.md` first.
