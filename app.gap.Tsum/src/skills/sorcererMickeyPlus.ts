@@ -71,12 +71,13 @@ var SorcererMickeyConfig = {
   // The drag: held `grabMs` (times the try), moved by `easeIn` then `stepPx`
   // (logical px) each `moveMs`, held `dropHoldMs` on the spot so the game
   // takes it there, then let go. The short first moves make it a drag, not a
-  // tap; past ~2px/ms the bubble can lose the finger and drop mid-way.
-  grabMs: 80,
-  easeIn: [8, 16, 32],
-  stepPx: 40,
+  // tap. At 2px/ms a recording showed the bubble right under the finger the
+  // whole way; 3px/ms is the step up from that, to be checked the same way.
+  grabMs: 60,
+  easeIn: [8, 24],
+  stepPx: 60,
   moveMs: 20,
-  dropHoldMs: 120,
+  dropHoldMs: 80,
   // After a drop, the cast (`SorcererCast`) is waited out before the look
   // that checks it; then, while fewer bubbles show than were left, the look
   // is taken again for up to `missingWaitMs` -- the blast's score labels hide
@@ -132,7 +133,7 @@ var SorcererCast = {
 // The magic bubble on the 200px play square, two kinds in the same near-white
 // ring (radius 11-16). A 3-6 chain's ("small"): pale glass, r 60-125, g 90-150,
 // b 140-215 (g above r). A 7+ chain's ("big", a bigger blast): deep indigo
-// glass, r 0-30, g 4-50, b 100-160, with a pale yellow crescent in the middle.
+// glass, r 0-30, g 4-50, b 100-160, with a bright crescent in the middle.
 var SorcererBubble = {
   // Grid spacing over the play square, and the fewest glass samples a cluster
   // needs. A bubble gives 5-13 at step 4.
@@ -156,6 +157,9 @@ var SorcererBubble = {
   rimTo: 17,
   rimMin: 165,
   rimRays: 15,
+  // A big bubble needs every ray: a blast's white flash behind a score label
+  // read as deep glass with a crescent at 15; every real one read 16.
+  bigRimRays: 16,
   // A cluster's centre is off the bubble's when the crescent or the highlight
   // fills part of the middle, so a centre whose ring hits `refineFrom` rays
   // (at radii `refineRadii`) climbs `refineStep` px at a time toward a fuller
@@ -192,9 +196,12 @@ function sorcererDeep(c: Color): boolean {
   return c.b >= 95 && c.b <= 185 && c.r <= 40 && c.g <= 55 && c.b - c.g >= 60;
 }
 
-/** A big bubble's crescent: pale yellow. */
+/**
+ * A big bubble's crescent: bright, pale yellow to near white -- it glows and
+ * fades like the hats (249,222,157 on one frame, 254,250,235 on another).
+ */
 function sorcererCrescent(c: Color): boolean {
-  return c.r >= 180 && c.g >= 150 && c.b >= 130 && c.b <= 180 && c.r - c.b >= 40;
+  return c.r >= 170 && c.g >= 160;
 }
 
 /** Ring offsets at `radii`, ray by ray. */
@@ -350,7 +357,7 @@ function sorcererFindIn(img: NativeImage): SorcererBubbleSeen[] {
     const paleShare = pale / core.length;
     const deepShare = deep / core.length;
     const kind = paleShare >= cfg.paleShare ? 'small'
-      : deepShare >= cfg.deepShare && crescent >= cfg.crescentMin ? 'big' : null;
+      : deepShare >= cfg.deepShare && crescent >= cfg.crescentMin && rim[c] >= cfg.bigRimRays ? 'big' : null;
     if (kind === null) { continue; }
     out.push({x: centres[c].x, y: centres[c].y, kind: kind, rim: rim[c],
       core: Math.round((kind === 'small' ? paleShare : deepShare) * 100) / 100});
