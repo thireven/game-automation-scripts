@@ -10,18 +10,20 @@
 // logical px in radius at SL6.
 //
 // So the activation only arms the hats for this round (`gSorcerer`). While
-// armed, play goes on at its usual pace, and:
-//   - chains are not capped (`chainLimits`): a longer chain, a bigger blast;
+// armed:
+//   - each scan links one chain, its longest, uncapped (`chainLimits`,
+//     `orderPaths`): its bubble is the next hat's, a longer chain makes a
+//     bigger blast, and the next scan moves the bubble before another chain
+//     can be drawn over it (four chains a scan blasted waiting bubbles in place);
 //   - each scan looks for magic bubbles first (`watchScan`) and drags each to
 //     the next spot of a layout spread to cover the most board (`spots`): two
 //     to the left and right halves, three to the bottom corners and the top
 //     middle, four to the four corners. A spot keeps its bubble's ring, so a
 //     big bubble goes before any small one;
-//   - the Bubble Strategy pops nothing (`claimsBubbles`), and a batch draws
-//     last any chain over where an earlier one of it ended (`orderPaths`),
-//     since that is where its bubble shows: either would blast it in place.
-// The skill is not held meanwhile: it fires as soon as the gauge is full. An
-// activation with hats left tops them up and carries on with the same spots.
+//   - the Bubble Strategy pops nothing (`claimsBubbles`): a tap blasts one in place;
+//   - the hat row is read each scan (`sorcererReadHats`): the count, the layout
+//     and the next spot follow it, and the window ends once it is gone.
+// The skill is not held meanwhile: it fires as soon as the gauge is full.
 //
 // The bubbles are found by colour, not Hough (`sorcererFindIn`): glass-coloured
 // samples on a grid over the play square, clustered, each centre moved to the
@@ -63,9 +65,9 @@ var SorcererMickeyConfig = {
   scanBudgetMs: 6000,
   // A bubble that moved at most `restPx` (play-square px) between two looks is
   // at rest. At most `restLooks` looks are spent waiting for that.
-  lookMs: 50,
+  lookMs: 80,
   restPx: 3,
-  restLooks: 2,
+  restLooks: 4,
   // The drag: held `grabMs` (times the try), moved by `easeIn` then `stepPx`
   // (logical px) each `moveMs`, held `dropHoldMs` on the spot so the game
   // takes it there, then let go. The short first moves make it a drag, not a
@@ -75,17 +77,36 @@ var SorcererMickeyConfig = {
   stepPx: 40,
   moveMs: 20,
   dropHoldMs: 120,
-  // After a drop, before the look that checks it: the bubble going off.
-  blastMs: 200,
-  // A chain of a batch goes to the back while armed when its drag line passes
-  // within this many tsum widths of where an earlier chain of the batch ended.
-  endClear: 0.8,
+  // After a drop, before the look that checks it: the blast going off. At
+  // 200 the look landed inside it and a later scan acted on the dimmed board.
+  blastMs: 500,
   // A bubble within `samePx` (play-square px) of where its drag started did
   // not move. After `dragRetries` such drags it is left alone.
   samePx: 6,
   dragRetries: 3,
   // Screens saved per run when an armed window runs out with hats left (diagnostics).
   missShotMax: 3,
+};
+
+// The hats above the fever bar, in logical px. They sit centred on x 540, 108
+// apart (4: 378/486/594/702; 3: 432/540/648; 2: 486/594), each with a flat
+// bright blue brim at y 1578-1586 (the next hat to go is drawn larger and its
+// brim a little lower). A spent hat stays as a dark silhouette until the last
+// goes, when the row goes too. Measured on nine frames (4, 3, 2, 1 and none
+// lit) and a 100s recording, where one read dips when a bubble, a tsum or a
+// blast passes in front, so decisions take several reads (`windowMs`, `spentMs`).
+var SorcererHats = {
+  centreX: 540,
+  spacing: 108,
+  brimY: [1578, 1582, 1586],
+  // Points across a slot's brim; `litMin` of them blue at some `brimY` is a
+  // lit hat. A tsum's own hat, same blue, lies tilted and never fills a brim.
+  brimX: [-30, -20, -10, 0, 10, 20, 30],
+  litMin: 6,
+  // The count is the most any read in the last `windowMs` saw; the hats are
+  // spent once every read for `spentMs` saw none.
+  windowMs: 1000,
+  spentMs: 700,
 };
 
 // The magic bubble on the 200px play square, two kinds in the same near-white
@@ -317,6 +338,65 @@ function sorcererFindIn(img: NativeImage): SorcererBubbleSeen[] {
   return out;
 }
 
+/**
+ * A lit hat's brim: deep blue, green at most 0.62 of blue (a spent one is near
+ * black). The bowl's rim in the daytime theme is a cyan blue, green ~0.75 of
+ * blue, and runs right through the brim rows once the hats are gone.
+ */
+function sorcererHatBlue(c: Color): boolean {
+  return c.b >= 150 && c.b - c.r >= 90 && c.b - c.g >= 60 && c.g <= 0.62 * c.b && c.r <= 100;
+}
+
+/**
+ * How many hats are lit above the fever bar, off one crop of the row. Every
+ * layout (2, 3 or 4 hats) is tried and the best taken, so a skill level set
+ * wrong still reads; slots of the wrong layout fall between the hats.
+ */
+function sorcererHatsShown(ts: Tsum): number {
+  const cfg = SorcererHats;
+  const layouts: number[][] = [2, 3, 4].map((n) =>
+    Array.from({length: n}, (_, i) => cfg.centreX + (i - (n - 1) / 2) * cfg.spacing));
+  const real: Point[] = [];
+  for (const slots of layouts) {
+    for (const c of slots) {
+      for (const dx of cfg.brimX) {
+        for (const y of cfg.brimY) { real.push(ts.toRealXY(c + dx, y)); }
+      }
+    }
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of real) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  const x0 = Math.max(0, minX);
+  const y0 = Math.max(0, minY);
+  const img = getScreenshotModify(x0, y0, Math.max(1, maxX - x0 + 1), Math.max(1, maxY - y0 + 1), 0, 0, 100);
+  let colors: Color[];
+  try {
+    colors = getImageColors(img, real.map((p) => ({x: p.x - x0, y: p.y - y0})));
+  } finally {
+    releaseImage(img);
+  }
+  let best = 0, at = 0;
+  for (const slots of layouts) {
+    let lit = 0;
+    for (let k = 0; k < slots.length; k++) {
+      let hits = 0;
+      for (let d = 0; d < cfg.brimX.length; d++) {
+        let hit = false;
+        for (let r = 0; r < cfg.brimY.length; r++) {
+          if (sorcererHatBlue(colors[at++])) { hit = true; }
+        }
+        if (hit) { hits++; }
+      }
+      if (hits >= cfg.litMin) { lit++; }
+    }
+    best = Math.max(best, lit);
+  }
+  return best;
+}
+
 /** The magic bubbles on a fresh capture. */
 function sorcererFind(ts: Tsum): SorcererBubbleSeen[] {
   const img = ts.playScreenshotSquare();
@@ -355,44 +435,6 @@ function sorcererLogical(ts: Tsum, p: Point): Point {
   return {x: Math.round(p.x * k), y: Math.round(PlayAreaTopY + p.y * k)};
 }
 
-/** Distance from `p` to the segment `a`-`b`. */
-function sorcererToSegment(p: Point, a: Point, b: Point): number {
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const len2 = dx * dx + dy * dy;
-  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
-}
-
-/**
- * The play loop's chains with any whose drag passes over where an earlier one
- * ended moved to the back: a chain leaves its magic bubble at its last tsum,
- * and a later chain of the same batch drawn through it would blast it in
- * place. Moved rather than dropped, so the batch still fills and the barren
- * check (`foundPaths` in `taskPlayGameQuick`) counts what the board offers.
- */
-function sorcererClearOfEnds(paths: TsumPath[]): TsumPath[] {
-  const reach = SorcererMickeyConfig.endClear * Config.tsumWidth;
-  const ends: Point[] = [];
-  const out: TsumPath[] = [];
-  const crossing: TsumPath[] = [];
-  for (const path of paths) {
-    let crosses = false;
-    for (let i = 0; i < path.length && !crosses; i++) {
-      const a = path[i], b = path[Math.min(i + 1, path.length - 1)];
-      for (const e of ends) {
-        if (sorcererToSegment(e, a, b) <= reach) { crosses = true; break; }
-      }
-    }
-    if (crosses) {
-      crossing.push(path);
-      continue;
-    }
-    out.push(path);
-    ends.push(path[path.length - 1]);
-  }
-  return out.concat(crossing);
-}
-
 // ---- State ------------------------------------------------------------------
 
 /** One activation's hats: what is left of them, and how the drops went. */
@@ -416,6 +458,11 @@ var gSorcerer = {
   stuck: 0,
   /** Bubbles no drag moved: one the game will not let go, or not one at all. */
   ignored: [] as Point[],
+  /** Whether the hat row has been read lit since the activation. */
+  hatsSeen: false,
+  /** Recent hat reads, and since when they have all been none (0: one was lit). */
+  hatReads: [] as { t: number; n: number }[],
+  zeroSince: 0,
 };
 
 /** The look's bubbles less those set aside this window. */
@@ -436,8 +483,8 @@ function sorcererDisarm(ts: Tsum, why: string): void {
   const st = gSorcerer;
   if (st.round === '') { return; }
   const fields = { why: why, given: st.given, drops: st.drops, left: st.hats,
-    ignored: st.ignored.length, ms: Date.now() - st.armedAt };
-  if (st.hats > 0 && st.drops === 0) {
+    hatsSeen: st.hatsSeen, ignored: st.ignored.length, ms: Date.now() - st.armedAt };
+  if (st.drops === 0 && why !== 'spent') {
     logWarn(Log.Skill.SorcererNone, fields);
   } else {
     logInfo(Log.Skill.SorcererDone, fields);
@@ -448,27 +495,62 @@ function sorcererDisarm(ts: Tsum, why: string): void {
 }
 
 /**
- * Arm a new activation's hats. With hats from this round still left, they are
- * topped up to the level's count and the spots carry on where they were.
+ * Arm an activation's hats. With hats from this round still up the window
+ * goes on as it was: the next reads of the hat row say what the game did.
  */
 function sorcererArm(ts: Tsum): void {
   const cfg = SorcererMickeyConfig;
   const st = gSorcerer;
   const level = Math.min(Math.max(Math.round(ts.skillLevel) || 1, 1), cfg.hats.length);
   if (sorcererArmed(ts)) {
-    st.hats = Math.max(st.hats, cfg.hats[level - 1]);
     st.activeAt = Date.now();
-    logDebug(Log.Skill.SorcererArmed, { skillLevel: level, hats: st.hats, toppedUp: true });
+    logDebug(Log.Skill.SorcererArmed, { skillLevel: level, hats: st.hats, again: true });
     return;
   }
   if (st.round !== '') { sorcererDisarm(ts, 'roundOver'); }
   st.round = ts.roundUid;
   st.given = st.hats = cfg.hats[level - 1];
-  st.next = st.drops = st.stuck = 0;
+  st.next = st.drops = st.stuck = st.zeroSince = 0;
   st.stuckAt = null;
   st.ignored = [];
+  st.hatsSeen = false;
+  st.hatReads = [];
   st.armedAt = st.activeAt = Date.now();
   logDebug(Log.Skill.SorcererArmed, { skillLevel: level, hats: st.hats });
+}
+
+/**
+ * Read the hat row and bring the count to it. Until the row has shown (the
+ * cut-in, or a theme the read does not know) the count is the level's and the
+ * drops'. After: the count is the most the last second's reads saw, the layout
+ * is at least that big, the next spot is the hats spent so far, and a second
+ * of none disarms.
+ */
+function sorcererReadHats(ts: Tsum): void {
+  const cfg = SorcererHats;
+  const st = gSorcerer;
+  const now = Date.now();
+  const n = sorcererHatsShown(ts);
+  st.hatReads = st.hatReads.filter((r) => now - r.t <= cfg.windowMs);
+  st.hatReads.push({t: now, n: n});
+  if (n > 0) {
+    st.zeroSince = 0;
+    st.hatsSeen = true;
+  } else if (st.zeroSince === 0) {
+    st.zeroSince = now;
+  }
+  if (!st.hatsSeen) { return; }
+  if (n === 0 && now - st.zeroSince >= cfg.spentMs) {
+    st.hats = 0;
+    sorcererDisarm(ts, 'spent');
+    return;
+  }
+  let shown = 0;
+  for (const r of st.hatReads) { shown = Math.max(shown, r.n); }
+  if (shown === 0) { return; }
+  if (st.drops === 0) { st.given = Math.min(4, Math.max(st.given, shown)); }
+  st.hats = shown;
+  st.next = Math.max(0, st.given - shown);
 }
 
 // ---- Choreography ---------------------------------------------------------
@@ -519,6 +601,8 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
   const cfg = SorcererMickeyConfig;
   const st = gSorcerer;
   if (st.round !== '' && st.round !== ts.roundUid) { sorcererDisarm(ts, 'roundOver'); }
+  if (!sorcererArmed(ts)) { return false; }
+  sorcererReadHats(ts);
   if (!sorcererArmed(ts)) { return false; }
   if (Date.now() - st.activeAt > cfg.idleMs) {
     sorcererDisarm(ts, 'idle');
@@ -585,6 +669,9 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
       st.hats--;
       st.drops++;
       st.next++;
+      // Reads from before the drop would put the hat back; the next ones
+      // correct a drop counted wrong either way.
+      st.hatReads = [];
       st.stuckAt = null;
       st.stuck = 0;
       st.activeAt = Date.now();
@@ -615,11 +702,14 @@ registerSkill({
   watchScan: sorcererWatch,
   // A magic bubble the strategy taps would blast in place, off its spot.
   claimsBubbles: sorcererArmed,
-  // While armed, chains are not capped: a longer chain makes a bigger blast.
+  // While armed, one chain a scan, the longest, uncapped: its bubble is the
+  // next hat's and a longer chain a bigger blast, and the next scan moves it
+  // before another chain can be drawn over it. Four chains a scan drew over
+  // the bubbles still waiting and blasted them in place.
   chainLimits: function(ts) {
-    return sorcererArmed(ts) ? { maxChain: 0 } : {};
+    return sorcererArmed(ts) ? { maxChain: 0, maxChainsPerScan: 1 } : {};
   },
   orderPaths: function(ts, paths) {
-    return sorcererArmed(ts) ? sorcererClearOfEnds(paths) : paths;
+    return sorcererArmed(ts) ? paths.slice().sort((a, b) => b.length - a.length) : paths;
   },
 });
