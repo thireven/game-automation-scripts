@@ -56,11 +56,8 @@ release note; they fold back in here when she ships.
 
 ### Added
 
-- **Sorcerer Mickey+** (`src/skills/sorcererMickeyPlus.ts`, `SkillType.SorcererMickeyPlus` = `mickeysplus`, share `S`,
-  Alpha): drags each magic bubble (2/2/3/3/4/4 by level) to a spread layout (left/right; bottom corners + top middle;
-  four quarters), nearest bubble-spot pair first, after the bubbles come to rest. Bubbles found by colour (glass-blue
-  grid clusters with a bright ring), checked on four SL6 screenshots; a drag that leaves its bubble unmoved is retried,
-  then tapped. An activation that finds none saves the screen to `tmp/sorcerer-none_*.png` (3 per run).
+- **Sorcerer Mickey+** (`src/skills/sorcererMickeyPlus.ts`, `mickeysplus`, share `S`, Alpha): drags each magic bubble
+  to a spread layout of 2-4 spots, found by colour (glass-blue clusters in a bright ring); misses save `tmp/sorcerer-none_*.png`.
 
 ## [6.0b29]
 

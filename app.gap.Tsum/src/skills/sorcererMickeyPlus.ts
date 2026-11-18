@@ -9,19 +9,20 @@
 //
 // So the drops are spread to cover the most board (`spots`): two go to the left
 // and right halves, three to the bottom corners and the top middle, four to the
-// four quarters. Each drag pairs the bubble and free spot nearest each other,
-// which keeps drags short. A blast drops the tsums under the bubbles still
-// waiting, so every drag first waits for them to come to rest
-// (`sorcererAtRest`).
+// four corners. Spots are taken in order, each by the bubble nearest it. A
+// blast drops the tsums under the bubbles still waiting, so every drag first
+// waits for them to come to rest (`sorcererAtRest`).
 //
 // The bubbles are found by colour, not Hough (`sorcererFind`): glass-coloured
 // samples on a grid over the play square, clustered, and a cluster kept only
-// when its middle is mostly glass and a bright ring goes round it. On four SL6
-// screenshots that found every bubble at rest and nothing else; the nearest
-// miss was the pale COMBO counter at the top of the board.
+// when its middle is glass with nothing dark in it (a tsum's eyes) and a bright
+// ring goes round it. On four SL6 screenshots that found every waiting bubble
+// but one washed out by the dragged bubble's ring, and nothing else; the
+// nearest miss was the pale COMBO counter at the top of the board.
 //
-// A drag is checked on the next look: a bubble still where it started did not
-// move, and after `dragRetries` such drags it is tapped where it sits instead.
+// A drop is checked on the next look: gone from where it was and one bubble
+// fewer. A bubble still where its drag started is dragged again, then tapped
+// (`dragRetries`); one a tap did not clear either is left alone.
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -29,13 +30,15 @@
 var SorcererMickeyConfig = {
   // Drops (hats) by skill level 1-6.
   hats: [2, 2, 3, 3, 4, 4],
-  // Drop spots in logical px, by how many drops there are. The play square is
-  // y 465-1545; neighbouring spots sit about a blast's width apart and inside
-  // the bowl. The four are where the player dropped them on SL6 screenshots.
+  // Drop spots in logical px, by how many drops there are, in the order they
+  // are used. The play square is y 465-1545; neighbouring spots sit about a
+  // blast's width apart and inside the bowl. The four are where, and in the
+  // order, the player dropped them on SL6 screenshots: any first two are
+  // opposite, so a level set too high still spreads two bubbles.
   spots: {
     2: [{x: 280, y: 990}, {x: 800, y: 990}],
     3: [{x: 280, y: 1230}, {x: 800, y: 1230}, {x: 540, y: 760}],
-    4: [{x: 280, y: 750}, {x: 800, y: 750}, {x: 280, y: 1230}, {x: 800, y: 1230}],
+    4: [{x: 280, y: 750}, {x: 800, y: 1230}, {x: 280, y: 1230}, {x: 800, y: 750}],
   } as { [drops: number]: Point[] },
   // The bubbles appear after the cut-in: looked for this long from the tap.
   appearMs: 4000,
@@ -56,8 +59,8 @@ var SorcererMickeyConfig = {
   // not move. After `dragRetries` of those it is tapped instead.
   samePx: 6,
   dragRetries: 2,
-  // Stop once no bubble is seen for `goneMs` (before every drop has landed),
-  // or `windowMs` after the tap.
+  // Stop once no bubble is seen for `goneMs` after the last look with one or
+  // the last drop, or `windowMs` after the tap.
   goneMs: 1500,
   windowMs: 15000,
   // Screens saved per run when an activation finds no bubble (diagnostics).
@@ -70,10 +73,13 @@ var SorcererBubble = {
   // Grid spacing over the play square, and the fewest glass samples a cluster needs.
   step: 3,
   minSamples: 4,
-  // Middle: samples `coreStep` apart within `coreRadius`; `coreShare` must be glass.
+  // Middle: samples `coreStep` apart within `coreRadius`; `coreShare` must be
+  // glass, and none may have its brightest channel under `coreFloor` (the
+  // glass's darkest reads 123; a tsum's eyes and outline 30-50).
   coreRadius: 6,
   coreStep: 2,
   coreShare: 0.72,
+  coreFloor: 90,
   // Ring: `rays` rays, each a hit when any radius `rimFrom`-`rimTo` has every
   // channel >= `rimMin`. Bubbles hit all 16; the COMBO counter 13.
   rays: 16,
@@ -181,9 +187,11 @@ function sorcererFind(ts: Tsum): SorcererBubbleSeen[] {
     const out: SorcererBubbleSeen[] = [];
     let at = 0;
     for (const c of centres) {
-      let core = 0;
+      let core = 0, dark = 0;
       for (let k = 0; k < off.core.length; k++) {
-        if (sorcererGlass(colors[at++])) { core++; }
+        const col = colors[at++];
+        if (sorcererGlass(col)) { core++; }
+        if (Math.max(col.r, col.g, col.b) < cfg.coreFloor) { dark++; }
       }
       let rim = 0;
       for (let k = 0; k < cfg.rays; k++) {
@@ -195,7 +203,7 @@ function sorcererFind(ts: Tsum): SorcererBubbleSeen[] {
         if (hit) { rim++; }
       }
       const share = core / off.core.length;
-      if (share >= cfg.coreShare && rim >= cfg.rimRays) {
+      if (share >= cfg.coreShare && dark === 0 && rim >= cfg.rimRays) {
         out.push({x: c.x, y: c.y, core: Math.round(share * 100) / 100, rim: rim});
       }
     }
@@ -275,40 +283,53 @@ function sorcererPlay(ts: Tsum): void {
   const start = Date.now();
   const level = Math.min(Math.max(Math.round(ts.skillLevel) || 1, 1), cfg.hats.length);
   const hats = cfg.hats[level - 1];
-  // The layout is set at the first look: a skill level set too low still
-  // spreads every bubble the game gave.
+  // The layout, set at the first look: the level's, or a bigger one when more
+  // bubbles are up (a level set too low still spreads them all).
   let drops = 0;
   let free: Point[] = [];
   let placed = 0, drags = 0, taps = 0, most = 0, left = 0;
+  // The last look with a bubble, or the end of the last drop.
   let seenAt = 0;
-  // The last drag or tap, checked on the next look (play-square px). A tap
+  // The last drag or tap (play-square px), checked on the next look. A tap
   // takes no spot.
-  let pending: { from: Point; spot: Point | null } | null = null;
+  let pending: { from: Point; count: number; spot: Point | null } | null = null;
   // Where a drag left its bubble unmoved, and how many times in a row.
   let stuckAt: Point | null = null;
   let stuck = 0;
+  // Where a tap failed too: a bubble the game will not let go, or not a
+  // bubble at all. Left alone so the other bubbles still get their turn.
+  const ignored: Point[] = [];
   const maxTries = (hats + 2) * 2;
   for (let tries = 0; tries < maxTries && ts.mayTouchBoard(); ) {
     const now = Date.now();
     if (now - start > cfg.windowMs) { break; }
     if (seenAt === 0 ? now - start > cfg.appearMs : now - seenAt > cfg.goneMs) { break; }
-    const bubbles = sorcererAtRest(ts);
-    left = bubbles.length;
+    const look = sorcererAtRest(ts);
+    let bubbles = look.filter((b) => sorcererNearest(ignored, b) > cfg.samePx);
     if (pending !== null) {
-      const spot = pending.spot;
-      if (sorcererNearest(bubbles, pending.from) > cfg.samePx) {
+      const stayed = sorcererNearest(bubbles, pending.from) <= cfg.samePx;
+      if (!stayed && bubbles.length < pending.count) {
+        // Gone from where it was, and one fewer up: dropped.
         placed++;
+        const spot = pending.spot;
         free = free.filter((s) => s !== spot);
         stuckAt = null;
         stuck = 0;
-      } else {
+      } else if (stayed && pending.spot === null) {
+        ignored.push(pending.from);
+        bubbles = bubbles.filter((b) => sorcererNearest(ignored, b) > cfg.samePx);
+        stuckAt = null;
+        stuck = 0;
+      } else if (stayed) {
         stuckAt = pending.from;
         stuck++;
       }
+      // Moved but none fewer: it fell, or went without a drop. Plan afresh.
       pending = null;
     }
+    left = bubbles.length;
     if (bubbles.length === 0) {
-      if (drops > 0 && placed >= drops) { break; }
+      if (placed > 0 && placed >= most) { break; }
       ts.sleep(cfg.lookMs);
       continue;
     }
@@ -318,13 +339,13 @@ function sorcererPlay(ts: Tsum): void {
       drops = Math.min(Math.max(hats, bubbles.length), 4);
       free = cfg.spots[drops].slice();
     }
-    // More bubbles than spots (a level set too low, or a drop that missed):
-    // go round the layout again.
+    // More bubbles than spots: go round the layout again.
     if (free.length === 0) { free = cfg.spots[drops].slice(); }
 
-    // A bubble a drag left unmoved goes again; otherwise the bubble and free
-    // spot nearest each other.
-    let bi = -1, si = 0, best = Infinity;
+    // The next spot in order, and the bubble nearest it -- or the bubble a
+    // drag left unmoved, again.
+    const to = free[0];
+    let bi = -1, best = Infinity;
     if (stuckAt !== null) {
       for (let i = 0; i < bubbles.length; i++) {
         const d = Math.hypot(bubbles[i].x - stuckAt.x, bubbles[i].y - stuckAt.y);
@@ -332,14 +353,11 @@ function sorcererPlay(ts: Tsum): void {
       }
       if (bi < 0) { stuckAt = null; stuck = 0; }
     }
-    const forced = bi;
-    best = Infinity;
-    for (let i = 0; i < bubbles.length; i++) {
-      if (forced >= 0 && i !== forced) { continue; }
-      const at = sorcererLogical(ts, bubbles[i]);
-      for (let j = 0; j < free.length; j++) {
-        const d = Math.hypot(free[j].x - at.x, free[j].y - at.y);
-        if (d < best) { best = d; bi = i; si = j; }
+    if (bi < 0) {
+      for (let i = 0; i < bubbles.length; i++) {
+        const at = sorcererLogical(ts, bubbles[i]);
+        const d = Math.hypot(to.x - at.x, to.y - at.y);
+        if (d < best) { best = d; bi = i; }
       }
     }
     const b = bubbles[bi];
@@ -349,20 +367,20 @@ function sorcererPlay(ts: Tsum): void {
       // Dragged and never moved: tap it where it sits.
       ts.tap(from, 30);
       taps++;
-      pending = {from: {x: b.x, y: b.y}, spot: null};
+      pending = {from: {x: b.x, y: b.y}, count: bubbles.length, spot: null};
       stuckAt = null;
       stuck = 0;
       logDebug(Log.Skill.SorcererDrop, { tap: true, from: from, bubbles: bubbles.length,
         core: b.core, rim: b.rim });
     } else {
-      const to = free[si];
       sorcererDrag(ts, from, to);
       drags++;
-      pending = {from: {x: b.x, y: b.y}, spot: to};
+      pending = {from: {x: b.x, y: b.y}, count: bubbles.length, spot: to};
       logDebug(Log.Skill.SorcererDrop, { from: from, to: to, bubbles: bubbles.length,
         core: b.core, rim: b.rim });
     }
     ts.sleep(cfg.blastMs);
+    seenAt = Date.now();
   }
 
   if (most === 0) {
@@ -371,7 +389,8 @@ function sorcererPlay(ts: Tsum): void {
     return;
   }
   logInfo(Log.Skill.SorcererDone, { skillLevel: level, drops: drops, placed: placed,
-    drags: drags, taps: taps, most: most, left: left, ms: Date.now() - start });
+    drags: drags, taps: taps, most: most, left: left, ignored: ignored.length,
+    ms: Date.now() - start });
   // The last blast has only just gone off: hold the Bubble Strategy's pops
   // from here, as `useSkill` did from the tap.
   ts.holdBubblesAfterSkill(Date.now());
