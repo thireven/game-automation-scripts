@@ -52,7 +52,7 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Sorcerer Mickey+ skill added (Alpha): while his hats last, each magic bubble comes from the longest chain and is dragged apart, big ones first, so the blasts cover as much of the board as possible.
+- Sorcerer Mickey+ skill added (Beta): while his hats last, each magic bubble comes from the longest chain and is dragged apart, big ones first, so the blasts cover as much of the board as possible.
 
 *Tsums*
 - JP-only tsums have English names (Outdoor Mickey, Jim Hawkins, Spider-Man and the rest), shown in GAP Companion beside the Japanese one, and on the international game until it names them.
@@ -74,7 +74,7 @@ release note; they fold back in here when she ships.
   second column still means "the global build prints this", which the stats
   catalog reads as "INTL has it".
 
-- **Sorcerer Mickey+** (`src/skills/sorcererMickeyPlus.ts`, `mickeysplus`, share `S`, Alpha): the activation arms the hats; each
+- **Sorcerer Mickey+** (`src/skills/sorcererMickeyPlus.ts`, `mickeysplus`, share `S`, Beta, Unique group): the activation arms the hats; each
   scan links its longest chain only and drags the magic bubble it made (big first, never tapped) to 2-4 spread spots, top ones first, counted off the hat row; casts are waited out and the board let settle before each next drag.
 
 ## [6.0b29]
