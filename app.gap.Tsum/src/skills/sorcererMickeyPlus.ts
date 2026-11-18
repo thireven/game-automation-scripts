@@ -81,13 +81,16 @@ var SorcererMickeyConfig = {
   stepPx: 80,
   moveMs: 16,
   dropHoldMs: 60,
-  // After a drop, the cast (`SorcererCast`) is waited out, then the board,
-  // for up to `settleMaxMs`: the blast clears the tsums under the spot and the
-  // bubbles above fall into the gap, so a look before they land drags from
-  // where they were. Then, while fewer bubbles show than were left, the look
-  // is taken again for up to `missingWaitMs` -- the blast's score labels hide
-  // them for a moment, and the play loop would chain straight over them.
-  settleMaxMs: 1200,
+  // After a drop, the cast (`SorcererCast`) is waited out, then the bubbles,
+  // for up to `landLooks` looks: the blast clears the tsums under the spot and
+  // the bubbles above fall into the gap, so a look before they land drags
+  // from where they were. Their own rest is watched, not the board's: fever
+  // sparkle keeps the board's change at 0.02-0.04 a reading, over
+  // `BoardSettle.maxDiff`, so `settleBoard` ran to its cap on 26 drops of 30.
+  // Then, while fewer bubbles show than were left, the look is taken again
+  // for up to `missingWaitMs` -- the blast's score labels hide them for a
+  // moment, and the play loop would chain straight over them.
+  landLooks: 15,
   missingWaitMs: 500,
   // Right before a grab the bubble is looked for again; one that moved more
   // than `verifyPx` (play-square px) since the look is planned afresh.
@@ -486,14 +489,15 @@ function sorcererNearest(list: Point[], p: Point): number {
   return best;
 }
 
-/** From the look `first`, looks until two in a row agree on every bubble, or `restLooks` run out. */
-function sorcererAtRest(ts: Tsum, first: SorcererBubbleSeen[]): SorcererBubbleSeen[] {
+/** From the look `first`, looks until two in a row agree on every bubble, or `maxLooks` run out. */
+function sorcererAtRest(ts: Tsum, first: SorcererBubbleSeen[],
+    maxLooks: number = SorcererMickeyConfig.restLooks): SorcererBubbleSeen[] {
   const cfg = SorcererMickeyConfig;
   let last = first;
   // None counts only twice running: one look misses a bubble behind a score
   // label or a flash, and the play loop would chain over it.
   let empty = first.length === 0 ? 1 : 0;
-  for (let i = 1; i < cfg.restLooks && empty < 2; i++) {
+  for (let i = 1; i < maxLooks && empty < 2; i++) {
     ts.sleep(cfg.lookMs);
     const next = sorcererUnignored(sorcererFind(ts));
     if (next.length === 0) {
@@ -760,10 +764,9 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     const castMs = sorcererWaitCast(ts, light, SorcererCast.dropMinMs, SorcererCast.dropMaxMs);
     // The bubbles above the blast fall into the gap it left: let them land.
     const settleFrom = Date.now();
-    ts.settleBoard(cfg.settleMaxMs, 0);
+    bubbles = sorcererAtRest(ts, sorcererUnignored(sorcererFind(ts)), cfg.landLooks);
     const settleMs = Date.now() - settleFrom;
     // The others are still there; give a look that misses them another go.
-    bubbles = sorcererUnignored(sorcererFind(ts));
     const looked = Date.now();
     while (bubbles.length < before - 1 && Date.now() - looked < cfg.missingWaitMs && ts.isRunning) {
       ts.sleep(cfg.lookMs);
