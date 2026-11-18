@@ -2,20 +2,25 @@
 // Sorcerer Mickey+
 //
 // His activation puts hats above the fever bar (2, 2, 3, 3, 4, 4 by skill
-// level) and makes nothing else. The bubbles the chains after it make are magic
-// while hats are left: dark navy glass inside a neon ring. A magic bubble is
-// dragged and dropped, which uses a hat and sets off a blast round *every* spot
-// dropped on so far -- the first spot blasts once per drop, the last once. The
-// blast's ring is ~260 logical px in radius at SL6.
+// level) and makes nothing else. The hats last until used, and every chain of
+// 3+ while they do makes a magic bubble (dark navy glass inside a neon ring),
+// with a bigger blast from a 7+ chain. A magic bubble is dragged and dropped,
+// which uses a hat and sets off a blast round *every* spot dropped on so far --
+// the first spot blasts once per drop, the last once. The blast's ring is ~260
+// logical px in radius at SL6.
 //
-// So the activation only arms the hats for this round (`gSorcerer`), and each
-// board scan looks for magic bubbles while they last (`watchScan`). Each one
-// goes to the next spot of a layout spread to cover the most board (`spots`):
-// two to the left and right halves, three to the bottom corners and the top
-// middle, four to the four corners. The chains in between play as usual, with
-// no length cap while armed, in case only long chains make bubbles; the Bubble
-// Strategy pops nothing meanwhile (`claimsBubbles`), since a magic bubble
-// tapped in place loses its spot.
+// So the activation only arms the hats for this round (`gSorcerer`). While
+// armed:
+//   - each scan links only its longest chain, uncapped (`orderPaths`,
+//     `chainLimits`), so each hat's bubble comes from the best chain there is;
+//   - each scan looks for magic bubbles first (`watchScan`) and drags each to
+//     the next spot of a layout spread to cover the most board (`spots`): two
+//     to the left and right halves, three to the bottom corners and the top
+//     middle, four to the four corners;
+//   - the Bubble Strategy pops nothing (`claimsBubbles`): a magic bubble
+//     tapped in place loses its spot;
+//   - the skill is held (`stillRunning`): an activation with hats left is not
+//     known to do anything, so the gauge waits for them to be spent.
 //
 // The bubbles are found by colour, not Hough (`sorcererFindIn`): glass-coloured
 // samples on a grid over the play square, clustered, and a cluster kept only
@@ -44,9 +49,10 @@ var SorcererMickeyConfig = {
     4: [{x: 280, y: 750}, {x: 800, y: 1230}, {x: 280, y: 1230}, {x: 800, y: 750}],
   } as { [hats: number]: Point[] },
   // Disarm when no magic bubble has been seen for this long since the
-  // activation or the last drop: a skill level set too high, or bubbles the
-  // reader misses. Each scan pays for a look while armed.
-  idleMs: 15000,
+  // activation or the last drop. Every chain makes one, so this is a skill
+  // level set too high or bubbles the reader misses -- and everything armed
+  // holds (one chain a scan, no pops, no skill) waits on it.
+  idleMs: 10000,
   // Most one scan spends on drops, in gestures (beyond the hats left) and
   // time; the rest waits for the next scan.
   extraTriesPerScan: 2,
@@ -462,9 +468,14 @@ registerSkill({
   watchScan: sorcererWatch,
   // A magic bubble the strategy taps would blast in place, off its spot.
   claimsBubbles: sorcererArmed,
-  // Normal bubbles come only from long chains, so while armed the chains are
-  // not capped. The setting is back the moment the hats are spent.
+  // The gauge waits for the hats to be spent.
+  stillRunning: sorcererArmed,
+  // While armed, one chain a scan, the longest, uncapped: its bubble is the
+  // next hat's, and a longer chain makes a bigger blast.
   chainLimits: function(ts) {
-    return sorcererArmed(ts) ? { maxChain: 0 } : {};
+    return sorcererArmed(ts) ? { maxChain: 0, maxChainsPerScan: 1 } : {};
+  },
+  orderPaths: function(ts, paths) {
+    return sorcererArmed(ts) ? paths.slice().sort((a, b) => b.length - a.length) : paths;
   },
 });

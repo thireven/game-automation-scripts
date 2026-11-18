@@ -52,12 +52,12 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Sorcerer Mickey+ skill added (Alpha): each magic bubble is dragged apart so the blasts cover as much of the board as possible.
+- Sorcerer Mickey+ skill added (Alpha): while his hats last, each magic bubble comes from the longest chain on the board and is dragged apart so the blasts cover as much of it as possible.
 
 ### Added
 
 - **Sorcerer Mickey+** (`src/skills/sorcererMickeyPlus.ts`, `mickeysplus`, share `S`, Alpha): the activation arms the hats; each
-  scan (`watchScan`) drags the magic bubbles later chains make to 2-4 spread spots; chains uncapped, strategy pops held meanwhile.
+  scan links its longest chain only and drags the magic bubbles chains make to 2-4 spread spots; pops and the skill held meanwhile.
 
 ## [6.0b29]
 
