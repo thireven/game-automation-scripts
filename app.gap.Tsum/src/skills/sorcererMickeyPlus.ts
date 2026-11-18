@@ -75,17 +75,17 @@ var SorcererMickeyConfig = {
   // look or three: on two recordings 36 of its 39 short gaps were 1-3 frames
   // of 100ms. Each such miss had handed the board back to the play loop.
   emptyLooks: 3,
-  // The drag: held `grabMs` (times the try), moved by `easeIn` then `stepPx`
-  // (logical px) each `moveMs`, held `dropHoldMs` on the spot so the game
-  // takes it there, then let go. The short first moves make it a drag, not a
-  // tap. Recordings showed the bubble right under the finger at 2 and at
-  // 3px/ms (60px a move, about a bubble's radius); this is one move a frame
-  // (16ms at 60fps) of 80px, ~5px/ms. Much more and one frame's jump outruns
-  // the bubble itself.
+  // The drag: held `grabMs` (times the try), moved by `easeIn` then one of
+  // `speeds` (logical px a move, ms a move), held `dropHoldMs` on the spot so
+  // the game takes it there, then let go. The short first moves make it a
+  // drag, not a tap. Every drag checks the bubble is under the finger before
+  // letting go (`sorcererCarried`); one lost on the way -- gone from where it
+  // started and not under the finger -- drops the run to the next speed.
+  // Recordings showed it under the finger at 2 and 3px/ms (60px a move,
+  // about a bubble's radius); the first is one 80px move a frame, ~5px/ms.
   grabMs: 50,
   easeIn: [8, 24],
-  stepPx: 80,
-  moveMs: 16,
+  speeds: [{stepPx: 80, moveMs: 16}, {stepPx: 60, moveMs: 20}, {stepPx: 40, moveMs: 20}],
   dropHoldMs: 60,
   // After a drop, the cast (`SorcererCast`) is waited out, then the bubbles,
   // for up to `landLooks` looks: the blast clears the tsums under the spot and
@@ -648,9 +648,87 @@ function sorcererReadHats(ts: Tsum): void {
 
 // ---- Choreography ---------------------------------------------------------
 
-/** Drag a bubble from `from` to `to` (logical px), held `grabMs` first, and drop it there. */
-function sorcererDrag(ts: Tsum, from: Point, to: Point, grabMs: number): void {
+// A bubble being carried lights up: a white-hot centre (255) in a saturated
+// blue ring (b >= 170, b - r >= 110) 8-12px out on the 540 screen. On five
+// drags (A1-A4, C1) that read 255 and 7-8 rays of 8; resting bubbles, the
+// moon bubble and tsums read 231 white or 6 rays at the most.
+var SorcererCarry = {
+  whiteMin: 245,
+  // In logical px: the ring's radii, and how far from the finger the lit
+  // centre may sit (the grab is rarely dead centre).
+  ringRadii: [16, 20, 24],
+  rays: 8,
+  ringMin: 6,
+  reach: 12,
+  step: 6,
+};
+
+/** The run's drag speed: an index into `SorcererMickeyConfig.speeds`. */
+var gSorcererSpeed = 0;
+
+/** Whether a carried bubble is lit under the finger at `at` (logical px), off one small crop. */
+function sorcererCarried(ts: Tsum, at: Point): boolean {
+  const cfg = SorcererCarry;
+  const centres: Point[] = [];
+  for (let dy = -cfg.reach; dy <= cfg.reach; dy += cfg.step) {
+    for (let dx = -cfg.reach; dx <= cfg.reach; dx += cfg.step) { centres.push({x: at.x + dx, y: at.y + dy}); }
+  }
+  const offs: Point[] = [];
+  for (let dy = -4; dy <= 4; dy += 4) {
+    for (let dx = -4; dx <= 4; dx += 4) { offs.push({x: dx, y: dy}); }
+  }
+  for (let k = 0; k < cfg.rays; k++) {
+    const a = 2 * Math.PI * k / cfg.rays;
+    for (const r of cfg.ringRadii) { offs.push({x: r * Math.cos(a), y: r * Math.sin(a)}); }
+  }
+  const real: Point[] = [];
+  for (const c of centres) {
+    for (const o of offs) { real.push(ts.toRealXY(c.x + o.x, c.y + o.y)); }
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of real) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  const x0 = Math.max(0, minX);
+  const y0 = Math.max(0, minY);
+  const img = getScreenshotModify(x0, y0, Math.max(1, maxX - x0 + 1), Math.max(1, maxY - y0 + 1), 0, 0, 100);
+  let colors: Color[];
+  try {
+    colors = getImageColors(img, real.map((p) => ({x: p.x - x0, y: p.y - y0})));
+  } finally {
+    releaseImage(img);
+  }
+  const radii = cfg.ringRadii.length;
+  for (let c = 0; c < centres.length; c++) {
+    let at0 = c * offs.length;
+    let white = 0;
+    for (let i = 0; i < 9; i++) {
+      const col = colors[at0++];
+      white = Math.max(white, Math.min(col.r, col.g, col.b));
+    }
+    if (white < cfg.whiteMin) { at0 += cfg.rays * radii; continue; }
+    let rays = 0;
+    for (let k = 0; k < cfg.rays; k++) {
+      let hit = false;
+      for (let r = 0; r < radii; r++) {
+        const col = colors[at0++];
+        if (col.b >= 170 && col.b - col.r >= 110) { hit = true; }
+      }
+      if (hit) { rays++; }
+    }
+    if (rays >= cfg.ringMin) { return true; }
+  }
+  return false;
+}
+
+/**
+ * Drag a bubble from `from` to `to` (logical px), held `grabMs` first, at the
+ * run's speed, and drop it there. Says whether it was under the finger at the end.
+ */
+function sorcererDrag(ts: Tsum, from: Point, to: Point, grabMs: number): boolean {
   const cfg = SorcererMickeyConfig;
+  const speed = cfg.speeds[Math.min(gSorcererSpeed, cfg.speeds.length - 1)];
   ts.tapDown(from, 20);
   ts.sleep(grabMs);
   const dx = to.x - from.x;
@@ -658,11 +736,15 @@ function sorcererDrag(ts: Tsum, from: Point, to: Point, grabMs: number): void {
   const len = Math.hypot(dx, dy);
   let d = 0;
   for (let i = 0; d < len; i++) {
-    d = Math.min(len, d + (i < cfg.easeIn.length ? cfg.easeIn[i] : cfg.stepPx));
-    ts.moveTo({x: Math.round(from.x + dx * d / len), y: Math.round(from.y + dy * d / len)}, cfg.moveMs);
+    d = Math.min(len, d + (i < cfg.easeIn.length ? cfg.easeIn[i] : speed.stepPx));
+    ts.moveTo({x: Math.round(from.x + dx * d / len), y: Math.round(from.y + dy * d / len)}, speed.moveMs);
   }
-  ts.sleep(cfg.dropHoldMs);
+  const holdFrom = Date.now();
+  const carried = sorcererCarried(ts, to);
+  const left = cfg.dropHoldMs - (Date.now() - holdFrom);
+  if (left > 0) { ts.sleep(left); }
   ts.tapUp(to, 20);
+  return carried;
 }
 
 /** Screens saved this run when a window ran out with hats left. */
@@ -766,7 +848,8 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     const grabMs = cfg.grabMs * (1 + st.stuck);
     const light = sorcererBoardLight(ts);
     const before = bubbles.length;
-    sorcererDrag(ts, from, to, grabMs);
+    const speedUsed = gSorcererSpeed;
+    const carried = sorcererDrag(ts, from, to, grabMs);
     const castMs = sorcererWaitCast(ts, light, SorcererCast.dropMinMs, SorcererCast.dropMaxMs);
     // The bubbles above the blast fall into the gap it left: let them land.
     const settleFrom = Date.now();
@@ -779,13 +862,21 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
       bubbles = sorcererUnignored(sorcererFind(ts));
     }
     logDebug(Log.Skill.SorcererDrop, { from: from, to: to, grabMs: grabMs, kind: b.kind,
-      bubbles: before, after: bubbles.length, castMs: castMs, settleMs: settleMs,
-      core: b.core, rim: b.rim, hats: st.hats });
+      carried: carried, speed: speedUsed, bubbles: before, after: bubbles.length, castMs: castMs,
+      settleMs: settleMs, core: b.core, rim: b.rim, hats: st.hats });
 
     // Gone from where it was, and not sitting on the spot (carried there
     // without a drop): it took. A count would miss a drop whenever another
     // bubble shows up between the looks; the grab was on a bubble at rest.
     const stayed = sorcererNearest(bubbles, b) <= cfg.samePx;
+    // Not under the finger at the end, and gone from where it started: it
+    // was picked up and lost on the way, so the drags go slower from here.
+    // (Still where it started is a grab that missed, which speed does not cause.)
+    if (!carried && !stayed && gSorcererSpeed < cfg.speeds.length - 1) {
+      gSorcererSpeed++;
+      logInfo(Log.Skill.SorcererSlower, { speed: gSorcererSpeed,
+        stepPx: cfg.speeds[gSorcererSpeed].stepPx, moveMs: cfg.speeds[gSorcererSpeed].moveMs });
+    }
     const k = 1080 / ts.playResizeWidth;
     const onSpot = sorcererNearest(bubbles, {x: to.x / k, y: (to.y - PlayAreaTopY) / k}) <= cfg.samePx * 2;
     if (!stayed && !onSpot) {
