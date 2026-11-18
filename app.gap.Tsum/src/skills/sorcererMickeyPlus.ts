@@ -10,16 +10,16 @@
 // logical px in radius at SL6.
 //
 // So the activation only arms the hats for this round (`gSorcerer`). While
-// armed:
-//   - each scan links only its longest chain, uncapped (`orderPaths`,
-//     `chainLimits`), so each hat's bubble comes from the best chain there is;
+// armed, play goes on at its usual pace, and:
+//   - chains are not capped (`chainLimits`): a longer chain, a bigger blast;
 //   - each scan looks for magic bubbles first (`watchScan`) and drags each to
 //     the next spot of a layout spread to cover the most board (`spots`): two
 //     to the left and right halves, three to the bottom corners and the top
 //     middle, four to the four corners. A spot keeps its bubble's ring, so a
 //     big bubble goes before any small one;
-//   - the Bubble Strategy pops nothing (`claimsBubbles`): a magic bubble
-//     tapped in place loses its spot.
+//   - the Bubble Strategy pops nothing (`claimsBubbles`), and a batch draws
+//     last any chain over where an earlier one of it ended (`orderPaths`),
+//     since that is where its bubble shows: either would blast it in place.
 // The skill is not held meanwhile: it fires as soon as the gauge is full. An
 // activation with hats left tops them up and carries on with the same spots.
 //
@@ -33,12 +33,10 @@
 //
 // A magic bubble blasts wherever it is let go or touched, and that spends a
 // hat whether it moved or not. So nothing taps one: a bubble the drag did not
-// move is dragged again with a longer hold (`dragRetries`) and then left alone;
-// the drag starts with short moves, so the game takes it as a drag rather than
-// a tap, and goes no faster than the bubble can follow; and each scan waits
-// for the last chain's bubble to show (`bubbleWaitMs`), so the next chain
-// cannot be drawn through it. A drop is checked straight after: gone from
-// where it was, and not left on the spot.
+// move is dragged again with a longer hold (`dragRetries`) and then left alone,
+// and the drag starts with short moves, so the game takes it as a drag rather
+// than a tap, and goes no faster than the bubble can follow. A drop is checked
+// straight after: gone from where it was, and not left on the spot.
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -57,33 +55,31 @@ var SorcererMickeyConfig = {
   } as { [hats: number]: Point[] },
   // Disarm when no magic bubble has been seen for this long since the
   // activation or the last drop. Every chain makes one, so this is a skill
-  // level set too high or bubbles the reader misses -- and what armed holds
-  // (one chain a scan, no pops) waits on it.
-  idleMs: 10000,
+  // level set too high or bubbles the reader misses.
+  idleMs: 8000,
   // Most one scan spends on drops, in gestures (beyond the hats left) and
   // time; the rest waits for the next scan.
   extraTriesPerScan: 2,
   scanBudgetMs: 6000,
   // A bubble that moved at most `restPx` (play-square px) between two looks is
   // at rest. At most `restLooks` looks are spent waiting for that.
-  lookMs: 80,
+  lookMs: 50,
   restPx: 3,
-  restLooks: 4,
+  restLooks: 2,
   // The drag: held `grabMs` (times the try), moved by `easeIn` then `stepPx`
   // (logical px) each `moveMs`, held `dropHoldMs` on the spot so the game
   // takes it there, then let go. The short first moves make it a drag, not a
   // tap; past ~2px/ms the bubble can lose the finger and drop mid-way.
-  grabMs: 100,
+  grabMs: 80,
   easeIn: [8, 16, 32],
   stepPx: 40,
   moveMs: 20,
-  dropHoldMs: 200,
-  // A chain's bubble shows a moment after the drag that made it: a scan that
-  // sees none waits this long from that chain before planning the next one,
-  // which could otherwise be drawn through it.
-  bubbleWaitMs: 1200,
-  // After a drop, before the look that checks it: the blast going off.
-  blastMs: 500,
+  dropHoldMs: 120,
+  // After a drop, before the look that checks it: the bubble going off.
+  blastMs: 200,
+  // A chain of a batch goes to the back while armed when its drag line passes
+  // within this many tsum widths of where an earlier chain of the batch ended.
+  endClear: 0.8,
   // A bubble within `samePx` (play-square px) of where its drag started did
   // not move. After `dragRetries` such drags it is left alone.
   samePx: 6,
@@ -359,6 +355,44 @@ function sorcererLogical(ts: Tsum, p: Point): Point {
   return {x: Math.round(p.x * k), y: Math.round(PlayAreaTopY + p.y * k)};
 }
 
+/** Distance from `p` to the segment `a`-`b`. */
+function sorcererToSegment(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+/**
+ * The play loop's chains with any whose drag passes over where an earlier one
+ * ended moved to the back: a chain leaves its magic bubble at its last tsum,
+ * and a later chain of the same batch drawn through it would blast it in
+ * place. Moved rather than dropped, so the batch still fills and the barren
+ * check (`foundPaths` in `taskPlayGameQuick`) counts what the board offers.
+ */
+function sorcererClearOfEnds(paths: TsumPath[]): TsumPath[] {
+  const reach = SorcererMickeyConfig.endClear * Config.tsumWidth;
+  const ends: Point[] = [];
+  const out: TsumPath[] = [];
+  const crossing: TsumPath[] = [];
+  for (const path of paths) {
+    let crosses = false;
+    for (let i = 0; i < path.length && !crosses; i++) {
+      const a = path[i], b = path[Math.min(i + 1, path.length - 1)];
+      for (const e of ends) {
+        if (sorcererToSegment(e, a, b) <= reach) { crosses = true; break; }
+      }
+    }
+    if (crosses) {
+      crossing.push(path);
+      continue;
+    }
+    out.push(path);
+    ends.push(path[path.length - 1]);
+  }
+  return out.concat(crossing);
+}
+
 // ---- State ------------------------------------------------------------------
 
 /** One activation's hats: what is left of them, and how the drops went. */
@@ -375,8 +409,6 @@ var gSorcerer = {
   next: 0,
   drops: 0,
   armedAt: 0,
-  /** When the last chain was planned while armed; 0 once its bubble was looked for. */
-  chainAt: 0,
   /** Last time a magic bubble was seen or dropped, for `idleMs`. */
   activeAt: 0,
   /** Where a drag left its bubble unmoved, and how many times in a row. */
@@ -432,7 +464,7 @@ function sorcererArm(ts: Tsum): void {
   if (st.round !== '') { sorcererDisarm(ts, 'roundOver'); }
   st.round = ts.roundUid;
   st.given = st.hats = cfg.hats[level - 1];
-  st.next = st.drops = st.stuck = st.chainAt = 0;
+  st.next = st.drops = st.stuck = 0;
   st.stuckAt = null;
   st.ignored = [];
   st.armedAt = st.activeAt = Date.now();
@@ -493,17 +525,7 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     return false;
   }
   let bubbles = sorcererUnignored(sorcererFindIn(img));
-  // None yet: the last chain's may still be on its way.
-  let waited = false;
-  while (bubbles.length === 0 && st.chainAt > 0 && Date.now() - st.chainAt < cfg.bubbleWaitMs
-      && ts.mayTouchBoard()) {
-    ts.sleep(cfg.lookMs);
-    bubbles = sorcererUnignored(sorcererFind(ts));
-    waited = true;
-  }
-  st.chainAt = 0;
-  // Slept and captured since `img`: the scan captures again.
-  if (bubbles.length === 0 || !ts.mayTouchBoard()) { return waited; }
+  if (bubbles.length === 0 || !ts.mayTouchBoard()) { return false; }
   st.activeAt = Date.now();
   const spots = cfg.spots[st.given];
   const from0 = Date.now();
@@ -593,15 +615,11 @@ registerSkill({
   watchScan: sorcererWatch,
   // A magic bubble the strategy taps would blast in place, off its spot.
   claimsBubbles: sorcererArmed,
-  // While armed, one chain a scan, the longest, uncapped: its bubble is the
-  // next hat's, and a longer chain makes a bigger blast.
+  // While armed, chains are not capped: a longer chain makes a bigger blast.
   chainLimits: function(ts) {
-    return sorcererArmed(ts) ? { maxChain: 0, maxChainsPerScan: 1 } : {};
+    return sorcererArmed(ts) ? { maxChain: 0 } : {};
   },
   orderPaths: function(ts, paths) {
-    if (!sorcererArmed(ts)) { return paths; }
-    // The chain linked next is this scan's longest; its bubble is waited for.
-    if (paths.length > 0) { gSorcerer.chainAt = Date.now(); }
-    return paths.slice().sort((a, b) => b.length - a.length);
+    return sorcererArmed(ts) ? sorcererClearOfEnds(paths) : paths;
   },
 });
