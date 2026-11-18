@@ -57,7 +57,7 @@ release note; they fold back in here when she ships.
 ### Added
 
 - **Sorcerer Mickey+** (`src/skills/sorcererMickeyPlus.ts`, `mickeysplus`, share `S`, Alpha): the activation arms the hats; each
-  scan links its longest chain only and drags the magic bubbles chains make (big ones first) to 2-4 spread spots; pops held meanwhile.
+  scan links its longest chain only and drags the magic bubbles chains make (big ones first, never tapped) to 2-4 spread spots; pops held meanwhile.
 
 ## [6.0b29]
 

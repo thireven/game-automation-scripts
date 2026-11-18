@@ -31,9 +31,14 @@
 // rosters, that found every waiting bubble of both kinds but one washed out by
 // the dragged bubble's ring, and nothing else.
 //
-// A drop is checked straight after: gone from where it was, and not left on
-// the spot. A bubble still where its drag started is dragged again, then
-// tapped (`dragRetries`); one a tap did not clear either is left alone.
+// A magic bubble blasts wherever it is let go or touched, and that spends a
+// hat whether it moved or not. So nothing taps one: a bubble the drag did not
+// move is dragged again with a longer hold (`dragRetries`) and then left alone;
+// the drag starts with short moves, so the game takes it as a drag rather than
+// a tap, and goes no faster than the bubble can follow; and each scan waits
+// for the last chain's bubble to show (`bubbleWaitMs`), so the next chain
+// cannot be drawn through it. A drop is checked straight after: gone from
+// where it was, and not left on the spot.
 // ---------------------------------------------------------------------------
 
 // --- Tuning data -----------------------------------------------------------
@@ -64,18 +69,25 @@ var SorcererMickeyConfig = {
   lookMs: 80,
   restPx: 3,
   restLooks: 4,
-  // The drag: held `grabMs`, moved in `stepPx` (logical px) steps of `moveMs`,
-  // held `dropHoldMs` on the spot so the game takes it there, then let go.
-  grabMs: 60,
-  stepPx: 80,
+  // The drag: held `grabMs` (times the try), moved by `easeIn` then `stepPx`
+  // (logical px) each `moveMs`, held `dropHoldMs` on the spot so the game
+  // takes it there, then let go. The short first moves make it a drag, not a
+  // tap; past ~2px/ms the bubble can lose the finger and drop mid-way.
+  grabMs: 100,
+  easeIn: [8, 16, 32],
+  stepPx: 40,
   moveMs: 20,
-  dropHoldMs: 150,
+  dropHoldMs: 200,
+  // A chain's bubble shows a moment after the drag that made it: a scan that
+  // sees none waits this long from that chain before planning the next one,
+  // which could otherwise be drawn through it.
+  bubbleWaitMs: 1200,
   // After a drop, before the look that checks it: the blast going off.
   blastMs: 500,
   // A bubble within `samePx` (play-square px) of where its drag started did
-  // not move. After `dragRetries` of those it is tapped instead.
+  // not move. After `dragRetries` such drags it is left alone.
   samePx: 6,
-  dragRetries: 2,
+  dragRetries: 3,
   // Screens saved per run when an armed window runs out with hats left (diagnostics).
   missShotMax: 3,
 };
@@ -362,14 +374,15 @@ var gSorcerer = {
   /** Index of the next spot in the layout. */
   next: 0,
   drops: 0,
-  taps: 0,
   armedAt: 0,
+  /** When the last chain was planned while armed; 0 once its bubble was looked for. */
+  chainAt: 0,
   /** Last time a magic bubble was seen or dropped, for `idleMs`. */
   activeAt: 0,
   /** Where a drag left its bubble unmoved, and how many times in a row. */
   stuckAt: null as Point | null,
   stuck: 0,
-  /** Where a tap failed too: a bubble the game will not let go, or not one at all. */
+  /** Bubbles no drag moved: one the game will not let go, or not one at all. */
   ignored: [] as Point[],
 };
 
@@ -390,9 +403,9 @@ function sorcererArmed(ts: Tsum): boolean {
 function sorcererDisarm(ts: Tsum, why: string): void {
   const st = gSorcerer;
   if (st.round === '') { return; }
-  const fields = { why: why, given: st.given, drops: st.drops, taps: st.taps, left: st.hats,
+  const fields = { why: why, given: st.given, drops: st.drops, left: st.hats,
     ignored: st.ignored.length, ms: Date.now() - st.armedAt };
-  if (st.hats > 0 && st.drops === 0 && st.taps === 0) {
+  if (st.hats > 0 && st.drops === 0) {
     logWarn(Log.Skill.SorcererNone, fields);
   } else {
     logInfo(Log.Skill.SorcererDone, fields);
@@ -419,7 +432,7 @@ function sorcererArm(ts: Tsum): void {
   if (st.round !== '') { sorcererDisarm(ts, 'roundOver'); }
   st.round = ts.roundUid;
   st.given = st.hats = cfg.hats[level - 1];
-  st.next = st.drops = st.taps = st.stuck = 0;
+  st.next = st.drops = st.stuck = st.chainAt = 0;
   st.stuckAt = null;
   st.ignored = [];
   st.armedAt = st.activeAt = Date.now();
@@ -428,16 +441,18 @@ function sorcererArm(ts: Tsum): void {
 
 // ---- Choreography ---------------------------------------------------------
 
-/** Drag a bubble from `from` to `to` (logical px) and drop it there. */
-function sorcererDrag(ts: Tsum, from: Point, to: Point): void {
+/** Drag a bubble from `from` to `to` (logical px), held `grabMs` first, and drop it there. */
+function sorcererDrag(ts: Tsum, from: Point, to: Point, grabMs: number): void {
   const cfg = SorcererMickeyConfig;
   ts.tapDown(from, 20);
-  ts.sleep(cfg.grabMs);
+  ts.sleep(grabMs);
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / cfg.stepPx));
-  for (let i = 1; i <= steps; i++) {
-    ts.moveTo({x: Math.round(from.x + dx * i / steps), y: Math.round(from.y + dy * i / steps)}, cfg.moveMs);
+  const len = Math.hypot(dx, dy);
+  let d = 0;
+  for (let i = 0; d < len; i++) {
+    d = Math.min(len, d + (i < cfg.easeIn.length ? cfg.easeIn[i] : cfg.stepPx));
+    ts.moveTo({x: Math.round(from.x + dx * d / len), y: Math.round(from.y + dy * d / len)}, cfg.moveMs);
   }
   ts.sleep(cfg.dropHoldMs);
   ts.tapUp(to, 20);
@@ -478,7 +493,17 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     return false;
   }
   let bubbles = sorcererUnignored(sorcererFindIn(img));
-  if (bubbles.length === 0 || !ts.mayTouchBoard()) { return false; }
+  // None yet: the last chain's may still be on its way.
+  let waited = false;
+  while (bubbles.length === 0 && st.chainAt > 0 && Date.now() - st.chainAt < cfg.bubbleWaitMs
+      && ts.mayTouchBoard()) {
+    ts.sleep(cfg.lookMs);
+    bubbles = sorcererUnignored(sorcererFind(ts));
+    waited = true;
+  }
+  st.chainAt = 0;
+  // Slept and captured since `img`: the scan captures again.
+  if (bubbles.length === 0 || !ts.mayTouchBoard()) { return waited; }
   st.activeAt = Date.now();
   const spots = cfg.spots[st.given];
   const from0 = Date.now();
@@ -511,14 +536,20 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     }
     const b = bubbles[bi];
     const from = sorcererLogical(ts, b);
-    const tapped = st.stuckAt !== null && st.stuck >= cfg.dragRetries;
-    if (tapped) {
-      ts.tap(from, 30);
-    } else {
-      sorcererDrag(ts, from, to);
+    if (st.stuckAt !== null && st.stuck >= cfg.dragRetries) {
+      // No drag moved it: leave it be, since a tap would blast it in place.
+      st.ignored.push({x: b.x, y: b.y});
+      bubbles = sorcererUnignored(bubbles);
+      st.stuckAt = null;
+      st.stuck = 0;
+      logDebug(Log.Skill.SorcererDrop, { setAside: true, from: from, kind: b.kind,
+        bubbles: bubbles.length + 1, core: b.core, rim: b.rim, hats: st.hats });
+      continue;
     }
-    logDebug(Log.Skill.SorcererDrop, { tap: tapped, from: from, to: tapped ? undefined : to,
-      kind: b.kind, bubbles: bubbles.length, core: b.core, rim: b.rim, hats: st.hats });
+    const grabMs = cfg.grabMs * (1 + st.stuck);
+    sorcererDrag(ts, from, to, grabMs);
+    logDebug(Log.Skill.SorcererDrop, { from: from, to: to, grabMs: grabMs, kind: b.kind,
+      bubbles: bubbles.length, core: b.core, rim: b.rim, hats: st.hats });
     ts.sleep(cfg.blastMs);
 
     // Gone from where it was, and not sitting on the spot (carried there
@@ -527,22 +558,17 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     bubbles = sorcererUnignored(sorcererFind(ts));
     const stayed = sorcererNearest(bubbles, b) <= cfg.samePx;
     const k = 1080 / ts.playResizeWidth;
-    const onSpot = !tapped
-      && sorcererNearest(bubbles, {x: to.x / k, y: (to.y - PlayAreaTopY) / k}) <= cfg.samePx * 2;
+    const onSpot = sorcererNearest(bubbles, {x: to.x / k, y: (to.y - PlayAreaTopY) / k}) <= cfg.samePx * 2;
     if (!stayed && !onSpot) {
       st.hats--;
-      if (tapped) { st.taps++; } else { st.drops++; st.next++; }
+      st.drops++;
+      st.next++;
       st.stuckAt = null;
       st.stuck = 0;
       st.activeAt = Date.now();
       // The blasts just emptied the board round the spots: no strategy pop
       // into those holes for a while (`holdBubblesAfterSkill`).
       ts.holdBubblesAfterSkill(Date.now());
-    } else if (stayed && tapped) {
-      st.ignored.push({x: b.x, y: b.y});
-      bubbles = sorcererUnignored(bubbles);
-      st.stuckAt = null;
-      st.stuck = 0;
     } else if (stayed) {
       st.stuckAt = {x: b.x, y: b.y};
       st.stuck++;
@@ -573,6 +599,9 @@ registerSkill({
     return sorcererArmed(ts) ? { maxChain: 0, maxChainsPerScan: 1 } : {};
   },
   orderPaths: function(ts, paths) {
-    return sorcererArmed(ts) ? paths.slice().sort((a, b) => b.length - a.length) : paths;
+    if (!sorcererArmed(ts)) { return paths; }
+    // The chain linked next is this scan's longest; its bubble is waited for.
+    if (paths.length > 0) { gSorcerer.chainAt = Date.now(); }
+    return paths.slice().sort((a, b) => b.length - a.length);
   },
 });

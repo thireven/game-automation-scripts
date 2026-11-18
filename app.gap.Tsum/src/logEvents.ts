@@ -274,7 +274,7 @@ namespace Log {
     RapunzelDragIgnored   = 'skill.rapunzel.dragIgnored',
     /** Sorcerer Mickey+: an activation armed its hats; the chains after it make the magic bubbles. */
     SorcererArmed         = 'skill.sorcerer.armed',
-    /** Sorcerer Mickey+: one magic bubble dragged to a spot, or tapped where it sat (`tap`). */
+    /** Sorcerer Mickey+: one magic bubble dragged to a spot, or left alone after drags that never moved it (`setAside`). */
     SorcererDrop          = 'skill.sorcerer.drop',
     /** Sorcerer Mickey+: the hats' window closed (`why`: done, idle, roundOver); `left` hats unused. */
     SorcererDone          = 'skill.sorcerer.done',
