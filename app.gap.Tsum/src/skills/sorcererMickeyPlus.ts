@@ -68,7 +68,13 @@ var SorcererMickeyConfig = {
   // at rest. At most `restLooks` looks are spent waiting for that.
   lookMs: 80,
   restPx: 3,
-  restLooks: 4,
+  restLooks: 5,
+  // Bubbles count as gone only after this many looks in a row find none. The
+  // glass is partly see-through (navy over the dark, green over a green tsum,
+  // cyan-white as it pulses), so the colour test loses a real bubble for a
+  // look or three: on two recordings 36 of its 39 short gaps were 1-3 frames
+  // of 100ms. Each such miss had handed the board back to the play loop.
+  emptyLooks: 3,
   // The drag: held `grabMs` (times the try), moved by `easeIn` then `stepPx`
   // (logical px) each `moveMs`, held `dropHoldMs` on the spot so the game
   // takes it there, then let go. The short first moves make it a drag, not a
@@ -494,10 +500,10 @@ function sorcererAtRest(ts: Tsum, first: SorcererBubbleSeen[],
     maxLooks: number = SorcererMickeyConfig.restLooks): SorcererBubbleSeen[] {
   const cfg = SorcererMickeyConfig;
   let last = first;
-  // None counts only twice running: one look misses a bubble behind a score
-  // label or a flash, and the play loop would chain over it.
+  // None counts only `emptyLooks` running: a look misses a bubble now and
+  // then, and the play loop would chain over it.
   let empty = first.length === 0 ? 1 : 0;
-  for (let i = 1; i < maxLooks && empty < 2; i++) {
+  for (let i = 1; i < maxLooks && empty < cfg.emptyLooks; i++) {
     ts.sleep(cfg.lookMs);
     const next = sorcererUnignored(sorcererFind(ts));
     if (next.length === 0) {
@@ -510,7 +516,7 @@ function sorcererAtRest(ts: Tsum, first: SorcererBubbleSeen[],
     last = next;
     if (still) { break; }
   }
-  return empty >= 2 ? [] : last;
+  return empty >= cfg.emptyLooks ? [] : last;
 }
 
 /** A play-square point in logical px (the play square is the game's full 1080 width). */
