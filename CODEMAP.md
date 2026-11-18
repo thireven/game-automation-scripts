@@ -128,6 +128,7 @@ enforces every row below, so these are true rather than approximate.
 | `lorcana*`, `Lorcana*`, `gLorcana` | `src/lorcana.ts` (tables included), `src/skills/lorcanaAurora.ts`, `src/globals.d.ts`, `src/shared.d.ts` (`SkillType.LorcanaAurora`, `SettingKey.LorcanaCard`), `src/tsum.ts` (the `lorcanaCard` field) |
 | `rapunzel*`, `RapunzelPlus*` | `src/skills/rapunzelPlus.ts` (tables included) — plain functions, no `Tsum` method |
 | `gaston*`, `Gaston*` | `src/skills/gaston.ts` (tables included) — plain functions, no `Tsum` method |
+| `sorcerer*`, `SorcererMickey*`, `SorcererBubble*` | `src/skills/sorcererMickeyPlus.ts` (tables included) — plain functions, no `Tsum` method |
 | `coinTarget*`, `CoinTarget*`, `CoinStep`, `gCoinTarget` — the Coin Target setting: play a round to an exact coin figure | `src/coinTarget.ts` (tables included) — plain functions, no `Tsum` method; called from the play loop (`src/play.ts`), the bubble taps in `src/board.ts`, and the skill hold in `useSkill` / `maybeAutoTapSkill` (`src/skills/skillCore.ts`); the counter region is `StatsRegions.liveCounters` (`src/roundStats.ts`); the setting's field is `Tsum#coinTarget` (`src/tsum.ts`) and its ceiling `CoinTargetMax` (`src/settingDefaults.ts`) |
 | `chain*`, `Chain*` — the chain counter's reader, `ChainDigits` (generated) and `ChainCount` | `src/chainCounter.ts` — plain functions, no `Tsum` method; `readsChainCounter` is the `SkillHandler` flag in `src/skills/skillCore.ts` |
 | `stats*`, `Stats*` | `src/roundStats.ts`, `src/globals.d.ts` |

@@ -262,6 +262,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SkillTiaraMinniePlus]: 'Tiara Minnie+',
     [UiText.SkillCoronationElsa]: 'Coronation Day Elsa',
     [UiText.SkillRapunzelPlus]: 'Rapunzel+',
+    [UiText.SkillSorcererMickeyPlus]: 'Sorcerer Mickey+',
     [UiText.SkillLorcanaAurora]: 'Lorcana Aurora',
     [UiText.SkillPairTsum]: 'Pair Tsum',
     [UiText.SkillNoSkill]: 'No Skill',

@@ -272,6 +272,14 @@ namespace Log {
     RapunzelDone          = 'skill.rapunzel.done',
     /** Rapunzel+: drag after drag linked only its head; the game is not taking moves. */
     RapunzelDragIgnored   = 'skill.rapunzel.dragIgnored',
+    /** Sorcerer Mickey+: one magic bubble dragged to a spot, or tapped where it sat (`tap`). */
+    SorcererDrop          = 'skill.sorcerer.drop',
+    /** Sorcerer Mickey+: the drops are over; `placed` took, `left` bubbles were still up. */
+    SorcererDone          = 'skill.sorcerer.done',
+    /** Sorcerer Mickey+: no magic bubble was seen after the tap. */
+    SorcererNone          = 'skill.sorcerer.none',
+    /** Sorcerer Mickey+: the screen saved when no bubble was seen; `path` is on the device. */
+    SorcererMissShot      = 'skill.sorcerer.missShot',
     ReadyAgain            = 'skill.readyAgain',
     /** A tap withheld: the skill's last activation is still running. */
     StillRunning          = 'skill.stillRunning',

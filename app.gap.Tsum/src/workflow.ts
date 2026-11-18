@@ -398,6 +398,7 @@ const WorkflowSkillLabels: { [id: string]: string } = {
   buzzl_120: 'Cpt. Lightyear (120fps)', mcqueenplus: 'Lightning McQueen+',
   beastda: 'Formal Beast', minnie12thplus: 'Tiara Minnie+',
   elsa_coronation: 'Coronation Elsa', rapunzelplus: 'Rapunzel+', gaston: 'Gaston',
+  mickeysplus: 'Sorcerer Mickey+',
   auroraink: 'Lorcana Aurora', nbc_set: 'Nightmare Before Christmas (Set)',
   pair_tsum: 'Pair Tsum',
 };

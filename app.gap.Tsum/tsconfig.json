@@ -134,6 +134,7 @@
     "src/skills/tiaraMinniePlus.ts",
     "src/skills/coronationElsa.ts",
     "src/skills/rapunzelPlus.ts",
+    "src/skills/sorcererMickeyPlus.ts",
     "src/skills/lorcanaAurora.ts",
     "src/skills/gaston.ts",
     "src/clickAssist.ts",

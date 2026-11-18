@@ -69,6 +69,12 @@ declare const enum SkillType {
    */
   RapunzelPlus = 'rapunzelplus',
   /**
+   * Sorcerer Mickey+. His activation turns 2-4 tsums into magic bubbles to drag
+   * and drop; each drop blasts round every spot dropped on so far, so the drops
+   * are spread out -- see `src/skills/sorcererMickeyPlus.ts`.
+   */
+  SorcererMickeyPlus = 'mickeysplus',
+  /**
    * Gaston. His activation makes every tsum that *drops* a Gaston for a window
    * his skill level sets, so the choreography plays it: chain every Gaston and
    * cancel the pop with a bubble so the next batch drops at once, twice, then

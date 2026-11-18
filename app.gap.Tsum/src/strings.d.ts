@@ -291,6 +291,7 @@ declare const enum UiText {
   SkillTiaraMinniePlus = 'skill.tiaraMinniePlus',
   SkillCoronationElsa = 'skill.coronationElsa',
   SkillRapunzelPlus = 'skill.rapunzelPlus',
+  SkillSorcererMickeyPlus = 'skill.sorcererMickeyPlus',
   SkillLorcanaAurora = 'skill.lorcanaAurora',
   SkillPairTsum = 'skill.pairTsum',
   SkillNoSkill = 'skill.noSkill',
