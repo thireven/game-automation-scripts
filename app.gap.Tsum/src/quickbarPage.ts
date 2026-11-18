@@ -1474,6 +1474,10 @@ function qbFillOptions(list: Element, option: HTMLTemplateElement,
                 for (var n = 0; needs !== undefined && n < needs.length; n++) {
                     qbApply(needs[n], true);
                 }
+                // Record round stats off for an Alpha skill, on for any other.
+                if (key === SettingKey.SkillType) {
+                    qbApply(SettingKey.TrackRoundStats, skillRecordsStats(choice.key));
+                }
                 // One deliberate pick rather than a control being nudged, so it
                 // goes now -- with whatever it switched on, in the same batch.
                 qbFlushApplies();

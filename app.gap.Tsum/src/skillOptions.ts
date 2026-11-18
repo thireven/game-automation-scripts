@@ -170,3 +170,18 @@ var SkillsDeclared: SkillOption[] = [
 var SkillOptions: SkillOption[] = SkillsDeclared.filter(function (skill) {
     return offeredHere(skill.status);
 });
+
+/**
+ * What Record round stats is set to when this skill is picked, on either page.
+ *
+ * Off for an Alpha skill, since its rounds are still tuning runs and would skew
+ * the stats; on for every other pick, so leaving an Alpha skill turns it back on.
+ */
+function skillRecordsStats(key: string): boolean {
+    for (var i = 0; i < SkillsDeclared.length; i++) {
+        if (SkillsDeclared[i].key === key) {
+            return SkillsDeclared[i].status !== ReleaseStatus.Alpha;
+        }
+    }
+    return true;
+}

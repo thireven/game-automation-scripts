@@ -4617,6 +4617,9 @@ function buildSelect(setting: SettingSpec): HTMLElement {
             show(key);
             setting.default = key;
             var enabled = applyDropdownEnables(items, key);
+            if (setting.key === SettingKey.SkillType) {
+                enabled = enabled.concat(applySkillRecordsStats(key));
+            }
             saveSettings(settings, ([setting.key!] as string[]).concat(enabled));
             presetEdited(setting);
         });
@@ -4666,6 +4669,19 @@ function applyDropdownEnables(items: SettingSpec[], picked: string): string[] {
         }
     }
     return needed;
+}
+
+/**
+ * Sets Record round stats for the skill just picked (`skillRecordsStats`):
+ * off for an Alpha skill, on for any other. Answers the key for the caller's save.
+ */
+function applySkillRecordsStats(skill: string): string[] {
+    var row = settingsByKey()[SettingKey.TrackRoundStats];
+    if (row === undefined) {
+        return [];
+    }
+    applySettingValue(row, skillRecordsStats(skill));
+    return [SettingKey.TrackRoundStats];
 }
 
 /** Every row of the schema that holds a value, by key. */

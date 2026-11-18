@@ -57,7 +57,15 @@ release note; they fold back in here when she ships.
 *Tsums*
 - JP-only tsums have English names (Outdoor Mickey, Jim Hawkins, Spider-Man and the rest), shown in GAP Companion beside the Japanese one, and on the international game until it names them.
 
+*Settings*
+- Picking a skill sets Record round stats: off for an Alpha skill, on for any other.
+
 ### Added
+
+- **Record round stats follows the skill pick** (`skillRecordsStats`,
+  `src/skillOptions.ts`): the settings page's Skill Type dropdown and the Quick
+  Bar's skill sheet switch it off for an Alpha skill and on for the rest.
+  Presets, share codes and GAP Companion leave it alone.
 
 - **English names for JP-only tsums** (merged up from 5.8): `tsums.dat` and
   `tsumsCollection.dat` get a sixth column, our own English name for the 86
