@@ -908,7 +908,7 @@ interface MyTsumEntry {
    * borrows the other's, or falls back to `short`, so every key reads.
    */
   names: {[build in GameBuild]: string};
-  /** The global build's own name; '' when it has none (then `names` borrows one). */
+  /** The global build's own name, else our English one; '' when neither (then `names` borrows one). */
   english: string;
   /** The signature through `myTsumPrepare`: centred, unit length, ready to dot. */
   vec: number[];
