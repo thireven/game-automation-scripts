@@ -60,9 +60,10 @@ var SorcererMickeyConfig = {
   // level set too high or bubbles the reader misses.
   idleMs: 8000,
   // Most one scan spends on drops, in gestures (beyond the hats left) and
-  // time; the rest waits for the next scan.
-  extraTriesPerScan: 2,
-  scanBudgetMs: 6000,
+  // time; the rest waits for the next scan. Generous: handing back with a
+  // bubble still up lets the play loop chain over it.
+  extraTriesPerScan: 4,
+  scanBudgetMs: 12000,
   // A bubble that moved at most `restPx` (play-square px) between two looks is
   // at rest. At most `restLooks` looks are spent waiting for that.
   lookMs: 80,
@@ -78,11 +79,17 @@ var SorcererMickeyConfig = {
   stepPx: 60,
   moveMs: 20,
   dropHoldMs: 80,
-  // After a drop, the cast (`SorcererCast`) is waited out before the look
-  // that checks it; then, while fewer bubbles show than were left, the look
+  // After a drop, the cast (`SorcererCast`) is waited out, then the board,
+  // for up to `settleMaxMs`: the blast clears the tsums under the spot and the
+  // bubbles above fall into the gap, so a look before they land drags from
+  // where they were. Then, while fewer bubbles show than were left, the look
   // is taken again for up to `missingWaitMs` -- the blast's score labels hide
   // them for a moment, and the play loop would chain straight over them.
+  settleMaxMs: 1200,
   missingWaitMs: 500,
+  // Right before a grab the bubble is looked for again; one that moved more
+  // than `verifyPx` (play-square px) since the look is planned afresh.
+  verifyPx: 6,
   // A bubble within `samePx` (play-square px) of where its drag started did
   // not move. After `dragRetries` such drags it is left alone.
   samePx: 6,
@@ -481,15 +488,23 @@ function sorcererNearest(list: Point[], p: Point): number {
 function sorcererAtRest(ts: Tsum, first: SorcererBubbleSeen[]): SorcererBubbleSeen[] {
   const cfg = SorcererMickeyConfig;
   let last = first;
-  for (let i = 1; i < cfg.restLooks && last.length > 0; i++) {
+  // None counts only twice running: one look misses a bubble behind a score
+  // label or a flash, and the play loop would chain over it.
+  let empty = first.length === 0 ? 1 : 0;
+  for (let i = 1; i < cfg.restLooks && empty < 2; i++) {
     ts.sleep(cfg.lookMs);
     const next = sorcererUnignored(sorcererFind(ts));
-    const still = next.length === last.length
+    if (next.length === 0) {
+      empty++;
+      continue;
+    }
+    const still = empty === 0 && next.length === last.length
       && next.every((b) => sorcererNearest(last, b) <= cfg.restPx);
+    empty = 0;
     last = next;
     if (still) { break; }
   }
-  return last;
+  return empty >= 2 ? [] : last;
 }
 
 /** A play-square point in logical px (the play square is the game's full 1080 width). */
@@ -526,6 +541,8 @@ var gSorcerer = {
   /** Recent hat reads, and since when they have all been none (0: one was lit). */
   hatReads: [] as { t: number; n: number }[],
   zeroSince: 0,
+  /** Bubbles the last look saw: a scan whose frame shows none looks again first. */
+  lastSeen: 0,
 };
 
 /** The look's bubbles less those set aside this window. */
@@ -578,6 +595,7 @@ function sorcererArm(ts: Tsum): void {
   st.ignored = [];
   st.hatsSeen = false;
   st.hatReads = [];
+  st.lastSeen = 0;
   st.armedAt = st.activeAt = Date.now();
   logDebug(Log.Skill.SorcererArmed, { skillLevel: level, hats: st.hats });
 }
@@ -672,7 +690,14 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     return false;
   }
   let bubbles = sorcererUnignored(sorcererFindIn(img));
-  if (bubbles.length === 0 || !ts.mayTouchBoard()) { return false; }
+  if (!ts.mayTouchBoard()) { return false; }
+  if (bubbles.length === 0) {
+    if (st.lastSeen === 0) { return false; }
+    // Some were up a moment ago: one frame may just have missed them.
+    bubbles = sorcererAtRest(ts, []);
+    st.lastSeen = bubbles.length;
+    if (bubbles.length === 0) { return true; }
+  }
   st.activeAt = Date.now();
   const spots = cfg.spots[st.given];
   const from0 = Date.now();
@@ -715,11 +740,26 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
         bubbles: bubbles.length + 1, core: b.core, rim: b.rim, hats: st.hats });
       continue;
     }
+    // Still where it was? The board may have moved since the look; a grab at
+    // a stale spot lands on a tsum, and the drag that follows is a chain
+    // drawn over whatever bubble is in its way.
+    const fresh = sorcererUnignored(sorcererFind(ts));
+    const moved = sorcererNearest(fresh, b) > cfg.verifyPx;
+    if (moved) {
+      logDebug(Log.Skill.SorcererDrop, { moved: true, from: from, kind: b.kind,
+        bubbles: bubbles.length, now: fresh.length, hats: st.hats });
+      bubbles = fresh;
+      continue;
+    }
     const grabMs = cfg.grabMs * (1 + st.stuck);
     const light = sorcererBoardLight(ts);
     const before = bubbles.length;
     sorcererDrag(ts, from, to, grabMs);
     const castMs = sorcererWaitCast(ts, light, SorcererCast.dropMinMs, SorcererCast.dropMaxMs);
+    // The bubbles above the blast fall into the gap it left: let them land.
+    const settleFrom = Date.now();
+    ts.settleBoard(cfg.settleMaxMs, 0);
+    const settleMs = Date.now() - settleFrom;
     // The others are still there; give a look that misses them another go.
     bubbles = sorcererUnignored(sorcererFind(ts));
     const looked = Date.now();
@@ -728,7 +768,8 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
       bubbles = sorcererUnignored(sorcererFind(ts));
     }
     logDebug(Log.Skill.SorcererDrop, { from: from, to: to, grabMs: grabMs, kind: b.kind,
-      bubbles: before, after: bubbles.length, castMs: castMs, core: b.core, rim: b.rim, hats: st.hats });
+      bubbles: before, after: bubbles.length, castMs: castMs, settleMs: settleMs,
+      core: b.core, rim: b.rim, hats: st.hats });
 
     // Gone from where it was, and not sitting on the spot (carried there
     // without a drop): it took. A count would miss a drop whenever another
@@ -755,6 +796,7 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     }
     // Carried to the spot without a drop: plan afresh, the spot is still next.
   }
+  st.lastSeen = bubbles.length;
   if (st.hats <= 0) { sorcererDisarm(ts, 'done'); }
   // It has slept and captured since `img`, so the scan captures again.
   return true;
