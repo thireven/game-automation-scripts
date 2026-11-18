@@ -16,7 +16,8 @@
 //   - each scan looks for magic bubbles first (`watchScan`) and drags each to
 //     the next spot of a layout spread to cover the most board (`spots`): two
 //     to the left and right halves, three to the bottom corners and the top
-//     middle, four to the four corners;
+//     middle, four to the four corners. A spot keeps its bubble's ring, so a
+//     big bubble goes before any small one;
 //   - the Bubble Strategy pops nothing (`claimsBubbles`): a magic bubble
 //     tapped in place loses its spot.
 // The skill is not held meanwhile: it fires as soon as the gauge is full. An
@@ -487,8 +488,9 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     bubbles = sorcererAtRest(ts, bubbles);
     if (bubbles.length === 0) { break; }
 
-    // The bubble a drag left unmoved, again; otherwise the one nearest the
-    // next spot.
+    // The bubble a drag left unmoved, again; otherwise a big one before any
+    // small, nearest the next spot. A spot keeps its bubble's ring, and the
+    // earlier the spot the more it blasts.
     const to = spots[st.next % spots.length];
     let bi = -1, best = Infinity;
     if (st.stuckAt !== null) {
@@ -499,7 +501,9 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
       if (bi < 0) { st.stuckAt = null; st.stuck = 0; }
     }
     if (bi < 0) {
+      const big = bubbles.some((x) => x.kind === 'big');
       for (let i = 0; i < bubbles.length; i++) {
+        if (big && bubbles[i].kind !== 'big') { continue; }
         const at = sorcererLogical(ts, bubbles[i]);
         const d = Math.hypot(to.x - at.x, to.y - at.y);
         if (d < best) { best = d; bi = i; }
