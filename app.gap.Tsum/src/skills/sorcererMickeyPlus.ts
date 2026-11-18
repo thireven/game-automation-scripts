@@ -72,13 +72,15 @@ var SorcererMickeyConfig = {
   // The drag: held `grabMs` (times the try), moved by `easeIn` then `stepPx`
   // (logical px) each `moveMs`, held `dropHoldMs` on the spot so the game
   // takes it there, then let go. The short first moves make it a drag, not a
-  // tap. At 2px/ms a recording showed the bubble right under the finger the
-  // whole way; 3px/ms is the step up from that, to be checked the same way.
-  grabMs: 60,
+  // tap. Recordings showed the bubble right under the finger at 2 and at
+  // 3px/ms (60px a move, about a bubble's radius); this is one move a frame
+  // (16ms at 60fps) of 80px, ~5px/ms. Much more and one frame's jump outruns
+  // the bubble itself.
+  grabMs: 50,
   easeIn: [8, 24],
-  stepPx: 60,
-  moveMs: 20,
-  dropHoldMs: 80,
+  stepPx: 80,
+  moveMs: 16,
+  dropHoldMs: 60,
   // After a drop, the cast (`SorcererCast`) is waited out, then the board,
   // for up to `settleMaxMs`: the blast clears the tsums under the spot and the
   // bubbles above fall into the gap, so a look before they land drags from
