@@ -48,12 +48,14 @@ var SorcererMickeyConfig = {
   hats: [2, 2, 3, 3, 4, 4],
   // Drop spots in logical px, by hat count, in the order they are used. The
   // play square is y 465-1545; neighbouring spots sit about a blast's width
-  // apart and inside the bowl. The four are where, and in the order, the
-  // player dropped them on SL6 screenshots.
+  // apart and inside the bowl. The four are where the player dropped them on
+  // SL6 screenshots. Top spots first: a blast drops whatever is above it into
+  // its gap, and the bubbles still waiting sit low (drags started at y
+  // 1000-1430), so a top blast leaves them where they are.
   spots: {
     2: [{x: 280, y: 990}, {x: 800, y: 990}],
-    3: [{x: 280, y: 1230}, {x: 800, y: 1230}, {x: 540, y: 760}],
-    4: [{x: 280, y: 750}, {x: 800, y: 1230}, {x: 280, y: 1230}, {x: 800, y: 750}],
+    3: [{x: 540, y: 760}, {x: 280, y: 1230}, {x: 800, y: 1230}],
+    4: [{x: 280, y: 750}, {x: 800, y: 750}, {x: 280, y: 1230}, {x: 800, y: 1230}],
   } as { [hats: number]: Point[] },
   // Disarm when no magic bubble has been seen for this long since the
   // activation or the last drop. Every chain makes one, so this is a skill
