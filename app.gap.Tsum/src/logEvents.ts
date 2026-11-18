@@ -278,7 +278,7 @@ namespace Log {
     SorcererDrop          = 'skill.sorcerer.drop',
     /** Sorcerer Mickey+: the hats' window closed (`why`: done, idle, roundOver); `left` hats unused. */
     SorcererDone          = 'skill.sorcerer.done',
-    /** Sorcerer Mickey+: a bubble was lost on the way to its spot, so the drags go a speed slower. */
+    /** Sorcerer Mickey+: the drag speed changed -- a bubble lost on the way (slower), or a run carried (`faster`). */
     SorcererSlower        = 'skill.sorcerer.slower',
     /** Sorcerer Mickey+: the window closed without one magic bubble dropped. */
     SorcererNone          = 'skill.sorcerer.none',

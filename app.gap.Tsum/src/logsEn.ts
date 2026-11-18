@@ -52,7 +52,7 @@ var LogsEn = {
   [Log.Skill.RapunzelDone]: '[Rapunzel+] Mixed-colour chain drawn',
   [Log.Skill.RapunzelDragIgnored]: '[Rapunzel+] The game is ignoring her drags; restart the script if this keeps up',
   [Log.Skill.SorcererDone]: '[Sorcerer Mickey+] Magic bubbles dropped',
-  [Log.Skill.SorcererSlower]: '[Sorcerer Mickey+] A bubble was lost on the way; dragging slower',
+  [Log.Skill.SorcererSlower]: '[Sorcerer Mickey+] Drag speed changed',
   [Log.Skill.SorcererNone]: '[Sorcerer Mickey+] No magic bubbles found while the hats were up',
   [Log.Skill.SorcererMissShot]: '[Sorcerer Mickey+] Saved the screen of a miss',
   [Log.Skill.LorcanaAuroraDone]: '[Lorcana Aurora] Bubble chain drawn',
