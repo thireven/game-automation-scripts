@@ -11,7 +11,8 @@
 //
 // So the activation only arms the hats for this round (`gSorcerer`). While
 // armed:
-//   - each scan links one chain, its longest, uncapped (`chainLimits`,
+//   - each scan links one chain, its longest, capped by "Maximum Chain Number"
+//     unless `armedUncapped` (`chainLimits`,
 //     `orderPaths`): its bubble is the next hat's, a longer chain makes a
 //     bigger blast, and the next scan moves the bubble before another chain
 //     can be drawn over it (four chains a scan blasted waiting bubbles in place).
@@ -75,6 +76,10 @@ var SorcererMickeyConfig = {
   // dropped were small. After `chainHoldMs` of waiting it is drawn anyway.
   chainRestPx: 4,
   chainHoldMs: 1000,
+  // While armed, chains ignore "Maximum Chain Number" (true) or keep to it
+  // (false). At 7 both make the big bubble; the capped drag is shorter, so
+  // less likely to break.
+  armedUncapped: false,
   // Most one scan spends on drops, in gestures (beyond the hats left) and
   // time; the rest waits for the next scan. Generous: handing back with a
   // bubble still up lets the play loop chain over it.
@@ -1002,12 +1007,15 @@ registerSkill({
   watchScan: sorcererWatch,
   // A magic bubble the strategy taps would blast in place, off its spot.
   claimsBubbles: sorcererArmed,
-  // While armed, one chain a scan, the longest, uncapped: its bubble is the
-  // next hat's and a longer chain a bigger blast, and the next scan moves it
-  // before another chain can be drawn over it. Four chains a scan drew over
-  // the bubbles still waiting and blasted them in place.
+  // While armed, one chain a scan, the longest: its bubble is the next hat's
+  // and a longer chain a bigger blast, and the next scan moves it before
+  // another chain can be drawn over it. Four chains a scan drew over the
+  // bubbles still waiting and blasted them in place. Its length keeps to
+  // "Maximum Chain Number" unless `armedUncapped`.
   chainLimits: function(ts) {
-    return sorcererArmed(ts) ? { maxChain: 0, maxChainsPerScan: 1 } : {};
+    if (!sorcererArmed(ts)) { return {}; }
+    return SorcererMickeyConfig.armedUncapped
+      ? { maxChain: 0, maxChainsPerScan: 1 } : { maxChainsPerScan: 1 };
   },
   orderPaths: function(ts, paths, board) {
     return sorcererArmed(ts)

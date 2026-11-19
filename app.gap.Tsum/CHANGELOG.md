@@ -52,7 +52,7 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Sorcerer Mickey+ skill improved: each skill level has its own drop spots, newly placed for SL1-2 and SL5-6, and chains while the hats are up wait for the board to settle so long chains can make big bubbles.
+- Sorcerer Mickey+ skill improved: each skill level has its own drop spots, newly placed for SL1-2 and SL5-6, and chains while the hats are up keep to Maximum Chain Number and wait for the board to settle so long chains can make big bubbles.
 
 ### Changed
 
@@ -67,6 +67,10 @@ release note; they fold back in here when she ships.
   windows drew a 7+ chain and all 22 bubbles dropped were small. Armed chains
   also read the game's chain counter (`board.chainDrawn`), and each logs
   `skill.sorcerer.chain`.
+- **Sorcerer Mickey+ armed chains keep to "Maximum Chain Number"**: the
+  window no longer lifts the cap; it still links one chain a scan.
+  `SorcererMickeyConfig.armedUncapped` brings back the uncapped chains for
+  testing.
 
 ## [6.0b30]
 
