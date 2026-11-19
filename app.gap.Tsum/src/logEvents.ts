@@ -280,6 +280,8 @@ namespace Log {
     SorcererDone          = 'skill.sorcerer.done',
     /** Sorcerer Mickey+: the drag speed changed -- a bubble lost on the way (slower), or a run carried (`faster`). */
     SorcererSlower        = 'skill.sorcerer.slower',
+    /** Sorcerer Mickey+: an armed chain handed to the play loop, at rest or after `heldMs` of waiting for it. */
+    SorcererChain         = 'skill.sorcerer.chain',
     /** Sorcerer Mickey+: the window closed without one magic bubble dropped. */
     SorcererNone          = 'skill.sorcerer.none',
     /** Sorcerer Mickey+: the screen saved when the window went idle with hats left; `path` is on the device. */

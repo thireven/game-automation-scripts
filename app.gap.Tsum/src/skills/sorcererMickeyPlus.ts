@@ -14,7 +14,9 @@
 //   - each scan links one chain, its longest, uncapped (`chainLimits`,
 //     `orderPaths`): its bubble is the next hat's, a longer chain makes a
 //     bigger blast, and the next scan moves the bubble before another chain
-//     can be drawn over it (four chains a scan blasted waiting bubbles in place);
+//     can be drawn over it (four chains a scan blasted waiting bubbles in place).
+//     That chain waits until its tsums are at rest (`sorcererSettled`, up to
+//     1s), so a 7+ one is not broken by tsums still falling;
 //   - each scan looks for magic bubbles first (`watchScan`) and drags each to
 //     the next spot of a layout spread to cover the most board (`spots`): two
 //     to the left and right halves, three to the bottom corners and the top
@@ -65,6 +67,14 @@ var SorcererMickeyConfig = {
   // activation or the last drop. Every chain makes one, so this is a skill
   // level set too high or bubbles the reader misses.
   idleMs: 8000,
+  // While armed, the longest chain is drawn only once it is at rest: each of
+  // its tsums was within `chainRestPx` (play-square px) of the same spot last
+  // scan, and none is still clearing. A chain drawn over falling tsums breaks
+  // where one moved, and its bubble is sized by what the game took: in the
+  // 6.0b31 runs, about ten 7+ chains were drawn in hat windows and all 27
+  // bubbles came out small. After `chainHoldMs` of waiting it is drawn anyway.
+  chainRestPx: 4,
+  chainHoldMs: 1000,
   // Most one scan spends on drops, in gestures (beyond the hats left) and
   // time; the rest waits for the next scan. Generous: handing back with a
   // bubble still up lets the play loop chain over it.
@@ -567,6 +577,10 @@ var gSorcerer = {
   zeroSince: 0,
   /** Bubbles the last look saw: a scan whose frame shows none looks again first. */
   lastSeen: 0,
+  /** The last armed scan's tsums, to tell a chain at rest (`sorcererSettled`). */
+  lastBoard: null as BoardPoint[] | null,
+  /** When the current wait for a chain at rest began (0: not waiting). */
+  holdFrom: 0,
 };
 
 /** The look's bubbles less those set aside this window. */
@@ -618,6 +632,29 @@ function sorcererLayout(level: number, hats: number): Point[] {
  * Arm an activation's hats. With hats from this round still up the window
  * goes on as it was: the next reads of the hat row say what the game did.
  */
+/**
+ * `paths` (longest first) while the longest is at rest, else none: each of its
+ * tsums sat within `chainRestPx` of the same spot last scan and none is still
+ * clearing. After `chainHoldMs` of none, the longest goes anyway.
+ */
+function sorcererSettled(paths: TsumPath[], board: BoardPoint[]): TsumPath[] {
+  const cfg = SorcererMickeyConfig;
+  const st = gSorcerer;
+  const prev = st.lastBoard;
+  st.lastBoard = board;
+  if (paths.length === 0) { return paths; }
+  const best = paths[0];
+  const now = Date.now();
+  if (st.holdFrom === 0) { st.holdFrom = now; }
+  const heldMs = now - st.holdFrom;
+  const atRest = prev !== null && fluxFreeRun(best) === best.length
+    && boardStillHolds(prev, best, cfg.chainRestPx) === best.length;
+  if (!atRest && heldMs < cfg.chainHoldMs) { return []; }
+  st.holdFrom = 0;
+  logDebug(Log.Skill.SorcererChain, { chain: best.length, atRest: atRest, heldMs: heldMs });
+  return paths;
+}
+
 function sorcererArm(ts: Tsum): void {
   const cfg = SorcererMickeyConfig;
   const st = gSorcerer;
@@ -636,7 +673,8 @@ function sorcererArm(ts: Tsum): void {
   st.ignored = [];
   st.hatsSeen = false;
   st.hatReads = [];
-  st.lastSeen = 0;
+  st.lastSeen = st.holdFrom = 0;
+  st.lastBoard = null;
   st.armedAt = st.activeAt = Date.now();
   logDebug(Log.Skill.SorcererArmed, { skillLevel: level, hats: st.hats });
 }
@@ -971,7 +1009,10 @@ registerSkill({
   chainLimits: function(ts) {
     return sorcererArmed(ts) ? { maxChain: 0, maxChainsPerScan: 1 } : {};
   },
-  orderPaths: function(ts, paths) {
-    return sorcererArmed(ts) ? paths.slice().sort((a, b) => b.length - a.length) : paths;
+  orderPaths: function(ts, paths, board) {
+    return sorcererArmed(ts)
+      ? sorcererSettled(paths.slice().sort((a, b) => b.length - a.length), board) : paths;
   },
+  // Logs how much of each armed chain the game counted (`Log.Board.ChainDrawn`).
+  readsChainCounter: sorcererArmed,
 });
