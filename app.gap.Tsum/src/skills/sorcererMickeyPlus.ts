@@ -71,8 +71,8 @@ var SorcererMickeyConfig = {
   // its tsums was within `chainRestPx` (play-square px) of the same spot last
   // scan, and none is still clearing. A chain drawn over falling tsums breaks
   // where one moved, and its bubble is sized by what the game took: in the
-  // 6.0b31 runs, about ten 7+ chains were drawn in hat windows and all 27
-  // bubbles came out small. After `chainHoldMs` of waiting it is drawn anyway.
+  // 6.0b31 runs, 9 scans in hat windows drew a 7+ chain and all 22 bubbles
+  // dropped were small. After `chainHoldMs` of waiting it is drawn anyway.
   chainRestPx: 4,
   chainHoldMs: 1000,
   // Most one scan spends on drops, in gestures (beyond the hats left) and

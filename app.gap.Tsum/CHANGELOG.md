@@ -63,8 +63,8 @@ release note; they fold back in here when she ships.
   the nearest level's layout with that many.
 - **Sorcerer Mickey+ chains at rest** (`sorcererSettled`): while armed, the
   longest chain is drawn only once each of its tsums sat still since the last
-  scan and none is still clearing, or after 1s. About ten 7+ chains were drawn
-  in hat windows on 6.0b31 and all 27 bubbles came out small. Armed chains
+  scan and none is still clearing, or after 1s. On 6.0b31, 9 scans in hat
+  windows drew a 7+ chain and all 22 bubbles dropped were small. Armed chains
   also read the game's chain counter (`board.chainDrawn`), and each logs
   `skill.sorcerer.chain`.
 
