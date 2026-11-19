@@ -52,7 +52,7 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Sorcerer Mickey+ skill improved: each skill level has its own drop spots, newly placed for SL1-2 and SL5-6, and chains while the hats are up keep to Maximum Chain Number and wait for the board to settle so long chains can make big bubbles.
+- Sorcerer Mickey+ skill improved: drop spots set per skill level, and while the hats are up chains keep to Maximum Chain Number and wait for the board to settle, for more big bubbles.
 
 ### Changed
 
@@ -63,7 +63,7 @@ release note; they fold back in here when she ships.
   the nearest level's layout with that many.
 - **Sorcerer Mickey+ chains at rest** (`sorcererSettled`): while armed, the
   longest chain is drawn only once each of its tsums sat still since the last
-  scan and none is still clearing, or after 1s. On 6.0b31, 9 scans in hat
+  scan and none is still clearing, or after 1s. On a 6.0b31 test build, 9 scans in hat
   windows drew a 7+ chain and all 22 bubbles dropped were small. Armed chains
   also read the game's chain counter (`board.chainDrawn`), and each logs
   `skill.sorcerer.chain`.
