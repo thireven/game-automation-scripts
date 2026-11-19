@@ -56,7 +56,10 @@ release note; they fold back in here when she ships.
 
 ### Changed
 
--
+- **Sorcerer Mickey+ drop spots by skill level** (`SorcererMickeyConfig.spots`,
+  `sorcererLayout`): one layout per level, SL1-6, in place of one per hat count;
+  same spots for now. A hat row showing more hats than the level gives takes
+  the nearest level's layout with that many.
 
 ## [6.0b30]
 

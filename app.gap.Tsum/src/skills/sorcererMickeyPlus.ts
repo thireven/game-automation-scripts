@@ -46,17 +46,21 @@
 var SorcererMickeyConfig = {
   // Hats (drops) by skill level 1-6.
   hats: [2, 2, 3, 3, 4, 4],
-  // Drop spots in logical px, by hat count, in the order they are used. The
-  // play square is y 465-1545; neighbouring spots sit about a blast's width
-  // apart and inside the bowl. The four are where the player dropped them on
-  // SL6 screenshots. Top spots first: a blast drops whatever is above it into
+  // Drop spots in logical px, by skill level, in the order they are used
+  // (one per hat; `sorcererLayout` picks one). The play square is y
+  // 465-1545; neighbouring spots sit about a blast's width apart and inside
+  // the bowl. The SL5-6 four are where the player dropped them on SL6
+  // screenshots. Top spots first: a blast drops whatever is above it into
   // its gap, and the bubbles still waiting sit low (drags started at y
   // 1000-1430), so a top blast leaves them where they are.
   spots: {
+    1: [{x: 280, y: 990}, {x: 800, y: 990}],
     2: [{x: 280, y: 990}, {x: 800, y: 990}],
     3: [{x: 540, y: 760}, {x: 280, y: 1230}, {x: 800, y: 1230}],
-    4: [{x: 280, y: 750}, {x: 800, y: 750}, {x: 280, y: 1230}, {x: 800, y: 1230}],
-  } as { [hats: number]: Point[] },
+    4: [{x: 540, y: 760}, {x: 280, y: 1230}, {x: 800, y: 1230}],
+    5: [{x: 280, y: 750}, {x: 800, y: 750}, {x: 280, y: 1230}, {x: 800, y: 1230}],
+    6: [{x: 280, y: 750}, {x: 800, y: 750}, {x: 280, y: 1230}, {x: 800, y: 1230}],
+  } as { [level: number]: Point[] },
   // Disarm when no magic bubble has been seen for this long since the
   // activation or the last drop. Every chain makes one, so this is a skill
   // level set too high or bubbles the reader misses.
@@ -541,6 +545,8 @@ var gSorcerer = {
    */
   round: '',
   hats: 0,
+  /** Skill level armed at (1-6): picks the layout with `given`. */
+  level: 1,
   /** Hats the activation gave: picks the layout. */
   given: 0,
   /** Index of the next spot in the layout. */
@@ -593,6 +599,22 @@ function sorcererDisarm(ts: Tsum, why: string): void {
 }
 
 /**
+ * The drop spots for `level`, when it has one per hat. Otherwise (the hat row
+ * showed more than the level gives: a skill level set too low) the nearest
+ * level's with that many.
+ */
+function sorcererLayout(level: number, hats: number): Point[] {
+  const spots = SorcererMickeyConfig.spots;
+  if (spots[level] && spots[level].length === hats) { return spots[level]; }
+  for (let d = 1; d < 6; d++) {
+    for (const l of [level + d, level - d]) {
+      if (spots[l] && spots[l].length === hats) { return spots[l]; }
+    }
+  }
+  return spots[level] || spots[6];
+}
+
+/**
  * Arm an activation's hats. With hats from this round still up the window
  * goes on as it was: the next reads of the hat row say what the game did.
  */
@@ -607,6 +629,7 @@ function sorcererArm(ts: Tsum): void {
   }
   if (st.round !== '') { sorcererDisarm(ts, 'roundOver'); }
   st.round = ts.roundUid;
+  st.level = level;
   st.given = st.hats = cfg.hats[level - 1];
   st.next = st.drops = st.stuck = st.zeroSince = 0;
   st.stuckAt = null;
@@ -804,7 +827,7 @@ function sorcererWatch(ts: Tsum, img: NativeImage): boolean {
     if (bubbles.length === 0) { return true; }
   }
   st.activeAt = Date.now();
-  const spots = cfg.spots[st.given];
+  const spots = sorcererLayout(st.level, st.given);
   const from0 = Date.now();
   // Bounded: each pass drops, retries or sets a bubble aside.
   for (let tries = st.hats + cfg.extraTriesPerScan; tries > 0; tries--) {
