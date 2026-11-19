@@ -52,13 +52,14 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Sorcerer Mickey+ skill improved: each skill level has its own drop spots.
+- Sorcerer Mickey+ skill improved: each skill level has its own drop spots, newly placed for SL1-2 and SL5-6.
 
 ### Changed
 
 - **Sorcerer Mickey+ drop spots by skill level** (`SorcererMickeyConfig.spots`,
-  `sorcererLayout`): one layout per level, SL1-6, in place of one per hat count;
-  same spots for now. A hat row showing more hats than the level gives takes
+  `sorcererLayout`): one layout per level, SL1-6, in place of one per hat count.
+  SL1-2 now drop at (370,925) then (770,1255), a diagonal in place of one row;
+  SL5-6's four spots move 5-15 px lower; SL3-4 unchanged. A hat row showing more hats than the level gives takes
   the nearest level's layout with that many.
 
 ## [6.0b30]

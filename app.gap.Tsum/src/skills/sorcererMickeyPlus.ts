@@ -49,17 +49,17 @@ var SorcererMickeyConfig = {
   // Drop spots in logical px, by skill level, in the order they are used
   // (one per hat; `sorcererLayout` picks one). The play square is y
   // 465-1545; neighbouring spots sit about a blast's width apart and inside
-  // the bowl. The SL5-6 four are where the player dropped them on SL6
-  // screenshots. Top spots first: a blast drops whatever is above it into
+  // the bowl. Placed by hand per level (2026-11-18).
+  // Top spots first: a blast drops whatever is above it into
   // its gap, and the bubbles still waiting sit low (drags started at y
   // 1000-1430), so a top blast leaves them where they are.
   spots: {
-    1: [{x: 280, y: 990}, {x: 800, y: 990}],
-    2: [{x: 280, y: 990}, {x: 800, y: 990}],
+    1: [{x: 370, y: 925}, {x: 770, y: 1255}],
+    2: [{x: 370, y: 925}, {x: 770, y: 1255}],
     3: [{x: 540, y: 760}, {x: 280, y: 1230}, {x: 800, y: 1230}],
     4: [{x: 540, y: 760}, {x: 280, y: 1230}, {x: 800, y: 1230}],
-    5: [{x: 280, y: 750}, {x: 800, y: 750}, {x: 280, y: 1230}, {x: 800, y: 1230}],
-    6: [{x: 280, y: 750}, {x: 800, y: 750}, {x: 280, y: 1230}, {x: 800, y: 1230}],
+    5: [{x: 290, y: 765}, {x: 795, y: 760}, {x: 290, y: 1240}, {x: 800, y: 1235}],
+    6: [{x: 290, y: 765}, {x: 795, y: 760}, {x: 290, y: 1240}, {x: 800, y: 1235}],
   } as { [level: number]: Point[] },
   // Disarm when no magic bubble has been seen for this long since the
   // activation or the last drop. Every chain makes one, so this is a skill
