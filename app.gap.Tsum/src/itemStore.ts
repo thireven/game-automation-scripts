@@ -27,6 +27,8 @@ const BuyItemDialogWaitMs = 6000;
 const BuyItemToastWaitMs = 10 * 1000;
 /** After OK, how long a store with no toast in front is still waited on. */
 const BuyItemToastGraceMs = 2500;
+/** How long the paging arrows are looked for. They follow the tiles by a frame or more. */
+const BuyItemArrowLookMs = 1000;
 /** How long one Item Store tab tap gets to show the Item Store. */
 const BuyItemTabWaitMs = 3000;
 /** How long the grid's tiles get to arrive once the tab is open. */
@@ -262,10 +264,31 @@ Tsum.prototype.selectItemTile = function(page, index) {
 }
 
 /**
+ * The paging arrows, looked for over `BuyItemArrowLookMs`: an arrow is drawn a
+ * frame or more after the tiles (seen on JP), so one early look can miss it.
+ * An arrow seen in any look counts.
+ */
+Tsum.prototype.readItemArrows = function() {
+  const deadline = Date.now() + BuyItemArrowLookMs;
+  let prev = false;
+  let next = false;
+  for (;;) {
+    const grid = this.readItemGrid();
+    prev = prev || grid.prev;
+    next = next || grid.next;
+    if ((prev && next) || !this.isRunning || Date.now() >= deadline) {
+      return {prev: prev, next: next};
+    }
+    this.sleep(BuyItemPollMs);
+  }
+}
+
+/**
  * Select the 5▸4 Ticket ×1, and say whether it is selected.
  *
  * The tile already gold is checked first: after a purchase the store keeps
- * it. Otherwise every item is tapped from the first page on.
+ * it. Otherwise every item is tapped from the first page on, paging with the
+ * arrows; whether there is a next page is read after the page is done.
  */
 Tsum.prototype.selectItem5to4 = function() {
   const img = this.screenshot();
@@ -277,19 +300,19 @@ Tsum.prototype.selectItem5to4 = function() {
     releaseImage(img);
   }
 
-  for (let i = 0; i < ItemStore.maxPages && this.isRunning && this.readItemGrid().prev; i++) {
+  for (let i = 0; i < ItemStore.maxPages && this.isRunning && this.readItemArrows().prev; i++) {
     this.tap(ItemStore.prevTap);
     this.settleScreen(BuyItemTapSettleMs);
   }
   for (let page = 0; page < ItemStore.maxPages && this.isRunning; page++) {
-    const grid = this.readItemGrid();
-    for (let t = 0; t < grid.tiles.length && this.isRunning; t++) {
-      if (grid.tiles[t] !== ItemTile.Empty && this.selectItemTile(page, t)) {
+    const tiles = this.readItemGrid().tiles;
+    for (let t = 0; t < tiles.length && this.isRunning; t++) {
+      if (tiles[t] !== ItemTile.Empty && this.selectItemTile(page, t)) {
         logInfo(Log.Item.Found, {page: page, tile: t});
         return true;
       }
     }
-    if (!grid.next) {
+    if (!this.readItemArrows().next) {
       break;
     }
     this.tap(ItemStore.nextTap);

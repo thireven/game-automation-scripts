@@ -1738,6 +1738,8 @@ interface Tsum {
   readItemDetail(img: NativeImage): ItemDetail;
   /** Does the detail panel on `img` show the 5▸4 Ticket ×1? */
   readItemIs5to4(img: NativeImage): boolean;
+  /** Which paging arrows are drawn, looked for over about a second. */
+  readItemArrows(): {prev: boolean; next: boolean};
   /** Wait for the grid's tiles to be drawn. */
   awaitItemGrid(timeoutMs: number): boolean;
   /** Put the store on its Item Store tab, items drawn. False when it would not open. */
