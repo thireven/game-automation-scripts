@@ -55,11 +55,11 @@ release note; they fold back in here when she ships.
 - Sorcerer Mickey+ skill improved: drop spots set per skill level, and while the hats are up chains keep to Maximum Chain Number and wait for the board to settle, for more big bubbles.
 
 *Chores*
-- Buy 5▸4 Tickets added (Alpha): Now buys as many 5▸4 Ticket ×1 as you set from the Item Store with Medals, finding it wherever it is in the list.
+- Buy 5▸4 Tickets added (Beta): Now buys as many 5▸4 Ticket ×1 as you set from the Item Store with Medals, finding it wherever it is in the list.
 
 ### Added
 
-- **Buy 5▸4 Tickets** (`src/itemStore.ts`, Chores tab → Item Store, count
+- **Buy 5▸4 Tickets** (`src/itemStore.ts`, Chores tab → Item Store, Beta, count
   1-500, ±10 or ±1, default 50): opens the store's Item Store tab, taps each tile
   until the detail panel shows one ticket and the 5▸4 badge, then Buy → OK →
   "Purchase complete" per ticket. The badge bobs, so it is a 10x11 grid

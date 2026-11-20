@@ -607,7 +607,7 @@ var tabs: TabSpec[] = [
                         min: 1,
                         max: Buy5to4Max,
                         step: 10,
-                        status: ReleaseStatus.Alpha,
+                        status: ReleaseStatus.Beta,
                         buttons: [
                             {text: i18nThunk(UiText.ButtonNow), onClick: function () { askBuy5to4Now(); },
                                 remote: 'buy5to4Now', confirm: UiText.CompanionConfirmSpendNow, whenStopped: true}
