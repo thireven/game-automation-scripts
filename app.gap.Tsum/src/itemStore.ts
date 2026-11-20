@@ -421,11 +421,12 @@ Tsum.prototype.buy5to4 = function(count) {
   while (this.mayContinue() && bought < limit) {
     // One message per purchase, retired after it (`plays` 1), as Box Buying's.
     this.banner('Buying 5▸4 Tickets ' + (bought + 1) + '/' + limit, BuyItemBannerMs, 1);
+    // Either can fail because the run is stopping, which is not an ending to report.
     if (!this.openItemStore()) {
-      return {bought: bought, reason: 'store not open'};
+      return this.isRunning ? {bought: bought, reason: 'store not open'} : null;
     }
     if (!this.selectItem5to4()) {
-      return {bought: bought, reason: 'item not found'};
+      return this.isRunning ? {bought: bought, reason: 'item not found'} : null;
     }
     const outcome = this.buyOneItem(bought + 1, limit);
     if (outcome === 'bought') {
