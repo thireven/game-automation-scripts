@@ -27,6 +27,8 @@ const BuyItemDialogWaitMs = 6000;
 const BuyItemToastWaitMs = 10 * 1000;
 /** After OK, how long a store with no toast in front is still waited on. */
 const BuyItemToastGraceMs = 2500;
+/** How long one Item Store tab tap gets to show the Item Store. */
+const BuyItemTabWaitMs = 3000;
 /** How long the grid's tiles get to arrive once the tab is open. */
 const BuyItemLoadWaitMs = 8000;
 /** Between two looks while waiting. */
@@ -190,21 +192,30 @@ Tsum.prototype.awaitItemGrid = function(timeoutMs) {
  * Put the store on its Item Store tab, with its items drawn.
  *
  * From anywhere else this goes to the Tsum Tsum Store first (its route runs
- * through the collection) and taps the tab, read back rather than waited for.
+ * through the collection) and taps the tab.
+ *
+ * The store is recognised ~1.5s before its contents arrive and holds still
+ * meanwhile, so a settle passes at once and a tab tap then is swallowed: the
+ * box row is waited for first (`awaitBoxTabs`, as Box Buying does), and each
+ * tap gets `BuyItemTabWaitMs` to show the Item Store before the next.
  */
 Tsum.prototype.openItemStore = function() {
-  for (let attempt = 0; attempt <= BuyItemMaxMisses && this.isRunning; attempt++) {
+  for (let attempt = 0; attempt < BuyItemMaxMisses && this.isRunning; attempt++) {
     if (gPages.matches(PageName.ItemStorePage)) {
       return this.awaitItemGrid(BuyItemLoadWaitMs);
-    }
-    if (attempt === BuyItemMaxMisses) {
-      break;
     }
     if (!gPages.matches(PageName.TsumTsumStorePage)) {
       gPages.navigate(PageName.TsumTsumStorePage);
     }
+    this.awaitBoxTabs(BuyBoxLoadWaitMs);
     this.tap(ItemStore.tab);
-    this.settleScreen(BuyItemTapSettleMs);
+    const deadline = Date.now() + BuyItemTabWaitMs;
+    while (this.isRunning && Date.now() < deadline && !gPages.matches(PageName.ItemStorePage)) {
+      this.sleep(BuyItemPollMs);
+    }
+  }
+  if (this.isRunning && gPages.matches(PageName.ItemStorePage)) {
+    return this.awaitItemGrid(BuyItemLoadWaitMs);
   }
   if (this.isRunning) {
     const seen = gPages.peek(1, 500);
