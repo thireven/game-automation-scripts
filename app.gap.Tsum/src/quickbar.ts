@@ -140,6 +140,7 @@ function quickBarState(): string {
     // reporting the raw value would move it to the row's minimum instead.
     state[SettingKey.BuyBoxMaxPurchases] = ts.buyBoxMaxPurchases > 0
       ? ts.buyBoxMaxPurchases : BuyBoxDefaultMax;
+    state[SettingKey.Buy5to4Count] = ts.buy5to4Count;
     state[SettingKey.AutoUnlockMyTsumLevel] = ts.autoUnlockMyTsumLevel;
     state[SettingKey.ShareRoundStats] = ts.sendRoundStats;
     state[SettingKey.SendHeartsAuto] = ts.sendHearts;
@@ -584,6 +585,11 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
       applied = quickBarClamp(value, 1, BuyBoxMaxPurchases);
       tsum.buyBoxMaxPurchases = applied as number;
       break;
+    // Read when Buy 5▸4 Tickets runs, so the Now pressed after a change uses it.
+    case SettingKey.Buy5to4Count:
+      applied = quickBarClamp(value, 1, Buy5to4Max);
+      tsum.buy5to4Count = applied as number;
+      break;
     case SettingKey.AutoUnlockMyTsumLevel:
       applied = !!value;
       tsum.autoUnlockMyTsumLevel = applied;
@@ -799,6 +805,8 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   [SettingKey.BuyBoxType]: LiveWhen.Now,
   [SettingKey.BuyBoxSize]: LiveWhen.Now,
   [SettingKey.BuyBoxMaxPurchases]: LiveWhen.Now,
+  // Read when the Now it belongs to runs.
+  [SettingKey.Buy5to4Count]: LiveWhen.Now,
   // Read at the round's end -- by the level-up record handler and then the
   // play task's tail -- so a switch thrown mid-round counts for this round.
   [SettingKey.AutoUnlockMyTsumLevel]: LiveWhen.Now,

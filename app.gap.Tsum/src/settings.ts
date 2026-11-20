@@ -594,6 +594,28 @@ var tabs: TabSpec[] = [
                 ]
             },
             {
+                title: UiText.GroupItemStore,
+                help: UiText.GroupItemStoreHelp,
+                rows: [
+                    {
+                        // How many to buy; Now buys them -- see `askBuy5to4Now`.
+                        key: SettingKey.Buy5to4Count,
+                        title: UiText.SettingBuy5to4,
+                        help: UiText.SettingBuy5to4Help,
+                        default: SettingDefaults[SettingKey.Buy5to4Count],
+                        confirm: UiText.CompanionConfirmSpend,
+                        min: 10,
+                        max: Buy5to4Max,
+                        step: 10,
+                        status: ReleaseStatus.Alpha,
+                        buttons: [
+                            {text: i18nThunk(UiText.ButtonNow), onClick: function () { askBuy5to4Now(); },
+                                remote: 'buy5to4Now', confirm: UiText.CompanionConfirmSpendNow, whenStopped: true}
+                        ]
+                    }
+                ]
+            },
+            {
                 title: UiText.GroupTsumList,
                 help: UiText.GroupTsumListHelp,
                 rows: [
@@ -2429,6 +2451,23 @@ function askBuyOpenTenNow(): void {
             + JSON.stringify(startSettings(settings)) + ');');
     });
     logInfo(Log.Settings.BuyOpenTenNowAsked, 'Asked the run to buy the open box 10 at a time until sold out');
+}
+
+/** Buy 5▸4 Tickets' Now button. As `askBuyBoxesNow`, through `buy5to4Now`. */
+// noinspection JSUnusedGlobalSymbols
+function askBuy5to4Now(): void {
+    var iface = bridge();
+    if (iface === undefined) {
+        return;
+    }
+    flushSettings();
+    iface.hideMenu();
+    iface.showMenu();
+    syncFormForStart(function () {
+        iface!.runScript('typeof buy5to4Now === "function" && buy5to4Now('
+            + JSON.stringify(startSettings(settings)) + ');');
+    });
+    logInfo(Log.Settings.Buy5to4NowAsked, 'Asked the run to buy 5▸4 Tickets');
 }
 
 /**

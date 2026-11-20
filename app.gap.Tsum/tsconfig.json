@@ -96,6 +96,8 @@
     "src/boxes.ts",
     // Walks the collection with levelCap.ts's helpers, so it follows it too.
     "src/tsumList.ts",
+    // The Item Store chore; beside the box one.
+    "src/itemStore.ts",
     // Attaches to Tsum.prototype and constructs its singleton (`gFever`) at
     // load time, so it follows tsum.ts and precedes pageHandlers.ts, whose
     // observe.feverTime feeds it.

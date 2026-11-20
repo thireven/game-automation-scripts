@@ -149,6 +149,7 @@ const LastSettingsOneShot: SettingKey[] = [
   SettingKey.TsumListOnly,
   SettingKey.BuyOpenCapsuleOnly,
   SettingKey.BuyOpenTenOnly,
+  SettingKey.Buy5to4Only,
 ];
 
 /** Cached `getDevicePath()`: GAP lists the devices folder on every call. */
@@ -327,6 +328,7 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.BuyBoxType]: RemoteKind.Enum,
   [SettingKey.BuyBoxSize]: RemoteKind.Enum,
   [SettingKey.BuyBoxMaxPurchases]: RemoteKind.Int,
+  [SettingKey.Buy5to4Count]: RemoteKind.Int,
   [SettingKey.ReceiveAllHearts]: RemoteKind.Bool,
   [SettingKey.ReceiveAllHeartsMinWait]: RemoteKind.Int,
   [SettingKey.ReceiveHeartsOneByOne]: RemoteKind.Bool,
@@ -342,7 +344,7 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.TsumAppRestartFrequency]: RemoteKind.Int,
 } satisfies Record<Exclude<SettingKey, SettingKey.Locale | SettingKey.UnlockLevelsFirst
   | SettingKey.BuyBoxesFirst | SettingKey.TsumListOnly | SettingKey.BuyOpenCapsuleOnly
-  | SettingKey.BuyOpenTenOnly>, RemoteKind>;
+  | SettingKey.BuyOpenTenOnly | SettingKey.Buy5to4Only>, RemoteKind>;
 
 /** `<device folder>/remote-settings.json`, or '' without the natives. */
 function remoteSettingsPath(): string {
@@ -525,6 +527,7 @@ const CompanionActions: { [name: string]: () => string } = {
   exportTsumListNow: () => exportTsumListNow(),
   buyOpenCapsuleNow: () => buyOpenCapsuleNow(),
   buyOpenTenNow: () => buyOpenTenNow(),
+  buy5to4Now: () => buy5to4Now(),
   roundDelaySkip: () => roundDelaySkip(),
 };
 
@@ -629,6 +632,7 @@ const ChoreNowFlags: { [name: string]: SettingKey } = {
   exportTsumListNow: SettingKey.TsumListOnly,
   buyOpenCapsuleNow: SettingKey.BuyOpenCapsuleOnly,
   buyOpenTenNow: SettingKey.BuyOpenTenOnly,
+  buy5to4Now: SettingKey.Buy5to4Only,
 };
 
 /** How long an armed chore waits for the phone's `start`. */
@@ -741,6 +745,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   // spends the player's coins: a hand-written start() command has no range.
   ts.buyBoxMaxPurchases = typeof settings.buyBoxMaxPurchases === 'number'
     ? settings.buyBoxMaxPurchases : 0;
+  // Missing (a form from before the row) is the row's default.
+  ts.buy5to4Count = typeof settings.buy5to4Count === 'number' && settings.buy5to4Count > 0
+    ? Math.min(Math.round(settings.buy5to4Count), Buy5to4Max) : SettingDefaults[SettingKey.Buy5to4Count];
   // A negative or fractional one can arrive from a hand-written start() command.
   ts.roundDelayMs = typeof settings.roundDelayMinutes === 'number'
     && settings.roundDelayMinutes > 0
@@ -849,6 +856,7 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
   const tsumListOnly = settings.tsumListOnly === true;
   const buyOpenCapsuleOnly = settings.buyOpenCapsuleOnly === true;
   const buyOpenTenOnly = settings.buyOpenTenOnly === true;
+  const buy5to4Only = settings.buy5to4Only === true;
 
   // The walkthrough recorder is a mode, not a task alongside the others: it is
   // watching a person play, so nothing else may touch the screen. The table
@@ -868,6 +876,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     }
     if (buyOpenCapsuleOnly || buyOpenTenOnly) {
       logWarn(Log.Box.NowRefused, { reason: 'walkthrough' });
+    }
+    if (buy5to4Only) {
+      logWarn(Log.Item.NowRefused, { reason: 'walkthrough' });
     }
   }
   // A workflow replaces the chore table: its nodes call the chores in its own
@@ -906,6 +917,9 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     }
     if (tsumListOnly) {
       queueTsumListExport(ts, gTaskController, true);
+    }
+    if (buy5to4Only) {
+      queueBuy5to4(ts, gTaskController, true);
     }
   }
   if (buyOpenCapsuleOnly) {
@@ -961,6 +975,7 @@ function endRun(): void {
   gUnlockNowQueued = false;
   gBuyBoxNowQueued = false;
   gTsumListNowQueued = false;
+  gBuy5to4NowQueued = false;
   gDirectNowQueued = false;
   gTakeoverAsked = false;
   gTakeoverOnlyRun = false;
@@ -1626,6 +1641,71 @@ function buyOpenNow(settings: Settings | undefined, tenTimes: boolean): string {
     return 'already queued';
   }
   queueBuyOpenCapsule(ts, gTaskController, tenTimes);
+  return 'queued';
+}
+
+/** Name of the one-shot task `buy5to4Now` queues. */
+const Buy5to4NowTask = 'buy5to4Now';
+
+/** Set while a Buy 5▸4 Tickets run asked for by Now waits for its turn. */
+let gBuy5to4NowQueued = false;
+
+/**
+ * Registers Buy 5▸4 Tickets on `controller`, the way `queueBuyBoxSweep` does.
+ * `stopAfter`: a run started only for it, which ends once it is done.
+ */
+function queueBuy5to4(run: Tsum, controller: TsumTaskController, stopAfter: boolean): void {
+  gBuy5to4NowQueued = true;
+  run.yieldAsked = true;
+  let waited = false;
+  controller.newTask(Buy5to4NowTask, function() {
+    run.yieldAsked = false;
+    if (!run.taskBuy5to4()) {
+      run.yieldAsked = true;
+      if (!waited) {
+        waited = true;
+        logInfo(Log.Item.NowWaiting);
+      }
+      return;
+    }
+    gBuy5to4NowQueued = false;
+    controller.removeTask(Buy5to4NowTask);
+    notifyChoreDone('items', run.lastChore);
+    if (stopAfter) {
+      requestStop();
+    }
+  }, UnlockNowRetryMs, 0, false, JobPriority.Buy5to4Now);
+  logInfo(Log.Item.NowQueued);
+  run.banner('Buying 5▸4 Tickets next', 4000);
+}
+
+/**
+ * Buys the count of 5▸4 Ticket ×1 the row says, from the Item Store. A global
+ * the settings page reaches by name, like `buyBoxesNow`: queued on a live run
+ * (with the form applied first, for the count), which carries on afterwards;
+ * with nothing running it starts a run for it alone, which stops when done.
+ *
+ * Returns what it decided, which the host writes to the log.
+ */
+// noinspection JSUnusedGlobalSymbols
+function buy5to4Now(settings?: Settings): string {
+  if (!gRunActive || ts === undefined || gTaskController === undefined) {
+    if (settings === undefined) {
+      return 'no run';
+    }
+    settings.buy5to4Only = true;
+    start(settings);
+    return 'started';
+  }
+  if (gWalkthroughRun) {
+    logWarn(Log.Item.NowRefused, { reason: 'walkthrough' });
+    return 'walkthrough recording';
+  }
+  if (gBuy5to4NowQueued) {
+    return 'already queued';
+  }
+  applyLiveSettings(settings);
+  queueBuy5to4(ts, gTaskController, false);
   return 'queued';
 }
 

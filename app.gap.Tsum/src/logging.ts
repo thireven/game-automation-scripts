@@ -80,7 +80,7 @@ type LogEvent = `${Log.Run | Log.Task | Log.App | Log.Screen | Log.Page | Log.Na
   | Log.Forecast
   | Log.Board | Log.Bubble | Log.Play | Log.Tsums | Log.Skill | Log.Fever
   | Log.Lorcana
-  | Log.Hearts | Log.Gifts | Log.Unlock | Log.Box | Log.TsumList | Log.Stats | Log.Dialog
+  | Log.Hearts | Log.Gifts | Log.Unlock | Log.Box | Log.Item | Log.TsumList | Log.Stats | Log.Dialog
   | Log.Stall | Log.Corpus | Log.Report | Log.Walk | Log.Assist | Log.Log
   | Log.Settings | Log.QuickBar | Log.Workflow | Log.Addon | Log.Direct}`
   /** An add-on's own events; it names them, under `addon.<add-on>.` (src/addons.ts). */

@@ -17,7 +17,7 @@ order. `settle` is a ceiling and not a cost -- it ends when the screen stops
 moving -- where `sleep` is spent in full, and is only used where there is no
 still frame to wait for.
 
-`39` subscriptions, `50` pages, `6` navigation destinations.
+`39` subscriptions, `53` pages, `6` navigation destinations.
 
 ## The pipeline
 
@@ -69,10 +69,10 @@ going to.
 | # | id | band | steps | order | pages | goals | fires | after |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `observe.startupPhase` | observe | `enterStartupPhase()` | 0 | `RootDetection`, `ExtraUpdate`, `ErrorToTitle`, `TitleStart`, `TitleWait` | — | every look | — |
-| 2 | `observe.leftBoot` | observe | `endBoot()` | 0 | `FriendPage`, `SquarePage`, `ProfilePage`, `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage` | — | every look | — |
-| 3 | `observe.leftStartup` | observe | `leaveStartupPhase()` | 0 | `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage` | — | every look | — |
+| 2 | `observe.leftBoot` | observe | `endBoot()` | 0 | `FriendPage`, `SquarePage`, `ProfilePage`, `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage`, `ItemStorePage` | — | every look | — |
+| 3 | `observe.leftStartup` | observe | `leaveStartupPhase()` | 0 | `GamePlaying`, `GamePause`, `StartPage`, `TsumsPage`, `TsumTsumStorePage`, `ItemStorePage` | — | every look | — |
 | 4 | `observe.boardBack` | observe | `releaseBoard()` | 0 | `GamePlaying` | — | every look | — |
-| 5 | `record.feverTime` | record | `gFever.update()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle`, `ExtraUpdate`, `unknown` | — | every look | — |
+| 5 | `record.feverTime` | record | `gFever.update()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `ItemStorePage`, `ItemPurchaseConfirm`, `ItemPurchased`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle`, `ExtraUpdate`, `unknown` | — | every look | — |
 | 6 | `record.corpusUnknown` | record | `saveCorpusFrame()` | 0 | `unknown` | — | on arrival | — |
 | 7 | `record.baseCoins` | record | `sampleBaseCoins()` | 0 | `TsumLevelUp` | — | every look | — |
 | 8 | `record.myTsumLevelCap` | record | `noteLevelUpMyTsumCap()` | 0 | `TsumLevelUp` | — | every look | — |
@@ -104,9 +104,9 @@ going to.
 | 34 | `nav.move.bootWait` | navigate | sleep 500ms | 40 | `TitleWait` | _any_ | every look | — |
 | 35 | `nav.move.bootUnknown` | navigate | `tapThroughBoot()` → sleep 500ms | 31 | `unknown` | _any_ | every look | `record.corpusUnknown` |
 | 36 | `nav.move.unknown` | navigate | `exitUnknownPage()` | 30 | `unknown` | _any_ | every look | `record.corpusUnknown` |
-| 37 | `nav.move.exit` | navigate | tap `back` → settle 1500ms | 0 | `StartPage`, `GamePlaying`, `MagicalTime`, `HighScore`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `TsumLevelUp`, `ScorePage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `BoxTenTimeRefused`, `TsumsPage`, `ProfilePage`, `SquarePage`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `FriendInfo`, `TodayMission`, `TodayMissions`, `TapOpenPage`, `TapOpenPageDeprecated`, `OutOfMedals`, `RubyResetDifficulty`, `ExtraUpdate`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle` | _any_ | every look | — |
-| 38 | `notify.trail` | notify | `gPages.trail()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle`, `ExtraUpdate`, `unknown` | — | on arrival | — |
-| 39 | `notify.forecast` | notify | `forecastEmit()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle`, `ExtraUpdate`, `unknown` | — | every look | — |
+| 37 | `nav.move.exit` | navigate | tap `back` → settle 1500ms | 0 | `StartPage`, `GamePlaying`, `MagicalTime`, `HighScore`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `TsumLevelUp`, `ScorePage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `BoxTenTimeRefused`, `ItemStorePage`, `ItemPurchaseConfirm`, `ItemPurchased`, `TsumsPage`, `ProfilePage`, `SquarePage`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `FriendInfo`, `TodayMission`, `TodayMissions`, `TapOpenPage`, `TapOpenPageDeprecated`, `OutOfMedals`, `RubyResetDifficulty`, `ExtraUpdate`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle` | _any_ | every look | — |
+| 38 | `notify.trail` | notify | `gPages.trail()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `ItemStorePage`, `ItemPurchaseConfirm`, `ItemPurchased`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle`, `ExtraUpdate`, `unknown` | — | on arrival | — |
+| 39 | `notify.forecast` | notify | `forecastEmit()` | 0 | `GamePlaying`, `GamePause`, `ScorePage`, `HighScore`, `TsumLevelUp`, `AccountLevelUp`, `RankUp`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `MagicalTime`, `StartPage`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `ItemStorePage`, `ItemPurchaseConfirm`, `ItemPurchased`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle`, `ExtraUpdate`, `unknown` | — | every look | — |
 
 ### What each one is for
 
@@ -207,6 +207,9 @@ roles put it in and in no other.
 | `BoxPurchaseResult` | permanent | — | — | — | — | The 10-box tally: all ten in a grid, and Close. Only a 10-Time purchase reaches it. |
 | `NotEnoughCoins` | permanent | — | — | — | — | Cancel / Buy with Rubies, over whatever asked for the coins. Both anchors are Cancel -- see the `Page` entry. |
 | `BoxTenTimeRefused` | permanent | — | — | — | — | The "You can't use 10-Time Purchases" toast: the box holds fewer than ten. Like `HeartSent`, whose sprite it is, it carries no button and waits for a tap anywhere. Targeted -- only the Box Buying sweep asks for it, right after pressing 10-Time Purchase. |
+| `ItemStorePage` | permanent | `gameUp` | — | — | — |  |
+| `ItemPurchaseConfirm` | permanent | — | — | — | — | Cancel / OK, and OK spends Medals. |
+| `ItemPurchased` | permanent | — | — | — | — | The "Purchase complete" toast after an Item Store purchase: `LevelCapRaised`'s sprite, cleared by a tap anywhere. Targeted. |
 | `OutOfMedals` | permanent | — | — | — | — | Two buttons; neither times out. |
 | `RubyResetDifficulty` | permanent | — | — | — | — | OK / Cancel. |
 | `MailBox` | permanent | — | — | — | — |  |
@@ -249,7 +252,7 @@ harvested off a device and accumulated in `docs/transitions.json`. Two
 sources feed it: a recorded walkthrough, which carries the taps, and the
 page-change frames `PageRouter.saveHistoryShot` leaves behind, which do not.
 
-`4` distinct transition(s) over `4` of `49` pages, from `1` harvest(s), last 2026-08-25.
+`4` distinct transition(s) over `4` of `52` pages, from `1` harvest(s), last 2026-08-25.
 
 ```mermaid
 flowchart LR
@@ -289,7 +292,7 @@ own context passes in.
 ### Not yet observed
 
 Pages the table can recognise that no harvest has caught at either end of a
-transition. Absence of evidence: `GamePause`, `ScorePage`, `HighScore`, `AccountLevelUp`, `RankUp`, `MagicalTime`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle`, `ExtraUpdate`.
+transition. Absence of evidence: `GamePause`, `ScorePage`, `HighScore`, `AccountLevelUp`, `RankUp`, `MagicalTime`, `EventMain`, `EventCardReveal`, `EventGift`, `EventTip`, `FriendPage`, `FriendInfo`, `ProfilePage`, `SquarePage`, `ClosePage`, `TapOpenPage`, `TapOpenPageDeprecated`, `TsumsPage`, `TsumSortOrder`, `RaiseLevelCap`, `LevelCapRaised`, `TsumTsumStorePage`, `ConfirmPurchasePage`, `BoxPurchasedPage`, `BoxPurchaseResult`, `NotEnoughCoins`, `BoxTenTimeRefused`, `ItemStorePage`, `ItemPurchaseConfirm`, `ItemPurchased`, `OutOfMedals`, `RubyResetDifficulty`, `MailBox`, `Received`, `ReceiveHeart`, `ReceiveHeartWithoutCoins`, `ReceiveSkillTicket`, `ReceivePremiumTicket`, `GiftHeart`, `HeartSent`, `TodayMission`, `TodayMissions`, `TitleStart`, `TitleWait`, `RootDetection`, `NetworkDisable`, `NetworkTimeout`, `ErrorToTitle`, `ExtraUpdate`.
 
 ## The queue, page by page
 
@@ -658,6 +661,41 @@ On a repeat look at the same page, 3 of these 4 run: the rest fire only when the
 On a repeat look at the same page, 3 of these 4 run: the rest fire only when the page changes.
 
 #### `BoxTenTimeRefused` <sub>permanent</sub>
+
+| # | subscription | band | when |
+|---|---|---|---|
+| 1 | `record.feverTime` | record | every look |
+| 2 | `nav.move.exit` | navigate | every look, any goal |
+| 3 | `notify.trail` | notify | on arrival |
+| 4 | `notify.forecast` | notify | every look |
+
+On a repeat look at the same page, 3 of these 4 run: the rest fire only when the page changes.
+
+#### `ItemStorePage` <sub>permanent</sub>
+
+| # | subscription | band | when |
+|---|---|---|---|
+| 1 | `observe.leftBoot` | observe | every look |
+| 2 | `observe.leftStartup` | observe | every look |
+| 3 | `record.feverTime` | record | every look |
+| 4 | `nav.move.exit` | navigate | every look, any goal |
+| 5 | `notify.trail` | notify | on arrival |
+| 6 | `notify.forecast` | notify | every look |
+
+On a repeat look at the same page, 5 of these 6 run: the rest fire only when the page changes.
+
+#### `ItemPurchaseConfirm` <sub>permanent</sub>
+
+| # | subscription | band | when |
+|---|---|---|---|
+| 1 | `record.feverTime` | record | every look |
+| 2 | `nav.move.exit` | navigate | every look, any goal |
+| 3 | `notify.trail` | notify | on arrival |
+| 4 | `notify.forecast` | notify | every look |
+
+On a repeat look at the same page, 3 of these 4 run: the rest fire only when the page changes.
+
+#### `ItemPurchased` <sub>permanent</sub>
 
 | # | subscription | band | when |
 |---|---|---|---|

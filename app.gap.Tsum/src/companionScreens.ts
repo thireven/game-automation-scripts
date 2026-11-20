@@ -21,6 +21,7 @@ const CompanionTasks: { [task: string]: string } = {
   exportTsumListNow: 'Exporting the Tsum list',
   buyOpenCapsuleNow: 'Buying the open capsule',
   buyOpenTenNow: 'Buying the open box 10 at a time',
+  buy5to4Now: 'Buying 5▸4 Tickets',
   directNow: 'Waiting for direction',
   wrapUpNow: 'Stopping after this round',
   taskWalkthrough: 'Recording a walkthrough',

@@ -602,6 +602,12 @@ const enum PageName {
    * toasts drawn with this sprite -- see the entry in `Page`.
    */
   BoxTenTimeRefused = 'BoxTenTimeRefused',
+  /** The store with its Item Store tab open (the Buy 5▸4 Tickets chore). */
+  ItemStorePage = 'ItemStorePage',
+  /** "Item Purchase": Cancel / OK, and OK spends Medals. */
+  ItemPurchaseConfirm = 'ItemPurchaseConfirm',
+  /** "Purchase complete": waits for a tap. `targeted`, as `LevelCapRaised`, whose sprite it is. */
+  ItemPurchased = 'ItemPurchased',
   OutOfMedals = 'OutOfMedals',
   RubyResetDifficulty = 'RubyResetDifficulty',
   // Mail / hearts
@@ -1571,6 +1577,59 @@ var Page = {
     // No button; a tap anywhere clears it, so both anchors aim at the toast.
     back: {x: 540, y: 880},
     next: {x: 540, y: 880}
+  },
+  // The store with its Item Store tab open: `TsumTsum2025StorePage`'s probes
+  // with the two tabs' colours swapped. INTL and JP read the same. `next` is
+  // Back too, so no generic mover can press Buy.
+  ItemStorePage: {
+    name: PageName.ItemStorePage,
+    colors: [
+      {x:   30, y:  910, r:   0, g:  39, b:  82, match: true, threshold: 30},  // panel left of the tabs
+      {x:   60, y:  910, r:  18, g:  78, b: 158, match: true, threshold: 36},  // Tsum Tsum Store tab, not selected
+      {x:  520, y:  910, r:  16, g:  78, b: 155, match: true, threshold: 31},
+      {x:  570, y:  910, r: 246, g: 172, b:   8, match: true, threshold: 30},  // Item Store tab, selected
+      {x: 1020, y:  910, r: 247, g: 174, b:   8, match: true, threshold: 40},
+      {x:   10, y:  955, r:  33, g:  69, b: 115, match: true, threshold: 30},
+      {x:  170, y: 1515, r:   4, g: 164, b: 214, match: true, threshold: 30},  // cyan footer band
+      {x:  170, y: 1570, r: 251, g: 197, b:   8, match: true, threshold: 30}   // Back button
+    ],
+    back: {x: 190, y: 1650},
+    next: {x: 190, y: 1650}
+  },
+  // "Item Purchase": the item, its price in Medals, "Buy this item?", Cancel /
+  // OK. Its buttons sit 184px lower than the box confirmation's.
+  ItemPurchaseConfirm: {
+    name: PageName.ItemPurchaseConfirm,
+    colors: [
+      {x: 200, y: 1254, r: 247, g: 174, b:   8, match: true, threshold: 30},  // left of Cancel
+      {x: 430, y: 1254, r: 247, g: 175, b:   8, match: true, threshold: 30},  // right of Cancel
+      {x: 540, y: 1254, r:  57, g:  95, b: 150, match: true, threshold: 30},  // between the buttons
+      {x: 650, y: 1254, r: 247, g: 177, b:   8, match: true, threshold: 30},  // left of OK
+      {x: 880, y: 1254, r: 247, g: 174, b:   8, match: true, threshold: 30},  // right of OK
+      {x: 960, y: 1254, r:  33, g:  67, b: 107, match: true, threshold: 30},  // panel right of OK
+      {x: 120, y:  555, r:  41, g: 211, b: 247, match: true, threshold: 40},  // cyan header band
+      {x: 960, y:  555, r:  41, g: 213, b: 253, match: true, threshold: 40}
+    ],
+    back: {x: 314, y: 1254},  // Cancel
+    next: {x: 764, y: 1254}   // OK
+  },
+  // "Purchase complete": `LevelCapRaised`'s sprite with other wording, so its
+  // probes. No wording probe, as JP's is unmeasured; targeted like its twin,
+  // and only `buyOneItem` asks for it, right after OK. The anchors tap the toast
+  // where the store behind it is blank (between the Buy row and the tabs).
+  ItemPurchased: {
+    name: PageName.ItemPurchased,
+    targeted: true,
+    colors: [
+      {x: 188, y:  686, r:  33, g: 199, b: 239, match: true, threshold: 40},  // cyan band above the message
+      {x: 878, y:  686, r:  33, g: 199, b: 239, match: true, threshold: 40},
+      {x: 155, y:  836, r:  33, g:  65, b: 107, match: true, threshold: 40},  // message band, left of the text
+      {x: 935, y:  836, r:  33, g:  65, b: 107, match: true, threshold: 40},  // message band, right of the text
+      {x: 269, y: 1031, r:  33, g: 203, b: 239, match: true, threshold: 40},  // cyan band below the message
+      {x: 848, y: 1028, r:  33, g: 203, b: 239, match: true, threshold: 40}
+    ],
+    back: {x: 540, y: 760},
+    next: {x: 540, y: 760}
   },
   // The pause menu: Sound sliders, the Gyro toggle, Try Again beside To Home
   // Screen, Continue below. Continue (`next`) is the only button anything
@@ -2653,6 +2712,13 @@ var PageProfiles: PageProfileMap = {
         + 'and waits for a tap anywhere. Targeted -- only the Box Buying sweep '
         + 'asks for it, right after pressing 10-Time Purchase.'
   },
+  ItemStorePage: {kind: PageKind.Permanent, roles: [PageRole.GameUp]},
+  ItemPurchaseConfirm: {kind: PageKind.Permanent, note: 'Cancel / OK, and OK spends Medals.'},
+  ItemPurchased: {
+    kind: PageKind.Permanent,
+    note: 'The "Purchase complete" toast after an Item Store purchase: '
+        + '`LevelCapRaised`\'s sprite, cleared by a tap anywhere. Targeted.'
+  },
   OutOfMedals: {kind: PageKind.Permanent, note: 'Two buttons; neither times out.'},
   RubyResetDifficulty: {kind: PageKind.Permanent, note: 'OK / Cancel.'},
 
@@ -3327,6 +3393,89 @@ var BoxStore = {
 };
 
 // ---------------------------------------------------------------------------
+// The store's Item Store tab, as the Buy 5▸4 Tickets chore reads and taps it
+// (src/itemStore.ts). Measured on INTL and JP 540x960 frames; both draw it
+// alike. The page itself is `Page.ItemStorePage`.
+//
+// A page holds 4x2 tiles, paged with arrows, and the game reorders them as
+// items come and go -- so the item is found by what the detail panel shows,
+// never by where its tile is. The tapped tile turns gold, and the panel is
+// trusted only then: the JP store opens with an item shown and none selected.
+// ---------------------------------------------------------------------------
+
+var ItemStore = {
+  /** The Item Store tab, tapped from the Tsum Tsum Store. */
+  tab: {x: 784, y: 870},
+  /** Tile centres: four columns, two rows a page. */
+  tileX: [188, 424, 658, 890],
+  tileY: [1084, 1352],
+  /** Offsets from a tile's centre to its left, right and top edges, clear of icon and label. */
+  tileEdge: [{x: -84, y: 0}, {x: 84, y: 0}, {x: 0, y: -84}],
+  /** An item's tile, and the selected one. An empty slot (57/95/148) reads neither. */
+  tileColor: {r: 41, g: 110, b: 204},
+  tileSelectedColor: {r: 247, g: 176, b: 8},
+  tileDiff: 30,
+  /** Three points down each paging chevron: near white while there is a page that way. */
+  nextArrow: [{x: 1024, y: 1189}, {x: 1042, y: 1219}, {x: 1024, y: 1246}],
+  prevArrow: [{x: 61, y: 1189}, {x: 40, y: 1219}, {x: 61, y: 1246}],
+  arrowColor: {r: 222, g: 247, b: 255},
+  arrowDiff: 60,
+  nextTap: {x: 1032, y: 1218},
+  prevTap: {x: 48, y: 1218},
+  /** Most pages a scan walks. INTL had two in November 2026. */
+  maxPages: 6,
+
+  /** The detail panel's Buy button: gold when it can be pressed, blue once sold out. */
+  buy: {x: 910, y: 688},
+  buyProbes: [{x: 830, y: 668}, {x: 990, y: 668}, {x: 830, y: 708}, {x: 990, y: 708}],
+  buyColor: {r: 247, g: 176, b: 8},
+  buyDiff: 30,
+
+  /**
+   * The 5▸4 Ticket ×1 in the detail panel takes two tests.
+   *
+   * ONE TICKET.  The ×1 items draw one ticket where every ×3 draws a stack.
+   * These points are its stub and body; each is 80+ off on every stack and
+   * every other item.
+   */
+  single: [
+    {x: 364, y: 514, r: 255, g: 255, b: 255},  // stub
+    {x: 364, y: 547, r: 255, g: 255, b: 255},
+    {x: 292, y: 556, r:   8, g: 163, b: 233},  // body
+    {x: 250, y: 553, r:   7, g: 160, b: 230},
+    {x: 190, y: 571, r:   8, g: 162, b: 231}
+  ],
+  singleDiff: 40,
+  /**
+   * THE 5▸4 BADGE.  Four tsum faces over "5▸4", where the "+" tickets show one
+   * orb. The badge bobs a few pixels, so a 10x11 grid (every 3rd capture pixel)
+   * is compared with `badge` at each vertical shift and the closest fit counts.
+   * Mean channel difference: 3-8 on 5▸4 badges, 27+ on every other item.
+   */
+  badgeX: 82,
+  badgeY: 367,
+  badgeStep: 9,
+  badgeCols: 10,
+  badgeRows: 11,
+  /** Shifts tried each way, in capture pixels (3 units here). */
+  badgeShift: 4,
+  badgeMaxDistance: 16,
+  /** RGB hex per grid point, one grid row per line; nine frames averaged, INTL and JP. */
+  badge:
+    'fdfdfefffae6ffef99ffea8bffdb7dffde80ffec91fff0a5fffef4d5deea' +
+    'fffbeeffce43ffe624ffe526ffe25fffbd1affea27ffe024ffeb8dffffff' +
+    'ffeab1f38d1aecab3ccd6516ffa00dfaa72bfbce4dcb5911f59f29fff3da' +
+    'ffdd8bf9ac39f7b43ff7b33affcf4ef49720f7b541f7af3afedc6bffe6ac' +
+    'ffd473ffe674ffea2affe837ffdf61ffef88ffef21ffe542ffdb65ffdd92' +
+    'ffda79ffa018fed33ffcd240fe9f1fffad1effcd35fbd03fffc360ffe097' +
+    'ffe192f18515fac14df3b649f07d11f59626fabf4cf0af43f6a843ffe7b1' +
+    'ffecc4de913ce7b296eca23fedb651fed86efcca65e9c4b1ffe587fff8e6' +
+    'fffefecf7132eecfbbd87c1ffbf1e9cd6013d57d39fff9e9f8dcb1ffffff' +
+    'fdfdfdce7c47edbf66e4ab69cd671cf2ca7dcf7a3aebb75ff5e1d8ffffff' +
+    '28527dcfc9c8e2c9b4fdf7f5faf0eafffdfcfcf5f4ead3c4fffbfbffffff'
+};
+
+// ---------------------------------------------------------------------------
 // Waiting for an animation to end, instead of guessing how long it takes.
 //
 // The game animates on a frame counter, not a clock -- the same reason
@@ -3714,6 +3863,17 @@ var PageRoutes: PageRouteMap = {
   // The 10-Time refusal toast: a tap anywhere drops it back onto the store.
   BoxTenTimeRefused: [
     { via: PageAnchor.Back, to: PageName.TsumTsumStorePage, source: RouteSource.Declared }
+  ],
+  // The Buy 5▸4 Tickets chore's, `Declared` for the reason the box edges are.
+  // Back on the Item Store leaves to the collection, as the other tab's does.
+  ItemStorePage: [
+    { via: PageAnchor.Back, to: PageName.TsumsPage, source: RouteSource.Declared }
+  ],
+  ItemPurchaseConfirm: [
+    { via: PageAnchor.Back, to: PageName.ItemStorePage, source: RouteSource.Declared }
+  ],
+  ItemPurchased: [
+    { via: PageAnchor.Back, to: PageName.ItemStorePage, source: RouteSource.Declared }
   ],
 
   // --- Exits: pages whose `back` is a way out, and nothing more is known ---

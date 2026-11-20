@@ -413,6 +413,29 @@ namespace Log {
     ToastStuck        = 'unlock.toastStuck',
   }
 
+  /** Buying 5▸4 Tickets in the store's Item Store tab (src/itemStore.ts). */
+  export const enum Item {
+    Bought          = 'item.bought',
+    Buying          = 'item.buying',
+    DialogMissing   = 'item.dialogMissing',
+    End             = 'item.end',
+    Found           = 'item.found',
+    GridEmpty       = 'item.gridEmpty',
+    NoMedals        = 'item.noMedals',
+    NotFound        = 'item.notFound',
+    NowQueued       = 'item.nowQueued',
+    NowRefused      = 'item.nowRefused',
+    NowWaiting      = 'item.nowWaiting',
+    PurchaseLimit   = 'item.purchaseLimit',
+    Retrying        = 'item.retrying',
+    SoldOut         = 'item.soldOut',
+    Start           = 'item.start',
+    StoreMissed     = 'item.storeMissed',
+    TileNotTaken    = 'item.tileNotTaken',
+    TileRead        = 'item.tileRead',
+    ToastStuck      = 'item.toastStuck',
+  }
+
   /** Buying boxes in the Tsum Tsum Store -- the Box Buying chore. */
   export const enum Box {
     Bought           = 'box.bought',
@@ -614,6 +637,7 @@ namespace Log {
     AutoSkillPrompted          = 'settings.autoSkillPrompted',
     BuyOpenCapsuleNowAsked     = 'settings.buyOpenCapsuleNowAsked',
     BuyOpenTenNowAsked         = 'settings.buyOpenTenNowAsked',
+    Buy5to4NowAsked            = 'settings.buy5to4NowAsked',
     Saved                      = 'settings.saved',
     ShareCodeUndecodable       = 'settings.shareCodeUndecodable',
     ShareFieldIgnored          = 'settings.shareFieldIgnored',

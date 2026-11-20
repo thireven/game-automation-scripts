@@ -110,7 +110,7 @@ const ChoreDoneReasons = ['end of list', 'no more capped', 'purchase limit', 'so
  * is the sweep's `Log.*.End` fields (`Tsum.lastChore`); null when the run
  * stopped under it, which needs no notification.
  */
-function notifyChoreDone(chore: 'unlock' | 'boxes' | 'tsumList', outcome: LogFields | null): void {
+function notifyChoreDone(chore: 'unlock' | 'boxes' | 'tsumList' | 'items', outcome: LogFields | null): void {
   if (outcome === null) {
     return;
   }
@@ -123,6 +123,9 @@ function notifyChoreDone(chore: 'unlock' | 'boxes' | 'tsumList', outcome: LogFie
   } else if (chore === 'boxes') {
     title = 'Boxes bought';
     body = count('bought') + (count('bought') === 1 ? ' box bought.' : ' boxes bought.');
+  } else if (chore === 'items') {
+    title = '5▸4 Tickets bought';
+    body = count('bought') + (count('bought') === 1 ? ' ticket bought.' : ' tickets bought.');
   } else {
     title = 'Tsum list exported';
     body = count('tsums') + ' Tsums saved.';

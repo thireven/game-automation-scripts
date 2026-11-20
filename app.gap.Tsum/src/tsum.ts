@@ -190,6 +190,8 @@ class Tsum {
   buyBoxSize: BoxPurchaseSize;
   /** Box Buying: purchases one sweep may make, a 10-Time one counting as one. */
   buyBoxMaxPurchases: number;
+  /** Buy 5▸4 Tickets: how many the Now button buys. */
+  buy5to4Count: number;
   /** The "Delay between rounds" setting in ms; 0 plays straight on. */
   roundDelayMs: number;
   /** The "Max round duration" setting in ms; 0 lets every round run its course. */
@@ -499,6 +501,7 @@ class Tsum {
     this.buyBoxType = BoxType.Premium;
     this.buyBoxSize = BoxPurchaseSize.One;
     this.buyBoxMaxPurchases = 0;
+    this.buy5to4Count = SettingDefaults[SettingKey.Buy5to4Count];
     this.roundDelayMs = 0;
     this.maxRoundMs = 0;
     this.maxRoundAction = MaxRoundAction.Coast;

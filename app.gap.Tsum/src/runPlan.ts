@@ -50,6 +50,8 @@ const enum JobPriority {
   BuyOpenTenNow = 14,
   /** The Debug tab's Direct (`directNow`, src/index.ts). */
   DirectNow = 15,
+  /** Buy 5▸4 Tickets' Now (`buy5to4Now`, src/index.ts). */
+  Buy5to4Now = 16,
   AppRestart = 20,
   UnlockLevel = 30,
   BuyBoxes = 31,
@@ -104,9 +106,10 @@ function runTaskTable(settings: RunSettings): TaskSpec[] {
       intervalMs: 1000, dueAtStart: true });
     return jobs;
   }
-  // A run the Tsum List, Buy Open Capsule or Buy Open Box 10-Time Now button
-  // started does that and nothing else; `buildRun` queues it.
-  if (on(SettingKey.TsumListOnly) || on(SettingKey.BuyOpenCapsuleOnly) || on(SettingKey.BuyOpenTenOnly)) {
+  // A run the Tsum List, Buy Open Capsule, Buy Open Box 10-Time or Buy 5▸4
+  // Tickets Now button started does that and nothing else; `buildRun` queues it.
+  if (on(SettingKey.TsumListOnly) || on(SettingKey.BuyOpenCapsuleOnly) || on(SettingKey.BuyOpenTenOnly)
+      || on(SettingKey.Buy5to4Only)) {
     return jobs;
   }
   if (on(SettingKey.ReceiveHeartsOneByOne)) {

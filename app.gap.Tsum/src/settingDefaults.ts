@@ -49,6 +49,7 @@ var SettingDefaults: Readonly<Settings> = {
   [SettingKey.BuyBoxType]: BoxType.Premium,
   [SettingKey.BuyBoxSize]: BoxPurchaseSize.One,
   [SettingKey.BuyBoxMaxPurchases]: 10,
+  [SettingKey.Buy5to4Count]: 50,
   [SettingKey.DeviceFps]: 60,
   [SettingKey.AutoLaunchApp]: true,
   [SettingKey.GameRegion]: GameRegion.Auto,
@@ -71,3 +72,6 @@ var SettingDefaults: Readonly<Settings> = {
 
 /** The Coin Target row's ceiling, shared by the page and the Quick Bar's clamp. */
 var CoinTargetMax = 99999;
+
+/** Most 5▸4 Tickets one Buy 5▸4 Tickets run buys: the row's ceiling, the clamp's and the flow's. */
+var Buy5to4Max = 500;

@@ -387,6 +387,8 @@ declare const enum SettingKey {
   TsumListOnly = 'tsumListOnly',
   BuyOpenCapsuleOnly = 'buyOpenCapsuleOnly',
   BuyOpenTenOnly = 'buyOpenTenOnly',
+  Buy5to4Count = 'buy5to4Count',
+  Buy5to4Only = 'buy5to4Only',
   ReceiveAllHearts = 'receiveAllHearts',
   ReceiveAllHeartsMinWait = 'receiveAllHeartsMinWait',
   ReceiveHeartsOneByOne = 'receiveHeartsOneByOne',
@@ -573,6 +575,10 @@ interface Settings {
   [SettingKey.BuyOpenCapsuleOnly]?: boolean;
   /** As `BuyOpenCapsuleOnly`, for Buy Open Box 10-Time; `buyOpenTenNow()` sets it. */
   [SettingKey.BuyOpenTenOnly]?: boolean;
+  /** How many 5▸4 Ticket ×1 the Buy 5▸4 Tickets Now button buys from the Item Store. */
+  [SettingKey.Buy5to4Count]: number;
+  /** A run started by that Now button: it buys and stops. Not a schema entry; `buy5to4Now()` sets it. */
+  [SettingKey.Buy5to4Only]?: boolean;
   [SettingKey.ReceiveAllHearts]: boolean;
   [SettingKey.ReceiveAllHeartsMinWait]: number;
   [SettingKey.ReceiveHeartsOneByOne]: boolean;

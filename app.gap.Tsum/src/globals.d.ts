@@ -213,6 +213,31 @@ type BoxDialog = 'confirm' | 'refused' | 'missed';
 type BoxPurchaseOutcome = 'bought' | 'stuck' | 'soldOut' | 'noCoins' | 'tenRefused'
   | 'unavailable' | 'missed';
 
+/** The Item Store grid as drawn (`Tsum.readItemGrid`, src/itemStore.ts). */
+interface ItemGrid {
+  /** Eight per page, row by row. */
+  tiles: ItemTile[];
+  /** The gold tile's index, or -1. */
+  selected: number;
+  /** A page arrow is drawn that way. */
+  prev: boolean;
+  next: boolean;
+}
+
+/** The Item Store's detail panel (`Tsum.readItemDetail`). */
+interface ItemDetail {
+  /** One ticket drawn, not a stack. */
+  single: boolean;
+  /** Mean channel distance from the 5▸4 badge; at most `ItemStore.badgeMaxDistance` is a match. */
+  badge: number;
+}
+
+/**
+ * How one Item Store purchase went. `stuck` was paid for but the store did not
+ * come back; `missed` was not seen through (no confirmation, or no toast).
+ */
+type ItemPurchaseOutcome = 'bought' | 'stuck' | 'soldOut' | 'noMedals' | 'missed';
+
 /** One reference pixel used to fingerprint a page. */
 interface PageColor {
   x: number;
@@ -1705,6 +1730,30 @@ interface Tsum {
   buyOpenCapsule(tenTimes: boolean): LogFields | null;
   /** True once it has run; false when it stood aside for a round in progress. */
   taskBuyOpenCapsule(tenTimes: boolean): boolean;
+
+  // --- itemStore.ts ----------------------------------------------------
+  /** The Item Store grid: each tile's state, the selected one (-1: none), and the paging arrows. Captures when `img` is omitted. */
+  readItemGrid(img?: NativeImage): ItemGrid;
+  /** The detail panel: one ticket or not, and the badge's distance from the 5▸4 one. */
+  readItemDetail(img: NativeImage): ItemDetail;
+  /** Does the detail panel on `img` show the 5▸4 Ticket ×1? */
+  readItemIs5to4(img: NativeImage): boolean;
+  /** Wait for the grid's tiles to be drawn. */
+  awaitItemGrid(timeoutMs: number): boolean;
+  /** Put the store on its Item Store tab, items drawn. False when it would not open. */
+  openItemStore(): boolean;
+  /** Tap tile `index` of the page in front; true when the panel then shows the 5▸4 Ticket ×1. */
+  selectItemTile(page: number, index: number): boolean;
+  /** Select the 5▸4 Ticket ×1, walking the grid if it is not already selected. */
+  selectItem5to4(): boolean;
+  /** After OK: tap the "Purchase complete" toast away. */
+  leaveItemToast(): ItemPurchaseOutcome;
+  /** Buy the selected 5▸4 Ticket ×1 once. `purchase` / `limit` are log fields. */
+  buyOneItem(purchase: number, limit: number): ItemPurchaseOutcome;
+  /** The Buy 5▸4 Tickets loop. The fields for `Log.Item.End`, or null when the run stopped. */
+  buy5to4(count: number): LogFields | null;
+  /** True once it has run; false when it stood aside for a round in progress. */
+  taskBuy5to4(): boolean;
 
   // --- fever.ts --------------------------------------------------------
   /**

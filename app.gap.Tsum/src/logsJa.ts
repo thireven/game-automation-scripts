@@ -148,7 +148,24 @@ var LogsJa: LogCataloguePartial = {
   [Log.Box.OpenCapsuleWrongBox]: '表示中のBOXがガチャではないため停止',
   [Log.Box.OpenTenNowQueued]: '次のループで表示中のBOXを売り切れまで10回購入',
   [Log.Box.OpenTenStart]: '表示中のBOXを売り切れまで10回購入',
-  [Log.Box.OpenTenWrongBox]: '表示中のBOXに10回購入がないため停止'
+  [Log.Box.OpenTenWrongBox]: '表示中のBOXに10回購入がないため停止',
+  [Log.Item.NowQueued]: '次のループで5▸4チケットを購入',
+  [Log.Item.NowRefused]: '今は5▸4チケットを購入しません',
+  [Log.Item.NowWaiting]: 'ラウンド中のため、終了後に5▸4チケットを購入',
+  [Log.Item.Start]: 'アイテムストアで5▸4チケットを購入',
+  [Log.Item.StoreMissed]: 'アイテムストアを開けません',
+  [Log.Item.GridEmpty]: 'アイテムストアにアイテムがありません',
+  [Log.Item.Found]: '5▸4チケット×1を発見',
+  [Log.Item.NotFound]: 'アイテムストアに5▸4チケット×1がありません',
+  [Log.Item.TileNotTaken]: 'アイテムを選択できません',
+  [Log.Item.Bought]: '5▸4チケットを購入しました',
+  [Log.Item.SoldOut]: '5▸4チケットは売り切れ',
+  [Log.Item.NoMedals]: 'メダルが足りません',
+  [Log.Item.DialogMissing]: '購入確認が表示されません',
+  [Log.Item.ToastStuck]: '購入が完了しません',
+  [Log.Item.Retrying]: '購入に失敗。再試行します',
+  [Log.Item.PurchaseLimit]: '指定枚数の5▸4チケットを購入しました',
+  [Log.Item.End]: '5▸4チケットの購入完了'
 }
 
 logRegisterStrings(Locale.Japanese, LogsJa);
