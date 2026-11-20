@@ -60,7 +60,7 @@ release note; they fold back in here when she ships.
 ### Added
 
 - **Buy 5▸4 Tickets** (`src/itemStore.ts`, Chores tab → Item Store, count
-  10-500 in 10s, default 50): opens the store's Item Store tab, taps each tile
+  1-500, ±10 or ±1, default 50): opens the store's Item Store tab, taps each tile
   until the detail panel shows one ticket and the 5▸4 badge, then Buy → OK →
   "Purchase complete" per ticket. The badge bobs, so it is a 10x11 grid
   matched at ±4px (5▸4: 3-8, others 27+); the ×3 pack shares the badge but

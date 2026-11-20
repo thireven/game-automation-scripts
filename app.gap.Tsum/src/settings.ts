@@ -604,7 +604,7 @@ var tabs: TabSpec[] = [
                         help: UiText.SettingBuy5to4Help,
                         default: SettingDefaults[SettingKey.Buy5to4Count],
                         confirm: UiText.CompanionConfirmSpend,
-                        min: 10,
+                        min: 1,
                         max: Buy5to4Max,
                         step: 10,
                         status: ReleaseStatus.Alpha,
