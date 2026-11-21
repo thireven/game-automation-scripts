@@ -417,6 +417,8 @@ const enum ElsaWindowMode {
   LoopFrozenOut = 2,
   /** Hold the pile until the window is closing. */
   LoopClose = 3,
+  /** `LoopAsap` with no settle after a break: plan straight onto the refill, as Burst play does. */
+  LoopAsapNoSettle = 4,
 }
 
 /** One play-loop window: its clock, the bands still forming, and its counts. */
@@ -1559,7 +1561,8 @@ function elsaLoopOrder(ts: Tsum, w: ElsaLoopWindow, paths: TsumPath[], board: Bo
     obstacles.push({ x: b.x - Config.tsumWidth / 2, y: b.y - Config.tsumWidth / 2,
       pad: Math.max(0, b.r - Config.tsumWidth / 2) });
   }
-  const keepsPile = w.mode !== ElsaWindowMode.LoopAsap;
+  const asap = w.mode === ElsaWindowMode.LoopAsap || w.mode === ElsaWindowMode.LoopAsapNoSettle;
+  const keepsPile = !asap;
   const forming = w.bands.filter(function(l) { return now - l.at < cfg.loopBandFormMs; });
   // A batch planned before the activation can be drawn into the window (the
   // play loop's gauge check fires ahead of `link`): its bands are unrecorded,
@@ -1617,7 +1620,7 @@ function elsaLoopOrder(ts: Tsum, w: ElsaLoopWindow, paths: TsumPath[], board: Bo
   } else if (w.sameBreaks < 2) {
     // Not frozen out while a band is still forming: the next scan reads it
     // as ice, and a break now would leave it out of the pile.
-    breakNow = starved || (pile && (w.mode === ElsaWindowMode.LoopAsap
+    breakNow = starved || (pile && (asap
       || (w.mode === ElsaWindowMode.LoopFrozenOut
         && ((kept.length === 0 && forming.length === 0) || hidden))));
   }
@@ -1678,7 +1681,9 @@ function elsaLoopOrder(ts: Tsum, w: ElsaLoopWindow, paths: TsumPath[], board: Bo
   if (action === 'break') {
     // The pile going off is a large clear; plan on the refill, not the fall.
     // Asap's piles are small; the others' scale with the pile, as the sweep's.
-    ts.sleep(keepsPile ? elsaPostBurstSettleMs(iced.length) : cfg.loopBurstSettleMs);
+    if (w.mode !== ElsaWindowMode.LoopAsapNoSettle) {
+      ts.sleep(keepsPile ? elsaPostBurstSettleMs(iced.length) : cfg.loopBurstSettleMs);
+    }
   } else if (staleBatch) {
     ts.sleepUntil(ts.dragReleasedAt + cfg.loopBandFormMs);
   } else if (keepsPile && kept.length === 0 && forming.length > 0) {
@@ -1775,7 +1780,7 @@ registerSkill({
     // Ice exists in this round from here on, so the ice-alike learning stops.
     elsaWindowRound = logRoundKey();
     const mode = ts.elsaWindowMode as ElsaWindowMode;
-    if (mode >= ElsaWindowMode.LoopAsap && mode <= ElsaWindowMode.LoopClose) {
+    if (mode >= ElsaWindowMode.LoopAsap && mode <= ElsaWindowMode.LoopAsapNoSettle) {
       elsaLoopStart(ts, mode, board, activatedAt);
       // "Fired": ends the batch in progress, planned before the cut-in. The
       // play loop's scans run the window from here (`orderPaths`), and

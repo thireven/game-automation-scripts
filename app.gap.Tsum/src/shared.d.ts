@@ -437,7 +437,8 @@ interface Settings {
   [SettingKey.PageHistoryDepth]: number;
   /**
    * Coronation Elsa A/B knob: 0 her own freeze-window loop; 1-3 the play loop
-   * runs the window and breaks the pile asap / when frozen out / at the close.
+   * runs the window and breaks the pile asap / when frozen out / at the close;
+   * 4 is 1 with no settle after a break.
    */
   [SettingKey.ElsaWindow]?: number;
   /**

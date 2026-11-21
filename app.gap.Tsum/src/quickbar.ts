@@ -563,7 +563,7 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
       tsum.trackRoundStats = applied;
       break;
     case SettingKey.ElsaWindow:
-      applied = quickBarClamp(value, 0, 3);
+      applied = quickBarClamp(value, 0, 4);
       tsum.elsaWindowMode = applied as number;
       break;
     // Read after each row is written (roundShareAfterRow). Off clears the

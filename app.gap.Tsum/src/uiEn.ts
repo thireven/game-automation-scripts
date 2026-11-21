@@ -201,7 +201,7 @@ i18nRegister(Locale.English, 'English', {
     [UiText.SettingPageHistoryDepth]: 'Page history depth',
     [UiText.SettingPageHistoryDepthHelp]: 'Screens remembered for a report. Debug game saves a picture of each.',
     [UiText.SettingElsaWindow]: 'Elsa window',
-    [UiText.SettingElsaWindowHelp]: 'Coronation Day Elsa test: 0 her own freeze loop; 1-3 normal play in the window, breaking the ice as soon as it piles up (1), when the board is frozen out (2) or as the window closes (3). From the next round.',
+    [UiText.SettingElsaWindowHelp]: 'Coronation Day Elsa test: 0 her own freeze loop; 1-3 normal play in the window, breaking the ice as soon as it piles up (1), when the board is frozen out (2) or as the window closes (3); 4 is 1 without the pause after a break. From the next round.',
     [UiText.SettingReportIssue]: 'Report a problem',
     [UiText.SettingReportIssueHelp]: 'Saves the screen, recent screens, log and settings. Send it from Run History.',
     [UiText.ReportNotePlaceholder]: 'What went wrong? (optional)',

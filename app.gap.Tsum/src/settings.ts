@@ -960,7 +960,7 @@ var tabs: TabSpec[] = [
                         help: UiText.SettingElsaWindowHelp,
                         default: SettingDefaults[SettingKey.ElsaWindow],
                         step: 1,
-                        max: 3,
+                        max: 4,
                         min: 0,
                         neverShared: true
                     }
