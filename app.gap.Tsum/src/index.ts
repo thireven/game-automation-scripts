@@ -720,7 +720,8 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     ? settings.skillSettleMs : 0;
   ts.skillReactivationMs = typeof settings.skillReactivationTenths === 'number'
     && settings.skillReactivationTenths > 0 ? settings.skillReactivationTenths * 100 : 0;
-  ts.elsaWindowMode = typeof settings.elsaWindow === 'number' ? settings.elsaWindow : 0;
+  ts.elsaWindowMode = typeof settings.elsaWindow === 'number'
+    ? Math.min(3, Math.max(0, Math.round(settings.elsaWindow))) : 0;
   ts.skillLevel = settings.skillLevel;
   // `!== false` for a hand-written start() command and a stored form from before the row existed: on is the default.
   ts.autoSkillLevel = settings.autoSkillLevel !== false;
