@@ -70,6 +70,10 @@ release note; they fold back in here when she ships.
   within 700ms of the last (a shattering pile still reads as ice; piles were
   broken 2-3 times), and the closing break needs 3 ice. `cutShortMs` on
   `skill.elsa.done`.
+- Measured (one INTL device, level 6, Coin + 5▸4; base coins, mean of 3-9
+  rounds an arm): sweep 3,239; window 2 6,928; window 1 8,757; window 4
+  9,183; Burst 8,804. Holding the pile loses; speed and the mid-window
+  gauge are what pay.
 
 ## [6.0b32]
 
