@@ -111,6 +111,7 @@ function quickBarState(): string {
     state[SettingKey.BonusCombo] = quickBarAsked(ts, SettingKey.BonusCombo, ts.comboItem);
     state[SettingKey.TrackRoundStats] =
       quickBarAsked(ts, SettingKey.TrackRoundStats, ts.trackRoundStats);
+    state[SettingKey.ElsaWindow] = quickBarAsked(ts, SettingKey.ElsaWindow, ts.elsaWindowMode);
 
     // The `Now` settings: the world is the answer, because the world already
     // has them.
@@ -561,6 +562,10 @@ function quickBarApplyOne(tsum: Tsum, key: SettingKey,
       applied = !!value;
       tsum.trackRoundStats = applied;
       break;
+    case SettingKey.ElsaWindow:
+      applied = quickBarClamp(value, 0, 3);
+      tsum.elsaWindowMode = applied as number;
+      break;
     // Read after each row is written (roundShareAfterRow). Off clears the
     // cursor, so nothing is kept about what was shared.
     case SettingKey.ShareRoundStats:
@@ -853,6 +858,9 @@ const LiveSettings: { [key: string]: LiveWhen } = {
   // round that was begun. Either way the row for the round in progress is wrong,
   // so the flag moves between rounds like everything else here.
   [SettingKey.TrackRoundStats]: LiveWhen.NextRound,
+  // Coronation Elsa A/B knob: a round is played under one arm, so a
+  // comparison of rounds compares the arms.
+  [SettingKey.ElsaWindow]: LiveWhen.NextRound,
 
   // --- Only a fresh start() ------------------------------------------------
   //

@@ -54,6 +54,17 @@ release note; they fold back in here when she ships.
 *Skills*
 - Coronation Day Elsa: a faster way to play her freeze window to try, under Debug → Elsa window.
 
+### Added
+
+- **Debug "Elsa window"** (`elsaWindow`, 0-3, from the next round): an A/B of
+  her freeze window. 0 is her row sweep. 1-3 hand the window to the play loop
+  (`elsaLoopOrder` in `orderPaths`): ice read off each scan, no `iceFormMs`
+  wait, up to 4 chains a scan kept off read ice and bands still forming, and
+  the pile broken asap (1), when frozen out (2) or at the close (3). Her sweep
+  draws ~15 chains a window, mostly asleep (275 ms of each ~350 ms chain);
+  Burst play earns about 2x on her. `skill.elsa.loopScan`; `mode` on
+  `skill.elsa.done`.
+
 ## [6.0b32]
 
 ### Summary

@@ -222,6 +222,8 @@ declare const enum UiText {
   SettingCollectUnknownScreensHelp = 'setting.collectUnknownScreens.help',
   SettingPageHistoryDepth = 'setting.pageHistoryDepth',
   SettingPageHistoryDepthHelp = 'setting.pageHistoryDepth.help',
+  SettingElsaWindow = 'setting.elsaWindow',
+  SettingElsaWindowHelp = 'setting.elsaWindow.help',
   SettingReportIssue = 'setting.reportIssue',
   SettingReportIssueHelp = 'setting.reportIssue.help',
   /** The note box under the Report row, and what it says once one is written. */

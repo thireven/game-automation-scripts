@@ -952,6 +952,17 @@ var tabs: TabSpec[] = [
                         max: 100,
                         min: 0,
                         neverShared: true
+                    },
+                    {
+                        // Coronation Elsa A/B knob (`ElsaWindowMode`).
+                        key: SettingKey.ElsaWindow,
+                        title: UiText.SettingElsaWindow,
+                        help: UiText.SettingElsaWindowHelp,
+                        default: SettingDefaults[SettingKey.ElsaWindow],
+                        step: 1,
+                        max: 3,
+                        min: 0,
+                        neverShared: true
                     }
                 ]
             }

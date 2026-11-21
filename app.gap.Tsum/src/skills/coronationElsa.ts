@@ -371,8 +371,70 @@ var CoronationElsaConfig = {
   // more taps. In-window scans across 16 rounds: never two in a row under
   // 100 during play; every window open at TIME UP read 48-92 (2026-09-25).
   dimValueMax: 100,
-  dimMinTsums: 10
+  dimMinTsums: 10,
+  // --- The play-loop window (Debug "Elsa window" 1-3, `elsaLoopOrder`) ---
+  // Chains a scan while the window is open: the salvo's shape.
+  loopChainsPerScan: 4,
+  // How far a chain keeps from the band line of one drawn just before it, in
+  // play-square px: the band is one to two tsums thick, plus `dragClearance`.
+  // Such a band is still forming, so no scan has read it as ice yet.
+  loopBandKeepPx: 38,
+  // How long after its release a chain's band counts as forming. It has
+  // settled by 250-300ms (`iceFormMs`); a scan after that reads it.
+  loopBandFormMs: 350,
+  // From this long before the window closes, the pile standing is broken.
+  loopCloseBreakMs: 600,
+  // Waited out after a break, before the next scan plans on the refill.
+  loopBurstSettleMs: 250
 };
+
+/**
+ * How the freeze window is played (Debug-tab "Elsa window"). An A/B knob:
+ * `Choreography` is the row sweep below; the others hand the window to the
+ * play loop (`elsaLoopOrder`) and differ only in when the pile is broken.
+ */
+const enum ElsaWindowMode {
+  Choreography = 0,
+  /** Break as soon as a pile (`refreezeMinIced`) is read. */
+  LoopAsap = 1,
+  /** Break once no chain is left clear of the ice, or the ice hides the board. */
+  LoopFrozenOut = 2,
+  /** Hold the pile until the window is closing. */
+  LoopClose = 3,
+}
+
+/** One play-loop window: its clock, the bands still forming, and its counts. */
+interface ElsaLoopWindow {
+  round: string;
+  mode: ElsaWindowMode;
+  level: number;
+  opensAt: number;
+  closesAt: number;
+  /** Most tsums any scan of the window read: the hidden-ice gate's base. */
+  expected: number;
+  /** End lines of chains just drawn, and when each was released (estimated). */
+  bands: { a: BoardPoint, b: BoardPoint, at: number }[];
+  /** Chains of the current batch still to land before the bubble pop. */
+  batchLeft: number;
+  closingBroken: boolean;
+  reported: boolean;
+  scans: number;
+  chains: number;
+  breaks: number;
+  icedAtBreaks: number[];
+  droppedIce: number;
+  droppedBand: number;
+  popped: number;
+  emptyScans: number;
+}
+
+/** The last play-loop window, or null when none ran (or the mode is `Choreography`). */
+var gElsaLoop: ElsaLoopWindow | null = null;
+
+/** Whether a play-loop window is open now, lead-in included. */
+function elsaLoopOpen(): boolean {
+  return gElsaLoop !== null && gElsaLoop.round === logRoundKey() && Date.now() < gElsaLoop.closesAt;
+}
 
 /**
  * Whether a round-over screen has replaced the board: the tally, or one of the
@@ -1360,8 +1422,179 @@ Tsum.prototype.useCoronationElsaSkill = function(activatedAt, expectTsums) {
     kindChains: kindChains,
     kindLifts: kindLifts,
     totalMs: Date.now() - t0,
+    mode: ElsaWindowMode.Choreography,
   });
 };
+
+/**
+ * Whether `path` touches the band `a`-`b` would freeze: a tsum within `keep`
+ * of the line through them, or a drag that crosses it. The band runs to both
+ * edges of the board, so the line is unbounded.
+ */
+function elsaNearBand(path: TsumPath, a: BoardPoint, b: BoardPoint, keep: number): boolean {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len === 0) { return false; }
+  let prev = 0;
+  for (let i = 0; i < path.length; i++) {
+    // Signed distance from the line.
+    const d = ((path[i].x - a.x) * dy - (path[i].y - a.y) * dx) / len;
+    if (Math.abs(d) <= keep) { return true; }
+    if (i > 0 && (d > 0) !== (prev > 0)) { return true; }
+    prev = d;
+  }
+  return false;
+}
+
+/** Open a play-loop window at an activation, and wait out the animation. */
+function elsaLoopStart(ts: Tsum, mode: ElsaWindowMode, board: BoardPoint[] | undefined, activatedAt: number | undefined): void {
+  const cfg = CoronationElsaConfig;
+  // A window the round ended under never reached its close: report it now.
+  if (gElsaLoop !== null && !gElsaLoop.reported) { elsaLoopReport(gElsaLoop); }
+  const t0 = activatedAt || Date.now();
+  const level = Math.min(Math.max(ts.skillLevel, 1), cfg.durationMs.length);
+  const opensAt = t0 + cfg.leadInMs;
+  gElsaLoop = {
+    round: logRoundKey(), mode: mode, level: level,
+    opensAt: opensAt, closesAt: opensAt + cfg.durationMs[level - 1],
+    expected: board ? board.length : 0,
+    bands: [], batchLeft: 0, closingBroken: false, reported: false,
+    scans: 0, chains: 0, breaks: 0, icedAtBreaks: [],
+    droppedIce: 0, droppedBand: 0, popped: 0, emptyScans: 0,
+  };
+  // A chain under the animation is ignored.
+  ts.sleepUntil(opensAt);
+}
+
+/** Log a play-loop window's counts, once. */
+function elsaLoopReport(w: ElsaLoopWindow): void {
+  w.reported = true;
+  logInfo(Log.Skill.ElsaDone, {
+    mode: w.mode, skillLevel: w.level, windowMs: w.closesAt - w.opensAt,
+    scans: w.scans, chains: w.chains,
+    // Scans that drew nothing: frozen out, or every chain through ice.
+    emptyScans: w.emptyScans,
+    bursts: w.breaks, icedAtBreaks: w.icedAtBreaks, closingBroken: w.closingBroken,
+    // Chains `calculatePaths` found and this dropped: on or by read ice,
+    // or across a band still forming.
+    droppedIce: w.droppedIce, droppedBand: w.droppedBand,
+    bubblesPopped: w.popped,
+  });
+}
+
+/**
+ * One scan of a play-loop window: the play loop's own chains, less any that
+ * would touch the ice, or break the pile when the mode says it is time.
+ *
+ * No waits and no captures of its own: the ice is read off the scan the play
+ * loop already took, and a band still forming (drawn since that scan could
+ * see it) is kept clear of by geometry (`elsaNearBand`). The modes that keep
+ * the pile also order the chains bottom-up, most ice crossed first, so each
+ * band lands on the last.
+ */
+function elsaLoopOrder(ts: Tsum, w: ElsaLoopWindow, paths: TsumPath[], board: BoardPoint[]): TsumPath[] {
+  const cfg = CoronationElsaConfig;
+  const now = Date.now();
+  w.scans++;
+  if (board.length > w.expected) { w.expected = board.length; }
+  const split = elsaSplitIce(ts, board);
+  const iced = split.iced;
+  // Bubbles are this skill's while the window is open (`claimsBubbles`): one
+  // on or beside ice may be frozen, and a tap on it is a tap on the pile.
+  const poppable = elsaPoppable(ts.gameBubbles, iced);
+  const obstacles: ElsaObstacle[] = iced.slice();
+  for (let i = 0; i < ts.gameBubbles.length; i++) {
+    const b = ts.gameBubbles[i];
+    obstacles.push({ x: b.x - Config.tsumWidth / 2, y: b.y - Config.tsumWidth / 2,
+      pad: Math.max(0, b.r - Config.tsumWidth / 2) });
+  }
+  const keepsPile = w.mode !== ElsaWindowMode.LoopAsap;
+  const forming = w.bands.filter(function(l) { return now - l.at < cfg.loopBandFormMs; });
+  let candidates = paths;
+  if (keepsPile) {
+    // Most read ice on the band line first, then lowest (larger y is lower).
+    const score = paths.map(function(p) {
+      return { p: p, over: elsaOverlap(p, iced), low: Math.max(p[0].y, p[p.length - 1].y) };
+    });
+    score.sort(function(x, y) { return y.over - x.over || y.low - x.low; });
+    candidates = score.map(function(s) { return s.p; });
+  }
+  const kept: TsumPath[] = [];
+  const lines = forming.slice();
+  let droppedIce = 0, droppedBand = 0;
+  for (let i = 0; i < candidates.length && kept.length < cfg.loopChainsPerScan; i++) {
+    const p = candidates[i];
+    let onIce = false;
+    for (let j = 0; j < p.length && !onIce; j++) { onIce = iced.indexOf(p[j]) >= 0; }
+    if (onIce || !elsaPathIsClear(p, obstacles, cfg.dragClearance)) { droppedIce++; continue; }
+    // In Asap a stray touch only breaks the pile early, which that mode does anyway.
+    if (keepsPile && lines.some(function(l) { return elsaNearBand(p, l.a, l.b, cfg.loopBandKeepPx); })) {
+      droppedBand++;
+      continue;
+    }
+    kept.push(p);
+    lines.push({ a: p[0], b: p[p.length - 1], at: 0 });
+  }
+  w.droppedIce += droppedIce;
+  w.droppedBand += droppedBand;
+
+  // When to break: always once the window is closing; before that, per mode.
+  const closing = now >= w.closesAt - cfg.loopCloseBreakMs;
+  const pile = iced.length >= cfg.refreezeMinIced;
+  const hidden = board.length < cfg.hiddenIceFraction * w.expected && split.free.length <= cfg.hiddenIceFreeMax;
+  let breakNow = false;
+  if (closing) {
+    breakNow = !w.closingBroken && iced.length > 0;
+  } else if (pile) {
+    // Not frozen out while a band is still forming: the next scan reads it
+    // as ice, and a break now would leave it out of the pile.
+    breakNow = w.mode === ElsaWindowMode.LoopAsap
+      || (w.mode === ElsaWindowMode.LoopFrozenOut
+        && ((kept.length === 0 && forming.length === 0) || hidden));
+  }
+  let action = 'chain';
+  if (breakNow) {
+    // Aimed taps, then every bubble the scan read (`elsaBurstFrozen`).
+    ts.elsaBurstFrozen(iced);
+    w.breaks++;
+    w.icedAtBreaks.push(iced.length);
+    if (closing) { w.closingBroken = true; }
+    w.bands = [];
+    kept.length = 0;
+    action = 'break';
+  } else {
+    // Only the bubbles clear of ice stay in the list `popBubblesAfterChain` spends.
+    ts.gameBubbles = poppable;
+    if (kept.length === 0 && poppable.length > 0) {
+      // Nothing to draw: pop them now rather than after a chain.
+      w.popped += poppable.length;
+      ts.popGameBubbles(poppable.length);
+      action = 'pop';
+    } else if (kept.length === 0) {
+      action = 'none';
+    }
+    // Each chain's band forms from its release: drags are ~12ms a tsum.
+    let at = now;
+    w.bands = forming;
+    for (let i = 0; i < kept.length; i++) {
+      at += (kept[i].length + 1) * 12;
+      w.bands.push({ a: kept[i][0], b: kept[i][kept[i].length - 1], at: at });
+    }
+  }
+  w.batchLeft = kept.length;
+  w.chains += kept.length;
+  if (kept.length === 0) { w.emptyScans++; }
+  logDebug(Log.Skill.ElsaLoopScan, {
+    atMs: now - w.opensAt, free: split.free.length, iced: iced.length, found: paths.length,
+    kept: kept.length, droppedIce: droppedIce, droppedBand: droppedBand,
+    bubbles: ts.gameBubbles.length, action: action,
+  });
+  if (breakNow) {
+    // The pile going off is a large clear; plan on the refill, not the fall.
+    ts.sleep(cfg.loopBurstSettleMs);
+  }
+  return kept;
+}
 
 registerSkill({
   types: [SkillType.CoronationElsa],
@@ -1374,8 +1607,29 @@ registerSkill({
   // Uncapped-ish chains in ordinary play, whatever "Maximum Chain Number"
   // says: between windows the only job is refilling the gauge, which counts
   // tsums cleared, and three ten-chains fill it far faster than three
-  // three-chains for the same scan gap.
-  chainLimits: { maxChain: 5 },
+  // three-chains for the same scan gap. A play-loop window also fixes the
+  // batch, so the "Elsa window" A/B does not hang on the player's setting.
+  chainLimits: function(ts) {
+    return elsaLoopOpen()
+      ? { maxChain: 5, maxChainsPerScan: CoronationElsaConfig.loopChainsPerScan }
+      : { maxChain: 5 };
+  },
+  // A play-loop window holds the gauge until it closes: the gauge reads
+  // Active through the window's own animation, so a tap would only restart
+  // it. The choreography holds it by not returning until the close.
+  stillRunning: function(ts) { return elsaLoopOpen(); },
+  // While a play-loop window is open the bubbles are hers: a Bubble Strategy
+  // pop could tap one frozen on the pile. `elsaLoopOrder` drops those and
+  // pops the rest, after the batch (`popBubblesAfterChain`) or at once.
+  claimsBubbles: function(ts) { return elsaLoopOpen(); },
+  popBubblesAfterChain: function(ts, chainLength) {
+    const w = gElsaLoop;
+    if (w === null || !elsaLoopOpen() || w.batchLeft <= 0) { return 0; }
+    w.batchLeft--;
+    if (w.batchLeft > 0) { return 0; }
+    w.popped += ts.gameBubbles.length;
+    return ts.gameBubbles.length;
+  },
   // Room for her own ice on top of the board's colours. Every shade the ice
   // reads at is an ordinary cluster to the scan and takes one of the
   // `uniqueTsumCount - 1` slots it keeps; ice has been measured at three
@@ -1388,6 +1642,13 @@ registerSkill({
     // Before the round's first window, a cluster whose tsums read as ice is
     // a live colour -- learn it now, or it plays as a phantom pile all round.
     elsaNoteIceAlikes(ts, board);
+    // A play-loop window: the window's own rules. Once closed, report it and
+    // fall through to the leftover rule below.
+    const w = gElsaLoop;
+    if (w !== null && w.round === logRoundKey()) {
+      if (Date.now() < w.closesAt) { return elsaLoopOrder(ts, w, paths, board); }
+      if (!w.reported) { elsaLoopReport(w); }
+    }
     // Ice read here is *leftover*. A pile-sized leftover is a closing burst
     // that missed, and is spent -- out here there is no fresh pile for a
     // stray tap to cost. A smaller one is a band left standing on purpose:
@@ -1416,6 +1677,14 @@ registerSkill({
   afterActivate: function(ts, board, activatedAt) {
     // Ice exists in this round from here on, so the ice-alike learning stops.
     elsaWindowRound = logRoundKey();
+    const mode = ts.elsaWindowMode as ElsaWindowMode;
+    if (mode >= ElsaWindowMode.LoopAsap && mode <= ElsaWindowMode.LoopClose) {
+      elsaLoopStart(ts, mode, board, activatedAt);
+      // "Fired": ends the batch in progress, planned before the cut-in. The
+      // play loop's scans run the window from here (`orderPaths`), and
+      // `stillRunning` keeps the gauge from firing it again.
+      return true;
+    }
     // The board is the play loop's scan from before its last batch linked, so
     // its length is a full board's population -- the settle gate's seed.
     ts.useCoronationElsaSkill(activatedAt, board ? board.length : 0);

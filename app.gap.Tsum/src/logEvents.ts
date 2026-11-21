@@ -235,6 +235,8 @@ namespace Log {
     ElsaDone              = 'skill.elsa.done',
     ElsaIceAlike          = 'skill.elsa.iceAlike',
     ElsaKind              = 'skill.elsa.kind',
+    /** A scan of a play-loop freeze window (Debug "Elsa window" 1-3). */
+    ElsaLoopScan          = 'skill.elsa.loopScan',
     ElsaPass              = 'skill.elsa.pass',
     ElsaSalvo             = 'skill.elsa.salvo',
     ElsaRoundOver         = 'skill.elsa.roundOver',

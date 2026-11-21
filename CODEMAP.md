@@ -124,7 +124,7 @@ enforces every row below, so these are true rather than approximate.
 | `onGapMessage` — the page-to-page nudge's handler, one per page | `src/settings.ts`, `src/quickbarPage.ts` |
 | `tiara*`, `Tiara*` | `src/skills/tiaraMinniePlus.ts` (tables included), `src/globals.d.ts` |
 | `formalBeast*`, `FormalBeast*` | `src/skills/formalBeast.ts` (tables included), `src/globals.d.ts` |
-| `elsa*`, `CoronationElsa*` | `src/skills/coronationElsa.ts` (tables included), `src/globals.d.ts` |
+| `elsa*`, `CoronationElsa*`, `ElsaWindowMode`, `gElsaLoop` | `src/skills/coronationElsa.ts` (tables included), `src/globals.d.ts`, `src/tsum.ts` (`Tsum#elsaWindowMode`, the Debug "Elsa window" knob) |
 | `lorcana*`, `Lorcana*`, `gLorcana` | `src/lorcana.ts` (tables included), `src/skills/lorcanaAurora.ts`, `src/globals.d.ts`, `src/shared.d.ts` (`SkillType.LorcanaAurora`, `SettingKey.LorcanaCard`), `src/tsum.ts` (the `lorcanaCard` field) |
 | `rapunzel*`, `RapunzelPlus*` | `src/skills/rapunzelPlus.ts` (tables included) — plain functions, no `Tsum` method |
 | `gaston*`, `Gaston*` | `src/skills/gaston.ts` (tables included) — plain functions, no `Tsum` method |

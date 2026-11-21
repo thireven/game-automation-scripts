@@ -338,6 +338,7 @@ declare const enum SettingKey {
   Walkthrough = 'walkthrough',
   DeviceFps = 'deviceFps',
   PageHistoryDepth = 'pageHistoryDepth',
+  ElsaWindow = 'elsaWindow',
   Locale = 'locale',
   AutoLaunchApp = 'autoLaunchApp',
   GameRegion = 'gameRegion',
@@ -434,6 +435,11 @@ interface Settings {
   [SettingKey.DeviceFps]: number;
   /** How many page visits `gPages` keeps, and how many frames it writes in debug. */
   [SettingKey.PageHistoryDepth]: number;
+  /**
+   * Coronation Elsa A/B knob: 0 her own freeze-window loop; 1-3 the play loop
+   * runs the window and breaks the pile asap / when frozen out / at the close.
+   */
+  [SettingKey.ElsaWindow]?: number;
   /**
    * The language the run writes its log sentences in. Not a schema entry --
    * genStartCommand() derives it from localStorage.
