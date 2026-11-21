@@ -401,7 +401,15 @@ var CoronationElsaConfig = {
   loopStarvedScans: 3,
   // No new activation this soon after the last: the gauge reads Active under
   // the animation, and Burst play never re-fired her under 7s.
-  loopReactivateMinMs: 5000
+  loopReactivateMinMs: 5000,
+  // Experiment knobs for the loop modes (set over the GAP CLI between A/B
+  // rounds; logged on `skill.elsa.done`). Uncapped: the player's chain cap
+  // and length, as Burst plays, instead of 5. Ice filter off (asap modes): a
+  // chain may run onto ice, as Burst's do -- an early break costs those
+  // modes nothing. Break min: the pile an asap mode breaks at.
+  loopUncapped: false,
+  loopIceFilter: true,
+  loopBreakMin: 8
 };
 
 /**
@@ -1532,6 +1540,8 @@ function elsaLoopReport(w: ElsaLoopWindow): void {
     // Window left when it was reported: >0 when a new activation (or the
     // round's end) cut it short.
     cutShortMs: Math.max(0, w.closesAt - Date.now()),
+    uncapped: CoronationElsaConfig.loopUncapped, iceFilter: CoronationElsaConfig.loopIceFilter,
+    breakMin: CoronationElsaConfig.loopBreakMin,
   });
 }
 
@@ -1587,7 +1597,8 @@ function elsaLoopOrder(ts: Tsum, w: ElsaLoopWindow, paths: TsumPath[], board: Bo
     const p = candidates[i];
     let onIce = false;
     for (let j = 0; j < p.length && !onIce; j++) { onIce = iced.indexOf(p[j]) >= 0; }
-    if (onIce || !elsaPathIsClear(p, obstacles, cfg.dragClearance)) { droppedIce++; continue; }
+    if ((keepsPile || cfg.loopIceFilter)
+        && (onIce || !elsaPathIsClear(p, obstacles, cfg.dragClearance))) { droppedIce++; continue; }
     // In Asap a stray touch only breaks the pile early, which that mode does anyway.
     if (keepsPile && lines.some(function(l) { return elsaNearBand(p, l.a, l.b, cfg.loopBandKeepPx); })) {
       droppedBand++;
@@ -1608,7 +1619,7 @@ function elsaLoopOrder(ts: Tsum, w: ElsaLoopWindow, paths: TsumPath[], board: Bo
   // Never again while the last pile may still be shattering, nor after the
   // taps twice failed to set one off.
   const closing = now >= w.closesAt - cfg.loopCloseBreakMs;
-  const pile = iced.length >= cfg.refreezeMinIced;
+  const pile = iced.length >= (asap ? cfg.loopBreakMin : cfg.refreezeMinIced);
   // A starved board with a small pile: break it so the board refills.
   const starved = w.mode !== ElsaWindowMode.LoopClose
     && w.starvedRun >= cfg.loopStarvedScans && iced.length >= cfg.loopCloseBreakMin;
@@ -1710,9 +1721,14 @@ registerSkill({
   // three-chains for the same scan gap. A play-loop window also fixes the
   // batch, so the "Elsa window" A/B does not hang on the player's setting.
   chainLimits: function(ts) {
-    return elsaLoopOpen()
-      ? { maxChain: 5, maxChainsPerScan: CoronationElsaConfig.loopChainsPerScan }
-      : { maxChain: 5 };
+    const cfg = CoronationElsaConfig;
+    // `loopUncapped` (loop modes only): the player's cap, as Burst plays.
+    const uncapped = cfg.loopUncapped && ts.elsaWindowMode >= ElsaWindowMode.LoopAsap;
+    if (elsaLoopOpen()) {
+      return uncapped ? { maxChainsPerScan: cfg.loopChainsPerScan }
+        : { maxChain: 5, maxChainsPerScan: cfg.loopChainsPerScan };
+    }
+    return uncapped ? {} : { maxChain: 5 };
   },
   // A play-loop window holds the gauge through its lead-in (the animation
   // reads Active); after that a refilled gauge fires again, as under Burst.
