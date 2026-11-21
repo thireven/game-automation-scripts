@@ -64,6 +64,12 @@ release note; they fold back in here when she ships.
   draws ~15 chains a window, mostly asleep (275 ms of each ~350 ms chain);
   Burst play earns about 2x on her. `skill.elsa.loopScan`; `mode` on
   `skill.elsa.done`.
+- In a play-loop window the gauge is held through the lead-in only, so a
+  refilled gauge fires again mid-window: Burst re-activated her every 7-10s
+  for 12-21 activations a round, against 10 with the window held. No break
+  within 700ms of the last (a shattering pile still reads as ice; piles were
+  broken 2-3 times), and the closing break needs 3 ice. `cutShortMs` on
+  `skill.elsa.done`.
 
 ## [6.0b32]
 

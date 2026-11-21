@@ -382,10 +382,16 @@ var CoronationElsaConfig = {
   // How long after its release a chain's band counts as forming. It has
   // settled by 250-300ms (`iceFormMs`); a scan after that reads it.
   loopBandFormMs: 350,
-  // From this long before the window closes, the pile standing is broken.
+  // From this long before the window closes, the pile standing is broken --
+  // if it is at least this big: a stray read or two is not worth the settle.
   loopCloseBreakMs: 600,
+  loopCloseBreakMin: 3,
   // Waited out after a break, before the next scan plans on the refill.
-  loopBurstSettleMs: 250
+  loopBurstSettleMs: 250,
+  // No new break this soon after one: a broken pile still reads as ice while
+  // it shatters (350-600ms), and was broken again 1-2 times a pile (6.0b33,
+  // ice read 8, 8, 8 then 4-6 at ~700ms).
+  loopRebreakMs: 700
 };
 
 /**
@@ -416,6 +422,8 @@ interface ElsaLoopWindow {
   bands: { a: BoardPoint, b: BoardPoint, at: number }[];
   /** Chains of the current batch still to land before the bubble pop. */
   batchLeft: number;
+  /** When the last break went out; 0 for none. */
+  lastBreakAt: number;
   closingBroken: boolean;
   reported: boolean;
   scans: number;
@@ -434,6 +442,16 @@ var gElsaLoop: ElsaLoopWindow | null = null;
 /** Whether a play-loop window is open now, lead-in included. */
 function elsaLoopOpen(): boolean {
   return gElsaLoop !== null && gElsaLoop.round === logRoundKey() && Date.now() < gElsaLoop.closesAt;
+}
+
+/**
+ * Whether a play-loop window still holds the gauge: through its lead-in only.
+ * After that a full gauge fires again inside the window, as Burst play does:
+ * Burst re-activated her every 7-10s against the window's 12.1s, for 12-21
+ * activations a round against 10 with the gauge held (6.0b33, one device).
+ */
+function elsaLoopHoldsGauge(): boolean {
+  return elsaLoopOpen() && Date.now() < (gElsaLoop as ElsaLoopWindow).opensAt;
 }
 
 /**
@@ -1458,7 +1476,7 @@ function elsaLoopStart(ts: Tsum, mode: ElsaWindowMode, board: BoardPoint[] | und
     round: logRoundKey(), mode: mode, level: level,
     opensAt: opensAt, closesAt: opensAt + cfg.durationMs[level - 1],
     expected: board ? board.length : 0,
-    bands: [], batchLeft: 0, closingBroken: false, reported: false,
+    bands: [], batchLeft: 0, lastBreakAt: 0, closingBroken: false, reported: false,
     scans: 0, chains: 0, breaks: 0, icedAtBreaks: [],
     droppedIce: 0, droppedBand: 0, popped: 0, emptyScans: 0,
   };
@@ -1479,6 +1497,9 @@ function elsaLoopReport(w: ElsaLoopWindow): void {
     // or across a band still forming.
     droppedIce: w.droppedIce, droppedBand: w.droppedBand,
     bubblesPopped: w.popped,
+    // Window left when it was reported: >0 when a new activation (or the
+    // round's end) cut it short.
+    cutShortMs: Math.max(0, w.closesAt - Date.now()),
   });
 }
 
@@ -1539,12 +1560,15 @@ function elsaLoopOrder(ts: Tsum, w: ElsaLoopWindow, paths: TsumPath[], board: Bo
   w.droppedBand += droppedBand;
 
   // When to break: always once the window is closing; before that, per mode.
+  // Never again while the last pile may still be shattering.
   const closing = now >= w.closesAt - cfg.loopCloseBreakMs;
   const pile = iced.length >= cfg.refreezeMinIced;
   const hidden = board.length < cfg.hiddenIceFraction * w.expected && split.free.length <= cfg.hiddenIceFreeMax;
   let breakNow = false;
-  if (closing) {
-    breakNow = !w.closingBroken && iced.length > 0;
+  if (now - w.lastBreakAt < cfg.loopRebreakMs) {
+    breakNow = false;
+  } else if (closing) {
+    breakNow = !w.closingBroken && iced.length >= cfg.loopCloseBreakMin;
   } else if (pile) {
     // Not frozen out while a band is still forming: the next scan reads it
     // as ice, and a break now would leave it out of the pile.
@@ -1556,6 +1580,7 @@ function elsaLoopOrder(ts: Tsum, w: ElsaLoopWindow, paths: TsumPath[], board: Bo
   if (breakNow) {
     // Aimed taps, then every bubble the scan read (`elsaBurstFrozen`).
     ts.elsaBurstFrozen(iced);
+    w.lastBreakAt = Date.now();
     w.breaks++;
     w.icedAtBreaks.push(iced.length);
     if (closing) { w.closingBroken = true; }
@@ -1614,10 +1639,10 @@ registerSkill({
       ? { maxChain: 5, maxChainsPerScan: CoronationElsaConfig.loopChainsPerScan }
       : { maxChain: 5 };
   },
-  // A play-loop window holds the gauge until it closes: the gauge reads
-  // Active through the window's own animation, so a tap would only restart
-  // it. The choreography holds it by not returning until the close.
-  stillRunning: function(ts) { return elsaLoopOpen(); },
+  // A play-loop window holds the gauge through its lead-in (the animation
+  // reads Active); after that a refilled gauge fires again, as under Burst.
+  // The choreography holds it by not returning until the close.
+  stillRunning: function(ts) { return elsaLoopHoldsGauge(); },
   // While a play-loop window is open the bubbles are hers: a Bubble Strategy
   // pop could tap one frozen on the pile. `elsaLoopOrder` drops those and
   // pops the rest, after the batch (`popBubblesAfterChain`) or at once.
