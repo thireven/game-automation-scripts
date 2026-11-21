@@ -143,7 +143,7 @@ i18nRegister(Locale.Taiwan, '中文', {
     [UiText.SettingSkillType]: '技能類型',
     [UiText.SettingSkillTypeHelp]: '消除系適用大多數 Tsum；有名字的選項為該 Tsum 調校。',
     [UiText.SettingSkillLevel]: '技能等級',
-    [UiText.SettingSkillLevelHelp]: '只有仙度瑞拉、光年隊長與加冕日艾莎會用到。',
+    [UiText.SettingSkillLevelHelp]: '只有仙度瑞拉與光年隊長會用到。',
     [UiText.SettingSkillWaitingTime]: '技能等待時間(秒)',
     [UiText.SettingSkillWaitingTimeHelp]: '發動後最多靜置這麼久；Tsum 落定就繼續玩。',
     [UiText.SettingSkillSettle]: '等待版面補滿(秒)',

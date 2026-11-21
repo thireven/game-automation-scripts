@@ -39,8 +39,6 @@ var LogsJa: LogCataloguePartial = {
   [Log.Skill.TiaraUnsure]: '[Tiara] 確かな一致なし、停止',
   [Log.Skill.FormalBeastModeStart]: '[Formal Beast] ツインゲージ出現。両方を均等にためる',
   [Log.Skill.FormalBeastModeEnd]: '[Formal Beast] ツインゲージ終了',
-  [Log.Skill.ElsaDone]: '[Coronation Elsa] 凍結時間終了',
-  [Log.Skill.ElsaRoundOver]: '[Coronation Elsa] 凍結時間中にラウンド終了',
   [Log.Skill.GastonClear]: '[Gaston] 残りのツムを消去',
   [Log.Skill.GastonDone]: '[Gaston] 時間終了',
   [Log.Skill.GastonPass]: '[Gaston] チェーンを引いた',

@@ -144,8 +144,6 @@ class Tsum {
   skillSettleMs: number;
   /** "Delay Skill ReActivation" in ms: no activation this soon after the last one; 0 is off. */
   skillReactivationMs: number;
-  /** Debug "Elsa window": how Coronation Elsa plays her freeze window (`ElsaWindowMode`); 0 is her own loop. */
-  elsaWindowMode: number;
   /** When `useSkill` last tapped the skill button; 0 before the first. */
   skillActivatedAt: number;
   /** When a tap last fired the skill: `useSkill`'s, or a bare tap on a gauge read full; 0 for none. */
@@ -470,7 +468,6 @@ class Tsum {
     this.skillInterval = 3000;
     this.skillSettleMs = 0;
     this.skillReactivationMs = 0;
-    this.elsaWindowMode = 0;
     this.skillActivatedAt = 0;
     this.skillFiredAt = 0;
     this.skillLevel = 3;

@@ -123,7 +123,7 @@ var RapunzelPlusConfig = {
   // old answer, a short 1.35 reach, still let ~3% of routes clip one.
   hopReach: 1.6,
   crossAvoid: 0.7,
-  // Work the board bottom-up, as Coronation Day Elsa's window does -- but for a
+  // Work the board bottom-up, as Coronation Day Elsa's old window did -- but for a
   // harder reason than hers. For her it was measured free and argued from the
   // shape of a pile (67.1% against 67.0%); she can also spend a bad chain and
   // draw another. This skill has one drag, and the tsums at the top of the pile
@@ -131,7 +131,7 @@ var RapunzelPlusConfig = {
   // where a tsum used to be loses the whole chain, not one chain of several.
   //
   // Three parts, and it is the third that does the work. `lowFirst` into the
-  // search (Elsa's parameter); `fallingBand` held out of the plan; and the
+  // search (first added for Elsa); `fallingBand` held out of the plan; and the
   // finished path drawn from whichever end is lower, which is free because a
   // path links the same tsums drawn either way. It is needed because the search
   // orders its starts by *ascending degree*, and on a pile the loose low-degree

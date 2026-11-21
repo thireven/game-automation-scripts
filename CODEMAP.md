@@ -90,7 +90,7 @@ repository beside this one — `DEVELOPMENT.md` § The development toolkit.
 | How a tsum is identified and named, or why the `tsum` column is empty | `src/roundStats.ts`'s header for the reader; the library it reads, `src/tsums.dat`, is built by the development tools |
 | What is *in* an issue report, and how it left the device | `src/report.ts`; the host's `README.md` § Sending in a problem |
 | Which tooling is not here, and what the commands comments cite refer to | `DEVELOPMENT.md` § Development tooling outside this repo |
-| When something changed, and why | `CHANGELOG.md` — 1.0 on; `CHANGELOG_0.x.md` before that; `CHANGELOG_ELSA.md` for Coronation Day Elsa while she is off the production build |
+| When something changed, and why | `CHANGELOG.md` — 1.0 on; `CHANGELOG_0.x.md` before that; `CHANGELOG_ELSA.md` for Coronation Day Elsa's own skill (she plays as Burst from 6.0b33) |
 | How a release is cut, what it publishes, and where | `DEVELOPMENT.md` § Releasing, then `tools/release/` |
 | How Tsum runs each GAP Companion workflow node, the Tsum List file the `tsums` list reads, and how presets sync both ways with GAP Companion | `WORKFLOWS.md`; the contract itself is GAP Companion's own WORKFLOWS.md, in that repository's docs folder |
 | Known bugs, wanted features | `BACKLOG.md` |
@@ -104,7 +104,7 @@ enforces every row below, so these are true rather than approximate.
 
 | Name | Defined in |
 |:--|:--|
-| `Tsum#*` — any `ts.foo()` / `this.foo()` method | `src/tsum.ts`, `src/waits.ts`, `src/appLifecycle.ts`, `src/board.ts`, `src/play.ts`, `src/mail.ts`, `src/hearts.ts`, `src/levelCap.ts`, `src/boxes.ts`, `src/itemStore.ts`, `src/tsumList.ts`, `src/dialogs.ts`, `src/roundStats.ts`, `src/corpus.ts`, `src/report.ts`, `src/clickAssist.ts`, `src/walkthrough.ts`, `src/fever.ts`, `src/skills/skillCore.ts`, `src/skills/tiaraMinniePlus.ts`, `src/skills/cinderella.ts`, `src/skills/cptLy.ts`, `src/skills/formalBeast.ts`, `src/skills/coronationElsa.ts`, `src/lorcana.ts` — every signature also in `src/globals.d.ts` |
+| `Tsum#*` — any `ts.foo()` / `this.foo()` method | `src/tsum.ts`, `src/waits.ts`, `src/appLifecycle.ts`, `src/board.ts`, `src/play.ts`, `src/mail.ts`, `src/hearts.ts`, `src/levelCap.ts`, `src/boxes.ts`, `src/itemStore.ts`, `src/tsumList.ts`, `src/dialogs.ts`, `src/roundStats.ts`, `src/corpus.ts`, `src/report.ts`, `src/clickAssist.ts`, `src/walkthrough.ts`, `src/fever.ts`, `src/skills/skillCore.ts`, `src/skills/tiaraMinniePlus.ts`, `src/skills/cinderella.ts`, `src/skills/cptLy.ts`, `src/skills/formalBeast.ts`, `src/lorcana.ts` — every signature also in `src/globals.d.ts` |
 | `Tsum#task*` — the scheduled jobs | `src/play.ts`, `src/mail.ts`, `src/hearts.ts`, `src/levelCap.ts`, `src/boxes.ts`, `src/itemStore.ts`, `src/tsumList.ts`, `src/appLifecycle.ts`, `src/clickAssist.ts`, `src/walkthrough.ts` |
 | `TaskName`, `JobPriority`, `TaskSpec`, `RunSettings`, `runTaskTable` — the task table | `src/runPlan.ts` |
 | `ScriptVersion`, `Config`, `Button`, `Page`, `PageName`, `PageProfiles`, `NavPlans`, `PageAnchor`, `RouteSource`, `AnchorRoutes`, `PageRoutes` | `src/data.ts` |
@@ -124,7 +124,6 @@ enforces every row below, so these are true rather than approximate.
 | `onGapMessage` — the page-to-page nudge's handler, one per page | `src/settings.ts`, `src/quickbarPage.ts` |
 | `tiara*`, `Tiara*` | `src/skills/tiaraMinniePlus.ts` (tables included), `src/globals.d.ts` |
 | `formalBeast*`, `FormalBeast*` | `src/skills/formalBeast.ts` (tables included), `src/globals.d.ts` |
-| `elsa*`, `CoronationElsa*`, `ElsaWindowMode`, `gElsaLoop` | `src/skills/coronationElsa.ts` (tables included), `src/globals.d.ts`, `src/tsum.ts` (`Tsum#elsaWindowMode`, the Debug "Elsa window" knob) |
 | `lorcana*`, `Lorcana*`, `gLorcana` | `src/lorcana.ts` (tables included), `src/skills/lorcanaAurora.ts`, `src/globals.d.ts`, `src/shared.d.ts` (`SkillType.LorcanaAurora`, `SettingKey.LorcanaCard`), `src/tsum.ts` (the `lorcanaCard` field) |
 | `rapunzel*`, `RapunzelPlus*` | `src/skills/rapunzelPlus.ts` (tables included) — plain functions, no `Tsum` method |
 | `gaston*`, `Gaston*` | `src/skills/gaston.ts` (tables included) — plain functions, no `Tsum` method |

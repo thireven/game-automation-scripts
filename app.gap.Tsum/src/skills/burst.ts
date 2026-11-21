@@ -2,9 +2,12 @@
 //
 // No aiming and no follow-up: the tap is the whole activation, which is what
 // lets the play loop fire these blind between chains (see Tsum.link).
+//
+// Coronation Day Elsa plays as Burst since 6.0b33: her own freeze-window play
+// earned a third of Burst's coins, and played at Burst's speed it only tied.
 
 registerSkill({
-  types: [SkillType.Burst],
+  types: [SkillType.Burst, SkillType.CoronationElsa],
   bareTapActivates: true
 });
 

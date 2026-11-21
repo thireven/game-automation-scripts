@@ -97,6 +97,8 @@ var SkillsDeclared: SkillOption[] = [
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
     {key: SkillType.ColorfulMickeySet, share: 'M', title: UiText.SkillColorfulMickeySet,
      status: ReleaseStatus.Beta, group: UiText.SkillGroupBurst},
+    {key: SkillType.CoronationElsa, share: 'e', title: UiText.SkillCoronationElsa,
+     status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
     {key: SkillType.CptLightyear, share: 'l', title: UiText.SkillCptLightyear,
      status: ReleaseStatus.Production, group: UiText.SkillGroupBurst},
     {key: SkillType.CptLightyear120, share: 'L', title: UiText.SkillCptLightyear120,
@@ -133,8 +135,6 @@ var SkillsDeclared: SkillOption[] = [
      status: ReleaseStatus.Production, group: UiText.SkillGroupBubble},
 
     // --- Unique: the play loop plays differently while these are up ----------
-    {key: SkillType.CoronationElsa, share: 'e', title: UiText.SkillCoronationElsa,
-     status: ReleaseStatus.Production, group: UiText.SkillGroupUnique},
     {key: SkillType.FormalBeast, share: 'f', title: UiText.SkillFormalBeast,
      status: ReleaseStatus.Production, group: UiText.SkillGroupUnique},
     {key: SkillType.Gaston, share: 'G', title: UiText.SkillGaston,

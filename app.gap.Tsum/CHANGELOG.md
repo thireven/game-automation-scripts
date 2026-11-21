@@ -52,32 +52,23 @@ release note; they fold back in here when she ships.
 **Additions**
 
 *Skills*
-- Coronation Day Elsa: a faster way to play her freeze window to try, under Debug → Elsa window.
+- Coronation Day Elsa now plays as Burst, earning about 2.6x the coins of her old skill.
 
-### Added
+### Changed
 
-- **Debug "Elsa window"** (`elsaWindow`, 0-3, from the next round): an A/B of
-  her freeze window. 0 is her row sweep. 1-3 hand the window to the play loop
-  (`elsaLoopOrder` in `orderPaths`): ice read off each scan, no `iceFormMs`
-  wait, up to 4 chains a scan kept off read ice and bands still forming, and
-  the pile broken asap (1), when frozen out (2) or at the close (3). Her sweep
-  draws ~15 chains a window, mostly asleep (275 ms of each ~350 ms chain);
-  Burst play earns about 2x on her. `skill.elsa.loopScan`; `mode` on
-  `skill.elsa.done`.
-- In a play-loop window the gauge is held through the lead-in only, so a
-  refilled gauge fires again mid-window: Burst re-activated her every 7-10s
-  for 12-21 activations a round, against 10 with the window held. No break
-  within 700ms of the last (a shattering pile still reads as ice; piles were
-  broken 2-3 times), and the closing break needs 3 ice. `cutShortMs` on
-  `skill.elsa.done`.
-- Measured (one INTL device, level 6, Coin + 5▸4; base coins, mean of 3-9
-  rounds an arm): sweep 3,239; window 2 6,928; window 1 8,757; window 4
-  9,183; Burst 8,804. Holding the pile loses; speed and the mid-window
-  gauge are what pay.
-- Experiment knobs on the loop modes (`loopUncapped`, `loopIceFilter`,
-  `loopBreakMin`, set over the GAP CLI): none beat Burst. 4u led a 3-round
-  screen (9,112) and lost a 6-round head-to-head (8,139 vs 8,644); all fast
-  arms and Burst sit at 8.2-8.8k (18 Burst rounds: 8,538).
+- **`SkillType.CoronationElsa` plays as Burst** (`src/skills/burst.ts`), in
+  the Burst group. Id and share letter `e` kept, so saved forms, presets,
+  share codes and the stats sites carry over. Why, measured on one INTL
+  device (level 6, Coin + 5▸4, base coins): her row sweep 3,239; her window
+  handed to the play loop 8,757 at best; Burst 8,538 over 18 rounds. Her sweep
+  slept 275 ms of each ~350 ms chain and held the gauge through the window;
+  played fast, placing the ice and timing the break added nothing measurable.
+
+### Removed
+
+- **`src/skills/coronationElsa.ts`**, its `skill.elsa.*` events, and the
+  per-tsum light-blur colour read only she used (`TsumPoint.local`): one
+  image clone, blur and colour convert plus 5 reads a tsum, off every scan.
 
 ## [6.0b32]
 

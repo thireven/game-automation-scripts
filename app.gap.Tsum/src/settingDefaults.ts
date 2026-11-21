@@ -68,7 +68,6 @@ var SettingDefaults: Readonly<Settings> = {
   [SettingKey.Walkthrough]: false,
   [SettingKey.CollectUnknownScreens]: false,
   [SettingKey.PageHistoryDepth]: 20,
-  [SettingKey.ElsaWindow]: 0,
 };
 
 /** The Coin Target row's ceiling, shared by the page and the Quick Bar's clamp. */

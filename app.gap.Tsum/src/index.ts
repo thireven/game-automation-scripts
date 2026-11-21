@@ -286,7 +286,6 @@ const RemoteSettingKinds: { [key: string]: RemoteKind } = {
   [SettingKey.Walkthrough]: RemoteKind.Bool,
   [SettingKey.DeviceFps]: RemoteKind.Int,
   [SettingKey.PageHistoryDepth]: RemoteKind.Int,
-  [SettingKey.ElsaWindow]: RemoteKind.Int,
   [SettingKey.AutoLaunchApp]: RemoteKind.Bool,
   [SettingKey.GameRegion]: RemoteKind.Enum,
   [SettingKey.AutoPlayGame]: RemoteKind.Bool,
@@ -720,8 +719,6 @@ function buildRun(settings: Settings, logs: LogCatalogue): void {
     ? settings.skillSettleMs : 0;
   ts.skillReactivationMs = typeof settings.skillReactivationTenths === 'number'
     && settings.skillReactivationTenths > 0 ? settings.skillReactivationTenths * 100 : 0;
-  ts.elsaWindowMode = typeof settings.elsaWindow === 'number'
-    ? Math.min(4, Math.max(0, Math.round(settings.elsaWindow))) : 0;
   ts.skillLevel = settings.skillLevel;
   // `!== false` for a hand-written start() command and a stored form from before the row existed: on is the default.
   ts.autoSkillLevel = settings.autoSkillLevel !== false;

@@ -725,13 +725,6 @@ interface TsumPoint extends TsumTexture {
   b: number;
   g: number;
   r: number;
-  /**
-   * The centre's own colour, HSV off a light blur: what this tsum looks like
-   * with its neighbours kept out, where `b`/`g`/`r` above is the board-wide
-   * smear the clustering wants. Read per tsum by whatever must tell an
-   * overlay on one tsum from the tsum beside it (Elsa's ice).
-   */
-  local: Color;
   /** A large tsum's size against a normal one; absent on a normal tsum. */
   grow?: number;
 }
@@ -765,8 +758,6 @@ interface BoardPoint {
   tsumIdx: string;
   x: number;
   y: number;
-  /** `TsumPoint.local`, carried for per-tsum reads; absent on synthetic points. */
-  local?: Color;
   /** `TsumTexture.contrast`, likewise. */
   contrast?: number;
   /**
@@ -1880,25 +1871,6 @@ interface Tsum {
   useCinderellaSkill(activatedAt?: number): void;
   /** `timing` defaults to the 60fps table; see CptLyTiming in skills/cptLy.ts. */
   useCptLySkill(activatedAt?: number, timing?: CptLyTiming): void;
-
-  // --- skills/coronationElsa.ts ----------------------------------------
-  /** Set off the pile: aimed taps down the sorted pile, then its bubbles. */
-  elsaBurstFrozen(frozen: BoardPoint[]): number;
-  /**
-   * One settled capture (a mid-fall or bubbled ice-free look is retaken, a
-   * bounded number of times), split into free tsums and ice, plus what a drag
-   * must keep away from. `expected` is the settle gate's board population.
-   */
-  elsaLook(closesAt: number, expected?: number):
-    { free: BoardPoint[], iced: BoardPoint[], obstacles: {x: number, y: number, pad?: number}[],
-      waits: number, pops: number, popped: number };
-  /**
-   * Play the freeze window as a sweep: chain after chain on the lowest free
-   * row, one look per chain, until the window is nearly out; then one break
-   * and the bomb it leaves popped. `expectTsums` seeds the settle gate with
-   * the pre-activation board's size.
-   */
-  useCoronationElsaSkill(activatedAt?: number, expectTsums?: number): void;
 
   // --- skills/formalBeast.ts -------------------------------------------
   /**

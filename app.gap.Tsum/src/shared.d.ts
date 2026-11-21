@@ -56,11 +56,7 @@ declare const enum SkillType {
    */
   FormalBeast = 'beastda',
   TiaraMinniePlus = 'minnie12thplus',
-  /**
-   * Coronation Day Elsa. Her activation opens a timed freeze window rather than
-   * a burst: chains linked while it is open freeze lines of tsums, and one tap
-   * on a frozen tsum spends the lot -- see `src/skills/coronationElsa.ts`.
-   */
+  /** Coronation Day Elsa. Plays as Burst (`src/skills/burst.ts`). */
   CoronationElsa = 'elsa_coronation',
   /**
    * Rapunzel+. Her activation makes the board colour-blind for a moment: one
@@ -338,7 +334,6 @@ declare const enum SettingKey {
   Walkthrough = 'walkthrough',
   DeviceFps = 'deviceFps',
   PageHistoryDepth = 'pageHistoryDepth',
-  ElsaWindow = 'elsaWindow',
   Locale = 'locale',
   AutoLaunchApp = 'autoLaunchApp',
   GameRegion = 'gameRegion',
@@ -435,12 +430,6 @@ interface Settings {
   [SettingKey.DeviceFps]: number;
   /** How many page visits `gPages` keeps, and how many frames it writes in debug. */
   [SettingKey.PageHistoryDepth]: number;
-  /**
-   * Coronation Elsa A/B knob: 0 her own freeze-window loop; 1-3 the play loop
-   * runs the window and breaks the pile asap / when frozen out / at the close;
-   * 4 is 1 with no settle after a break.
-   */
-  [SettingKey.ElsaWindow]?: number;
   /**
    * The language the run writes its log sentences in. Not a schema entry --
    * genStartCommand() derives it from localStorage.

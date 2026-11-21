@@ -41,8 +41,6 @@ var LogsZhTw: LogCataloguePartial = {
   [Log.Skill.TiaraMissShot]: '[皇冠米妮] 已儲存失誤畫面',
   [Log.Skill.FormalBeastModeStart]: '[禮服野獸] 雙量表出現，維持平衡',
   [Log.Skill.FormalBeastModeEnd]: '[禮服野獸] 雙量表結束',
-  [Log.Skill.ElsaDone]: '[加冕日艾莎] 冰凍時間結束',
-  [Log.Skill.ElsaRoundOver]: '[加冕日艾莎] 回合在冰凍時間內結束',
   [Log.Skill.GastonClear]: '[加斯頓] 已清除其他 Tsum',
   [Log.Skill.GastonDone]: '[加斯頓] 時間結束',
   [Log.Skill.GastonPass]: '[加斯頓] 已連線',

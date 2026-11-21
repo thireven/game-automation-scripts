@@ -947,11 +947,11 @@ Tsum.prototype.scanBoardQuick = function() {
       }
       const tc = tcs[i];
       // Published as hue/saturation/value, not as the chroma feature they were
-      // grouped on -- the skills that read these (Elsa's frozen box, Formal
-      // Beast's two families) are written in those terms and stay that way.
+      // grouped on -- the skills that read these (Formal Beast's two
+      // families) are written in those terms and stay that way.
       this.boardClusters.push(chromaToHsv({b: tc.b, g: tc.g, r: tc.r}));
-      // The size beside the colour: a colour that is a handful of tsums on one
-      // scan is a transient, and Elsa's ice-alike whitelist must not learn it.
+      // The size beside the colour, logged with the board: a colour that is a
+      // handful of tsums on one scan is a transient.
       this.boardClusterSizes.push(tc.points.length);
       // The debug palette is five long and a skill may ask for more slots than
       // that, so it wraps -- two clusters sharing an overlay colour is a
@@ -964,7 +964,6 @@ Tsum.prototype.scanBoardQuick = function() {
           tsumIdx: i,
           x: p.x - (Config.tsumWidth / 2),
           y: p.y - (Config.tsumWidth / 2),
-          local: p.local,
           contrast: p.contrast,
           grow: p.grow,
         });

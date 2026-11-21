@@ -300,18 +300,15 @@ function findLongestTsumPath(
 // The `logs` parameter this used to take is gone: its only job was to hand the
 // two debug lines below a translated string, and debug lines are keyed by event
 // now rather than translated.
-// `maxChain` overrides the "Maximum Chain Number" setting for this call only.
-// Coronation Day Elsa is the one caller that passes it: her freeze line is drawn
-// between a chain's ends, so while her window is open a long chain is worth much
-// more than the setting's usual answer. Passing it beats writing `Config.maxChain`
-// for the duration -- a choreography that threw would leave the whole run capped
-// at whatever it had set.
+// `maxChain` overrides the "Maximum Chain Number" setting for this call only;
+// the play loop passes the skill's (`skillMaxChain`, from its `chainLimits`).
+// Passing it beats writing `Config.maxChain` for the duration -- a choreography
+// that threw would leave the whole run capped at whatever it had set.
 // `lowFirst` grows each chain from the lowest tsum the search can start on
 // rather than from any equally good one, and tags what comes back with the
-// `startY` it grew from. Elsa's freeze window used to be the one caller; it
-// now sweeps the board a row at a time and hands this a row's tsums instead,
-// so nothing passes it today. Kept because it costs nothing and the
-// development toolkit's coverage harness still drives it.
+// `startY` it grew from. Nothing passes it today (Coronation Day Elsa's old
+// window was the caller). Kept because it costs nothing and the development
+// toolkit's coverage harness still drives it.
 // `linkReach` overrides the "Link reach" setting, in tsum widths, the same way:
 // the play loop passes the skill's (`skillLinkReach`).
 function calculatePaths(
@@ -643,8 +640,8 @@ function bubbleLooks(img: NativeImage, circles: GameBubble[]): GameBubble[] {
 // A tsum's circle in the 200px play square `findTsums` works in. Hoisted out of
 // it because `findTsumCount` runs the same pass for the count alone, and two
 // copies of these would drift the first time one was retuned.
-// The box blur behind `TsumPoint.local`: wide enough to flatten a face's
-// features at the centre cross, narrow enough (a fifth of a tsum) to keep the
+// The light box blur `findLargeTsums` reads its colour grid off: wide enough
+// to flatten a face's features, narrow enough (a fifth of a tsum) to keep the
 // neighbours out. The 22px smear the clustering samples is the other extreme.
 const LocalSampleBlur = 5;
 // The heavy blur the clustering samples: a whole tsum, so faces flatten to one
@@ -966,7 +963,6 @@ function findTsums(img: NativeImage, grayImg: NativeImage,
   // retries, so a leak on this hot path would silently recur on every scan.
   // `grayImg` is deliberately not on that list -- the caller allocated it.
   const hsvImg = clone(img);
-  let localImg: NativeImage | null = null;
   try {
     const points: HoughCircle[] = circles.concat(large);
 
@@ -1004,14 +1000,6 @@ function findTsums(img: NativeImage, grayImg: NativeImage,
       pts.push({x: p.x, y: p.y + 1 < Config.screenResize ? p.y + 1 : p.y});
     }
     const samples = pts.length > 0 ? getImageColors(hsvImg, pts) : [];
-    // The same cross off a light blur: the tsum's own centre colour, with
-    // its neighbours kept out of it. The heavy blur above spans a whole tsum
-    // and reads a tsum ringed by pale ice as pale itself; this read does not,
-    // which is what tells an overlay on one tsum from the tsum next to it.
-    localImg = clone(img);
-    smooth(localImg, 1, scaledPx(LocalSampleBlur));
-    convertColor(localImg, 40);
-    const locals = pts.length > 0 ? getImageColors(localImg, pts) : [];
     // The texture read, off the gray the Hough pass already has.
     const textures = readTextures(grayImg, points);
 
@@ -1021,12 +1009,9 @@ function findTsums(img: NativeImage, grayImg: NativeImage,
       const p = points[k];
       const base = k * CrossPoints;
       let sumb = 0, sumg = 0, sumr = 0;
-      let lb = 0, lg = 0, lr = 0;
       for (let s = 0; s < CrossPoints; s++) {
         const c = samples[base + s];
         sumb += c.b; sumg += c.g; sumr += c.r;
-        const l = locals[base + s];
-        lb += l.b; lg += l.g; lr += l.r;
       }
       const c = chromaFeature({
         b: sumb / CrossPoints,
@@ -1040,7 +1025,6 @@ function findTsums(img: NativeImage, grayImg: NativeImage,
         x: p.x, y: p.y, z: p.radius,
         b: c.b, g: c.g, r: c.r,
         contrast: textures[k].contrast, peak: textures[k].peak,
-        local: {b: lb / CrossPoints, g: lg / CrossPoints, r: lr / CrossPoints},
         grow: (p as LargeCircle).grow,
       });
     }
@@ -1051,7 +1035,6 @@ function findTsums(img: NativeImage, grayImg: NativeImage,
 
     return results;
   } finally {
-    if (localImg != null) { releaseImage(localImg); }
     releaseImage(hsvImg);
   }
 }
@@ -1227,8 +1210,8 @@ function chromaFeature(hsv: Color): Color {
 /**
  * A cluster centre back as hue/saturation/value.
  *
- * Everything downstream of the scan reads `ts.boardClusters` as HSV -- Elsa's
- * frozen box and Formal Beast's two hue families both do -- so the model
+ * Everything downstream of the scan reads `ts.boardClusters` as HSV -- Formal
+ * Beast's two hue families do -- so the model
  * changed how tsums are grouped and not what a group is then called.
  */
 function chromaToHsv(c: Color): Color {

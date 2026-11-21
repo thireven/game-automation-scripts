@@ -5,7 +5,8 @@ Every change to the Coronation Day Elsa skill, and her Legacy twin (removed in
 production build and that file's `### Summary` ships as the release note. She
 is Production as of 5.0a2, so new work goes in `CHANGELOG.md`; her Summary
 lines below still fold back into that file's. Her pre-1.0 history -- she was added in 0.6 -- is in
-`CHANGELOG_0.x.md` with everything else of that time.
+`CHANGELOG_0.x.md` with everything else of that time. From 6.0b33 she plays as
+Burst and her own skill is gone (`CHANGELOG.md`).
 
 ## [3.0b5]
 

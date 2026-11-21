@@ -48,18 +48,6 @@
       "shows": "src/skills/skillCore.ts"
     },
     {
-      "id": "skill-coronation-elsa",
-      "title": "Coronation Elsa freezes the board and clears it in one pass",
-      "bracket": {
-        "event": "skill.use",
-        "match": { "skill": "elsa_coronation" },
-        "before": 2,
-        "after": 12
-      },
-      "maxSeconds": 20,
-      "shows": "src/skills/coronationElsa.ts"
-    },
-    {
       "id": "skill-gaston",
       "title": "Gaston snakes one chain down the pile",
       "bracket": {

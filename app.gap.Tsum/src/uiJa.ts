@@ -138,7 +138,7 @@ i18nRegister(Locale.Japanese, '日本語', {
     [UiText.SettingSkillType]: 'スキルタイプ',
     [UiText.SettingSkillTypeHelp]: 'ほとんどのツムは Burst で十分。名前付きはそのツム向けの調整です。',
     [UiText.SettingSkillLevel]: 'スキルレベル',
-    [UiText.SettingSkillLevelHelp]: 'Cinderella、Cpt. Lightyear、Coronation Elsa のみ使用します。',
+    [UiText.SettingSkillLevelHelp]: 'Cinderella、Cpt. Lightyear のみ使用します。',
     [UiText.SettingSkillWaitingTime]: 'スキル待機時間（秒）',
     [UiText.SettingSkillWaitingTimeHelp]: '発動後に盤面を放置する最大時間。ツムが落ちきればプレイを再開します。',
     [UiText.SettingSkillSettle]: '盤面の落ち着き待ち（秒）',

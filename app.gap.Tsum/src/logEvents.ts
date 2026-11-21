@@ -231,15 +231,6 @@ namespace Log {
     CabbageMickeyNotFound = 'skill.cabbageMickey.notFound',
     CinderellaStroke      = 'skill.cinderella.stroke',
     CptLyEnteredLate      = 'skill.cptLy.enteredLate',
-    ElsaBurst             = 'skill.elsa.burst',
-    ElsaDone              = 'skill.elsa.done',
-    ElsaIceAlike          = 'skill.elsa.iceAlike',
-    ElsaKind              = 'skill.elsa.kind',
-    /** A scan of a play-loop freeze window (Debug "Elsa window" 1-3). */
-    ElsaLoopScan          = 'skill.elsa.loopScan',
-    ElsaPass              = 'skill.elsa.pass',
-    ElsaSalvo             = 'skill.elsa.salvo',
-    ElsaRoundOver         = 'skill.elsa.roundOver',
     /** Colorful Mickey Set: its bar came up (long reach on) or went (off). */
     ColorfulMickeyReach   = 'skill.colorfulMickey.reach',
     /** Magic Wand Change: the locket was up (Pause lit, Fan dimmed) and was tapped. */

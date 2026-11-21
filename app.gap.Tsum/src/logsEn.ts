@@ -44,8 +44,6 @@ var LogsEn = {
   [Log.Skill.TiaraMissShot]: '[Tiara] Saved the screen of a miss',
   [Log.Skill.FormalBeastModeStart]: '[Formal Beast] Twin gauge up; levelling halves',
   [Log.Skill.FormalBeastModeEnd]: '[Formal Beast] Twin gauge gone',
-  [Log.Skill.ElsaDone]: '[Coronation Elsa] Freeze window closed',
-  [Log.Skill.ElsaRoundOver]: '[Coronation Elsa] Round ended inside the window',
   [Log.Skill.GastonClear]: '[Gaston] Leftovers cleared',
   [Log.Skill.GastonDone]: '[Gaston] Window closed',
   [Log.Skill.GastonPass]: '[Gaston] Chain drawn',
