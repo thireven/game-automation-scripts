@@ -74,6 +74,10 @@ release note; they fold back in here when she ships.
   rounds an arm): sweep 3,239; window 2 6,928; window 1 8,757; window 4
   9,183; Burst 8,804. Holding the pile loses; speed and the mid-window
   gauge are what pay.
+- Experiment knobs on the loop modes (`loopUncapped`, `loopIceFilter`,
+  `loopBreakMin`, set over the GAP CLI): none beat Burst. 4u led a 3-round
+  screen (9,112) and lost a 6-round head-to-head (8,139 vs 8,644); all fast
+  arms and Burst sit at 8.2-8.8k (18 Burst rounds: 8,538).
 
 ## [6.0b32]
 
