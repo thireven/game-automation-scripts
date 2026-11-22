@@ -58,7 +58,7 @@
 // same recording, the board reached its fullest a median of 0.45s after the
 // gate and then sat there. So the wait leaves on the count, and a board that
 // stops filling *short* of full has one bubble spent on it to shake the last
-// slow clear loose (`popKeepBubbles`).
+// slow clear loose (`popKeepBubbles`). Under A/B: see `bubbleArm`.
 //
 // **Between activations nothing chains bubbles at all.** They stand, and the
 // next activation's route takes every one of them. Chaining them as they turned
@@ -72,7 +72,8 @@
 // none: after the card the cap is the skill's (`chainMaxAfterCard`). The board
 // still has to keep clearing while the gauge fills, though, and a bubble is the
 // fastest clear there is -- so one is tapped into the clear of every second long
-// chain (`popEveryChains`), which costs the next route one link.
+// chain (`popEveryChains`), which costs the next route one link. Under A/B:
+// see `bubbleArm`.
 //
 // So the route is planned for spread rather than for speed. It is the opposite
 // of a travelling salesman: the longest tour through every bubble, not the
@@ -326,10 +327,34 @@ var LorcanaAuroraConfig = {
   // A bubble found on its own is not a chain. Tapped instead, so it is at least
   // spent -- the same call the stone handling makes.
   tapDuring: 10,
+
+  // EXPERIMENT (6.0b33 A/B). 'hoard' spends no bubble after the card: no
+  // refill pop, no bubble into long chains, so every one stands for the next
+  // window's chain. 'spend' is the play before it. 'alt' switches each round.
+  // The arm is logged on every chain record (`arm`); set over the GAP CLI.
+  // Why: the refill pop ended its wait mid-clear (drags onto 30 tsums against
+  // 40 without it), and chains carried only what one activation spawned.
+  bubbleArm: 'alt' as 'hoard' | 'spend' | 'alt',
 };
 
-/** Between activations: long chains linked since a bubble was last tapped. */
-var LorcanaAuroraPlay = { longChains: 0 };
+/**
+ * Per-round state. `longChains`: long chains linked since a bubble was last
+ * tapped. `arm`: this round's `bubbleArm`, fixed at the round's first call.
+ */
+var LorcanaAuroraPlay = { longChains: 0, round: 0, rounds: 0, arm: 'hoard' as 'hoard' | 'spend' };
+
+/** This round's `bubbleArm`; the first call in a round resets the round's state. */
+function lorcanaAuroraArm(ts: Tsum): 'hoard' | 'spend' {
+  const play = LorcanaAuroraPlay;
+  if (play.round !== ts.roundStartedAt) {
+    play.round = ts.roundStartedAt;
+    play.longChains = 0;
+    play.rounds++;
+    const cfg = LorcanaAuroraConfig.bubbleArm;
+    play.arm = cfg === 'alt' ? (play.rounds % 2 === 1 ? 'hoard' : 'spend') : cfg;
+  }
+  return play.arm;
+}
 
 // --- Waiting for the bubbles ------------------------------------------------
 
@@ -586,7 +611,7 @@ function lorcanaAuroraAwaitRefill(ts: Tsum): LorcanaAuroraBoard {
     if (stale >= cfg.refillStaleReads) {
       // It has finished filling and it is not full. Nothing more is coming on
       // its own, so either spend a bubble to shake it loose or go with this.
-      if (popped || !lorcanaAuroraPopOneBubble(ts)) { break; }
+      if (popped || lorcanaAuroraArm(ts) === 'hoard' || !lorcanaAuroraPopOneBubble(ts)) { break; }
       popped = true;
       stale = 0;
     }
@@ -674,6 +699,8 @@ function lorcanaAuroraChainBubbles(ts: Tsum, look: LorcanaAuroraLook, from: numb
     peakTsums: board.peak,
     refilled: board.refilled,
     poppedToFill: board.popped,
+    // The `bubbleArm` this round plays.
+    arm: LorcanaAuroraPlay.arm,
     // The skill gauge straight after the release, for the drags the game does
     // not take. Her bubbles only link while the transformed skill is running,
     // so a refused chain with the gauge still reading full is an activation that
@@ -1002,6 +1029,7 @@ registerSkill({
   // moving while the gauge fills. See `popChainMin` in the table.
   popBubblesAfterChain: function(ts, chainLength) {
     const cfg = LorcanaAuroraConfig;
+    if (lorcanaAuroraArm(ts) === 'hoard') { return 0; }
     if (!gLorcana.transformed || chainLength < cfg.popChainMin) { return 0; }
     LorcanaAuroraPlay.longChains++;
     // Nothing to tap: the count stands, so the next bubble to turn up is spent
@@ -1014,6 +1042,7 @@ registerSkill({
   },
   afterActivate: function(ts, _board, activatedAt) {
     const t0 = activatedAt || Date.now();
+    lorcanaAuroraArm(ts);
     if (!gLorcana.transformed) {
       // Before the card: Burst Bubbles, and the sweep takes the ink stone's
       // bubble with the rest. Reached with the "Lorcana Card" setting off as

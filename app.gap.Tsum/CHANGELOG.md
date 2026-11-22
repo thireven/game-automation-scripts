@@ -54,6 +54,17 @@ release note; they fold back in here when she ships.
 *Skills*
 - Lorcana Aurora skill improved by saving her bubbles after the transformation for bigger bursts (on alternate rounds while it is tested).
 
+### Changed
+
+- **Lorcana Aurora A/B: hoard every bubble after the card**
+  (`LorcanaAuroraConfig.bubbleArm`, default `alt`, arm logged as `arm` on
+  her chain records). Arm `hoard` drops the refill pop and the bubble tapped
+  into every second long chain; `spend` is the play before. Why, on a live
+  6.0b33 run (SL6, Coin + 5▸4): a refill pop ended its wait mid-clear, so
+  those drags went out onto 30 tsums against 40.5, and chains carried only
+  what one activation spawned (~6 bubbles). Her round state now resets per
+  round.
+
 ## [6.0b33]
 
 ### Summary
