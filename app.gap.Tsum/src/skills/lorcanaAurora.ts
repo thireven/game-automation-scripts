@@ -328,32 +328,79 @@ var LorcanaAuroraConfig = {
   // spent -- the same call the stone handling makes.
   tapDuring: 10,
 
-  // EXPERIMENT (6.0b33 A/B). 'hoard' spends no bubble after the card: no
+  // EXPERIMENT (6.0b34 A/B). 'hoard' spends no bubble after the card: no
   // refill pop, no bubble into long chains, so every one stands for the next
-  // window's chain. 'spend' is the play before it. 'alt' switches each round.
-  // The arm is logged on every chain record (`arm`); set over the GAP CLI.
-  // Why: the refill pop ended its wait mid-clear (drags onto 30 tsums against
-  // 40 without it), and chains carried only what one activation spawned.
-  bubbleArm: 'alt' as 'hoard' | 'spend' | 'alt',
+  // window's chain. 'spend' is the play before it. 'paced' is 'hoard' played
+  // at a human's pace (below). 'alt' rotates hoard, spend, paced by round.
+  // The arm is logged on every chain and sweep record (`arm`); set over the
+  // GAP CLI. Why: the refill pop ended its wait mid-clear, and chains carried
+  // only what one activation spawned.
+  bubbleArm: 'alt' as LorcanaAuroraArmName | 'alt',
+  // 'paced', after the card: one chain per scan, and none until the board is
+  // back -- `paceSettleMs` after the last drag and no longer filling, or
+  // `paceMaxMs`. Why: on 6.0b33 scans planned on a median 20 of ~40 tsums, up
+  // to four chains each, mostly 3-5 long. A held scan counts as barren, so
+  // with the Fan setting on six in a row would fan (off on the test device).
+  paceSettleMs: 600,
+  paceMaxMs: 1000,
+  // 'paced', before the card: a sweep pass pops only bubbles at least
+  // `sweepSpacingPx` apart (play-square px; a blast reaches ~40), so no blast
+  // lands on tsums another already took. The rest wait `sweepSpacedGapMs`.
+  sweepSpacingPx: 70,
+  sweepSpacedGapMs: 600,
+  sweepSpacedPasses: 3,
 };
+
+type LorcanaAuroraArmName = 'hoard' | 'spend' | 'paced';
 
 /**
  * Per-round state. `longChains`: long chains linked since a bubble was last
  * tapped. `arm`: this round's `bubbleArm`, fixed at the round's first call.
+ * `paceCount`: tsums the last paced scan saw; `paceHolds`: scans held since
+ * the last window.
  */
-var LorcanaAuroraPlay = { longChains: 0, round: 0, rounds: 0, arm: 'hoard' as 'hoard' | 'spend' };
+var LorcanaAuroraPlay = { longChains: 0, round: 0, rounds: 0, arm: 'hoard' as LorcanaAuroraArmName,
+  paceCount: 0, paceHolds: 0 };
 
 /** This round's `bubbleArm`; the first call in a round resets the round's state. */
-function lorcanaAuroraArm(ts: Tsum): 'hoard' | 'spend' {
+function lorcanaAuroraArm(ts: Tsum): LorcanaAuroraArmName {
   const play = LorcanaAuroraPlay;
   if (play.round !== ts.roundStartedAt) {
     play.round = ts.roundStartedAt;
     play.longChains = 0;
+    play.paceCount = 0;
+    play.paceHolds = 0;
     play.rounds++;
     const cfg = LorcanaAuroraConfig.bubbleArm;
-    play.arm = cfg === 'alt' ? (play.rounds % 2 === 1 ? 'hoard' : 'spend') : cfg;
+    const rotation: LorcanaAuroraArmName[] = ['hoard', 'spend', 'paced'];
+    play.arm = cfg === 'alt' ? rotation[(play.rounds - 1) % rotation.length] : cfg;
   }
   return play.arm;
+}
+
+/** 'paced': true while the board is still coming back from the last drag. */
+function lorcanaAuroraPaceHold(ts: Tsum, count: number): boolean {
+  const cfg = LorcanaAuroraConfig;
+  const play = LorcanaAuroraPlay;
+  const since = Date.now() - ts.dragReleasedAt;
+  const rising = count > play.paceCount;
+  play.paceCount = count;
+  const hold = since < cfg.paceMaxMs && (since < cfg.paceSettleMs || rising);
+  if (hold) { play.paceHolds++; }
+  return hold;
+}
+
+/** Bubbles from `list`, in order, skipping any within `minPx` of one already taken. */
+function lorcanaAuroraSpaced(list: Point[], minPx: number): Point[] {
+  const out: Point[] = [];
+  for (let i = 0; i < list.length; i++) {
+    let clear = true;
+    for (let j = 0; j < out.length && clear; j++) {
+      clear = lorcanaAuroraDistance(list[i], out[j]) >= minPx;
+    }
+    if (clear) { out.push(list[i]); }
+  }
+  return out;
 }
 
 // --- Waiting for the bubbles ------------------------------------------------
@@ -611,7 +658,7 @@ function lorcanaAuroraAwaitRefill(ts: Tsum): LorcanaAuroraBoard {
     if (stale >= cfg.refillStaleReads) {
       // It has finished filling and it is not full. Nothing more is coming on
       // its own, so either spend a bubble to shake it loose or go with this.
-      if (popped || lorcanaAuroraArm(ts) === 'hoard' || !lorcanaAuroraPopOneBubble(ts)) { break; }
+      if (popped || lorcanaAuroraArm(ts) !== 'spend' || !lorcanaAuroraPopOneBubble(ts)) { break; }
       popped = true;
       stale = 0;
     }
@@ -699,8 +746,9 @@ function lorcanaAuroraChainBubbles(ts: Tsum, look: LorcanaAuroraLook, from: numb
     peakTsums: board.peak,
     refilled: board.refilled,
     poppedToFill: board.popped,
-    // The `bubbleArm` this round plays.
+    // The `bubbleArm` this round plays, and ('paced') scans held since the last window.
     arm: LorcanaAuroraPlay.arm,
+    paceHolds: LorcanaAuroraPlay.paceHolds,
     // The skill gauge straight after the release, for the drags the game does
     // not take. Her bubbles only link while the transformed skill is running,
     // so a refused chain with the gauge still reading full is an activation that
@@ -964,10 +1012,12 @@ function lorcanaAuroraSweepBubbles(ts: Tsum, from: number): void {
   let targets: Point[] = look.bubbles;
   let left = 0;
   let passes = 0;
-  while (targets.length > 0 && passes < cfg.sweepPasses && ts.isRunning) {
-    pop(targets);
+  const paced = lorcanaAuroraArm(ts) === 'paced';
+  const maxPasses = paced ? cfg.sweepSpacedPasses : cfg.sweepPasses;
+  while (targets.length > 0 && passes < maxPasses && ts.isRunning) {
+    pop(paced ? lorcanaAuroraSpaced(targets, cfg.sweepSpacingPx) : targets);
     passes++;
-    ts.sleep(cfg.sweepPassGapMs);
+    ts.sleep(paced ? cfg.sweepSpacedGapMs : cfg.sweepPassGapMs);
     targets = lorcanaFindBubbles(ts);
     left = targets.length;
     // One circle left is as likely a tsum as a bubble; a bubble it is, the
@@ -992,6 +1042,7 @@ function lorcanaAuroraSweepBubbles(ts: Tsum, from: number): void {
     // is a sweep the game never took.
     left: left,
     tapped: tapped,
+    arm: LorcanaAuroraPlay.arm,
     totalMs: Date.now() - from,
   });
 }
@@ -1021,15 +1072,21 @@ registerSkill({
   //
   // Before the card the setting stands: her skill turns tsums into bubbles by
   // itself, and the sweep spends them where they stand.
-  chainLimits: function() {
-    return gLorcana.transformed
-      ? { maxChain: LorcanaAuroraConfig.chainMaxAfterCard } : {};
+  chainLimits: function(ts) {
+    if (!gLorcana.transformed) { return {}; }
+    const maxChain = LorcanaAuroraConfig.chainMaxAfterCard;
+    return lorcanaAuroraArm(ts) === 'paced' ? { maxChain: maxChain, maxChainsPerScan: 1 } : { maxChain: maxChain };
+  },
+  // 'paced': no chain until the board is back from the last one.
+  orderPaths: function(ts, paths, board) {
+    if (!gLorcana.transformed || lorcanaAuroraArm(ts) !== 'paced') { return paths; }
+    return lorcanaAuroraPaceHold(ts, board.length) ? [] : paths;
   },
   // One bubble into the clear of every second long chain, so the board keeps
   // moving while the gauge fills. See `popChainMin` in the table.
   popBubblesAfterChain: function(ts, chainLength) {
     const cfg = LorcanaAuroraConfig;
-    if (lorcanaAuroraArm(ts) === 'hoard') { return 0; }
+    if (lorcanaAuroraArm(ts) !== 'spend') { return 0; }
     if (!gLorcana.transformed || chainLength < cfg.popChainMin) { return 0; }
     LorcanaAuroraPlay.longChains++;
     // Nothing to tap: the count stands, so the next bubble to turn up is spent
@@ -1078,6 +1135,7 @@ registerSkill({
     // start on the next window's chain. Chaining them here was three small
     // bursts where the next window wants one big one -- see the header.
     LorcanaAuroraPlay.longChains = 0;
+    LorcanaAuroraPlay.paceHolds = 0;
     return true;
   }
 });

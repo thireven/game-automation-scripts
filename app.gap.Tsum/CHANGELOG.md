@@ -64,6 +64,13 @@ release note; they fold back in here when she ships.
   those drags went out onto 30 tsums against 40.5, and chains carried only
   what one activation spawned (~6 bubbles). Her round state now resets per
   round.
+- **Lorcana Aurora A/B: third arm `paced`** (rotation hoard, spend, paced).
+  `hoard` at a human's pace: after the card one chain per scan, held
+  (`orderPaths`) until the board is back from the last drag (`paceSettleMs`
+  600 and no longer filling, or `paceMaxMs` 1000); before the card the sweep
+  pops only bubbles 70 px apart per pass, so blasts do not land on tsums
+  another already took. Why: on 6.0b33 scans planned on a median 20 of ~40
+  tsums, up to four chains each, mostly 3-5 long.
 
 ## [6.0b33]
 
