@@ -49,28 +49,13 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
-**Additions**
-
-*Skills*
-- Lorcana Aurora skill improved by saving her bubbles after the transformation for bigger bursts (on alternate rounds while it is tested).
-
 ### Changed
 
-- **Lorcana Aurora A/B: hoard every bubble after the card**
-  (`LorcanaAuroraConfig.bubbleArm`, default `alt`, arm logged as `arm` on
-  her chain records). Arm `hoard` drops the refill pop and the bubble tapped
-  into every second long chain; `spend` is the play before. Why, on a live
-  6.0b33 run (SL6, Coin + 5▸4): a refill pop ended its wait mid-clear, so
-  those drags went out onto 30 tsums against 40.5, and chains carried only
-  what one activation spawned (~6 bubbles). Her round state now resets per
-  round.
-- **Lorcana Aurora A/B: third arm `paced`** (rotation hoard, spend, paced).
-  `hoard` at a human's pace: after the card one chain per scan, held
-  (`orderPaths`) until the board is back from the last drag (`paceSettleMs`
-  600 and no longer filling, or `paceMaxMs` 1000); before the card the sweep
-  pops only bubbles 70 px apart per pass, so blasts do not land on tsums
-  another already took. Why: on 6.0b33 scans planned on a median 20 of ~40
-  tsums, up to four chains each, mostly 3-5 long.
+- **Lorcana Aurora: two changes tried, neither kept.** Measured on one INTL
+  device (level 6, Coin + 5▸4, base coins, rounds rotated): her play as it
+  was 5,672 (8 rounds); keeping every bubble after the card for her next
+  chain 5,382 (8); that plus a human's pace (one chain per scan, after the
+  board is back) 4,940 (3), which filled her gauge ~36% slower.
 
 ## [6.0b33]
 
