@@ -45,6 +45,15 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b34]
+
+### Summary
+
+**Additions**
+
+*Skills*
+- Lorcana Aurora skill improved by saving her bubbles after the transformation for bigger bursts (on alternate rounds while it is tested).
+
 ## [6.0b33]
 
 ### Summary
