@@ -291,6 +291,7 @@ function reportManifest(tsum: Tsum, id: string, at: Date,
     note: note,
     script: {
       version: ScriptVersion,
+      channel: ScriptChannel,
       locale: tsum.settings ? tsum.settings.locale : undefined,
       build: tsum.gameBuild(),
     },

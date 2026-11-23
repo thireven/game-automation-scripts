@@ -7,6 +7,15 @@
 // reads it for meaning.
 var ScriptVersion = '$VERSION';
 
+// The channel this bundle shipped on, for issue reports and `run.started`: Alpha
+// and Beta can ship the same version string. Stamped like `$VERSION`, with the
+// numbers src/releaseStatus.ts uses; unstamped (build/) reads as 'dev'.
+var ScriptChannelStamp = '$RELEASE_STATUS';
+var ScriptChannel =
+  ScriptChannelStamp === '2' ? 'production' :
+  ScriptChannelStamp === '1' ? 'beta' :
+  ScriptChannelStamp === '0' ? 'alpha' : 'dev';
+
 var Config: TsumConfig = {
   statsDir: 'stats',
   // Centre-to-centre distance of two touching tsums, in the screenResize

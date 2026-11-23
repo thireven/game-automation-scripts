@@ -109,6 +109,7 @@ function start(settings: Settings) {
     // `ts.emit` -- see emitScriptEvent in tsum.ts.
     emitScriptEvent(Emit.Run.Started, {
       version: ScriptVersion,
+      channel: ScriptChannel,
       skill: statsSkillName(settings.skillType),
       locale: settings.locale,
     });

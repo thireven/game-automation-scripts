@@ -185,13 +185,15 @@ async function inlinePage(log, source, dest) {
  * in build/: the offline harnesses (tools/runtime, tools/pageDocs) read
  * build/index.js and want it readable when something there fails.
  *
- * The version is stamped in on the way past. build/index.js keeps the
- * placeholder -- that is the copy the harnesses read, and nothing there reads
- * it for meaning.
+ * The version and channel are stamped in on the way past. build/index.js keeps
+ * the placeholders -- that is the copy the harnesses read, and nothing there
+ * reads them for meaning.
  */
 async function distBundle(log) {
   const source = fs.readFileSync(local('build', 'index.js'), 'utf8');
-  fs.writeFileSync(local('build', 'index.stamped.js'), source.replaceAll('$VERSION', version));
+  fs.writeFileSync(local('build', 'index.stamped.js'), source
+    .replaceAll('$VERSION', version)
+    .replaceAll('$RELEASE_STATUS', String(channel.Status)));
   await node(log, 'tools/minify/minify.js', 'build/index.stamped.js', 'dist/index.js',
     '--ecma', '2023', '--verify', 'bundle');
   fs.rmSync(local('build', 'index.stamped.js'));

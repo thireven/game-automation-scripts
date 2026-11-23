@@ -107,7 +107,7 @@ enforces every row below, so these are true rather than approximate.
 | `Tsum#*` — any `ts.foo()` / `this.foo()` method | `src/tsum.ts`, `src/waits.ts`, `src/appLifecycle.ts`, `src/board.ts`, `src/play.ts`, `src/mail.ts`, `src/hearts.ts`, `src/levelCap.ts`, `src/boxes.ts`, `src/itemStore.ts`, `src/tsumList.ts`, `src/dialogs.ts`, `src/roundStats.ts`, `src/corpus.ts`, `src/report.ts`, `src/clickAssist.ts`, `src/walkthrough.ts`, `src/fever.ts`, `src/skills/skillCore.ts`, `src/skills/tiaraMinniePlus.ts`, `src/skills/cinderella.ts`, `src/skills/cptLy.ts`, `src/skills/formalBeast.ts`, `src/lorcana.ts` — every signature also in `src/globals.d.ts` |
 | `Tsum#task*` — the scheduled jobs | `src/play.ts`, `src/mail.ts`, `src/hearts.ts`, `src/levelCap.ts`, `src/boxes.ts`, `src/itemStore.ts`, `src/tsumList.ts`, `src/appLifecycle.ts`, `src/clickAssist.ts`, `src/walkthrough.ts` |
 | `TaskName`, `JobPriority`, `TaskSpec`, `RunSettings`, `runTaskTable` — the task table | `src/runPlan.ts` |
-| `ScriptVersion`, `Config`, `Button`, `Page`, `PageName`, `PageProfiles`, `NavPlans`, `PageAnchor`, `RouteSource`, `AnchorRoutes`, `PageRoutes` | `src/data.ts` |
+| `ScriptVersion`, `ScriptChannel`, `Config`, `Button`, `Page`, `PageName`, `PageProfiles`, `NavPlans`, `PageAnchor`, `RouteSource`, `AnchorRoutes`, `PageRoutes` | `src/data.ts` |
 | `forecast*`, `Forecast*` | `src/forecast.ts`, `src/globals.d.ts` |
 | `PageRouter#*`, `PageKind`, `PageRole`, `PageCategory*`, `subscriptionTakes`, `gPages` | `src/pages.ts` |
 | `PageDef`, `PageMatch`, `PageMap`, `PageProfile`, `PageProfileMap`, `PageSubscription`, `PageSubscriptionEntry`, `PageVisit`, `PageEvent`, `PageColor`, `PageRoute`, `PageRouteMap` | `src/globals.d.ts` |
@@ -228,6 +228,9 @@ The rules that are silent when broken. `DEVELOPMENT.md` explains each.
    `$BUILD_DATE`, and so does the game bundle (`ScriptVersion`, `src/data.ts`,
    stamped on the way into `dist/` so the round-stats CSV can say which build
    played a round); `tools/release/config.js` `loadVersion()` is the reader.
+   The channel is stamped the same way (`$RELEASE_STATUS`: `ScriptChannel` in
+   the bundle, `CHANNEL` on the settings page), because Alpha and Beta ship the
+   same version string.
 9. **Robotmon is gone on purpose** (ES2023, quality-100 captures, no
    `BOOTCLASSPATH`, no guards around optional natives) — `CLAUDE.md`.
 10. **The settings page is a WebView in an overlay window**, so it gets no

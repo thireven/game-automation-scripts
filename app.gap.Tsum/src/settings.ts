@@ -35,6 +35,14 @@ var PANEL_TITLE = 'Tsum Tsum v' + VERSION
         : ReleaseStatusMin === ReleaseStatus.Beta ? ' (Beta)' : '');
 
 /**
+ * The channel, read by the host after load like `VERSION`: a Beta or Alpha
+ * build gets a mark on the bar's version chip. Alpha and Beta ship the same
+ * version strings, so the version alone cannot say which.
+ */
+var CHANNEL = ReleaseStatusMin === ReleaseStatus.Alpha ? 'alpha'
+    : ReleaseStatusMin === ReleaseStatus.Beta ? 'beta' : 'production';
+
+/**
  * The localStorage key this page owns. THEME_KEY and TAB_KEY are only ever read
  * from a function, so they stay in their sections; the language tag is not here
  * at all -- `src/i18n.ts` owns it, because the Quick Bar reads the same entry.

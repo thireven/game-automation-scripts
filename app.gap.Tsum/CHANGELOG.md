@@ -74,6 +74,11 @@ release note; they fold back in here when she ships.
   `stats/screenshots-<day>.zip` (`-2`, `-3` if taken), removed only once zipped.
   Needs the host's new `zipFiles` (GAP 4.15+: synced before it returns, fails on
   a short read). Level 1: PNGs shrink ~7% either way, and 1 is faster than 6.
+- **Channel recorded** (`ScriptChannel`, `src/data.ts`): `report.json`'s
+  `script.channel` and `run.started`'s `channel` say `alpha` / `beta` /
+  `production`, since Alpha and Beta ship the same version string. The game
+  bundle gets `$RELEASE_STATUS` stamped like `$VERSION`. The settings page sets
+  `CHANNEL`, which newer GAP builds read to mark the bar's version chip.
 
 ### Changed
 
