@@ -229,8 +229,10 @@ The rules that are silent when broken. `DEVELOPMENT.md` explains each.
    stamped on the way into `dist/` so the round-stats CSV can say which build
    played a round); `tools/release/config.js` `loadVersion()` is the reader.
    The channel is stamped the same way (`$RELEASE_STATUS`: `ScriptChannel` in
-   the bundle, `CHANNEL` on the settings page), because Alpha and Beta ship the
-   same version string.
+   the bundle, `CHANNEL` on the settings page), because a build can be made for
+   a channel its version suffix does not name (`--channel Alpha` on a Beta line).
+   With no `--channel`, a build takes the version line's channel from that
+   suffix (`defaultChannelName`, `tools/release/config.js`).
 9. **Robotmon is gone on purpose** (ES2023, quality-100 captures, no
    `BOOTCLASSPATH`, no guards around optional natives) — `CLAUDE.md`.
 10. **The settings page is a WebView in an overlay window**, so it gets no

@@ -7,9 +7,9 @@
 // reads it for meaning.
 var ScriptVersion = '$VERSION';
 
-// The channel this bundle shipped on, for issue reports and `run.started`: Alpha
-// and Beta can ship the same version string. Stamped like `$VERSION`, with the
-// numbers src/releaseStatus.ts uses; unstamped (build/) reads as 'dev'.
+// The channel this bundle was built for, for issue reports and `run.started`: a
+// build can be made for a channel its version suffix does not name. Stamped like
+// `$VERSION`, with the numbers src/releaseStatus.ts uses; unstamped (build/) reads as 'dev'.
 var ScriptChannelStamp = '$RELEASE_STATUS';
 var ScriptChannel =
   ScriptChannelStamp === '2' ? 'production' :

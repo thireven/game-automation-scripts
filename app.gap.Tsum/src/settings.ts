@@ -36,8 +36,8 @@ var PANEL_TITLE = 'Tsum Tsum v' + VERSION
 
 /**
  * The channel, read by the host after load like `VERSION`: a Beta or Alpha
- * build gets a mark on the bar's version chip. Alpha and Beta ship the same
- * version strings, so the version alone cannot say which.
+ * build gets a mark on the bar's version chip. Said outright because a build
+ * can be made for a channel its version suffix does not name.
  */
 var CHANNEL = ReleaseStatusMin === ReleaseStatus.Alpha ? 'alpha'
     : ReleaseStatusMin === ReleaseStatus.Beta ? 'beta' : 'production';

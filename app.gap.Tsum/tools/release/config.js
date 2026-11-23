@@ -25,7 +25,22 @@ function loadVersion() {
 }
 
 /**
- * The channel entry for `key`, or the default channel when key is empty.
+ * The channel a build gets when none is named: the one the version line is
+ * releasing on, from package.json's suffix -- `6.0a12` Alpha, `6.0b34` Beta,
+ * `5.8` Production. Each bump opens a version for the channel it will be cut
+ * to, so a local build is labelled, and offers, what the next release will.
+ * `DefaultChannel` only for a version that fits none of these.
+ */
+function defaultChannelName(config, version = loadVersion()) {
+  if (/^\d+(\.\d+)*a\d*$/.test(version)) return 'Alpha';
+  if (/^\d+(\.\d+)*b\d*$/.test(version)) return 'Beta';
+  if (/^\d+(\.\d+)*$/.test(version)) return 'Production';
+  return config.DefaultChannel;
+}
+
+/**
+ * The channel entry for `key`, or the version line's ([defaultChannelName])
+ * when key is empty.
  *
  * `Status` is the lowest `SkillStatus` the channel offers, and is required
  * rather than defaulted: the build stamps it into src/skillOptions.ts, and a
@@ -33,7 +48,7 @@ function loadVersion() {
  * everyone, which looks like a working build.
  */
 function resolveChannel(config, key) {
-  const name = key || config.DefaultChannel;
+  const name = key || defaultChannelName(config);
   const channel = config.Channels[name];
   if (!channel) {
     const known = Object.keys(config.Channels).join(', ');
@@ -71,5 +86,6 @@ function archiveName(channel) {
 }
 
 module.exports = {
-  projectDir, configFile, packageFile, loadConfig, loadVersion, resolveChannel, archiveName,
+  projectDir, configFile, packageFile, loadConfig, loadVersion, defaultChannelName, resolveChannel,
+  archiveName,
 };

@@ -76,11 +76,19 @@ release note; they fold back in here when she ships.
   a short read). Level 1: PNGs shrink ~7% either way, and 1 is faster than 6.
 - **Channel recorded** (`ScriptChannel`, `src/data.ts`): `report.json`'s
   `script.channel` and `run.started`'s `channel` say `alpha` / `beta` /
-  `production`, since Alpha and Beta ship the same version string. The game
-  bundle gets `$RELEASE_STATUS` stamped like `$VERSION`. The settings page sets
-  `CHANNEL`, which newer GAP builds read to mark the bar's version chip.
+  `production`, since a build can be made for a channel its version suffix
+  does not name. The game bundle gets `$RELEASE_STATUS` stamped like
+  `$VERSION`. The settings page sets `CHANNEL`, which newer GAP builds read to
+  mark the bar's version chip.
 
 ### Changed
+
+- **A build with no `--channel` takes the version line's channel**
+  (`defaultChannelName`, `tools/release/config.js`): `6.0b34` builds Beta,
+  `6.0a12` Alpha, `5.8` Production. It was always `config.json`'s
+  `DefaultChannel` (Alpha), so every local build said Alpha on a Beta line. A
+  local build now offers only what the next release will; `--channel Alpha`
+  brings back Alpha-status skills and settings. `debug_deploy.ps1` follows.
 
 - **Lorcana Aurora: two changes tried, neither kept.** Measured on one INTL
   device (level 6, Coin + 5▸4, base coins, rounds rotated): her play as it

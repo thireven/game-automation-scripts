@@ -1057,7 +1057,11 @@ shell starts it.
 **The archive is named from `config.json` and `package.json`**, not `index.zip`:
 the channel's `Archive` and the `version` the package is on, so
 `TsumTsum-Alpha-0.1.zip`. The channel is `build.sh -c Beta`, `build.ps1 -Channel
-Beta` or `--channel Beta`, and the default channel when none says. A downloaded
+Beta` or `--channel Beta`. When none says, it is the version line's, from the
+suffix of `package.json`'s version (`6.0a12` Alpha, `6.0b34` Beta, `5.8`
+Production; `config.json`'s `DefaultChannel` only for anything else), so a
+local build is the channel the next release will be: on a Beta line it offers
+no Alpha-status skill or setting until built with `--channel Alpha`. A downloaded
 archive therefore says which release it is, and [Releasing](#releasing) below
 cannot publish an entry describing a different build.
 

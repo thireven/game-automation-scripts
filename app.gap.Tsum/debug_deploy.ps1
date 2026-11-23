@@ -15,7 +15,11 @@ $DistDir = Join-Path $ScriptDir "dist"
 # with spaces in the name turned into dashes. Deriving it from config.json is what
 # keeps this pushing over the release the app already has, instead of beside it.
 $Config = Get-Content -LiteralPath (Join-Path $ScriptDir "config.json") -Raw | ConvertFrom-Json
-if (-not $Channel) { $Channel = $Config.DefaultChannel }
+# No channel named: the version line's (6.0b34 -> Beta), by the build's own rule.
+if (-not $Channel) {
+    $ConfigJs = (Join-Path $ScriptDir "tools/release/config.js") -replace '\\', '/'
+    $Channel = & node -e "const c = require('$ConfigJs'); process.stdout.write(c.defaultChannelName(c.loadConfig()))"
+}
 $ChannelConfig = $Config.Channels.$Channel
 if (-not $ChannelConfig) {
     Write-Host "Unknown channel '$Channel'. config.json knows: $($Config.Channels.PSObject.Properties.Name -join ', ')."
