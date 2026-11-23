@@ -49,6 +49,29 @@ release note; they fold back in here when she ships.
 
 ### Summary
 
+**Additions**
+
+*Stats*
+- Which tsum? on the Quick Bar: when the selected tsum is not recognised, pick it from the closest matches and its rounds are recorded under it.
+- An unrecognised tsum's pre-round screen is saved once, so its rounds can be filled in later.
+- Stats screenshots are zipped into one file per day (GAP 4.15 or later).
+
+### Added
+
+- **Unrecognised My Tsum** (`myTsumUnknownSeen`, `src/roundStats.ts`): each
+  unknown icon is kept for the run by its signature (≥ 0.95 alike is the same
+  icon). A stretch of it takes one `stats/mytsum-unknown-<stamp>.png` (max 8 a
+  run, only with Record round stats); empty `tsum` rows belong to the last
+  such shot before them.
+- **Quick Bar ask** (`.qb-ask`, `qbRenderAsk`): the library's 24 nearest tsums,
+  two at a time, the full list in a sheet while paused. Widens the hotspot so it
+  takes taps mid-run. `myTsumPick` names this round and the icon for the run,
+  and applies Auto Set Skill Level.
+- **Day zips** (`statsZipOldShots`): after a round's row, once a UTC day, past
+  days' `unread-*` / `mytsum-*` PNGs go into `stats/screenshots-<day>.zip`
+  (`-2`, `-3` if taken), removed only once zipped. Needs the host's new
+  `zipFiles` (GAP 4.15+). PNGs shrink ~5-13% zipped; the win is one file a day.
+
 ### Changed
 
 - **Lorcana Aurora: two changes tried, neither kept.** Measured on one INTL

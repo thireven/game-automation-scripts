@@ -78,6 +78,11 @@
           strip (`quickBarNotice` in src/quickbar.ts), with `.qb-notice-kicker`,
           `.qb-notice-title` and `.qb-notice-sub`; hidden until one arrives,
           several shown in turn; under an open sheet;
+        * `.qb-ask` asks which tsum an unrecognised pre-round icon is
+          (`myTsumAsk`): `.qb-ask-picks` gets one `#tpl-ask-pick` per name,
+          `.qb-ask-more` shows more, `.qb-ask-close` puts it away. Outside
+          `.qb-controls`, and named to the host as the hotspot while up, so it
+          takes taps mid-run; under a notice;
         * `<body>` carries `data-state`, which is what the CSS reads;
         * every control is a `<button>` inside `.qb-controls` -- that is what
           quickbarPage.ts disables while the script is running, the page
@@ -462,6 +467,22 @@
       </span>
       <span class="qb-notice-timer" aria-hidden="true"></span>
     </div>
+
+    <!-- Which tsum is this? Over the whole strip while the pre-round icon is
+         one the library could not name; a pick names this round and the rest
+         of the run's rounds with that icon. -->
+    <div class="qb-ask" role="group" hidden>
+      <span class="qb-ask-label" data-i18n="qb.askTsum">Which tsum?</span>
+      <span class="qb-ask-picks"></span>
+      <button class="qb-ask-more" type="button" data-i18n="qb.askMore">More</button>
+      <button class="qb-ask-close" type="button">
+        <span aria-hidden="true">&#10005;</span>
+        <span class="qb-sr" data-i18n="qb.askClose">Not now</span>
+      </button>
+    </div>
+    <template id="tpl-ask-pick">
+      <button class="qb-ask-pick" type="button"></button>
+    </template>
 
     <!--
       The skill list is a button and a sheet, not a <select>: this WebView is in

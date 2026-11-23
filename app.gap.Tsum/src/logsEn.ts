@@ -91,6 +91,8 @@ var LogsEn = {
   [Log.Tsums.Detected]: 'MyTsum read from the settings page',
   [Log.Tsums.Identified]: 'MyTsum identified',
   [Log.Tsums.Unidentified]: 'Selected tsum unknown; round recorded without one',
+  [Log.Tsums.Picked]: 'MyTsum picked on the Quick Bar',
+  [Log.Tsums.PickReused]: 'MyTsum picked earlier this run',
   [Log.Tsums.Unreadable]: 'Pre-round tsum icon unreadable',
   [Log.Tsums.NoLibrary]: 'Tsum library missing; rounds recorded without a tsum',
   [Log.Tsums.StaleTemplate]: 'Tsum library mismatches this release; ignored',

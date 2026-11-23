@@ -1841,33 +1841,42 @@ Tsum.prototype.myTsumSignature = function(rect) {
  * carries no library.
  */
 Tsum.prototype.selectedTsum = function() {
+  const read = myTsumRead(this);
+  return read === null ? null : read.selected;
+};
+
+/** `selectedTsum`, plus the icon's prepared signature, which an unknown icon is remembered by. */
+function myTsumRead(t: Tsum): { selected: MyTsumSelection; vec: number[] } | null {
   // Before the capture, not after it: with no library there is nothing to score
   // the icon against, and reading one costs a screenshot and a resize chain on
   // every pre-round screen. myTsumLibrary() has already said why, once.
   if (myTsumLibrary().length === 0) {
     return null;
   }
-  const sig = this.myTsumSignature(MyTsumPortrait.icon);
+  const sig = t.myTsumSignature(MyTsumPortrait.icon);
   if (sig === null) {
     logWarn(Log.Tsums.Unreadable, 'Could not read the pre-round tsum icon');
     return null;
   }
   // Named as the build in front prints it.
-  const match = myTsumMatch(sig, this.gameBuild());
+  const match = myTsumMatch(sig, t.gameBuild());
   if (match === null) {
     return null;
   }
   return {
-    short: match.short,
-    full: match.full,
-    build: match.build,
-    score: match.score,
-    margin: match.margin,
-    rival: match.rival,
-    rivalGap: match.rivalGap,
-    confident: myTsumConfident(match)
+    selected: {
+      short: match.short,
+      full: match.full,
+      build: match.build,
+      score: match.score,
+      margin: match.margin,
+      rival: match.rival,
+      rivalGap: match.rivalGap,
+      confident: myTsumConfident(match)
+    },
+    vec: myTsumPrepare(sig),
   };
-};
+}
 
 /**
  * Read the pre-round button icon and remember which tsum it is.
@@ -1879,13 +1888,14 @@ Tsum.prototype.selectedTsum = function() {
  * `selectedTsum` costs a capture, once per arrival on that screen.
  */
 Tsum.prototype.identifyMyTsum = function() {
-  const selected = this.selectedTsum();
+  const read = myTsumRead(this);
+  const selected = read !== null ? read.selected : null;
   // The CSV carries the short name, and only when the match cleared both
   // thresholds: an empty cell is honest, a coin flip between two lookalikes is
-  // not. selectedTsum() has already said why on the null path.
+  // not. myTsumRead() has already said why on the null path.
   this.myTsum = selected !== null && selected.confident ? selected.short : '';
   this.myTsumName = this.myTsum !== '' && selected !== null ? selected.full : '';
-  if (selected === null) {
+  if (read === null || selected === null) {
     return;
   }
   // One record either way, carrying the runner-up gap. Which tsum nearly won,
@@ -1901,13 +1911,8 @@ Tsum.prototype.identifyMyTsum = function() {
       rival: selected.rival,
       rivalGap: +selected.rivalGap.toFixed(3),
     });
-    // On the banner for the round it belongs to, not for a fixed few seconds:
-    // one showing, and the next pre-round screen replaces it. The catalogue
-    // sentence is reused so the strip is in the run's language, like the log.
-    this.banner('Tsum: ' + selected.full);
-    this.applyAutoSkillLevel(selected.short);
-    // Add-ons last: one may put a setting on the run for the round about to start.
-    gapAddonsMyTsum(this, selected.short, selected.full);
+    this.myTsumAsk = null;
+    myTsumNamed(this, selected.short, selected.full);
   } else {
     logWarn(Log.Tsums.Unidentified,
       'No tsum in the library matched the pre-round icon well enough; leaving the column empty', {
@@ -1921,8 +1926,193 @@ Tsum.prototype.identifyMyTsum = function() {
       signatures: myTsumLibrary().length,
       library: myTsumLibraryTsums,
     });
+    myTsumUnknownSeen(this, read.vec);
   }
 };
+
+/** A named tsum on the run: the banner, Auto Set Skill Level and the add-ons' hook. */
+function myTsumNamed(t: Tsum, short: string, full: string): void {
+  // On the banner for the round it belongs to, not for a fixed few seconds:
+  // one showing, and the next pre-round screen replaces it.
+  t.banner('Tsum: ' + full);
+  t.applyAutoSkillLevel(short);
+  // Add-ons last: one may put a setting on the run for the round about to start.
+  gapAddonsMyTsum(t, short, full);
+}
+
+// ---------------------------------------------------------------------------
+// An icon the library cannot name
+//
+// Its rounds go into the CSV with an empty `tsum`. Two things make them
+// recoverable: one full-screen shot per stretch of them in stats/
+// (`mytsum-unknown-<stamp>.png`), so a row can be backfilled later -- every
+// empty row belongs to the last such shot before it -- and the Quick Bar
+// asking the user which tsum it is (`myTsumPick`). A pick names this round's
+// row and every later round with the same icon, for the rest of the run.
+// ---------------------------------------------------------------------------
+
+/**
+ * How alike two reads must be to be the same icon. Two reads of one icon sit
+ * well above this; two tsums sit below it, except art twins (`twinGap`), which
+ * an unknown icon then shares a pick with.
+ */
+const MyTsumSameIcon = 0.95;
+/** How many of the library's nearest tsums the Quick Bar offers. */
+const MyTsumCandidateCount = 24;
+/** Shots of unknown icons per run, in case reads of one icon keep disagreeing. */
+const MyTsumMaxShots = 8;
+
+/** The last ask id handed out: a time, so no earlier run or load shares one, and rising. */
+var gMyTsumAskId = 0;
+
+/** The unknown icon this run already holds that `vec` is a read of, or null. */
+function myTsumUnknownFor(t: Tsum, vec: number[]): MyTsumUnknown | null {
+  let found: MyTsumUnknown | null = null;
+  let best = MyTsumSameIcon;
+  for (const unknown of t.myTsumUnknowns) {
+    const score = myTsumSimilarity(vec, unknown.vec);
+    if (score >= best) {
+      best = score;
+      found = unknown;
+    }
+  }
+  return found;
+}
+
+/** The library's tsums nearest `vec`, one entry per tsum, best first. */
+function myTsumCandidates(vec: number[], build: GameBuild): MyTsumCandidate[] {
+  const best = new Map<string, { score: number; name: string }>();
+  for (const entry of myTsumLibrary()) {
+    const score = myTsumSimilarity(vec, entry.vec);
+    const held = best.get(entry.short);
+    if (held === undefined || score > held.score) {
+      best.set(entry.short, { score: score, name: entry.names[build] });
+    }
+  }
+  return [...best.entries()]
+    .sort((a, b) => b[1].score - a[1].score)
+    .slice(0, MyTsumCandidateCount)
+    .map(([short, held]) => ({ short: short, name: held.name }));
+}
+
+/**
+ * `identifyMyTsum`'s unconfident path: an icon picked earlier this run is named
+ * by that pick; otherwise the Quick Bar asks about it, and a stretch of it takes
+ * one shot.
+ */
+function myTsumUnknownSeen(t: Tsum, vec: number[]): void {
+  let unknown = myTsumUnknownFor(t, vec);
+  const fresh = unknown === null;
+  if (unknown === null) {
+    gMyTsumAskId = Math.max(Date.now(), gMyTsumAskId + 1);
+    unknown = {
+      id: gMyTsumAskId,
+      vec: vec,
+      since: Date.now(),
+      shot: '',
+      candidates: myTsumCandidates(vec, t.gameBuild()),
+      pick: '',
+    };
+    t.myTsumUnknowns.push(unknown);
+  }
+  if (unknown.pick !== '') {
+    const name = myTsumCandidateName(unknown, unknown.pick);
+    t.myTsum = unknown.pick;
+    t.myTsumName = name;
+    t.myTsumAsk = null;
+    logInfo(Log.Tsums.PickReused, { tsum: unknown.pick, name: name, id: unknown.id });
+    myTsumNamed(t, unknown.pick, name);
+    return;
+  }
+  if (fresh) {
+    t.banner('Tsum not recognised: pick it on the Quick Bar', 6000);
+  }
+  t.myTsumAsk = unknown;
+  // Only the stats need the shot, and only one per stretch: the rows after it
+  // are its rounds until another shot or a named tsum.
+  if (t.trackRoundStats && t.myTsumLastShot !== unknown) {
+    myTsumSaveShot(t, unknown);
+  }
+}
+
+/** `short`'s name as `unknown` offered it; '' when it was not offered. */
+function myTsumCandidateName(unknown: MyTsumUnknown, short: string): string {
+  for (const candidate of unknown.candidates) {
+    if (candidate.short === short) {
+      return candidate.name;
+    }
+  }
+  return '';
+}
+
+/** The pre-round screen, full resolution, into stats/ (see the section header). */
+function myTsumSaveShot(t: Tsum, unknown: MyTsumUnknown): void {
+  if (t.myTsumShots >= MyTsumMaxShots) {
+    return;
+  }
+  t.myTsumShots++;
+  // Before the save, so a failing save is not retried every round.
+  t.myTsumLastShot = unknown;
+  const path = t.devicePath + '/' + Config.statsDir
+    + '/mytsum-unknown-' + statsFileStamp(new Date()) + '.png';
+  let img: NativeImage | null = null;
+  try {
+    img = t.dialogScreenshot(t.originScreenWidth, t.originScreenHeight);
+    saveImage(img, path);
+    unknown.shot = path;
+    logWarn(Log.Tsums.ShotSaved, 'Saved the screen of an unrecognised tsum', {
+      path: path,
+      id: unknown.id,
+      best: unknown.candidates.length > 0 ? unknown.candidates[0].short : '',
+      shot: t.myTsumShots,
+      maxShots: MyTsumMaxShots,
+    });
+  } catch (e) {
+    logWarn(Log.Stats.ShotSaveFailed, 'Could not save the stats screenshot',
+      { path: path, errorText: '' + e });
+  } finally {
+    if (img !== null) {
+      releaseImage(img);
+    }
+  }
+}
+
+/**
+ * The Quick Bar's pick for the icon it is asking about (`myTsumAsk`). A global
+ * the strip calls by name. Names the round in play (its row is written at the
+ * end) and every later round with the icon. `id` guards against an ask that has
+ * moved on. Answers `ok`, `no run`, `stale` or `not offered`.
+ */
+// noinspection JSUnusedGlobalSymbols
+function myTsumPick(id: number, short: string): string {
+  if (!gRunActive || ts === undefined) {
+    return 'no run';
+  }
+  const run = ts;
+  const ask = run.myTsumAsk;
+  if (ask === null || ask.id !== id) {
+    return 'stale';
+  }
+  const name = myTsumCandidateName(ask, short);
+  if (name === '') {
+    return 'not offered';
+  }
+  ask.pick = short;
+  run.myTsumAsk = null;
+  run.myTsum = short;
+  run.myTsumName = name;
+  logInfo(Log.Tsums.Picked, {
+    tsum: short,
+    name: name,
+    id: ask.id,
+    rank: ask.candidates.findIndex((c) => c.short === short) + 1,
+    best: ask.candidates.length > 0 ? ask.candidates[0].short : '',
+    shot: ask.shot,
+  });
+  run.banner('Tsum: ' + name);
+  run.applyAutoSkillLevel(short);
+  return 'ok';
+}
 
 /**
  * How long `detectMyTsum` waits before its capture.
@@ -2376,6 +2566,8 @@ Tsum.prototype.finishRoundStats = function() {
       medals: medals,
     };
     this.writeRoundStats(new Date(), seconds, score, baseCoins, finalCoins, medals);
+    // Once a UTC day: the shots of days already over go into their zip.
+    statsZipOldShots(this.devicePath + '/' + Config.statsDir, new Date());
     // Add-ons that read the score page do it now, before anything taps it away.
     if (sawScorePage) {
       gapAddonsRoundStats(this, this.lastRound);
@@ -2461,6 +2653,59 @@ Tsum.prototype.saveStatsDebugShot = function(tag) {
     }
   }
 };
+
+/** The shots this file leaves in stats/, and the UTC day in their stamp. */
+const StatsShotName = /^(?:unread|mytsum)-.*-(\d{8})-\d{6}\.png$/;
+
+/** The UTC day last swept (`statsZipOldShots`), so it runs once a day. */
+var gStatsZipDay = '';
+
+/**
+ * Moves the shots of every finished UTC day into stats/screenshots-<YYYYMMDD>.zip
+ * and removes the PNGs; today's stay loose so they can be looked at as they come.
+ * A day already zipped (another run, or another emulator on a shared folder)
+ * gets `-2`, `-3`. Needs the host's `zipFiles`; without it the PNGs stay.
+ */
+function statsZipOldShots(dir: string, now: Date): void {
+  const today = statsFileStamp(now).substring(0, 8);
+  if (today === gStatsZipDay || typeof zipFiles !== 'function') {
+    return;
+  }
+  gStatsZipDay = today;
+  try {
+    const names = listDir(dir);
+    const byDay = new Map<string, string[]>();
+    for (const name of names) {
+      const m = StatsShotName.exec(name);
+      if (m !== null && m[1] < today) {
+        const files = byDay.get(m[1]) || [];
+        files.push(dir + '/' + name);
+        byDay.set(m[1], files);
+      }
+    }
+    for (const [day, files] of byDay) {
+      let zip = 'screenshots-' + day + '.zip';
+      for (let n = 2; names.indexOf(zip) >= 0; n++) {
+        zip = 'screenshots-' + day + '-' + n + '.zip';
+      }
+      // All or nothing, so a PNG is only removed once it is in a zip.
+      const written = zipFiles(dir + '/' + zip, files, 6);
+      if (written !== files.length) {
+        logWarn(Log.Stats.ShotsNotZipped, 'Could not zip a day of stats screenshots; left as they are',
+          { day: day, files: files.length, zip: zip, written: written });
+        continue;
+      }
+      for (const file of files) {
+        removeFile(file, false);
+      }
+      logInfo(Log.Stats.ShotsZipped, 'Zipped a day of stats screenshots',
+        { day: day, files: files.length, zip: zip });
+    }
+  } catch (e) {
+    logWarn(Log.Stats.ShotsNotZipped, 'Could not zip the stats screenshots',
+      { errorText: '' + e });
+  }
+}
 
 function statsSkillName(skillType: SkillType | undefined | null): string {
   const name = String(skillType === undefined || skillType === null ? '' : skillType)

@@ -87,6 +87,16 @@ class Tsum {
   myTsum: string;
   /** `myTsum`'s full name as the game build prints it ('' with it). */
   myTsumName: string;
+  /**
+   * Every pre-round icon this run that the library could not name, one per
+   * distinct icon, with what the user picked for it (`identifyMyTsum`).
+   */
+  myTsumUnknowns: MyTsumUnknown[];
+  /** The one on screen now, which the Quick Bar asks about; null once one is named. */
+  myTsumAsk: MyTsumUnknown | null;
+  /** The unknown icon the last `mytsum-*.png` shot is of, so a stretch takes one. */
+  myTsumLastShot: MyTsumUnknown | null;
+  myTsumShots: number;
   myTsumColor: Color | null;
   myTsumIdx: number;
   boardClusters: Color[];
@@ -419,6 +429,10 @@ class Tsum {
     this.runTimes = 0;
     this.myTsum = '';
     this.myTsumName = '';
+    this.myTsumUnknowns = [];
+    this.myTsumAsk = null;
+    this.myTsumLastShot = null;
+    this.myTsumShots = 0;
     this.myTsumColor = null;
     this.myTsumIdx = -1;
     this.boardClusters = [];

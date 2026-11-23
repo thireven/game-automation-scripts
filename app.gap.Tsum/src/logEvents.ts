@@ -217,7 +217,13 @@ namespace Log {
     LibraryLoaded  = 'tsums.libraryLoaded',
     NoBoardColors  = 'tsums.noBoardColors',
     NoLibrary      = 'tsums.noLibrary',
+    /** The user named an unrecognised icon on the Quick Bar (`myTsumPick`). */
+    Picked         = 'tsums.picked',
+    /** An icon named on the Quick Bar earlier this run came back. */
+    PickReused     = 'tsums.pickReused',
     ReadFailed     = 'tsums.readFailed',
+    /** The screen of an unrecognised icon went to stats/, for backfilling its rounds. */
+    ShotSaved      = 'tsums.shotSaved',
     StaleTemplate  = 'tsums.staleTemplate',
     Unidentified   = 'tsums.unidentified',
     Unreadable     = 'tsums.unreadable',
@@ -522,6 +528,9 @@ namespace Log {
     /** Share round stats: a batch was refused or failed; backing off. */
     ShareFailed     = 'stats.shareFailed',
     ShotSaveFailed  = 'stats.shotSaveFailed',
+    /** A past day's screenshots went into its zip (`statsZipOldShots`). */
+    ShotsZipped     = 'stats.shotsZipped',
+    ShotsNotZipped  = 'stats.shotsNotZipped',
     TallyCovered    = 'stats.tallyCovered',
     TallySkipped    = 'stats.tallySkipped',
     TooManyGlyphs   = 'stats.tooManyGlyphs',
@@ -669,6 +678,8 @@ namespace Log {
     UnlockNowAsked = 'quickBar.unlockNowAsked',
     WrapUpAsked    = 'quickBar.wrapUpAsked',
     CoastAsked     = 'quickBar.coastAsked',
+    /** A tsum picked for an unrecognised icon; `answer` is `myTsumPick`'s. */
+    TsumPicked     = 'quickBar.tsumPicked',
     CopyShareAsked = 'quickBar.copyShareAsked',
     /** The readout chip was tapped: the run's figures went to the clipboard. */
     StatsCopied    = 'quickBar.statsCopied',

@@ -992,6 +992,32 @@ interface MyTsumSelection extends MyTsumMatch {
   confident: boolean;
 }
 
+/** A library tsum offered to the user for an icon the library could not name. */
+interface MyTsumCandidate {
+  short: string;
+  /** As the build in front prints it. */
+  name: string;
+}
+
+/**
+ * One pre-round icon the library could not name (`identifyMyTsum`), kept for
+ * the run so the same icon is asked about, and shot, once.
+ */
+interface MyTsumUnknown {
+  /** Run-unique, so the Quick Bar can tell one ask from the next. */
+  id: number;
+  /** The icon's signature through `myTsumPrepare`. */
+  vec: number[];
+  /** When it was first seen (ms). */
+  since: number;
+  /** Its full-screen shot in stats/, '' when none was saved. */
+  shot: string;
+  /** The library's nearest tsums, best first. */
+  candidates: MyTsumCandidate[];
+  /** What the user picked for it on the Quick Bar; '' until then. */
+  pick: string;
+}
+
 // --- Records (the heart-sender history) ---
 
 /** The running send/receive tallies, stored under `hearts_count`. */
@@ -2005,6 +2031,13 @@ declare function listDir(path: string): string[];
 declare function removeFile(path: string, recursive: boolean): boolean;
 /** Creates `to`'s parents; overwrites. */
 declare function copyFile(from: string, to: string): boolean;
+/**
+ * Writes `paths` into a new zip, each entry named by its basename: how many, or
+ * -1 with nothing written (the zip exists, a file is missing, a name repeats).
+ * `level` is zlib's 0-9, default 6. GAP 4.15+: reach it behind
+ * `typeof zipFiles === 'function'`.
+ */
+declare function zipFiles(zipPath: string, paths: string[], level?: number): number;
 
 /**
  * This device's own folder under the storage root, created on demand:

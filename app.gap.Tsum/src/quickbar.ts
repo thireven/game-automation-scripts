@@ -193,6 +193,12 @@ function quickBarState(): string {
     state.myTsum = ts.myTsumName;
     // Its English name on a JP build ('' when the same), for the phone's Names setting.
     state.myTsumEn = tsumListEnglish(ts.myTsum, ts.myTsumName) || '';
+    // An icon the library could not name, for the strip to ask about
+    // (`myTsumPick`). JSON text: the state's values are scalars.
+    const ask = ts.myTsumAsk;
+    if (ask !== null) {
+      state.myTsumAsk = JSON.stringify({ id: ask.id, candidates: ask.candidates });
+    }
 
     const coins = ts.runCoins;
     state.rounds = coins.rounds;

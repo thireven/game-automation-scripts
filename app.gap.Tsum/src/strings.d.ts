@@ -514,6 +514,11 @@ declare const enum UiText {
   /** Banners after the Lvl chip, when the engine's own banner does not apply. */
   QbLevelsAlreadyQueued = 'qb.levelsAlreadyQueued',
   QbLevelsNotQueued = 'qb.levelsNotQueued',
+  /** The ask over the strip when the pre-round tsum was not recognised. */
+  QbAskTsum = 'qb.askTsum',
+  QbAskMore = 'qb.askMore',
+  QbAskClose = 'qb.askClose',
+  QbAskNotTaken = 'qb.askNotTaken',
   /** The page toggle's accessible name; the chip itself draws two dots. */
   QbPage = 'qb.page',
   /** The readout toggle's accessible name; the chip itself draws two dots. */

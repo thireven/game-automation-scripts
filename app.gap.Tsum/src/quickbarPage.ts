@@ -453,6 +453,15 @@ function qbNameHotspot(): void {
     }
     var leftEdge = box.left;
     var topEdge = box.top;
+    // The tsum ask covers the strip and has to take taps mid-run as well.
+    var ask = document.querySelector('.qb-ask') as HTMLElement | null;
+    if (ask !== null && !ask.hidden) {
+        var abox = ask.getBoundingClientRect();
+        leftEdge = Math.min(leftEdge, abox.left);
+        topEdge = Math.min(topEdge, abox.top);
+        right = Math.max(right, abox.right);
+        bottom = Math.max(bottom, abox.bottom);
+    }
     if (document.body.getAttribute('data-page') === '2') {
         var extras = document.querySelectorAll('.qb-copy-share, .qb-time-out, .qb-wrap-up');
         for (var i = 0; i < extras.length; i++) {
@@ -643,6 +652,7 @@ function qbRender(): void {
     qbRenderWorkflow();
     qbRenderPreset();
     qbRenderNotice();
+    qbRenderAsk();
 }
 
 /** A notice as the script reports it (`notices` in `quickBarState()`). */
@@ -716,6 +726,151 @@ function qbHideNotice(): void {
     }
     qbNoticeTimer = undefined;
     qbShowNextNotice();
+}
+
+// --- which tsum is this? ---------------------------------------------------
+
+/** An ask as the script reports it (`myTsumAsk` in `quickBarState()`). */
+interface QbAsk { id: number; candidates: { short: string; name: string }[] }
+/** How many names fit on the strip at once; More shows the next ones. */
+var QB_ASK_PER_PAGE = 2;
+/** Asks put away or answered, by id, so neither comes back on the next poll. */
+var qbAskDone: { [id: string]: boolean } = {};
+/** The ask on screen and which page of its names is showing. */
+var qbAsk: QbAsk | undefined;
+var qbAskPage = 0;
+/** `id:page` of the names drawn, so a poll does not rebuild them under a finger. */
+var qbAskDrawn = '';
+
+/** The ask in `qbState`, or undefined when there is none to show. */
+function qbAskInState(): QbAsk | undefined {
+    if (typeof qbState.myTsumAsk !== 'string') {
+        return undefined;
+    }
+    try {
+        var ask = JSON.parse(qbState.myTsumAsk) as QbAsk;
+        if (typeof ask.id !== 'number' || !(ask.candidates instanceof Array) || ask.candidates.length === 0) {
+            return undefined;
+        }
+        return qbAskDone[String(ask.id)] ? undefined : ask;
+    } catch (e) {
+        return undefined;
+    }
+}
+
+/**
+ * Draws the ask over the strip (src/quickbar.html `.qb-ask`), or takes it down.
+ * A new ask starts on its first page; the hotspot follows it either way.
+ */
+function qbRenderAsk(): void {
+    var box = document.querySelector('.qb-ask') as HTMLElement | null;
+    if (box === null) {
+        return;
+    }
+    var ask = qbActive ? qbAskInState() : undefined;
+    if (ask === undefined) {
+        qbAsk = undefined;
+        qbAskDrawn = '';
+        if (!box.hidden) {
+            box.hidden = true;
+            qbNameHotspot();
+        }
+        return;
+    }
+    if (qbAsk === undefined || qbAsk.id !== ask.id) {
+        qbAskPage = 0;
+    }
+    qbAsk = ask;
+    var picks = box.querySelector('.qb-ask-picks');
+    var template = document.getElementById('tpl-ask-pick') as HTMLTemplateElement | null;
+    if (picks === null || template === null || qbAskDrawn === ask.id + ':' + qbAskPage) {
+        return;
+    }
+    qbAskDrawn = ask.id + ':' + qbAskPage;
+    while (picks.firstChild) {
+        picks.removeChild(picks.firstChild);
+    }
+    var start = qbAskPage * QB_ASK_PER_PAGE;
+    for (var i = start; i < start + QB_ASK_PER_PAGE && i < ask.candidates.length; i++) {
+        (function (candidate: { short: string; name: string }, id: number) {
+            var button = template!.content.firstElementChild!.cloneNode(true) as HTMLElement;
+            button.textContent = candidate.name;
+            button.addEventListener('click', function () {
+                qbAskPick(id, candidate.short);
+            });
+            picks!.appendChild(button);
+        })(ask.candidates[i], ask.id);
+    }
+    var more = box.querySelector('.qb-ask-more') as HTMLElement | null;
+    if (more !== null) {
+        more.hidden = ask.candidates.length <= QB_ASK_PER_PAGE;
+    }
+    if (box.hidden) {
+        box.hidden = false;
+        qbNameHotspot();
+    }
+}
+
+/**
+ * More names: the whole list in a sheet when the strip is live (paused or
+ * stopped), otherwise the next few in place, round again after the last.
+ */
+function qbAskMore(): void {
+    var ask = qbAsk;
+    if (ask === undefined) {
+        return;
+    }
+    var option = document.getElementById('tpl-option') as HTMLTemplateElement | null;
+    if (qbLive && option !== null) {
+        qbShowSheet(function (list) {
+            for (var i = 0; i < ask!.candidates.length; i++) {
+                (function (candidate: { short: string; name: string }) {
+                    var button = option!.content.firstElementChild!.cloneNode(true) as HTMLElement;
+                    button.textContent = candidate.name;
+                    button.addEventListener('click', function () {
+                        qbCloseSheet();
+                        qbAskPick(ask!.id, candidate.short);
+                    });
+                    list.appendChild(button);
+                })(ask!.candidates[i]);
+            }
+        });
+        return;
+    }
+    var pages = Math.ceil(ask.candidates.length / QB_ASK_PER_PAGE);
+    qbAskPage = pages > 0 ? (qbAskPage + 1) % pages : 0;
+    qbRenderAsk();
+}
+
+/** Puts this ask away; the next unrecognised tsum asks again. */
+function qbAskClose(): void {
+    if (qbAsk !== undefined) {
+        qbAskDone[String(qbAsk.id)] = true;
+    }
+    qbRenderAsk();
+}
+
+/** Sends a pick (`myTsumPick`, src/roundStats.ts); the ask goes at once. */
+function qbAskPick(id: number, short: string): void {
+    var bridge = qbBridge();
+    if (bridge === undefined) {
+        return;
+    }
+    qbAskDone[String(id)] = true;
+    qbRenderAsk();
+    bridge.runScriptCallback('typeof myTsumPick === "function" ? myTsumPick(' + id + ','
+        + JSON.stringify(short) + ') : "no script"', 'onQuickBarTsumPicked');
+}
+
+/** The engine's answer to `qbAskPick`. The engine banners a pick it took. */
+// noinspection JSUnusedGlobalSymbols
+function onQuickBarTsumPicked(answer: string): void {
+    var said = String(answer);
+    qbLogInfo(Log.QuickBar.TsumPicked, 'Tsum picked on the Quick Bar', {answer: said});
+    if (said !== 'ok') {
+        qbBanner(i18nText(UiText.QbAskNotTaken));
+    }
+    qbRequestState();
 }
 
 /**
@@ -1514,6 +1669,14 @@ function qbBind(): void {
     var notice = document.querySelector('.qb-notice');
     if (notice !== null) {
         notice.addEventListener('click', qbHideNotice);
+    }
+    var askMore = document.querySelector('.qb-ask-more');
+    if (askMore !== null) {
+        askMore.addEventListener('click', qbAskMore);
+    }
+    var askClose = document.querySelector('.qb-ask-close');
+    if (askClose !== null) {
+        askClose.addEventListener('click', qbAskClose);
     }
 
     // The one control that is a whole configuration rather than one setting, so
