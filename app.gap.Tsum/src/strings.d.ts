@@ -519,6 +519,8 @@ declare const enum UiText {
   QbAskMore = 'qb.askMore',
   QbAskClose = 'qb.askClose',
   QbAskNotTaken = 'qb.askNotTaken',
+  QbAskNone = 'qb.askNone',
+  QbAskUndo = 'qb.askUndo',
   /** The page toggle's accessible name; the chip itself draws two dots. */
   QbPage = 'qb.page',
   /** The readout toggle's accessible name; the chip itself draws two dots. */

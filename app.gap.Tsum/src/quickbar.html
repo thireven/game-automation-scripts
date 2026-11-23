@@ -80,7 +80,9 @@
           several shown in turn; under an open sheet;
         * `.qb-ask` asks which tsum an unrecognised pre-round icon is
           (`myTsumAsk`): `.qb-ask-picks` gets one `#tpl-ask-pick` per name,
-          `.qb-ask-more` shows more, `.qb-ask-close` puts it away. Outside
+          `.qb-ask-more` shows more (the last page is None of these),
+          `.qb-ask-close` puts it away until the next round, and after an
+          answer `data-mode="answered"` shows it with `.qb-ask-undo`. Outside
           `.qb-controls`, and named to the host as the hotspot while up, so it
           takes taps mid-run; under a notice;
         * `<body>` carries `data-state`, which is what the CSS reads;
@@ -479,6 +481,7 @@
         <span aria-hidden="true">&#10005;</span>
         <span class="qb-sr" data-i18n="qb.askClose">Not now</span>
       </button>
+      <button class="qb-ask-undo" type="button" data-i18n="qb.askUndo">Undo</button>
     </div>
     <template id="tpl-ask-pick">
       <button class="qb-ask-pick" type="button"></button>

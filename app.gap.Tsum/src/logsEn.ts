@@ -93,6 +93,7 @@ var LogsEn = {
   [Log.Tsums.Unidentified]: 'Selected tsum unknown; round recorded without one',
   [Log.Tsums.Picked]: 'MyTsum picked on the Quick Bar',
   [Log.Tsums.PickReused]: 'MyTsum picked earlier this run',
+  [Log.Tsums.Unpicked]: 'MyTsum pick undone; asking again',
   [Log.Tsums.Unreadable]: 'Pre-round tsum icon unreadable',
   [Log.Tsums.NoLibrary]: 'Tsum library missing; rounds recorded without a tsum',
   [Log.Tsums.StaleTemplate]: 'Tsum library mismatches this release; ignored',

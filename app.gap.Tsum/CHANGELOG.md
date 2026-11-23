@@ -59,18 +59,21 @@ release note; they fold back in here when she ships.
 ### Added
 
 - **Unrecognised My Tsum** (`myTsumUnknownSeen`, `src/roundStats.ts`): each
-  unknown icon is kept for the run by its signature (≥ 0.95 alike is the same
-  icon). A stretch of it takes one `stats/mytsum-unknown-<stamp>.png` (max 8 a
-  run, only with Record round stats); empty `tsum` rows belong to the last
-  such shot before them.
-- **Quick Bar ask** (`.qb-ask`, `qbRenderAsk`): the library's 24 nearest tsums,
-  two at a time, the full list in a sheet while paused. Widens the hotspot so it
-  takes taps mid-run. `myTsumPick` names this round and the icon for the run,
-  and applies Auto Set Skill Level.
-- **Day zips** (`statsZipOldShots`): after a round's row, once a UTC day, past
-  days' `unread-*` / `mytsum-*` PNGs go into `stats/screenshots-<day>.zip`
-  (`-2`, `-3` if taken), removed only once zipped. Needs the host's new
-  `zipFiles` (GAP 4.15+). PNGs shrink ~5-13% zipped; the win is one file a day.
+  unknown icon is kept for the run: ≥ 0.95 alike *and* the same nearest library
+  tsum (art twins read 0.99 alike, so alike alone shared their picks). A stretch
+  takes one `stats/mytsum-unknown-<stamp>.png`; an unreadable or flat icon one
+  `mytsum-unreadable-`. Max 30 a run, only with Record round stats; empty `tsum`
+  rows belong to the last such shot before them.
+- **Quick Bar ask** (`.qb-ask`, `qbRenderAsk`): the 24 nearest tsums two at a
+  time, then None of these; paused, every tsum (`myTsumAskList`). Widens the
+  hotspot so it takes taps mid-run. `myTsumPick` names this round and the icon
+  for the run and applies Auto Set Skill Level; '' declines it. Undo for 5 s
+  (`myTsumUnpick`). ✕ lasts until the next pre-round arrival (`seen`).
+- **Day zips** (`statsZipOldShots`): after a round's row and the add-ons' hook,
+  once a UTC day (3 tries), past days' `unread-*` / `mytsum-*` PNGs go into
+  `stats/screenshots-<day>.zip` (`-2`, `-3` if taken), removed only once zipped.
+  Needs the host's new `zipFiles` (GAP 4.15+: synced before it returns, fails on
+  a short read). Level 1: PNGs shrink ~7% either way, and 1 is faster than 6.
 
 ### Changed
 

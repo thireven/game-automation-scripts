@@ -94,8 +94,10 @@ class Tsum {
   myTsumUnknowns: MyTsumUnknown[];
   /** The one on screen now, which the Quick Bar asks about; null once one is named. */
   myTsumAsk: MyTsumUnknown | null;
-  /** The unknown icon the last `mytsum-*.png` shot is of, so a stretch takes one. */
-  myTsumLastShot: MyTsumUnknown | null;
+  /** The icon the last `mytsum-*.png` shot is of (`[]` unreadable), so a stretch takes one. */
+  myTsumLastShot: number[] | null;
+  /** That shot's path. */
+  myTsumShotPath: string;
   myTsumShots: number;
   myTsumColor: Color | null;
   myTsumIdx: number;
@@ -432,6 +434,7 @@ class Tsum {
     this.myTsumUnknowns = [];
     this.myTsumAsk = null;
     this.myTsumLastShot = null;
+    this.myTsumShotPath = '';
     this.myTsumShots = 0;
     this.myTsumColor = null;
     this.myTsumIdx = -1;

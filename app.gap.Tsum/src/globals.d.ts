@@ -1008,14 +1008,20 @@ interface MyTsumUnknown {
   id: number;
   /** The icon's signature through `myTsumPrepare`. */
   vec: number[];
+  /** The library tsum nearest it; a read with another nearest is another icon. */
+  best: string;
   /** When it was first seen (ms). */
   since: number;
-  /** Its full-screen shot in stats/, '' when none was saved. */
+  /** Its latest full-screen shot in stats/, '' when none was saved. */
   shot: string;
-  /** The library's nearest tsums, best first. */
+  /** The library's nearest tsums, best first: what the strip offers. */
   candidates: MyTsumCandidate[];
   /** What the user picked for it on the Quick Bar; '' until then. */
   pick: string;
+  /** The user said it is none of the library's: not asked again this run. */
+  declined: boolean;
+  /** Pre-round arrivals while unnamed; a ✕ on the strip lasts until the next one. */
+  seen: number;
 }
 
 // --- Records (the heart-sender history) ---

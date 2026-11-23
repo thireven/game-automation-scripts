@@ -1088,4 +1088,18 @@ body:not([data-state="running"]) .qb { border-top-color: var(--tap); }
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.qb-ask .qb-ask-more, .qb-ask .qb-ask-close { flex: none; }
+.qb-ask .qb-ask-more, .qb-ask .qb-ask-close, .qb-ask .qb-ask-undo { flex: none; }
+/* Asking: the names, More and ✕. Answered: what was picked, and Undo. */
+.qb-ask[data-mode="asking"] .qb-ask-undo,
+.qb-ask[data-mode="answered"] .qb-ask-label,
+.qb-ask[data-mode="answered"] .qb-ask-more,
+.qb-ask[data-mode="answered"] .qb-ask-close { display: none; }
+.qb-ask-done {
+  flex: 1;
+  min-width: 0;
+  font: 700 calc(14px * var(--qb-vs))/1.15 var(--font-sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qb-ask-done::before { content: "\2713\00a0"; color: var(--qb-accent, var(--tap)); }

@@ -224,6 +224,10 @@ namespace Log {
     ReadFailed     = 'tsums.readFailed',
     /** The screen of an unrecognised icon went to stats/, for backfilling its rounds. */
     ShotSaved      = 'tsums.shotSaved',
+    /** `MyTsumMaxShots` reached: later stretches get no shot this run. */
+    ShotsCapped    = 'tsums.shotsCapped',
+    /** The Quick Bar's Undo took a pick back. */
+    Unpicked       = 'tsums.unpicked',
     StaleTemplate  = 'tsums.staleTemplate',
     Unidentified   = 'tsums.unidentified',
     Unreadable     = 'tsums.unreadable',

@@ -197,7 +197,7 @@ function quickBarState(): string {
     // (`myTsumPick`). JSON text: the state's values are scalars.
     const ask = ts.myTsumAsk;
     if (ask !== null) {
-      state.myTsumAsk = JSON.stringify({ id: ask.id, candidates: ask.candidates });
+      state.myTsumAsk = JSON.stringify({ id: ask.id, seen: ask.seen, candidates: ask.candidates });
     }
 
     const coins = ts.runCoins;

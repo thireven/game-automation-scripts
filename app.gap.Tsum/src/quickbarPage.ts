@@ -731,16 +731,26 @@ function qbHideNotice(): void {
 // --- which tsum is this? ---------------------------------------------------
 
 /** An ask as the script reports it (`myTsumAsk` in `quickBarState()`). */
-interface QbAsk { id: number; candidates: { short: string; name: string }[] }
+interface QbAsk { id: number; seen: number; candidates: QbAskName[] }
+interface QbAskName { short: string; name: string }
 /** How many names fit on the strip at once; More shows the next ones. */
 var QB_ASK_PER_PAGE = 2;
-/** Asks put away or answered, by id, so neither comes back on the next poll. */
+/** How long an answer stays up with its Undo. */
+var QB_ASK_UNDO_MS = 5000;
+/** How long the paused sheet waits for the full list before opening on the nearest few. */
+var QB_ASK_LIST_WAIT_MS = 600;
+/** Asks answered, by id: never drawn again unless Undo takes the answer back. */
 var qbAskDone: { [id: string]: boolean } = {};
-/** The ask on screen and which page of its names is showing. */
+/** Asks put away with ✕, by id: the arrival (`seen`) they were put away at. */
+var qbAskSnoozed: { [id: string]: number } = {};
+/** The ask on screen and which page of its names is showing; the last page is None of these. */
 var qbAsk: QbAsk | undefined;
 var qbAskPage = 0;
 /** `id:page` of the names drawn, so a poll does not rebuild them under a finger. */
 var qbAskDrawn = '';
+/** The answer just given, shown with Undo until `until`. */
+var qbAskAnswer: { id: number; text: string; until: number } | undefined;
+var qbAskAnswerTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** The ask in `qbState`, or undefined when there is none to show. */
 function qbAskInState(): QbAsk | undefined {
@@ -752,23 +762,39 @@ function qbAskInState(): QbAsk | undefined {
         if (typeof ask.id !== 'number' || !(ask.candidates instanceof Array) || ask.candidates.length === 0) {
             return undefined;
         }
-        return qbAskDone[String(ask.id)] ? undefined : ask;
+        var key = String(ask.id);
+        if (qbAskDone[key] || qbAskSnoozed[key] === ask.seen) {
+            return undefined;
+        }
+        return ask;
     } catch (e) {
         return undefined;
     }
 }
 
+/** One button into `into`: a template clone with `text`, doing `act` when tapped. */
+function qbAskButton(into: Element, template: HTMLTemplateElement, text: string, act: () => void): void {
+    var button = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    button.textContent = text;
+    button.addEventListener('click', act);
+    into.appendChild(button);
+}
+
 /**
  * Draws the ask over the strip (src/quickbar.html `.qb-ask`), or takes it down.
- * A new ask starts on its first page; the hotspot follows it either way.
+ * An answer just given shows instead, with Undo. A new ask starts on its first
+ * page; the hotspot follows the box either way.
  */
 function qbRenderAsk(): void {
     var box = document.querySelector('.qb-ask') as HTMLElement | null;
-    if (box === null) {
+    var picks = box === null ? null : box.querySelector('.qb-ask-picks');
+    var template = document.getElementById('tpl-ask-pick') as HTMLTemplateElement | null;
+    if (box === null || picks === null || template === null) {
         return;
     }
-    var ask = qbActive ? qbAskInState() : undefined;
-    if (ask === undefined) {
+    var answer = qbActive && qbAskAnswer !== undefined && Date.now() < qbAskAnswer.until ? qbAskAnswer : undefined;
+    var ask = qbActive && answer === undefined ? qbAskInState() : undefined;
+    if (answer === undefined && ask === undefined) {
         qbAsk = undefined;
         qbAskDrawn = '';
         if (!box.hidden) {
@@ -777,33 +803,40 @@ function qbRenderAsk(): void {
         }
         return;
     }
-    if (qbAsk === undefined || qbAsk.id !== ask.id) {
+    box.setAttribute('data-mode', answer !== undefined ? 'answered' : 'asking');
+    var drawn = answer !== undefined ? 'answer:' + answer.id : ask!.id + ':' + qbAskPage;
+    if (ask !== undefined && (qbAsk === undefined || qbAsk.id !== ask.id)) {
         qbAskPage = 0;
+        drawn = ask.id + ':0';
     }
     qbAsk = ask;
-    var picks = box.querySelector('.qb-ask-picks');
-    var template = document.getElementById('tpl-ask-pick') as HTMLTemplateElement | null;
-    if (picks === null || template === null || qbAskDrawn === ask.id + ':' + qbAskPage) {
-        return;
-    }
-    qbAskDrawn = ask.id + ':' + qbAskPage;
-    while (picks.firstChild) {
-        picks.removeChild(picks.firstChild);
-    }
-    var start = qbAskPage * QB_ASK_PER_PAGE;
-    for (var i = start; i < start + QB_ASK_PER_PAGE && i < ask.candidates.length; i++) {
-        (function (candidate: { short: string; name: string }, id: number) {
-            var button = template!.content.firstElementChild!.cloneNode(true) as HTMLElement;
-            button.textContent = candidate.name;
-            button.addEventListener('click', function () {
-                qbAskPick(id, candidate.short);
-            });
-            picks!.appendChild(button);
-        })(ask.candidates[i], ask.id);
-    }
-    var more = box.querySelector('.qb-ask-more') as HTMLElement | null;
-    if (more !== null) {
-        more.hidden = ask.candidates.length <= QB_ASK_PER_PAGE;
+    if (qbAskDrawn !== drawn) {
+        qbAskDrawn = drawn;
+        while (picks.firstChild) {
+            picks.removeChild(picks.firstChild);
+        }
+        if (answer !== undefined) {
+            var done = document.createElement('span');
+            done.className = 'qb-ask-done';
+            done.textContent = answer.text;
+            picks.appendChild(done);
+        } else {
+            var names = ask!.candidates;
+            var pages = Math.ceil(names.length / QB_ASK_PER_PAGE);
+            if (qbAskPage >= pages) {
+                // The page after the names: the icon is none of the library's.
+                qbAskButton(picks, template, i18nText(UiText.QbAskNone), function () {
+                    qbAskPick(ask!.id, '', i18nText(UiText.QbAskNone));
+                });
+            }
+            for (var i = qbAskPage * QB_ASK_PER_PAGE; i < (qbAskPage + 1) * QB_ASK_PER_PAGE && i < names.length; i++) {
+                (function (candidate: QbAskName, id: number) {
+                    qbAskButton(picks!, template!, candidate.name, function () {
+                        qbAskPick(id, candidate.short, candidate.name);
+                    });
+                })(names[i], ask!.id);
+            }
+        }
     }
     if (box.hidden) {
         box.hidden = false;
@@ -812,54 +845,110 @@ function qbRenderAsk(): void {
 }
 
 /**
- * More names: the whole list in a sheet when the strip is live (paused or
- * stopped), otherwise the next few in place, round again after the last.
+ * More names: the whole library, nearest first, in a sheet when the strip is
+ * live (paused or stopped); otherwise the next few in place, then None of these,
+ * then round again.
  */
 function qbAskMore(): void {
     var ask = qbAsk;
+    var bridge = qbBridge();
     if (ask === undefined) {
         return;
     }
-    var option = document.getElementById('tpl-option') as HTMLTemplateElement | null;
-    if (qbLive && option !== null) {
-        qbShowSheet(function (list) {
-            for (var i = 0; i < ask!.candidates.length; i++) {
-                (function (candidate: { short: string; name: string }) {
-                    var button = option!.content.firstElementChild!.cloneNode(true) as HTMLElement;
-                    button.textContent = candidate.name;
-                    button.addEventListener('click', function () {
-                        qbCloseSheet();
-                        qbAskPick(ask!.id, candidate.short);
-                    });
-                    list.appendChild(button);
-                })(ask!.candidates[i]);
+    if (qbLive && bridge !== undefined) {
+        var opened = false;
+        var open = function (names: QbAskName[]) {
+            if (!opened) {
+                opened = true;
+                qbShowAskSheet(ask!, names);
             }
-        });
+        };
+        qbAskListWaiting = open;
+        bridge.runScriptCallback('typeof myTsumAskList === "function" ? myTsumAskList(' + ask.id + ') : "[]"',
+            'onQuickBarTsumList');
+        setTimeout(function () { open(ask!.candidates); }, QB_ASK_LIST_WAIT_MS);
         return;
     }
-    var pages = Math.ceil(ask.candidates.length / QB_ASK_PER_PAGE);
-    qbAskPage = pages > 0 ? (qbAskPage + 1) % pages : 0;
+    var pages = Math.ceil(ask.candidates.length / QB_ASK_PER_PAGE) + 1;
+    qbAskPage = (qbAskPage + 1) % pages;
     qbRenderAsk();
 }
 
-/** Puts this ask away; the next unrecognised tsum asks again. */
+/** Who is waiting for `myTsumAskList`'s answer: the sheet `qbAskMore` is opening. */
+var qbAskListWaiting: ((names: QbAskName[]) => void) | undefined;
+
+/** The engine's answer to `myTsumAskList`. Named by `qbAskMore`. */
+// noinspection JSUnusedGlobalSymbols
+function onQuickBarTsumList(json: string): void {
+    var names: QbAskName[] = [];
+    try {
+        names = JSON.parse(json) || [];
+    } catch (e) {
+        names = [];
+    }
+    var waiting = qbAskListWaiting;
+    qbAskListWaiting = undefined;
+    if (waiting !== undefined && names.length > 0) {
+        waiting(names);
+    }
+}
+
+/** The paused sheet: None of these, then every name. */
+function qbShowAskSheet(ask: QbAsk, names: QbAskName[]): void {
+    var option = document.getElementById('tpl-option') as HTMLTemplateElement | null;
+    if (option === null) {
+        return;
+    }
+    qbShowSheet(function (list) {
+        qbAskButton(list, option!, i18nText(UiText.QbAskNone), function () {
+            qbCloseSheet();
+            qbAskPick(ask.id, '', i18nText(UiText.QbAskNone));
+        });
+        for (var i = 0; i < names.length; i++) {
+            (function (candidate: QbAskName) {
+                qbAskButton(list, option!, candidate.name, function () {
+                    qbCloseSheet();
+                    qbAskPick(ask.id, candidate.short, candidate.name);
+                });
+            })(names[i]);
+        }
+    });
+}
+
+/** ✕: puts this ask away until the game is next on the pre-round screen with this tsum. */
 function qbAskClose(): void {
     if (qbAsk !== undefined) {
-        qbAskDone[String(qbAsk.id)] = true;
+        qbAskSnoozed[String(qbAsk.id)] = qbAsk.seen;
     }
     qbRenderAsk();
 }
 
-/** Sends a pick (`myTsumPick`, src/roundStats.ts); the ask goes at once. */
-function qbAskPick(id: number, short: string): void {
+/**
+ * Sends an answer (`myTsumPick`, src/roundStats.ts): a tsum, or '' for none of
+ * these. The ask goes at once, and the answer shows with Undo for a moment.
+ */
+function qbAskPick(id: number, short: string, text: string): void {
     var bridge = qbBridge();
     if (bridge === undefined) {
         return;
     }
     qbAskDone[String(id)] = true;
-    qbRenderAsk();
+    qbAskShowAnswer({ id: id, text: text, until: Date.now() + QB_ASK_UNDO_MS });
     bridge.runScriptCallback('typeof myTsumPick === "function" ? myTsumPick(' + id + ','
         + JSON.stringify(short) + ') : "no script"', 'onQuickBarTsumPicked');
+}
+
+/** Shows (or, with undefined, ends) the answer box, and redraws when it runs out. */
+function qbAskShowAnswer(answer: { id: number; text: string; until: number } | undefined): void {
+    qbAskAnswer = answer;
+    if (qbAskAnswerTimer !== undefined) {
+        clearTimeout(qbAskAnswerTimer);
+        qbAskAnswerTimer = undefined;
+    }
+    if (answer !== undefined) {
+        qbAskAnswerTimer = setTimeout(function () { qbAskShowAnswer(undefined); }, answer.until - Date.now());
+    }
+    qbRenderAsk();
 }
 
 /** The engine's answer to `qbAskPick`. The engine banners a pick it took. */
@@ -868,8 +957,29 @@ function onQuickBarTsumPicked(answer: string): void {
     var said = String(answer);
     qbLogInfo(Log.QuickBar.TsumPicked, 'Tsum picked on the Quick Bar', {answer: said});
     if (said !== 'ok') {
+        qbAskShowAnswer(undefined);
         qbBanner(i18nText(UiText.QbAskNotTaken));
     }
+    qbRequestState();
+}
+
+/** Undo: takes the answer back (`myTsumUnpick`) and the ask returns. */
+function qbAskUndo(): void {
+    var bridge = qbBridge();
+    var answer = qbAskAnswer;
+    if (bridge === undefined || answer === undefined) {
+        return;
+    }
+    delete qbAskDone[String(answer.id)];
+    qbAskShowAnswer(undefined);
+    bridge.runScriptCallback('typeof myTsumUnpick === "function" ? myTsumUnpick(' + answer.id + ') : "no script"',
+        'onQuickBarTsumUnpicked');
+}
+
+/** The engine's answer to `qbAskUndo`; the state read brings the ask back. */
+// noinspection JSUnusedGlobalSymbols
+function onQuickBarTsumUnpicked(answer: string): void {
+    qbLogInfo(Log.QuickBar.TsumPicked, 'Tsum pick undone on the Quick Bar', {answer: String(answer), undo: true});
     qbRequestState();
 }
 
@@ -1677,6 +1787,10 @@ function qbBind(): void {
     var askClose = document.querySelector('.qb-ask-close');
     if (askClose !== null) {
         askClose.addEventListener('click', qbAskClose);
+    }
+    var askUndo = document.querySelector('.qb-ask-undo');
+    if (askUndo !== null) {
+        askUndo.addEventListener('click', qbAskUndo);
     }
 
     // The one control that is a whole configuration rather than one setting, so

@@ -433,6 +433,8 @@ i18nRegister(Locale.English, 'English', {
     [UiText.QbAskMore]: 'More',
     [UiText.QbAskClose]: 'Not now',
     [UiText.QbAskNotTaken]: 'Could not set the tsum; it may have changed',
+    [UiText.QbAskNone]: 'None of these',
+    [UiText.QbAskUndo]: 'Undo',
     [UiText.QbPage]: 'Switch page',
     [UiText.QbReadout]: 'Coins or times',
     [UiText.QbScan]: 'Scan',
