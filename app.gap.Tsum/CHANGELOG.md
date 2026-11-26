@@ -53,13 +53,19 @@ release note; they fold back in here when she ships.
 
 *Tsums*
 - JP-only tsums have English names (Outdoor Mickey, Jim Hawkins, Spider-Man and the rest), shown on the international game until it names them.
+- The four newest JP tsums are recognised before a round and in the Tsum List: Aladdin+, Alice & Cheshire Cat, Doctor Doom and Lady (Charm).
 
 **Fixes**
+- Buzz+, Gary, Judy & Nick, Daruma Minnie and Woody+ show their English names on the international game.
 - Pressing Play twice no longer starts the script twice, which had two copies tapping the board at once so no chains were made.
 - The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank.
 - Mocha, Pudding and Souffle are no longer listed as international tsums; they are JP-only.
 
 ### Added
+
+- **Four JP tsums** in `tsums.dat`, `tsumsCollection.dat` and `tsumNames.dat`:
+  `aladdinplus`, `alicepr`, `drdoom`, `ladycm`. INTL's names for `buzzplus`,
+  `gary`, `judypr`, `minnied`, `woodyplus` replace our own (sixth column).
 
 - **English names for JP-only tsums**: `tsums.dat` and `tsumsCollection.dat`
   get a sixth column, our own English name for the 86 tsums the global build
