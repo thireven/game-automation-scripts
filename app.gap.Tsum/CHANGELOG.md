@@ -45,6 +45,25 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b35]
+
+### Summary
+
+**Additions**
+
+*Tsums*
+- The four newest JP tsums are recognised before a round and in the Tsum List: Aladdin+, Alice & Cheshire Cat, Doctor Doom and Lady (Charm) (merged up from 5.8).
+
+**Fixes**
+- Buzz+, Gary, Judy & Nick, Daruma Minnie and Woody+ show their English names on the international game (merged up from 5.8).
+
+### Added
+
+- **Four JP tsums** (merged up from 5.8): `aladdinplus`, `alicepr`, `drdoom`,
+  `ladycm` in `tsums.dat`, `tsumsCollection.dat` and `tsumNames.dat`. INTL's
+  names for `buzzplus`, `gary`, `judypr`, `minnied`, `woodyplus` replace our
+  own (sixth column).
+
 ## [6.0b34]
 
 ### Summary
