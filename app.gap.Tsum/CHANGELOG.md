@@ -96,8 +96,9 @@ release note; they fold back in here when she ships.
 
 - **Corrupt `hearts.json`** (`readRecord` in `src/hearts.ts`): a battery death
   mid-write left the file zero-filled, and its bare `JSON.parse` threw in
-  `buildRun` on every start, just after `screen.offset`. It now keeps the
-  zeroed record, logs `hearts.recordUnreadable` and rewrites the file.
+  `buildRun` on every start, just after `screen.offset`. Only a record with
+  numeric `hearts_count` counts is kept now; anything else keeps the zeroed
+  record, logs `hearts.recordUnreadable` and rewrites the file.
 
 ## [5.7]
 

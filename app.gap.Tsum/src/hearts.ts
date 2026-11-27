@@ -590,7 +590,12 @@ Tsum.prototype.readRecord = function() {
   } catch (e) {
     parsed = null;
   }
-  if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+  // Only a record with both counts is kept: the hearts log lines read them,
+  // and a null `hearts_count` would throw there instead.
+  const counts = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+    ? (parsed as TsumRecord)[RecordKey.HeartsCount] : undefined;
+  if (counts !== undefined && counts !== null && typeof counts === 'object'
+      && typeof counts.receivedCount === 'number' && typeof counts.sentCount === 'number') {
     this.record = parsed as TsumRecord;
     return;
   }
