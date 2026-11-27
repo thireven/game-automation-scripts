@@ -26,6 +26,8 @@ namespace Log {
     RemoteSettingNotSaved = 'run.remoteSettingNotSaved',
     Start            = 'run.start',
     StartBusy        = 'run.startBusy',
+    /** A newer `start()` arrived while this one waited for the old run; it steps aside. */
+    StartSuperseded  = 'run.startSuperseded',
     Stop             = 'run.stop',
     StopSlow         = 'run.stopSlow',
   }
@@ -264,6 +266,7 @@ namespace Log {
     NetworkRetry        = 'hearts.network.retry',
     NoToast             = 'hearts.noToast',
     ReadRecords         = 'hearts.readRecords',
+    RecordUnreadable    = 'hearts.recordUnreadable',
     SaveRecords         = 'hearts.saveRecords',
     Screenful           = 'hearts.screenful',
     Scrolled            = 'hearts.scrolled',

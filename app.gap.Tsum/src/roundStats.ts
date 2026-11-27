@@ -1416,7 +1416,8 @@ function myTsumLoadLibrary(file: string, withBoard: boolean): MyTsumEntry[] {
       continue;
     }
     // Five fields: the id, the name each build prints (either may be blank),
-    // the signature, the board colour. Read leniently past the signature: a
+    // the signature, the board colour; then, for a tsum the global build has
+    // not named, our own English name. Read leniently past the signature: a
     // row with no colour is a tsum that falls back to sampling the button, not
     // a row worth throwing away.
     const parts = line.split('\t');
@@ -1425,8 +1426,10 @@ function myTsumLoadLibrary(file: string, withBoard: boolean): MyTsumEntry[] {
       stale++;
       continue;
     }
-    // A build with no strip for the tsum borrows the other's name, or the id.
-    const en = parts[1] !== '' ? parts[1] : parts[2] !== '' ? parts[2] : parts[0];
+    // A build with no strip for the tsum borrows the other's name, or the id;
+    // the global build takes our English name first.
+    const own = parts.length >= 6 ? parts[5] : '';
+    const en = parts[1] !== '' ? parts[1] : own !== '' ? own : parts[2] !== '' ? parts[2] : parts[0];
     const jp = parts[2] !== '' ? parts[2] : en;
     // Prepared once, at load: a template's vector never changes, and doing it
     // here is what makes a round's match one dot product per entry.

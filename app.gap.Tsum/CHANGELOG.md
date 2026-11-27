@@ -45,6 +45,61 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [5.8]
+
+### Summary
+
+**Additions**
+
+*Tsums*
+- JP-only tsums have English names (Outdoor Mickey, Jim Hawkins, Spider-Man and the rest), shown on the international game until it names them.
+- The four newest JP tsums are recognised before a round and in the Tsum List: Aladdin+, Alice & Cheshire Cat, Doctor Doom and Lady (Charm).
+
+**Fixes**
+- Buzz+, Gary, Judy & Nick, Daruma Minnie and Woody+ show their English names on the international game.
+- Pressing Play twice no longer starts the script twice, which had two copies tapping the board at once so no chains were made.
+- The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank.
+- Mocha, Pudding and Souffle are no longer listed as international tsums; they are JP-only.
+- The script starts again after the device loses power mid-run; it had stopped at "Screen offset and size" on every start.
+
+### Added
+
+- **Four JP tsums** in `tsums.dat`, `tsumsCollection.dat` and `tsumNames.dat`:
+  `aladdinplus`, `alicepr`, `drdoom`, `ladycm`. INTL's names for `buzzplus`,
+  `gary`, `judypr`, `minnied`, `woodyplus` replace our own (sixth column).
+
+- **English names for JP-only tsums**: `tsums.dat` and `tsumsCollection.dat`
+  get a sixth column, our own English name for the 86 tsums the global build
+  has not named, in its style. `myTsumLoadLibrary` uses it in place of the
+  global name; the second column still means "the global build prints this",
+  which the stats catalog reads as "INTL has it".
+
+### Fixed
+
+- **JP-only tsums**: Mocha, Pudding and Souffle lose their English name in
+  `tsums.dat` and `tsumsCollection.dat` (INTL ships their art and name strips,
+  but they will never be released there).
+
+- **Tsum List libraries**: `tsumsCollection.dat` and `tsumNames.dat` were not
+  rebuilt when the five JP tsums reached `tsums.dat`. Rebuilt: 807 portraits,
+  1458 name rows, now with the English names given since and three redrawn JP
+  name strips (`idiamd`, `ursular`, `woodyd100`).
+
+- **Double start** (`start()`, `stop()` in `src/index.ts`): two start commands
+  close together both waited out the old run, and the first made native calls
+  in `new Tsum()` (which hand over the interpreter lock) before `buildRun` set
+  `gRunActive`. The second got in, and both runs built and played. The extra
+  loop also survived Stop. `start()` now claims `gRunActive` right after the
+  busy check. A start that finds a newer one arrived while it waited steps
+  aside (`run.startSuperseded`), and `stop()` stops waiting once a newer run
+  holds the slot (`gRunSeq`).
+
+- **Corrupt `hearts.json`** (`readRecord` in `src/hearts.ts`): a battery death
+  mid-write left the file zero-filled, and its bare `JSON.parse` threw in
+  `buildRun` on every start, just after `screen.offset`. Only a record with
+  numeric `hearts_count` counts is kept now; anything else keeps the zeroed
+  record, logs `hearts.recordUnreadable` and rewrites the file.
+
 ## [5.7]
 
 ### Summary
