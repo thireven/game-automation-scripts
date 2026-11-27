@@ -50,7 +50,7 @@ release note; they fold back in here when she ships.
 ### Summary
 
 **Fixes**
-- The script starts again after the device loses power mid-run; it had stopped at "Screen offset and size" on every start (merged up from 5.8).
+- If a sudden device shutdown corrupts the saved heart totals, the script now resets them instead of stopping at "Screen offset and size" on every start (merged up from 5.8).
 
 ### Fixed
 
