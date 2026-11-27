@@ -640,9 +640,24 @@ Tsum.prototype.readRecord = function() {
   logInfo(Log.Hearts.ReadRecords);
   const recordFile = this.devicePath + '/hearts.json';
   const txt = readFile(recordFile);
-  if (txt !== undefined && txt !== "") {
-    this.record = JSON.parse(txt);
+  if (txt === undefined || txt === "") {
+    return;
   }
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(txt);
+  } catch (e) {
+    parsed = null;
+  }
+  if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    this.record = parsed as TsumRecord;
+    return;
+  }
+  // A power loss mid-write can leave the file zero-filled, and throwing here
+  // failed every start. Keep the zeroed record and overwrite the bad file.
+  logWarn(Log.Hearts.RecordUnreadable, 'hearts.json unreadable; heart totals start from zero',
+    {bytes: txt.length});
+  this.saveRecord();
 }
 
 Tsum.prototype.saveRecord = function() {

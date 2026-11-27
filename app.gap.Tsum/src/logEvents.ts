@@ -333,6 +333,7 @@ namespace Log {
     NetworkRetry        = 'hearts.network.retry',
     NoToast             = 'hearts.noToast',
     ReadRecords         = 'hearts.readRecords',
+    RecordUnreadable    = 'hearts.recordUnreadable',
     SaveRecords         = 'hearts.saveRecords',
     Screenful           = 'hearts.screenful',
     Scrolled            = 'hearts.scrolled',
