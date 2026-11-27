@@ -60,6 +60,7 @@ release note; they fold back in here when she ships.
 - Pressing Play twice no longer starts the script twice, which had two copies tapping the board at once so no chains were made.
 - The Tsum List now names the five newest JP tsums (Lorcana Belle, Cruella, Donald and Woody, and Sorcerer's Apprentice Mickey+) instead of leaving them blank.
 - Mocha, Pudding and Souffle are no longer listed as international tsums; they are JP-only.
+- The script starts again after the device loses power mid-run; it had stopped at "Screen offset and size" on every start.
 
 ### Added
 
@@ -92,6 +93,11 @@ release note; they fold back in here when she ships.
   busy check. A start that finds a newer one arrived while it waited steps
   aside (`run.startSuperseded`), and `stop()` stops waiting once a newer run
   holds the slot (`gRunSeq`).
+
+- **Corrupt `hearts.json`** (`readRecord` in `src/hearts.ts`): a battery death
+  mid-write left the file zero-filled, and its bare `JSON.parse` threw in
+  `buildRun` on every start, just after `screen.offset`. It now keeps the
+  zeroed record, logs `hearts.recordUnreadable` and rewrites the file.
 
 ## [5.7]
 
