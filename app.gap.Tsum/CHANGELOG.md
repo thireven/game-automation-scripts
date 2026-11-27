@@ -45,6 +45,20 @@ long reasoning belong in the design docs (`OBSCURED_BOARD.md`, `LOGGING.md`,
 while she stays off the production build, so her work does not reach the
 release note; they fold back in here when she ships.
 
+## [6.0b36]
+
+### Summary
+
+**Fixes**
+- The script starts again after the device loses power mid-run; it had stopped at "Screen offset and size" on every start (merged up from 5.8).
+
+### Fixed
+
+- **Corrupt `hearts.json`**, merged up from 5.8 (details under [5.8] on 5.0):
+  `readRecord` no longer throws on a file a battery death left zero-filled. It
+  keeps only a record with numeric counts; otherwise it logs
+  `hearts.recordUnreadable` and rewrites the file.
+
 ## [6.0b35]
 
 ### Summary

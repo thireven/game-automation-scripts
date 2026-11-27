@@ -1,6 +1,6 @@
 {
   "name": "app.gap.tsum",
-  "version": "6.0b35",
+  "version": "6.0b36",
   "description": "General Automation Platform automation script for Tsum Tsum.",
   "main": "src/index.ts",
   "scripts": {
